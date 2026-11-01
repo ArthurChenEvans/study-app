@@ -1,0 +1,132 @@
+# Study App MVP Specs
+
+Behaviour specs in Gherkin for everything a user does in the MVP. Every scenario traces to an approved requirement below. Anything that couldn't be traced is listed under Open questions instead of being specified.
+
+## Requirements (approved)
+
+| ID | Requirement |
+|---|---|
+| R1 | A topic is the deck. Questions are grouped by topic |
+| R2 | A topic sits in at most one module, or in none |
+| R3 | Tags can be added to topics and to questions |
+| R4 | A question has 3 to 5 options |
+| R5 | Each question is set to single or multiple correct answers |
+| R6 | A question has an explanation |
+| R7 | Question text, options and explanation are Markdown with images, fenced code (syntax highlighted) and `$...$` LaTeX |
+| R8 | Images are pasted or picked from a file, and are kept with the question |
+| R9 | A question needs at least one correct option to be saved |
+| R10 | A question belongs to exactly one topic |
+| R11 | Files (Markdown, txt, PDF, PowerPoint, EPUB) can be opened beside the editor for reading, and are not stored |
+| R12 | Several files can be open while writing, switched with tabs |
+| R13 | A global bibliography of sources, stored as fields and shown in APA, with a view of which topics use each source |
+| R14 | A question can optionally cite one or more sources, each with a typed page, slide or line |
+| R15 | Quiz setup: one or more topics, all questions or a set number, picked randomly or evenly across topics |
+| R16 | Quiz setup: question order kept or shuffled, option order kept or shuffled |
+| R17 | Quiz setup: optional total timer and optional per-question timer |
+| R18 | Quiz setup: study mode (feedback after each question) or exam mode (feedback at the end) |
+| R19 | Quiz setup: hard (correct answer count hidden, the default) or easy (count shown) |
+| R20 | Exam mode does not allow going back to change an answer |
+| R21 | A question can be flagged as guessed, in both modes |
+| R22 | A per-question timeout counts as wrong and moves on. A total timeout ends the quiz |
+| R23 | Multiple-answer questions are scored all or nothing |
+| R24 | Results show the score, the number guessed, a per-topic breakdown and a review of each question with its explanation |
+| R25 | A wrong answer can be given a reason: preset or free text, optional but prompted. Incomplete (multi-answer) and timed out are recorded automatically |
+| R26 | Retry redoes the wrong ones and the guessed ones, with the same settings, saved as a retry |
+| R27 | Attempts are saved and listed on a history screen |
+| R28 | History shows each question as it was when answered |
+| R29 | Quitting a quiz halfway saves it as an incomplete attempt |
+| R30 | Deleting a topic or question asks for confirmation and keeps past history intact |
+| R31 | Search updates as you type, with category tabs (modules, topics, tags, sources), sortable columns and combinable filters, across question text, options, explanations, tags and sources |
+| R32 | Keyboard shortcuts in quizzes: 1 to 5 pick an option, Enter submits, F flags as guessed |
+
+Preset wrong-answer reasons (R25): blank, misremembered, confused with something similar, misread the question, careless slip, second-guessed, never learned it.
+
+## Example maps
+
+**Organising (topics.feature)**
+- Rule R2: a topic has at most one module. Example: "CPU" in "Computer Architecture". Example: "Misc" in no module.
+- Rule R3: tags on topics and questions. Example: tag "hardware" on topic "GPU".
+- Rule R30: deleting keeps history. Example: delete "CPU" after a quiz, history still shows its questions.
+
+**Writing questions (questions.feature)**
+- Rule R4: 3 to 5 options. Examples: 2 rejected, 3 ok, 5 ok, 6 rejected.
+- Rule R9: at least one correct. Example: no correct option, save refused.
+- Rule R5: single or multiple. Example: single-answer question with two correct marked.
+- Rule R7/R8: rich content. Example: pasted image in an option, LaTeX in an explanation.
+
+**Sources (sources.feature)**
+- Rule R11: read, don't store. Example: open a PDF, close the app, the file isn't kept.
+- Rule R12: tabs. Example: two lecture decks open at once.
+- Rule R13/R14: bibliography and citations. Example: question cites "Patterson 2020, p. 42" and "Lecture 3, slide 12".
+
+**Quiz setup and taking (quiz-setup.feature, taking-quiz.feature)**
+- Rule R15: set number, random or even. Example: 10 from CPU and GPU, even split gives 5 and 5.
+- Rule R18/R20: study vs exam. Example: study shows correct after each answer, exam only at the end.
+- Rule R22: timeouts. Example: per-question timer runs out, counted wrong.
+- Rule R23: all or nothing. Example: 1 of 2 correct picked, marked wrong and incomplete.
+
+**After a quiz (results.feature, retry.feature, history.feature)**
+- Rule R24: results contents. Example: 8/10 correct, 2 guessed.
+- Rule R26: retry set. Example: 2 wrong plus 1 guessed-right gives a 3-question retry.
+- Rule R28: history snapshot. Example: edit a question after a quiz, history shows the old text.
+
+**Search (search.feature)**
+- Rule R31: example: filter tag "hardware" in module "Computer Architecture".
+
+## Traceability
+
+| Req | Scenarios |
+|---|---|
+| R1 | topics: Create a topic |
+| R2 | topics: Put a topic in a module, Topic outside any module, Move a topic to another module |
+| R3 | topics: Tag a topic, questions: Tag a question |
+| R4 | questions: Option count limits (outline) |
+| R5 | questions: Single-answer question, Multiple-answer question |
+| R6 | questions: Write a question with an explanation |
+| R7 | questions: Rich content in every part (outline) |
+| R8 | questions: Add an image by pasting or picking (outline) |
+| R9 | questions: No correct option |
+| R10 | questions: A question belongs to one topic |
+| R11 | sources: Open a file beside the editor (outline), Files are not kept |
+| R12 | sources: Several files in tabs |
+| R13 | sources: Add a source to the bibliography, See which topics use a source |
+| R14 | sources: Cite sources on a question, Question without a source |
+| R15 | quiz-setup: Quiz on several topics, All questions or a set number, Even split |
+| R16 | quiz-setup: Order options (outline) |
+| R17 | quiz-setup: Timers are optional (outline) |
+| R18 | taking-quiz: Study mode feedback, Exam mode feedback |
+| R19 | taking-quiz: Easy and hard mode (outline) |
+| R20 | taking-quiz: No going back in exam mode |
+| R21 | taking-quiz: Flag a question as guessed (outline) |
+| R22 | taking-quiz: Per-question timeout, Total timeout |
+| R23 | taking-quiz: All or nothing scoring (outline) |
+| R24 | results: Results summary, Review each question |
+| R25 | results: Give a reason, Skip the reason, Automatic reasons (outline) |
+| R26 | retry: Retry wrong and guessed, Retry uses same settings, Nothing to retry |
+| R27 | history: Attempts listed in history |
+| R28 | history: History shows the question as it was |
+| R29 | taking-quiz: Quit halfway |
+| R30 | topics: Delete a topic that is in history, questions: Delete a question that is in history |
+| R31 | search: Search as you type, Search question content (outline), Search across categories (outline), Combine filters, Sort results |
+| R32 | taking-quiz: Keyboard shortcuts (outline) |
+
+## Open questions
+
+These came up while writing the specs and aren't covered by any approved answer, so they aren't specified yet.
+
+1. **Unreadable or broken files:** what happens when a file can't be opened or converted (corrupt PDF, PowerPoint conversion fails)?
+2. **Set number bigger than the pool:** asking for 20 questions when the chosen topics have 12 in total.
+3. **Even split that doesn't divide:** 10 questions across 3 topics, or a topic with fewer questions than its share.
+4. **Empty topics:** can a topic with no questions be picked for a quiz?
+5. **Study mode feedback:** after each answer, is the explanation shown too, or only right/wrong?
+6. **Study mode going back:** exam mode can't go back. Can study mode?
+7. **Guessed questions that were wrong:** in the results, are they counted in "N guessed", or only correct ones?
+8. **Retry of a retry:** can you retry a retry, and does it use the retry's own wrong and guessed ones?
+9. **Deleting a module:** what happens to its topics?
+10. **Deleting a source** that questions cite.
+11. **Editing a source** after questions cite it: do questions show the new details, and does history?
+12. **Required source fields:** which APA fields must be filled in to save a source?
+13. **Incomplete attempts:** can you resume one, or is it final?
+14. **Shortcuts outside the quiz** (editor, search): any wanted?
+15. **Switching a question from multiple to single answer** when it has several options marked correct: refuse, or clear the extras?
+16. **Search tabs for questions:** the tabs are modules, topics, tags and sources. Which tab do matching questions appear under, or do they need their own tab?
