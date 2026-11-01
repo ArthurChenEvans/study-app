@@ -52,6 +52,23 @@
   pre.shiki { padding: 12px 16px; border-radius: var(--radius-box); font-size: 14px; overflow-x: auto; }
   .divide-y > * { border-color: var(--color-base-300) !important; }
   .btn .kbd { background: transparent; border-color: currentColor; color: inherit; opacity: .8; }
+
+  /* Segmented control: one bordered unit, selected item solid */
+  .seg { display: inline-flex; align-items: stretch; height: 2rem; padding: 2px; gap: 2px; border: 1px solid oklch(58% 0.02 65); border-radius: var(--radius-field); background: var(--color-base-200); vertical-align: middle; }
+  .seg > button { padding: 0 12px; font-size: 14px; line-height: 1; border-radius: calc(var(--radius-field) - 2px); color: oklch(48% 0.022 65); transition: background-color 150ms ease-out, color 150ms ease-out; }
+  .seg > button:hover:not([aria-checked="true"]) { background: var(--color-base-300); color: var(--color-base-content); }
+  .seg > button[aria-checked="true"] { background: var(--color-neutral); color: var(--color-neutral-content); font-weight: 600; }
+  .seg > button:focus-visible { outline-offset: 1px; }
+  /* Fields: one focus ring, drawn on the border, never a second outline */
+  .input:focus, .input:focus-within, .select:focus, .textarea:focus { outline: none !important; border-color: var(--color-primary) !important; box-shadow: 0 0 0 1px var(--color-primary) !important; }
+  label.input input:focus, label.input input:focus-visible { outline: none !important; box-shadow: none !important; }
+  .input-sm, .seg { min-height: 2rem; }
+  /* Disabled buttons: hint fades with the label */
+  .btn:disabled .kbd { opacity: .5; }
+  /* Toggle: on state fills the track so it reads in greyscale */
+  .toggle:checked { background-color: var(--color-primary); border-color: var(--color-primary); color: var(--color-primary-content); }
+  /* Tab counts sit on the label baseline */
+  [role=tab] .count { font-size: 12px; margin-left: 4px; color: oklch(48% 0.022 65); font-weight: 400; }
   .open-q { border: 1px dashed oklch(50% 0.07 235); color: oklch(50% 0.07 235); }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
@@ -223,8 +240,8 @@ function screenEditor() {
         <fieldset class="space-y-3">
           <div class="flex items-center justify-between">
             <span class="text-sm font-semibold">Answers</span>
-            <div class="join" role="radiogroup" aria-label="Answer type">
-              <button class="btn btn-sm join-item btn-neutral">Single</button><button class="btn btn-sm join-item btn-ghost border-field-border">Multiple</button>
+            <div class="seg" role="radiogroup" aria-label="Answer type">
+              <button type="button" role="radio" aria-checked="true">Single</button><button type="button" role="radio" aria-checked="false">Multiple</button>
             </div>
           </div>
           <div class="space-y-3">${opts.map((o, i) => optionRow(i, o, !err && i === 1)).join("")}</div>
@@ -301,7 +318,7 @@ function screenBibliography() {
 /* ---------- Quiz setup ---------- */
 function screenSetup() {
   const err = state.variant === "error";
-  const seg = (name, opts, active) => `<div class="join" role="radiogroup" aria-label="${name}">${opts.map((o,i)=>`<button class="btn btn-sm join-item ${i===active?"btn-neutral":"btn-ghost border-field-border"}">${o}</button>`).join("")}</div>`;
+  const seg = (name, opts, active) => `<div class="seg" role="radiogroup" aria-label="${name}">${opts.map((o,i)=>`<button type="button" role="radio" aria-checked="${i===active}" onclick="this.parentNode.querySelectorAll('button').forEach(b=>b.setAttribute('aria-checked',b===this))">${o}</button>`).join("")}</div>`;
   const row = (label, help, control) => `<div class="flex items-start justify-between gap-8 py-4 border-b border-base-300"><div><p class="font-semibold">${label}</p>${help?`<p class="text-sm text-muted mt-1">${help}</p>`:""}</div><div class="shrink-0">${control}</div></div>`;
   return header("New quiz", "Pick what to practise and how") + `<section class="px-12 pb-16 max-w-3xl">
     <h2 class="text-sm font-semibold text-muted mb-3">Topics</h2>
@@ -315,8 +332,8 @@ function screenSetup() {
     ${row("Pick","Random draws from all topics together. Even takes the same number from each.", seg("Pick",["Random","Even"],1))}
     ${row("Question order","", seg("Question order",["Keep","Shuffle"],1))}
     ${row("Option order","", seg("Option order",["Keep","Shuffle"],1))}
-    ${row("Total timer","", `<div class="flex items-center gap-2"><input type="checkbox" class="toggle toggle-sm" checked aria-label="Use total timer"><input class="input input-sm w-20 tabular-nums" value="20" aria-label="Minutes"><span class="text-sm text-muted">min</span></div>`)}
-    ${row("Per-question timer","Running out counts as wrong and moves on.", `<div class="flex items-center gap-2"><input type="checkbox" class="toggle toggle-sm" aria-label="Use per-question timer"><input class="input input-sm w-20 tabular-nums" value="45" disabled aria-label="Seconds"><span class="text-sm text-muted">sec</span></div>`)}
+    ${row("Total timer","", `<div class="flex items-center gap-2"><input type="checkbox" class="toggle toggle-sm toggle-primary" checked aria-label="Use total timer"><input class="input input-sm w-20 tabular-nums" value="20" aria-label="Minutes"><span class="text-sm text-muted">min</span></div>`)}
+    ${row("Per-question timer","Running out counts as wrong and moves on.", `<div class="flex items-center gap-2"><input type="checkbox" class="toggle toggle-sm toggle-primary" aria-label="Use per-question timer"><input class="input input-sm w-20 tabular-nums" value="45" disabled aria-label="Seconds"><span class="text-sm text-muted">sec</span></div>`)}
     ${row("Difficulty","Easy shows how many answers to pick on multiple-answer questions.", seg("Difficulty",["Easy","Hard"],1))}
     <div class="flex flex-wrap gap-2 mt-4">${openQ(2,"more questions than available")} ${openQ(3,"even split that doesn't divide")} ${openQ(4,"empty topics")}</div>
     <div class="mt-8"><a href="#quiz" class="btn btn-primary" onclick="${err?"setVariant('normal');return false":""}">${icon("play")}Start quiz</a></div>
@@ -355,7 +372,7 @@ function screenQuiz() {
       <span class="text-sm text-muted tabular-nums">Question ${qi + 7} of 20</span>
       <progress class="progress progress-primary w-48" value="${qi + 7}" max="20" aria-label="Progress"></progress>
       <span class="ml-auto flex items-center gap-2 tabular-nums font-semibold ${low ? "text-warning-content bg-warning px-3 py-1 rounded-box" : ""}" aria-live="polite">${icon("timer")}${low ? "0:58 left" : "12:40 left"}</span>
-      <a href="#results" class="btn btn-ghost btn-sm">Quit</a>
+      <a href="#results" class="btn btn-ghost btn-sm font-normal">${icon("log-out")}Quit</a>
     </div>
     <div class="flex-1 px-12 py-12">
       <div class="max-w-prose mx-auto">
@@ -474,12 +491,12 @@ function screenSearch() {
   ];
   return header("Search") + `<section class="px-12 pb-16 max-w-5xl">
     <label class="input w-full flex items-center gap-2">${icon("search")}<input type="search" class="grow" value="${none ? "tensor core" : "hardware"}" aria-label="Search" autofocus></label>
-    <div class="flex items-center gap-1 mt-6 border-b border-base-300" role="tablist">${tabs.map((t,i)=>`<button role="tab" aria-selected="${i===0}" class="px-3 py-2 text-sm ${i===0?"border-b-2 border-primary font-semibold":"text-muted"}">${t}${i===0&&!none?` <span class="text-muted font-normal tabular-nums">3</span>`:""}</button>`).join("")}</div>
+    <div class="flex items-center gap-1 mt-6 border-b border-base-300" role="tablist">${tabs.map((t,i)=>`<button role="tab" aria-selected="${i===0}" class="px-3 py-2 text-sm ${i===0?"border-b-2 border-primary font-semibold":"text-muted"}">${t}${i===0&&!none?`<span class="count tabular-nums">3</span>`:""}</button>`).join("")}</div>
     <div class="flex flex-wrap items-center gap-2 mt-4">
       <span class="text-sm text-muted">Filters</span>
-      <span class="badge badge-ghost gap-1">Module: Computer Architecture <button aria-label="Remove filter">${icon("x","size-3")}</button></span>
-      <span class="badge badge-ghost gap-1">Tag: hardware <button aria-label="Remove filter">${icon("x","size-3")}</button></span>
-      <button class="btn btn-ghost btn-xs">${icon("plus")}Add filter</button>
+      <span class="badge badge-ghost h-8 gap-1 px-3"><span class="text-muted">Module:</span> Computer Architecture <button aria-label="Remove filter">${icon("x","size-3")}</button></span>
+      <span class="badge badge-ghost h-8 gap-1 px-3"><span class="text-muted">Tag:</span> hardware <button aria-label="Remove filter">${icon("x","size-3")}</button></span>
+      <button class="btn btn-ghost btn-sm">${icon("plus")}Add filter</button>
       <span class="ml-auto">${openQ(16, "which tab questions appear under")}</span>
     </div>
     ${none ? `<div class="py-16 max-w-md"><h2 class="text-lg font-semibold">No matches for "tensor core"</h2><p class="text-muted mt-2">Try fewer words, or remove a filter.</p><button class="btn btn-ghost mt-4">Clear filters</button></div>` :
