@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { renderMarkdown } from "./markdown";
+import { renderInlineMarkdown, renderMarkdown } from "./markdown";
 
 // R7: Markdown with images, highlighted code and $LaTeX$, in questions, options and explanations
 describe("renderMarkdown", () => {
@@ -20,7 +20,25 @@ describe("renderMarkdown", () => {
   });
 
   it("renders fenced code blocks with their language", () => {
-    expect(renderMarkdown("```cuda\nint index = 0;\n```")).toContain('<code class="language-cuda">int index = 0;');
+    expect(renderMarkdown("```cuda\nint index = 0;\n```")).toContain('<code class="language-cuda">');
+  });
+
+  it("colours code by language", () => {
+    const html = renderMarkdown("```c\nint index = 0; // start\n```");
+    expect(html).toContain('class="hljs-type"');
+    expect(html).toContain('class="hljs-comment"');
+  });
+
+  it("leaves code in unknown languages uncoloured but escaped", () => {
+    const html = renderMarkdown("```nonsense\n<b>hi</b>\n```");
+    expect(html).toContain("&lt;b&gt;hi&lt;/b&gt;");
+    expect(html).not.toContain("hljs-");
+  });
+
+  it("shows stored images from the app's image store", () => {
+    const hash = "a".repeat(64);
+    expect(renderMarkdown(`![Pipeline](image:${hash})`)).toContain(`src="studyimg://localhost/${hash}"`);
+    expect(renderInlineMarkdown(`![x](image:${hash})`)).toContain("studyimg://localhost/");
   });
 
   it("keeps images", () => {

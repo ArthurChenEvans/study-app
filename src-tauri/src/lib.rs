@@ -33,6 +33,35 @@ async fn slides_to_pdf(name: String, data: String) -> ApiResult<tauri::ipc::Resp
     Ok(tauri::ipc::Response::new(pdf))
 }
 
+/// Saves a pasted or picked image (R8), sent as base64, and returns its name.
+#[tauri::command]
+fn save_image(state: AppState, data: String, mime: String) -> ApiResult<String> {
+    use base64::Engine;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(data)
+        .map_err(|_| ApiError { message: "the image couldn't be read, try adding it again".into() })?;
+    with(state, |app| app.save_image(bytes, &mime))
+}
+
+/// Serves stored images to the page as `studyimg://localhost/<hash>`.
+fn image_protocol(app: &tauri::AppHandle, request: tauri::http::Request<Vec<u8>>) -> tauri::http::Response<Vec<u8>> {
+    let hash = request.uri().path().trim_start_matches('/').to_string();
+    let found = app
+        .state::<Mutex<App>>()
+        .lock()
+        .ok()
+        .and_then(|app| app.image(&hash).ok());
+    let builder = tauri::http::Response::builder();
+    match found {
+        Some((mime, bytes)) => builder
+            .header("Content-Type", mime)
+            .header("Cache-Control", "max-age=31536000, immutable")
+            .body(bytes),
+        None => builder.status(404).body(Vec::new()),
+    }
+    .expect("valid response")
+}
+
 type AppState<'a> = State<'a, Mutex<App>>;
 
 /// Today as days since 1970-01-01 in local time, the day number the core uses.
@@ -192,8 +221,10 @@ pub fn run() {
             handle.manage(Mutex::new(App::new(store)));
             Ok(())
         })
+        .register_uri_scheme_protocol("studyimg", |context, request| image_protocol(context.app_handle(), request))
         .invoke_handler(tauri::generate_handler![
             slides_to_pdf,
+            save_image,
             modules,
             create_module,
             delete_module,

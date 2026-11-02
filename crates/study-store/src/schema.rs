@@ -71,6 +71,15 @@ const MIGRATIONS: &[&str] = &[
     CREATE INDEX questions_by_topic ON questions(topic_id);
     CREATE INDEX citations_by_source ON citations(source_id);
     ",
+    // 2: images pasted or picked into questions (R8), named by the sha-256 of their bytes.
+    // Never deleted, so questions and history that mention one always show it.
+    "
+    CREATE TABLE images (
+        hash  TEXT PRIMARY KEY,
+        mime  TEXT NOT NULL,
+        bytes BLOB NOT NULL
+    );
+    ",
 ];
 
 pub const LATEST: i64 = MIGRATIONS.len() as i64;

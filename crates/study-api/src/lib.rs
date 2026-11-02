@@ -315,6 +315,24 @@ impl App {
         Ok(self.store.delete_source(id)?)
     }
 
+    // ---------- Images (R8) ----------
+
+    pub fn save_image(&mut self, bytes: Vec<u8>, mime: &str) -> ApiResult<String> {
+        const TYPES: [&str; 4] = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+        // SVG is refused because it can carry scripts.
+        if !TYPES.contains(&mime) {
+            return Err(ApiError::new("only PNG, JPEG, GIF and WebP images can be added"));
+        }
+        if bytes.len() > 10 * 1024 * 1024 {
+            return Err(ApiError::new("images can be up to 10 MB"));
+        }
+        Ok(self.store.save_image(&bytes, mime)?)
+    }
+
+    pub fn image(&self, hash: &str) -> ApiResult<(String, Vec<u8>)> {
+        Ok(self.store.image(hash)?)
+    }
+
     pub fn sources(&self) -> ApiResult<Vec<SourceRow>> {
         Ok(self.store.sources()?)
     }

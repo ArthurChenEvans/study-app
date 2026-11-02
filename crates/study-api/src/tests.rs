@@ -387,3 +387,15 @@ fn empty_topic_cant_start_a_quiz() {
     let error = app.start_quiz(setup(vec![empty])).unwrap_err();
     assert_eq!(error.message, "a chosen topic has no questions yet");
 }
+
+// R8: only real image types are kept, and not huge ones
+#[test]
+fn images_are_checked_before_saving() {
+    let mut app = app();
+    let hash = app.save_image(b"\x89PNG\r\n\x1a\nfake".to_vec(), "image/png").unwrap();
+    assert_eq!(app.image(&hash).unwrap().0, "image/png");
+    let svg = app.save_image(b"<svg onload=alert(1)>".to_vec(), "image/svg+xml").unwrap_err();
+    assert_eq!(svg.message, "only PNG, JPEG, GIF and WebP images can be added");
+    let huge = app.save_image(vec![0; 10 * 1024 * 1024 + 1], "image/png").unwrap_err();
+    assert_eq!(huge.message, "images can be up to 10 MB");
+}

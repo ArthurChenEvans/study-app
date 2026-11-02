@@ -150,6 +150,8 @@ export const api = {
   today: () => invoke<number>("today_day"),
   search: (query: SearchQuery) => invoke<SearchHit[]>("search", { query }),
   /** Sends slides as base64 JSON (works on every IPC path) and gets PDF bytes back. Nothing is stored. */
+  /** Saves a pasted or picked image and returns its name, used as image:<name> in Markdown. */
+  saveImage: async (file: File) => invoke<string>("save_image", { data: await toBase64(file), mime: file.type }),
   slidesToPdf: async (file: File) => {
     const pdf = await invoke<ArrayBuffer | number[]>("slides_to_pdf", { name: file.name, data: await toBase64(file) });
     return new Uint8Array(pdf);

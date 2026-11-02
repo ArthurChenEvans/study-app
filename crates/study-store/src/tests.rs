@@ -413,3 +413,16 @@ fn deleting_a_source_removes_its_citations() {
     assert!(store.sources().unwrap().is_empty());
     assert!(store.question(q).unwrap().citations().is_empty());
 }
+
+// R8: images are kept with the question, stored once by content
+#[test]
+fn images_are_stored_once_by_content() {
+    let mut store = store();
+    let png = b"\x89PNG\r\n\x1a\nfake".to_vec();
+    let first = store.save_image(&png, "image/png").unwrap();
+    let again = store.save_image(&png, "image/png").unwrap();
+    assert_eq!(first, again, "the same picture pasted twice is one image");
+    assert_eq!(first.len(), 64, "a sha-256 hex name");
+    assert_eq!(store.image(&first).unwrap(), ("image/png".to_string(), png));
+    assert!(matches!(store.image("missing"), Err(StoreError::NotFound(_))));
+}

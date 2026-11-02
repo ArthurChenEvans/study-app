@@ -401,6 +401,27 @@ impl Store {
         Ok(sources)
     }
 
+    // ---------- Images (R8) ----------
+
+    /// Stores an image and returns its name, the sha-256 of its bytes in hex.
+    pub fn save_image(&mut self, bytes: &[u8], mime: &str) -> Result<String> {
+        use sha2::{Digest, Sha256};
+        let hash: String = Sha256::digest(bytes).iter().map(|byte| format!("{byte:02x}")).collect();
+        self.connection.execute(
+            "INSERT OR IGNORE INTO images (hash, mime, bytes) VALUES (?1, ?2, ?3)",
+            params![hash, mime, bytes],
+        )?;
+        Ok(hash)
+    }
+
+    /// The image's type and bytes.
+    pub fn image(&self, hash: &str) -> Result<(String, Vec<u8>)> {
+        self.connection
+            .query_row("SELECT mime, bytes FROM images WHERE hash = ?1", [hash], |row| Ok((row.get(0)?, row.get(1)?)))
+            .optional()?
+            .ok_or(StoreError::NotFound("image"))
+    }
+
     // ---------- Attempts and history (R24 to R29) ----------
 
     pub fn save_attempt(

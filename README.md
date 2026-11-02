@@ -55,9 +55,9 @@ pnpm test            # Svelte screens (Vitest)
 
 ## End-to-end test
 
-Drives the real app window and converts a slide deck over the same IPC the preview uses:
+Drives the real app window with a throwaway data folder: converts a slide deck, then creates a topic, writes a question with code and an image, takes a quiz on it and checks the results.
 
 ```sh
 cargo install tauri-driver   # once; also needs WebKitWebDriver from webkitgtk
-e2e/run.sh                   # builds a debug app, then runs e2e/slides_test.py
+e2e/run.sh                   # builds a debug app, then runs every e2e/*_test.py
 ```

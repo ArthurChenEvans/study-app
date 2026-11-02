@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/svelte";
+import { fireEvent, render, screen, within } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -6,7 +6,7 @@ vi.mock("../lib/api", async (original) => {
   const actual = await original<typeof import("../lib/api")>();
   return {
     ...actual,
-    api: { topics: vi.fn(), questionsIn: vi.fn(), question: vi.fn(), saveQuestion: vi.fn(), updateQuestion: vi.fn(), deleteQuestion: vi.fn(), sources: vi.fn() },
+    api: { topics: vi.fn(), questionsIn: vi.fn(), question: vi.fn(), saveQuestion: vi.fn(), updateQuestion: vi.fn(), deleteQuestion: vi.fn(), sources: vi.fn(), saveImage: vi.fn() },
   };
 });
 
@@ -158,5 +158,62 @@ describe("Question editor", () => {
     await u.type(screen.getByLabelText("Question"), "Q?");
     await u.keyboard("{Control>}s{/Control}");
     expect(mocked.saveQuestion).toHaveBeenCalledWith(expect.objectContaining({ text: "Q?" }));
+  });
+
+  const hash = "b".repeat(64);
+  const png = () => new File([new Uint8Array([137, 80, 78, 71])], "diagram.png", { type: "image/png" });
+
+  // R8: pasted images are kept with the question
+  it("pastes an image into the question", async () => {
+    const u = user();
+    mocked.saveImage.mockResolvedValue(hash);
+    render(Editor, { topic: 1 });
+    await screen.findByText("What does the ALU do?");
+    const question = screen.getByLabelText("Question");
+    await u.type(question, "Which stage? ");
+    const paste = new Event("paste", { bubbles: true, cancelable: true });
+    Object.defineProperty(paste, "clipboardData", { value: { files: [png()] } });
+    fireEvent(question, paste);
+    await vi.waitFor(() => expect(question).toHaveValue(`Which stage? ![diagram](image:${hash})`));
+    expect(mocked.saveImage).toHaveBeenCalledWith(expect.objectContaining({ name: "diagram.png" }));
+  });
+
+  // R8: or picked from a file, into the field last typed in
+  it("inserts a picked image into the explanation", async () => {
+    const u = user();
+    mocked.saveImage.mockResolvedValue(hash);
+    render(Editor, { topic: 1 });
+    await screen.findByText("What does the ALU do?");
+    await u.type(screen.getByLabelText("Explanation"), "See: ");
+    await u.upload(screen.getByLabelText("Insert image"), png());
+    await vi.waitFor(() => expect(screen.getByLabelText("Explanation")).toHaveValue(`See: ![diagram](image:${hash})`));
+  });
+
+  it("says why an image couldn't be added", async () => {
+    const u = user();
+    mocked.saveImage.mockRejectedValue({ message: "images can be up to 10 MB" });
+    render(Editor, { topic: 1 });
+    await screen.findByText("What does the ALU do?");
+    await u.upload(screen.getByLabelText("Insert image"), png());
+    expect(await screen.findByRole("alert")).toHaveTextContent("images can be up to 10 MB");
+  });
+
+  // R7: fenced code needs its line breaks kept
+  it("keeps line breaks in the question and explanation", async () => {
+    const u = user();
+    mocked.saveQuestion.mockResolvedValue(11);
+    render(Editor, { topic: 1 });
+    await screen.findByText("What does the ALU do?");
+    await u.type(screen.getByLabelText("Question"), "Read this:{Enter}{Enter}```c{Enter}int index = 0;{Enter}```");
+    await fillOption(u, 1, "A");
+    await fillOption(u, 2, "B");
+    await fillOption(u, 3, "C");
+    await u.click(screen.getByLabelText("Option 1 is correct"));
+    await u.type(screen.getByLabelText("Explanation"), "Line one{Enter}Line two");
+    await u.click(screen.getByRole("button", { name: "Save question" }));
+    expect(mocked.saveQuestion).toHaveBeenCalledWith(expect.objectContaining({
+      text: "Read this:\n\n```c\nint index = 0;\n```",
+      explanation: "Line one\nLine two",
+    }));
   });
 });

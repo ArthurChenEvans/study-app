@@ -1,6 +1,6 @@
 <script lang="ts">
   // questions.feature, sources.feature (R4 to R10, R14, R48, R49)
-  import { BookOpen, Plus, X } from "@lucide/svelte";
+  import { BookOpen, ImagePlus, Plus, X } from "@lucide/svelte";
   import Preview from "../components/Preview.svelte";
   import { api, errorMessage, type Id, type QuestionInput, type SourceRow } from "../lib/api";
 
@@ -19,6 +19,57 @@
   let draft = $state<Draft>(blank());
   let error = $state("");
   let saved = $state("");
+
+  // R8: images are pasted into any field, or picked and put into the field last typed in.
+  type Field = "text" | "explanation" | number;
+  let lastField: Field = "text";
+  let lastElement: HTMLInputElement | HTMLTextAreaElement | null = null;
+
+  function fieldValue(field: Field): string {
+    return field === "text" ? draft.text : field === "explanation" ? draft.explanation : (draft.options[field]?.text ?? "");
+  }
+
+  function setField(field: Field, value: string) {
+    if (field === "text") draft.text = value;
+    else if (field === "explanation") draft.explanation = value;
+    else if (draft.options[field]) draft.options[field].text = value;
+  }
+
+  function remember(field: Field) {
+    return (event: FocusEvent) => {
+      lastField = field;
+      lastElement = event.currentTarget as HTMLInputElement | HTMLTextAreaElement;
+    };
+  }
+
+  async function insertImage(file: File, field: Field, element: HTMLInputElement | HTMLTextAreaElement | null) {
+    error = "";
+    try {
+      const hash = await api.saveImage(file);
+      const value = fieldValue(field);
+      const at = element?.selectionStart ?? value.length;
+      const alt = file.name.replace(/\.[^.]+$/, "").replace(/[\[\]]/g, "");
+      setField(field, `${value.slice(0, at)}![${alt}](image:${hash})${value.slice(at)}`);
+    } catch (failure) {
+      error = errorMessage(failure);
+    }
+  }
+
+  function pasteInto(field: Field) {
+    return (event: ClipboardEvent) => {
+      const file = [...(event.clipboardData?.files ?? [])].find((item) => item.type.startsWith("image/"));
+      if (!file) return;
+      event.preventDefault();
+      insertImage(file, field, event.currentTarget as HTMLInputElement | HTMLTextAreaElement);
+    };
+  }
+
+  function pick(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    if (file) insertImage(file, lastField, lastElement);
+    input.value = "";
+  }
 
   async function load() {
     const [topics, list, sourceRows] = await Promise.all([api.topics(), api.questionsIn(topic), api.sources()]);
@@ -136,8 +187,11 @@
     <form class="max-w-2xl space-y-8 px-10 pb-16" onsubmit={save}>
       <div class="space-y-2">
         <label class="text-sm font-semibold" for="question-text">Question</label>
-        <textarea id="question-text" class="textarea w-full font-mono text-sm" rows="3" bind:value={draft.text}></textarea>
-        <p class="text-sm text-muted">Markdown, `code`, $LaTeX$ and images.</p>
+        <textarea id="question-text" class="textarea w-full font-mono text-sm" rows="3" bind:value={draft.text} onfocus={remember("text")} onpaste={pasteInto("text")}></textarea>
+        <div class="flex items-center justify-between gap-4">
+          <p class="text-sm text-muted">Markdown, `code`, $LaTeX$. Paste an image into any field, or insert one into the field you last typed in.</p>
+          <label class="btn btn-ghost btn-sm shrink-0"><ImagePlus class="size-4" />Insert image<input type="file" class="sr-only" accept="image/png,image/jpeg,image/gif,image/webp" aria-label="Insert image" onchange={pick} /></label>
+        </div>
       </div>
 
       <fieldset class="space-y-3">
@@ -151,7 +205,7 @@
         {#each draft.options as option, index (index)}
           <div class="flex items-center gap-3">
             <input type="checkbox" class="checkbox checkbox-sm" aria-label="Option {index + 1} is correct" checked={option.correct} onchange={() => toggleCorrect(index)} />
-            <input class="input input-sm flex-1 {option.correct ? 'is-right' : ''}" aria-label="Option {index + 1}" bind:value={option.text} />
+            <input class="input input-sm flex-1 {option.correct ? 'is-right' : ''}" aria-label="Option {index + 1}" bind:value={option.text} onfocus={remember(index)} onpaste={pasteInto(index)} />
             <button type="button" class="btn btn-ghost btn-sm btn-square" aria-label="Remove option {index + 1}" disabled={draft.options.length <= MIN} onclick={() => (draft.options = draft.options.filter((_, position) => position !== index))}><X class="size-4" /></button>
           </div>
         {/each}
@@ -164,7 +218,7 @@
 
       <div class="space-y-2">
         <label class="text-sm font-semibold" for="question-explanation">Explanation</label>
-        <textarea id="question-explanation" class="textarea w-full font-mono text-sm" rows="3" bind:value={draft.explanation}></textarea>
+        <textarea id="question-explanation" class="textarea w-full font-mono text-sm" rows="3" bind:value={draft.explanation} onfocus={remember("explanation")} onpaste={pasteInto("explanation")}></textarea>
       </div>
 
       <fieldset class="space-y-3">
