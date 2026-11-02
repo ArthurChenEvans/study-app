@@ -1,0 +1,12 @@
+[package]
+name = "study-api"
+description = "Everything the Study App's Tauri commands do, as plain testable functions"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rand = "0.9"
+serde = { version = "1.0.229", features = ["derive"] }
+study-core = { path = "../study-core" }
+study-store = { path = "../study-store" }
+thiserror = "2.0.21"

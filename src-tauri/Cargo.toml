@@ -1,0 +1,21 @@
+[package]
+name = "study-app"
+description = "Study App desktop shell: Tauri commands forwarding to study-api"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "study_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+chrono = "0.4"
+study-core = { path = "../crates/study-core" }
+study-store = { path = "../crates/study-store" }
+study-api = { path = "../crates/study-api" }
