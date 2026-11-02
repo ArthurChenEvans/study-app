@@ -5,6 +5,7 @@
 @import "@fontsource/ibm-plex-sans/400.css";
 @import "@fontsource/ibm-plex-sans/600.css";
 @import "@fontsource/ibm-plex-mono/400.css";
+@import "katex/dist/katex.min.css";
 
 @theme {
   --color-muted: var(--muted);
@@ -177,3 +178,12 @@
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
 
 }
+
+/* Rendered Markdown inside questions and explanations */
+.rich > * + * { margin-top: 0.75em; }
+.rich pre { padding: 12px 16px; border-radius: var(--radius-box); font-size: 14px; overflow-x: auto; border: 1px solid var(--color-base-300); background: var(--surface); }
+.rich code { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 0.9em; }
+.rich :not(pre) > code { background: var(--color-base-200); padding: 0.1em 0.35em; border-radius: 4px; }
+.rich img { max-width: 100%; border-radius: var(--radius-box); }
+.rich ul { list-style: disc; padding-left: 1.25em; }
+.rich ol { list-style: decimal; padding-left: 1.25em; }

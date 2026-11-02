@@ -4,7 +4,7 @@
   import { api, errorMessage, type Id, type ModuleRow, type TopicRow } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
 
-  let { onEdit = (_topic: Id) => {}, onQuiz = (_topic: Id) => {} } = $props();
+  let { onEdit = () => {}, onQuiz = () => {} }: { onEdit?: (topic: Id) => void; onQuiz?: (topic: Id) => void } = $props();
 
   let topics = $state<TopicRow[]>([]);
   let modules = $state<ModuleRow[]>([]);
