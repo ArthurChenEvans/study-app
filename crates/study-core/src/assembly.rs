@@ -4,6 +4,7 @@
 //! Open questions Q2, Q3 and Q4 in specs/README.md are not decided, so those
 //! cases return `AssemblyError::Undecided` instead of guessing.
 
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 use rand::Rng;
@@ -12,38 +13,38 @@ use thiserror::Error;
 
 use crate::question::{Question, QuestionId, TopicId};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Amount {
     All,
     Count(usize),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Pick {
     Random,
     Even,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Order {
     Keep,
     Shuffle,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
     Study,
     Exam,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Difficulty {
     Easy,
     #[default]
     Hard,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct QuizSettings {
     pub topics: Vec<TopicId>,
     pub amount: Amount,
@@ -75,14 +76,14 @@ impl QuizSettings {
 }
 
 /// One question as it will be asked: which question, and the order its options are shown in.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct QuizItem {
     pub question: QuestionId,
     pub option_order: Vec<usize>,
 }
 
 /// An open question from specs/README.md that blocks a behaviour.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OpenQuestion {
     /// Q2: more questions asked for than the chosen topics have.
     MoreThanAvailable,
@@ -92,7 +93,7 @@ pub enum OpenQuestion {
     EmptyTopic,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Error)]
 pub enum AssemblyError {
     #[error("pick at least one topic to start")]
     NoTopics,

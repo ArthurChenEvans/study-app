@@ -1,41 +1,42 @@
 //! Writing questions: R4 (3 to 5 options), R5 (single or multiple answer),
 //! R6 (explanation), R9 (at least one correct), R10 (one topic), R14 (optional citations).
 
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct TopicId(pub i64);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct QuestionId(pub i64);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct SourceId(pub i64);
 
 pub const MIN_OPTIONS: usize = 3;
 pub const MAX_OPTIONS: usize = 5;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AnswerKind {
     Single,
     Multiple,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AnswerOption {
     /// Markdown, may contain images, code and LaTeX (R7).
     pub text: String,
     pub correct: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Citation {
     pub source: SourceId,
     /// Typed by hand: "p. 42", "slide 12", "line 30" (R14).
     pub location: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct QuestionDraft {
     pub topic: TopicId,
     pub text: String,
@@ -47,7 +48,7 @@ pub struct QuestionDraft {
 }
 
 /// A question that has passed every rule. Only constructible through `Question::new`.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Question {
     topic: TopicId,
     text: String,
@@ -58,7 +59,7 @@ pub struct Question {
     citations: Vec<Citation>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Error)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Error)]
 pub enum QuestionError {
     #[error("a question needs at least {MIN_OPTIONS} options, this one has {0}")]
     TooFewOptions(usize),

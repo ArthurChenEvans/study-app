@@ -1,6 +1,7 @@
 //! After a quiz: R24 (score, guessed, per-topic breakdown, review) and
 //! R25 (wrong-answer reasons: preset or free text, optional but prompted).
 
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 use thiserror::Error;
@@ -9,7 +10,7 @@ use crate::attempt::{Attempt, AutoReason, Outcome};
 use crate::question::TopicId;
 
 /// Reasons the student can give (R25). Automatic reasons live in `AutoReason`.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum GivenReason {
     Blank,
     Misremembered,
@@ -36,7 +37,7 @@ impl GivenReason {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
 pub struct Tally {
     pub right_sure: usize,
     pub right_guessed: usize,
@@ -56,13 +57,13 @@ impl Tally {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Summary {
     pub overall: Tally,
     pub per_topic: BTreeMap<TopicId, Tally>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Error)]
 pub enum ReasonError {
     #[error("there's no question {0} in this quiz")]
     NoSuchQuestion(usize),
@@ -108,7 +109,7 @@ pub fn review_order(attempt: &Attempt) -> Vec<usize> {
 }
 
 /// Reasons given so far, by question index.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Default)]
 pub struct Reasons(pub BTreeMap<usize, GivenReason>);
 
 impl Reasons {

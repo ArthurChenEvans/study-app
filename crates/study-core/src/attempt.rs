@@ -3,6 +3,7 @@
 //! R23 (all or nothing), R25 (automatic reasons), R26 (retry), R28 (history keeps
 //! the question as it was), R29 (quitting saves an incomplete attempt).
 
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
 use thiserror::Error;
@@ -11,7 +12,7 @@ use crate::assembly::{Difficulty, Mode, QuizItem, QuizSettings};
 use crate::question::{AnswerKind, Question, QuestionId};
 
 /// Reasons the app records by itself (R25).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AutoReason {
     /// Multiple-answer: some correct options picked, none wrong, but not all.
     Incomplete,
@@ -19,14 +20,14 @@ pub enum AutoReason {
     TimedOut,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Outcome {
     Right,
     Wrong(Option<AutoReason>),
 }
 
 /// One asked question, with a snapshot of the question as it was (R28).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Asked {
     pub item: QuizItem,
     pub snapshot: Question,
@@ -35,7 +36,7 @@ pub struct Asked {
     pub outcome: Option<Outcome>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Status {
     InProgress,
     Finished,
@@ -43,7 +44,7 @@ pub enum Status {
     Incomplete,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Error)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Error)]
 pub enum AttemptError {
     #[error("the quiz has already ended")]
     Ended,
@@ -59,7 +60,7 @@ pub enum AttemptError {
     NothingToRetry,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Attempt {
     settings: QuizSettings,
     asked: Vec<Asked>,

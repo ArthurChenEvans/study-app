@@ -6,4 +6,5 @@ edition.workspace = true
 
 [dependencies]
 rand = "0.9"
+serde = { version = "1.0.229", features = ["derive"] }
 thiserror = "2"

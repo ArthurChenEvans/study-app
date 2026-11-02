@@ -1,5 +1,6 @@
 //! The overview screen (R33): progress worked out from saved attempts only.
 
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 use crate::question::TopicId;
@@ -7,7 +8,7 @@ use crate::results::{Summary, Tally};
 
 /// A saved attempt as the overview needs it. `day` is a day number (days since an epoch),
 /// so the core needs no calendar library.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AttemptRecord {
     pub day: i64,
     /// Order the attempt was saved in (its id). Breaks ties between attempts on the same day.
@@ -18,14 +19,14 @@ pub struct AttemptRecord {
     pub reason_labels: Vec<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct ScorePoint {
     pub day: i64,
     pub percent: u32,
     pub retry: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Progress {
     /// % right over the last 7 days (today and the 6 before). None if no quizzes then.
     pub accuracy: Option<u32>,
@@ -44,7 +45,7 @@ pub struct Progress {
     pub reasons: Vec<(String, usize)>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub enum Overview {
     /// No attempts yet: show first steps instead of charts.
     FirstRun,
