@@ -16,6 +16,7 @@ tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 chrono = "0.4"
+percent-encoding = "2"
 study-core = { path = "../crates/study-core" }
 study-store = { path = "../crates/study-store" }
 study-api = { path = "../crates/study-api" }

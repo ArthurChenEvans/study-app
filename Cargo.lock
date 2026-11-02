@@ -3006,6 +3006,7 @@ name = "study-app"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "percent-encoding",
  "serde",
  "serde_json",
  "study-api",

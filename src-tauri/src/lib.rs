@@ -16,6 +16,29 @@ use study_core::results::GivenReason;
 use study_store::search::{Hit, SearchQuery};
 use study_store::{AttemptId, HistoryRow, ModuleId, ModuleRow, SourceRow, Store, TopicRow};
 
+/// Converts PowerPoint to PDF for the preview. The file arrives as raw bytes with its
+/// name in the `x-file-name` header, and the PDF goes back as raw bytes. Nothing is stored.
+#[tauri::command]
+async fn slides_to_pdf(request: tauri::ipc::Request<'_>) -> ApiResult<tauri::ipc::Response> {
+    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
+        return Err(ApiError { message: "the slides didn't arrive as a file".into() });
+    };
+    let name = request
+        .headers()
+        .get("x-file-name")
+        .and_then(|value| value.to_str().ok())
+        .map(|value| percent_encoding::percent_decode_str(value).decode_utf8_lossy().into_owned())
+        .unwrap_or_default();
+    let bytes = bytes.clone();
+    let pdf = tauri::async_runtime::spawn_blocking(move || {
+        study_api::convert::slides_to_pdf(&bytes, &name, None, std::time::Duration::from_secs(90))
+    })
+    .await
+    .map_err(|_| ApiError { message: "the conversion stopped unexpectedly".into() })?
+    .map_err(|error| ApiError { message: error.to_string() })?;
+    Ok(tauri::ipc::Response::new(pdf))
+}
+
 type AppState<'a> = State<'a, Mutex<App>>;
 
 /// Today as days since 1970-01-01 in local time, the day number the core uses.
@@ -176,6 +199,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            slides_to_pdf,
             modules,
             create_module,
             delete_module,
