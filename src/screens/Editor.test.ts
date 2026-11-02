@@ -239,4 +239,22 @@ describe("Question editor", () => {
       expect((screen.getByLabelText("Question") as HTMLTextAreaElement).value).toBe("");
     });
   });
+  // R7: fenced code needs its line breaks kept
+  it("keeps line breaks in the question and explanation", async () => {
+    const u = user();
+    mocked.saveQuestion.mockResolvedValue(11);
+    render(Editor, { topic: 1 });
+    await screen.findByText("What does the ALU do?");
+    await u.type(screen.getByLabelText("Question"), "Read this:{Enter}{Enter}```c{Enter}int index = 0;{Enter}```");
+    await fillOption(u, 1, "A");
+    await fillOption(u, 2, "B");
+    await fillOption(u, 3, "C");
+    await u.click(screen.getByLabelText("Option 1 is correct"));
+    await u.type(screen.getByLabelText("Explanation"), "Line one{Enter}Line two");
+    await u.click(screen.getByRole("button", { name: "Save question" }));
+    expect(mocked.saveQuestion).toHaveBeenCalledWith(expect.objectContaining({
+      text: "Read this:\n\n```c\nint index = 0;\n```",
+      explanation: "Line one\nLine two",
+    }));
+  });
 });
