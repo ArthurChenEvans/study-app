@@ -99,7 +99,7 @@ export interface Progress {
 export type Overview = "FirstRun" | { Progress: Progress };
 
 export type SearchHit =
-  | { Question: { id: Id; text: string; topic: Id; topic_name: string; tags: string[] } }
+  | { Question: { id: Id; text: string; topic: Id; topic_name: string; tags: string[]; edited: string } }
   | { Module: { id: Id; name: string } }
   | { Topic: { id: Id; name: string } }
   | { Tag: { name: string } }

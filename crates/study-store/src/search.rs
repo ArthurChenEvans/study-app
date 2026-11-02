@@ -45,6 +45,8 @@ pub enum Hit {
         topic: TopicId,
         topic_name: String,
         tags: Vec<String>,
+        /// UTC, as "YYYY-MM-DD HH:MM:SS".
+        edited: String,
     },
     Module {
         id: ModuleId,
@@ -132,7 +134,7 @@ impl Store {
         };
         let direction = if query.descending { "DESC" } else { "ASC" };
         let sql = format!(
-            "SELECT q.id, q.text, q.topic_id, t.name FROM questions q JOIN topics t ON t.id = q.topic_id
+            "SELECT q.id, q.text, q.topic_id, t.name, q.edited_at FROM questions q JOIN topics t ON t.id = q.topic_id
              WHERE (?1 = '' OR instr(lower(q.text), ?1) > 0 OR instr(lower(q.explanation), ?1) > 0
                     OR EXISTS (SELECT 1 FROM options o WHERE o.question_id = q.id AND instr(lower(o.text), ?1) > 0)
                     OR EXISTS (SELECT 1 FROM question_tags g WHERE g.question_id = q.id AND instr(lower(g.tag), ?1) > 0))
@@ -149,6 +151,7 @@ impl Store {
                     row.get::<_, String>(1)?,
                     TopicId(row.get(2)?),
                     row.get::<_, String>(3)?,
+                    row.get::<_, String>(4)?,
                 ))
             },
         )?;
@@ -157,7 +160,7 @@ impl Store {
             .prepare("SELECT tag FROM question_tags WHERE question_id = ?1 ORDER BY tag")?;
         let mut hits = vec![];
         for row in rows {
-            let (id, text, topic, topic_name) = row?;
+            let (id, text, topic, topic_name, edited) = row?;
             let tags = tags
                 .query_map([id.0], |row| row.get(0))?
                 .collect::<rusqlite::Result<_>>()?;
@@ -167,6 +170,7 @@ impl Store {
                 topic,
                 topic_name,
                 tags,
+                edited,
             });
         }
         Ok(hits)
@@ -424,6 +428,22 @@ mod tests {
                 .count(),
             3
         );
+    }
+
+    #[test]
+    fn question_hits_say_when_they_were_last_edited() {
+        let f = fixture();
+        let hits = f
+            .store
+            .search(&SearchQuery {
+                text: "shader".into(),
+                ..Default::default()
+            })
+            .unwrap();
+        let Hit::Question { edited, .. } = &hits[0] else {
+            panic!("expected a question")
+        };
+        assert_eq!(edited.len(), "2026-11-02 17:00:00".len(), "{edited}");
     }
 
     #[test]

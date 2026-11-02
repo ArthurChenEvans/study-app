@@ -1,6 +1,6 @@
 <script lang="ts">
   // topics.feature (R1, R2, R3, R30)
-  import { Folder, FolderOpen, Library, Pencil, Play, Plus, Trash2 } from "@lucide/svelte";
+  import { Folder, FolderOpen, FolderPlus, Library, Pencil, Play, Plus, Trash2 } from "@lucide/svelte";
   import { api, errorMessage, type Id, type ModuleRow, type TopicRow } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
 
@@ -16,6 +16,22 @@
   let createError = $state("");
 
   let deleting = $state<TopicRow | null>(null);
+
+  let creatingModule = $state(false);
+  let moduleName = $state("");
+  let moduleError = $state("");
+
+  async function createModule(event: SubmitEvent) {
+    event.preventDefault();
+    try {
+      await api.createModule(moduleName.trim());
+      creatingModule = false;
+      moduleName = "";
+      await load();
+    } catch (error) {
+      moduleError = errorMessage(error);
+    }
+  }
 
   const groups = $derived.by(() => {
     const byModule = modules
@@ -60,6 +76,7 @@
 
 <div class="mx-auto max-w-6xl px-12 pb-24">
   <PageHeader title="Topics" subtitle={loaded && topics.length ? `${topics.length} topics in ${modules.length} modules` : ""}>
+    <button class="btn btn-ghost" onclick={() => { moduleError = ""; creatingModule = true; }}><FolderPlus class="size-4" />New module</button>
     <button class="btn btn-primary" onclick={openCreate}><Plus class="size-4" />New topic</button>
   </PageHeader>
 
@@ -138,5 +155,24 @@
         <button class="btn btn-error" onclick={confirmDelete}>Delete topic</button>
       </div>
     </div>
+  </dialog>
+{/if}
+
+{#if creatingModule}
+  <dialog open class="modal modal-open" aria-labelledby="new-module-title">
+    <form class="modal-box max-w-md" onsubmit={createModule}>
+      <h3 id="new-module-title" class="text-lg font-semibold">New module</h3>
+      <p class="mt-2 text-sm text-muted">A module groups related topics, like a course unit.</p>
+      <label class="mt-6 block">
+        <span class="text-sm font-semibold">Name</span>
+        <!-- svelte-ignore a11y_autofocus -->
+        <input class="input mt-1 w-full" bind:value={moduleName} autofocus placeholder="e.g. Computer Architecture…" />
+      </label>
+      {#if moduleError}<p role="alert" class="mt-4 text-sm text-error">{moduleError}</p>{/if}
+      <div class="modal-action">
+        <button type="button" class="btn btn-ghost" onclick={() => (creatingModule = false)}>Cancel</button>
+        <button type="submit" class="btn btn-primary">Create module</button>
+      </div>
+    </form>
   </dialog>
 {/if}

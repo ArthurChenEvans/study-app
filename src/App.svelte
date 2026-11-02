@@ -5,6 +5,10 @@
   import Setup from "./screens/Setup.svelte";
   import Quiz from "./screens/Quiz.svelte";
   import Results from "./screens/Results.svelte";
+  import Overview from "./screens/Overview.svelte";
+  import Bibliography from "./screens/Bibliography.svelte";
+  import History from "./screens/History.svelte";
+  import Search from "./screens/Search.svelte";
   import { screenFromHash, type Screen } from "./lib/router";
   import type { Id, QuizView } from "./lib/api";
 
@@ -46,11 +50,14 @@
       {#key route.run}<Quiz initial={route.view} onFinished={(attempt) => go({ screen: "results", attempt })} />{/key}
     {:else if route.screen === "results"}
       {#key route.attempt}<Results attempt={route.attempt} onRetry={startQuiz} />{/key}
+    {:else if route.screen === "bibliography"}
+      <Bibliography />
+    {:else if route.screen === "history"}
+      <History onView={(attempt) => go({ screen: "results", attempt })} onNewQuiz={() => go({ screen: "setup" })} />
+    {:else if route.screen === "search"}
+      <Search onOpenTopic={(topic) => go({ screen: "editor", topic })} />
     {:else}
-      <div class="mx-auto max-w-6xl px-12 pt-12">
-        <h1 class="text-3xl font-semibold">Coming next</h1>
-        <p class="mt-2 text-muted">This screen is being built test-first. Topics, the question editor, quiz setup, the quiz and results are ready.</p>
-      </div>
+      <Overview onNavigate={(screen) => go({ screen })} />
     {/if}
   </main>
 </div>
