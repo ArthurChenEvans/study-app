@@ -1,0 +1,9 @@
+[package]
+name = "study-core"
+description = "Domain rules for the Study App: questions, quizzes, scoring, retries and progress. No IO."
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rand = "0.9"
+thiserror = "2"
