@@ -16,20 +16,14 @@ use study_core::results::GivenReason;
 use study_store::search::{Hit, SearchQuery};
 use study_store::{AttemptId, HistoryRow, ModuleId, ModuleRow, SourceRow, Store, TopicRow};
 
-/// Converts PowerPoint to PDF for the preview. The file arrives as raw bytes with its
-/// name in the `x-file-name` header, and the PDF goes back as raw bytes. Nothing is stored.
+/// Converts PowerPoint to PDF for the preview. The file arrives as base64 with its name,
+/// which works on every IPC path, and the PDF goes back as raw bytes. Nothing is stored.
 #[tauri::command]
-async fn slides_to_pdf(request: tauri::ipc::Request<'_>) -> ApiResult<tauri::ipc::Response> {
-    let tauri::ipc::InvokeBody::Raw(bytes) = request.body() else {
-        return Err(ApiError { message: "the slides didn't arrive as a file".into() });
-    };
-    let name = request
-        .headers()
-        .get("x-file-name")
-        .and_then(|value| value.to_str().ok())
-        .map(|value| percent_encoding::percent_decode_str(value).decode_utf8_lossy().into_owned())
-        .unwrap_or_default();
-    let bytes = bytes.clone();
+async fn slides_to_pdf(name: String, data: String) -> ApiResult<tauri::ipc::Response> {
+    use base64::Engine;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(data)
+        .map_err(|_| ApiError { message: "the slides couldn't be read, try opening the file again".into() })?;
     let pdf = tauri::async_runtime::spawn_blocking(move || {
         study_api::convert::slides_to_pdf(&bytes, &name, None, std::time::Duration::from_secs(90))
     })

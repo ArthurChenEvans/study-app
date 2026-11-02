@@ -149,7 +149,19 @@ export const api = {
   overview: () => invoke<Overview>("overview"),
   today: () => invoke<number>("today_day"),
   search: (query: SearchQuery) => invoke<SearchHit[]>("search", { query }),
-  /** Sends slides as raw bytes and gets PDF bytes back. Nothing is stored. */
-  slidesToPdf: async (file: File) =>
-    new Uint8Array(await invoke<ArrayBuffer>("slides_to_pdf", new Uint8Array(await file.arrayBuffer()), { headers: { "x-file-name": encodeURIComponent(file.name) } })),
+  /** Sends slides as base64 JSON (works on every IPC path) and gets PDF bytes back. Nothing is stored. */
+  slidesToPdf: async (file: File) => {
+    const pdf = await invoke<ArrayBuffer | number[]>("slides_to_pdf", { name: file.name, data: await toBase64(file) });
+    return new Uint8Array(pdf);
+  },
 };
+
+/** Base64 of a file's bytes, without the data: URL prefix. */
+function toBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",", 2)[1] ?? "");
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}

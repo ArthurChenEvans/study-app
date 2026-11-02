@@ -52,3 +52,12 @@ pnpm test            # Svelte screens (Vitest)
 | `crates/study-api` | Everything the app's commands do, as testable functions |
 | `src-tauri` | Desktop shell, forwards commands to study-api |
 | `src` | Svelte frontend |
+
+## End-to-end test
+
+Drives the real app window and converts a slide deck over the same IPC the preview uses:
+
+```sh
+cargo install tauri-driver   # once; also needs WebKitWebDriver from webkitgtk
+e2e/run.sh                   # builds a debug app, then runs e2e/slides_test.py
+```
