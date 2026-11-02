@@ -1,8 +1,10 @@
 <script lang="ts">
   // questions.feature, sources.feature (R4 to R10, R14, R48, R49)
-  import { BookOpen, Plus, X } from "@lucide/svelte";
+  import { BookOpen, ImagePlus, Plus, X } from "@lucide/svelte";
   import Preview from "../components/Preview.svelte";
+  import Rich from "../components/Rich.svelte";
   import { api, errorMessage, type Id, type QuestionInput, type SourceRow } from "../lib/api";
+  import { imageMarkdown } from "../lib/images";
 
   let { topic }: { topic: Id } = $props();
 
@@ -92,10 +94,69 @@
     };
   }
 
+  // R7 / questions.feature "Add an image by pasting or picking". Images go into the
+  // database straight away and the field gets ![name](image:12) at the cursor.
+  type RichField = HTMLInputElement | HTMLTextAreaElement;
+  const IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+  let questionField = $state<HTMLTextAreaElement>();
+  let lastField = $state<RichField>();
+  let picker = $state<HTMLInputElement>();
+  let imageNote = $state("");
+
+  /** "the question", "the explanation" or "option 2", for the status message. */
+  function fieldName(field: RichField): string {
+    const option = field.getAttribute("aria-label");
+    if (option) return option.toLowerCase();
+    return `the ${(field.labels?.[0]?.textContent ?? "question").trim().toLowerCase()}`;
+  }
+
+  async function addImages(files: File[], field: RichField) {
+    error = "";
+    imageNote = "";
+    for (const file of files) {
+      try {
+        const id = await api.addImage(file);
+        const start = field.selectionStart ?? field.value.length;
+        const end = field.selectionEnd ?? start;
+        const spacer = start > 0 && !/\s$/.test(field.value.slice(0, start)) ? " " : "";
+        field.setRangeText(spacer + imageMarkdown(id, file.name), start, end, "end");
+        field.dispatchEvent(new Event("input", { bubbles: true }));
+        imageNote = `Image added to ${fieldName(field)}`;
+      } catch (failure) {
+        error = errorMessage(failure);
+      }
+    }
+  }
+
+  function onPaste(event: ClipboardEvent) {
+    const field = event.target;
+    if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) || !field.dataset.rich) return;
+    const images = [...(event.clipboardData?.files ?? [])].filter((file) => IMAGE_TYPES.includes(file.type));
+    if (!images.length) return;
+    event.preventDefault();
+    addImages(images, field);
+  }
+
+  function onFocus(event: FocusEvent) {
+    const field = event.target;
+    if ((field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) && field.dataset.rich) lastField = field;
+  }
+
+  function onPicked() {
+    const files = [...(picker?.files ?? [])];
+    const field = lastField?.isConnected ? lastField : questionField;
+    if (files.length && field) addImages(files, field).then(() => field.focus());
+    if (picker) picker.value = "";
+  }
+
+  /** Only preview when there's something Markdown can't show as plain text. */
+  const worthPreviewing = (text: string) => /image:\d|```|\$[^$]+\$|!\[/.test(text);
+
   function startNew() {
     editing = null;
     draft = blank();
     error = "";
+    imageNote = "";
   }
 
   load();
@@ -133,11 +194,17 @@
       </details>
     {/if}
 
-    <form class="max-w-2xl space-y-8 px-10 pb-16" onsubmit={save}>
+    <form class="max-w-2xl space-y-8 px-10 pb-16" onsubmit={save} onpaste={onPaste} onfocusin={onFocus}>
       <div class="space-y-2">
         <label class="text-sm font-semibold" for="question-text">Question</label>
-        <textarea id="question-text" class="textarea w-full font-mono text-sm" rows="3" bind:value={draft.text}></textarea>
-        <p class="text-sm text-muted">Markdown, `code`, $LaTeX$ and images.</p>
+        <textarea id="question-text" class="textarea w-full font-mono text-sm" rows="3" data-rich="true" bind:this={questionField} bind:value={draft.text}></textarea>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <p class="text-sm text-muted">Markdown, `code`, $LaTeX$ and images. Paste an image into any field, or add one from a file.</p>
+          <button type="button" class="btn btn-ghost btn-sm" title="Adds the image where your cursor was last, in the question, an option or the explanation" onclick={() => picker?.click()}><ImagePlus class="size-4" />Add image</button>
+          <input bind:this={picker} type="file" class="hidden" accept={IMAGE_TYPES.join(",")} multiple aria-label="Image file" onchange={onPicked} />
+        </div>
+        {#if imageNote}<p role="status" class="text-sm text-muted">{imageNote}</p>{/if}
+        {#if worthPreviewing(draft.text)}<div class="panel p-4" aria-label="Question preview"><Rich text={draft.text} class="max-w-prose" /></div>{/if}
       </div>
 
       <fieldset class="space-y-3">
@@ -151,7 +218,7 @@
         {#each draft.options as option, index (index)}
           <div class="flex items-center gap-3">
             <input type="checkbox" class="checkbox checkbox-sm" aria-label="Option {index + 1} is correct" checked={option.correct} onchange={() => toggleCorrect(index)} />
-            <input class="input input-sm flex-1 {option.correct ? 'is-right' : ''}" aria-label="Option {index + 1}" bind:value={option.text} />
+            <input class="input input-sm flex-1 {option.correct ? 'is-right' : ''}" aria-label="Option {index + 1}" data-rich="true" bind:value={option.text} />
             <button type="button" class="btn btn-ghost btn-sm btn-square" aria-label="Remove option {index + 1}" disabled={draft.options.length <= MIN} onclick={() => (draft.options = draft.options.filter((_, position) => position !== index))}><X class="size-4" /></button>
           </div>
         {/each}
@@ -164,7 +231,8 @@
 
       <div class="space-y-2">
         <label class="text-sm font-semibold" for="question-explanation">Explanation</label>
-        <textarea id="question-explanation" class="textarea w-full font-mono text-sm" rows="3" bind:value={draft.explanation}></textarea>
+        <textarea id="question-explanation" class="textarea w-full font-mono text-sm" rows="3" data-rich="true" bind:value={draft.explanation}></textarea>
+        {#if worthPreviewing(draft.explanation)}<div class="panel p-4" aria-label="Explanation preview"><Rich text={draft.explanation} class="max-w-prose" /></div>{/if}
       </div>
 
       <fieldset class="space-y-3">

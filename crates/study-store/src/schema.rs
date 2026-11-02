@@ -71,6 +71,15 @@ const MIGRATIONS: &[&str] = &[
     CREATE INDEX questions_by_topic ON questions(topic_id);
     CREATE INDEX citations_by_source ON citations(source_id);
     ",
+    // 2: images pasted or picked into questions, options and explanations (R7).
+    // Markdown points at them as image:<id>, so they live in the same file as the questions.
+    "
+    CREATE TABLE images (
+        id     INTEGER PRIMARY KEY,
+        format TEXT NOT NULL,
+        bytes  BLOB NOT NULL
+    );
+    ",
 ];
 
 pub const LATEST: i64 = MIGRATIONS.len() as i64;

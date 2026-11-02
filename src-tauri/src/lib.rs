@@ -10,6 +10,7 @@ use study_api::{
     AnswerResult, ApiError, ApiResult, App, QuestionInput, QuizSetupInput, QuizView, ResultsView,
 };
 use study_core::bibliography::SourceFields;
+use study_core::image::ImageId;
 use study_core::progress::Overview;
 use study_core::question::{QuestionId, SourceId, TopicId};
 use study_core::results::GivenReason;
@@ -96,6 +97,21 @@ fn questions_in(state: AppState, topic: TopicId) -> ApiResult<Vec<(QuestionId, S
 #[tauri::command]
 fn delete_question(state: AppState, id: QuestionId) -> ApiResult<()> {
     with(state, |app| app.delete_question(id))
+}
+
+/// R7: a pasted or picked image, sent as base64 like the slides. Returns its id.
+#[tauri::command]
+fn add_image(state: AppState, data: String) -> ApiResult<ImageId> {
+    use base64::Engine;
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(data)
+        .map_err(|_| ApiError { message: "the image couldn't be read, try adding it again".into() })?;
+    with(state, |app| app.add_image(&bytes))
+}
+/// The image's raw bytes, which the frontend shows through a blob: URL.
+#[tauri::command]
+fn image(state: AppState, id: ImageId) -> ApiResult<tauri::ipc::Response> {
+    with(state, |app| app.image(id)).map(tauri::ipc::Response::new)
 }
 
 #[tauri::command]
@@ -209,6 +225,8 @@ pub fn run() {
             question,
             questions_in,
             delete_question,
+            add_image,
+            image,
             add_source,
             sources,
             start_quiz,

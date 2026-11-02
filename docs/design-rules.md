@@ -268,7 +268,7 @@ Dark is the default. A Dark / Light switch sits at the bottom of the sidebar and
 
 The dark right / wrong pair was run through the validator against the dark panel: lightness band (0.48 to 0.67), chroma floor, CVD separation 21.4, normal-vision 30.0 and 3:1 all pass. Greyscale lightness: right 0.41, wrong 0.57, guessed darker plus hatch.
 
-Code blocks use Shiki's min-dark theme in dark and min-light in light.
+Code blocks use Shiki's min-dark theme in dark and min-light in light. Some of their token colours are under 4.5:1 (light comments are 1.7:1), so `src/lib/markdown.ts` mixes any failing colour toward black (light) or white (dark), keeping its hue, until it clears 4.6:1 on base-100 in light and the panel in dark. Both themes ship as CSS variables, so the switch recolours code without rendering it again.
 
 ## Sources
 

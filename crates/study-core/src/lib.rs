@@ -2,6 +2,7 @@
 pub mod assembly;
 pub mod attempt;
 pub mod bibliography;
+pub mod image;
 pub mod progress;
 pub mod question;
 pub mod results;

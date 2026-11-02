@@ -149,6 +149,9 @@ export const api = {
   overview: () => invoke<Overview>("overview"),
   today: () => invoke<number>("today_day"),
   search: (query: SearchQuery) => invoke<SearchHit[]>("search", { query }),
+  /** R7: stores a pasted or picked image and returns the id the Markdown points at. */
+  addImage: async (file: Blob) => invoke<Id>("add_image", { data: await toBase64(file) }),
+  image: async (id: Id) => new Uint8Array(await invoke<ArrayBuffer | number[]>("image", { id })),
   /** Sends slides as base64 JSON (works on every IPC path) and gets PDF bytes back. Nothing is stored. */
   slidesToPdf: async (file: File) => {
     const pdf = await invoke<ArrayBuffer | number[]>("slides_to_pdf", { name: file.name, data: await toBase64(file) });
@@ -157,7 +160,7 @@ export const api = {
 };
 
 /** Base64 of a file's bytes, without the data: URL prefix. */
-function toBase64(file: File): Promise<string> {
+function toBase64(file: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result).split(",", 2)[1] ?? "");

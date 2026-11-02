@@ -387,3 +387,20 @@ fn empty_topic_cant_start_a_quiz() {
     let error = app.start_quiz(setup(vec![empty])).unwrap_err();
     assert_eq!(error.message, "a chosen topic has no questions yet");
 }
+
+// questions.feature: Add an image by pasting or picking
+#[test]
+fn an_added_image_can_be_shown_again() {
+    let mut app = app();
+    let png = b"\x89PNG\r\n\x1a\nslide 12".to_vec();
+    let id = app.add_image(&png).unwrap();
+    assert_eq!(app.image(id).unwrap(), png);
+}
+
+#[test]
+fn refuses_files_that_are_not_images_with_a_message() {
+    let mut app = app();
+    let error = app.add_image(b"<svg/>").unwrap_err();
+    assert_eq!(error.message, "that file isn't a PNG, JPEG, GIF or WebP image");
+    assert_eq!(app.image(study_core::image::ImageId(42)).unwrap_err().message, "image not found");
+}

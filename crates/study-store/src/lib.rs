@@ -13,6 +13,7 @@ use thiserror::Error;
 
 use study_core::attempt::{Attempt, Status};
 use study_core::bibliography::{SourceFields, apa};
+use study_core::image::{ImageFormat, ImageId};
 use study_core::progress::AttemptRecord;
 use study_core::question::{
     AnswerKind, AnswerOption, Citation, Question, QuestionDraft, QuestionId, SourceId, TopicId,
@@ -320,6 +321,35 @@ impl Store {
             return Err(StoreError::NotFound("question"));
         }
         Ok(())
+    }
+
+    // ---------- Images (R7) ----------
+
+    /// Stores an image already checked by the core. Pasting the same image twice reuses it.
+    pub fn save_image(&mut self, format: ImageFormat, bytes: &[u8]) -> Result<ImageId> {
+        let existing: Option<i64> = self
+            .connection
+            .query_row("SELECT id FROM images WHERE bytes = ?1", [bytes], |row| row.get(0))
+            .optional()?;
+        if let Some(id) = existing {
+            return Ok(ImageId(id));
+        }
+        self.connection.execute(
+            "INSERT INTO images (format, bytes) VALUES (?1, ?2)",
+            params![serde_json::to_string(&format)?, bytes],
+        )?;
+        Ok(ImageId(self.connection.last_insert_rowid()))
+    }
+
+    pub fn image(&self, id: ImageId) -> Result<(ImageFormat, Vec<u8>)> {
+        let row: Option<(String, Vec<u8>)> = self
+            .connection
+            .query_row("SELECT format, bytes FROM images WHERE id = ?1", [id.0], |row| {
+                Ok((row.get(0)?, row.get(1)?))
+            })
+            .optional()?;
+        let (format, bytes) = row.ok_or(StoreError::NotFound("image"))?;
+        Ok((serde_json::from_str(&format)?, bytes))
     }
 
     // ---------- Bibliography (R13) ----------

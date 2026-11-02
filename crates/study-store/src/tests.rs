@@ -413,3 +413,29 @@ fn deleting_a_source_removes_its_citations() {
     assert!(store.sources().unwrap().is_empty());
     assert!(store.question(q).unwrap().citations().is_empty());
 }
+
+// questions.feature: Add an image by pasting or picking ("the image is kept with the question")
+#[test]
+fn keeps_images_and_reuses_a_repeated_paste() {
+    use study_core::image::{ImageFormat, ImageId};
+    let mut store = store();
+    let png = b"\x89PNG\r\n\x1a\npipeline".to_vec();
+    let first = store.save_image(ImageFormat::Png, &png).unwrap();
+    let again = store.save_image(ImageFormat::Png, &png).unwrap();
+    let other = store.save_image(ImageFormat::Gif, b"GIF89a-other").unwrap();
+    assert_eq!(first, again);
+    assert_ne!(first, other);
+    assert_eq!(store.image(first).unwrap(), (ImageFormat::Png, png));
+    assert!(matches!(store.image(ImageId(999)), Err(StoreError::NotFound("image"))));
+}
+
+#[test]
+fn images_survive_reopening_the_database() {
+    use study_core::image::ImageFormat;
+    let path = std::env::temp_dir().join(format!("study-images-{}.sqlite", std::process::id()));
+    let _ = std::fs::remove_file(&path);
+    let id = Store::open(&path).unwrap().save_image(ImageFormat::Jpeg, &[0xFF, 0xD8, 0xFF, 1]).unwrap();
+    let (format, bytes) = Store::open(&path).unwrap().image(id).unwrap();
+    std::fs::remove_file(&path).unwrap();
+    assert_eq!((format, bytes), (ImageFormat::Jpeg, vec![0xFF, 0xD8, 0xFF, 1]));
+}

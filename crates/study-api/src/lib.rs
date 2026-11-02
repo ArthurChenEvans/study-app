@@ -16,6 +16,7 @@ use study_core::assembly::{
 };
 use study_core::attempt::{Attempt, AutoReason, Outcome, Status};
 use study_core::bibliography::SourceFields;
+use study_core::image::{ImageId, check_image};
 use study_core::progress::{Overview, overview};
 use study_core::question::{
     AnswerKind, AnswerOption, Citation, Question, QuestionDraft, QuestionId, SourceId, TopicId,
@@ -47,7 +48,8 @@ from_error!(
     study_core::question::QuestionError,
     study_core::assembly::AssemblyError,
     study_core::attempt::AttemptError,
-    study_core::results::ReasonError
+    study_core::results::ReasonError,
+    study_core::image::ImageError
 );
 
 pub type ApiResult<T> = Result<T, ApiError>;
@@ -299,6 +301,16 @@ impl App {
     }
 
     // ---------- Bibliography ----------
+
+    /// R7: a pasted or picked image. Returns the id the Markdown points at (image:<id>).
+    pub fn add_image(&mut self, bytes: &[u8]) -> ApiResult<ImageId> {
+        let format = check_image(bytes)?;
+        Ok(self.store.save_image(format, bytes)?)
+    }
+
+    pub fn image(&self, id: ImageId) -> ApiResult<Vec<u8>> {
+        Ok(self.store.image(id)?.1)
+    }
 
     pub fn add_source(&mut self, fields: SourceFields) -> ApiResult<SourceId> {
         required(&fields.title, "give the source a title")?;

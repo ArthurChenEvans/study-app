@@ -53,11 +53,14 @@ pnpm test            # Svelte screens (Vitest)
 | `src-tauri` | Desktop shell, forwards commands to study-api |
 | `src` | Svelte frontend |
 
-## End-to-end test
+## End-to-end tests
 
-Drives the real app window and converts a slide deck over the same IPC the preview uses:
+Drive the real app window through tauri-driver, on a fresh throwaway database:
+
+- `e2e/slides_test.py` converts a slide deck over the same IPC the preview uses
+- `e2e/rich_content_test.py` writes a question with a pasted image, a picked image and highlighted code, then takes a quiz on it and checks the images decode and the code is coloured in both themes
 
 ```sh
-cargo install tauri-driver   # once; also needs WebKitWebDriver from webkitgtk
-e2e/run.sh                   # builds a debug app, then runs e2e/slides_test.py
+cargo install tauri-driver   # once; also needs WebKitWebDriver from webkitgtk and python selenium
+e2e/run.sh                   # builds a debug app, then runs both (starts Xvfb if there's no display)
 ```
