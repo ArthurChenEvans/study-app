@@ -1,6 +1,7 @@
 <script lang="ts">
   // questions.feature, sources.feature (R4 to R10, R14)
-  import { BookOpen, FileUp, Plus, X } from "@lucide/svelte";
+  import { BookOpen, Plus, X } from "@lucide/svelte";
+  import Preview from "../components/Preview.svelte";
   import { api, errorMessage, type Id, type QuestionInput, type SourceRow } from "../lib/api";
 
   let { topic }: { topic: Id } = $props();
@@ -91,14 +92,7 @@
 
 <div class="flex h-screen">
   <section class="flex w-1/2 min-w-0 flex-col border-r border-base-300 bg-base-200" aria-label="Source preview">
-    <div class="grid h-full place-items-center p-12">
-      <div class="panel max-w-sm p-8 text-center">
-        <span class="mx-auto grid size-10 place-items-center rounded-lg bg-base-200"><FileUp class="size-5" /></span>
-        <h2 class="mt-4 text-lg font-semibold">Read alongside as you write</h2>
-        <p class="mt-2 text-sm text-muted">Markdown, txt, PDF, PowerPoint or EPUB. Files are only shown while you write, they aren't stored.</p>
-        <p class="mt-4 text-xs text-muted">File preview is the next piece being built.</p>
-      </div>
-    </div>
+    <Preview />
   </section>
 
   <section class="w-1/2 overflow-auto" aria-label="Question editor">

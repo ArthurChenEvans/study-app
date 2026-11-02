@@ -4,6 +4,8 @@
 //! Security rule: a `QuizView` never says which options are correct. Correct answers
 //! only leave the backend in study-mode feedback after answering, and in results.
 
+pub mod convert;
+
 use rand::SeedableRng;
 use rand::rngs::StdRng;
 use serde::{Deserialize, Serialize};

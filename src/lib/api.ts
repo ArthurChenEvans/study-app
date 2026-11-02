@@ -145,4 +145,7 @@ export const api = {
   overview: () => invoke<Overview>("overview"),
   today: () => invoke<number>("today_day"),
   search: (query: SearchQuery) => invoke<SearchHit[]>("search", { query }),
+  /** Sends slides as raw bytes and gets PDF bytes back. Nothing is stored. */
+  slidesToPdf: async (file: File) =>
+    new Uint8Array(await invoke<ArrayBuffer>("slides_to_pdf", new Uint8Array(await file.arrayBuffer()), { headers: { "x-file-name": encodeURIComponent(file.name) } })),
 };
