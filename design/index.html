@@ -28,13 +28,13 @@
     --color-accent-content: oklch(27% 0.025 60);
     --color-neutral: oklch(32% 0.02 60);
     --color-neutral-content: oklch(94% 0.014 78);
-    --color-info: oklch(50% 0.07 235);
+    --color-info: oklch(44% 0.07 235);
     --color-info-content: oklch(97% 0.010 80);
-    --color-success: oklch(50% 0.11 145);
+    --color-success: oklch(42% 0.11 145);
     --color-success-content: oklch(97% 0.010 80);
     --color-warning: oklch(78% 0.13 78);
     --color-warning-content: oklch(27% 0.025 60);
-    --color-error: oklch(50% 0.16 30);
+    --color-error: oklch(44% 0.15 30);
     --color-error-content: oklch(97% 0.010 80);
     --radius-selector: 0.25rem;
     --radius-field: 0.375rem;
@@ -47,12 +47,17 @@
 
     /* Raised surface for panels, and chart tokens (validated, see design rules) */
     --surface: oklch(99% 0.006 80);
-    --chart-right: #357339;
-    --chart-guessed: #bc7d19;
-    --chart-wrong: #ac3225;
+    /* Quiz outcomes: blue / orange pair, colour-blind safe; guessed = hatched right */
+    --chart-right: #025884;
+    --chart-wrong: #cc6c13;
+    --right-ink: #004d77;
+    --wrong-ink: #853900;
+    --guessed-tint: #c1dcf0;
+    --guessed-ink: #013658;
+    --guessed-fill: repeating-linear-gradient(135deg, #025884 0 2px, #c1dcf0 2px 6px);
     --chart-ink: #643d26;
     --chart-grid: oklch(91% 0.016 76);
-    --muted: oklch(48% 0.022 65);
+    --muted: oklch(42% 0.022 65);
     --shadow-panel: 0 1px 2px oklch(27% 0.025 60 / .06), 0 6px 16px oklch(27% 0.025 60 / .05);
   }
   body { background: var(--color-base-100); color: var(--color-base-content); font-family: "IBM Plex Sans", ui-sans-serif, sans-serif; }
@@ -86,7 +91,7 @@
   .btn:disabled .kbd { opacity: .5; }
   .toggle:checked { background-color: var(--color-primary); border-color: var(--color-primary); color: var(--color-primary-content); }
   [role=tab] .count { font-size: 12px; margin-left: 4px; color: var(--muted); font-weight: 400; }
-  .open-q { border: 1px dashed oklch(50% 0.07 235); color: oklch(50% 0.07 235); background: var(--surface); }
+  .open-q { border: 1px dashed oklch(44% 0.07 235); color: oklch(44% 0.07 235); background: var(--surface); }
 
   /* Navigation */
   .nav-link { color: var(--muted); transition: background-color 150ms ease-out, color 150ms ease-out; }
@@ -98,7 +103,11 @@
   .seg-bar > span { display: block; height: 100%; }
   .tall-bar { display: flex; gap: 2px; height: 28px; }
   .tall-bar > span { border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: visible; }
-  .swatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .text-right-ink { color: var(--right-ink); } .text-wrong-ink { color: var(--wrong-ink); }
+  .is-right { border-color: var(--chart-right) !important; box-shadow: 0 0 0 1px var(--chart-right); }
+  .is-wrong { border-color: var(--chart-wrong) !important; box-shadow: 0 0 0 1px var(--chart-wrong); }
+  .guessed-chip { background: var(--guessed-tint); color: var(--guessed-ink); border-color: var(--guessed-tint); }
   .hbar { height: 12px; border-radius: 0 4px 4px 0; background: var(--chart-ink); transition: width 400ms ease-out; }
   .cell { width: 24px; height: 24px; border-radius: 4px; display: grid; place-items: center; font-size: 12px; font-weight: 600; color: #fff; }
   .chart-tip { position: fixed; pointer-events: none; z-index: 50; background: var(--color-neutral); color: var(--color-neutral-content); font-size: 12px; line-height: 1.4; padding: 8px 10px; border-radius: 6px; box-shadow: 0 4px 12px oklch(27% 0.025 60 / .2); opacity: 0; transition: opacity 120ms ease-out; max-width: 240px; }
@@ -117,7 +126,7 @@
 </style>
 <style type="text/tailwindcss">
   @theme {
-    --color-muted: oklch(48% 0.022 65);
+    --color-muted: oklch(42% 0.022 65);
     --color-field-border: oklch(58% 0.02 65);
     --color-surface: oklch(99% 0.006 80);
     --font-sans: "IBM Plex Sans", ui-sans-serif, sans-serif;
@@ -155,9 +164,9 @@ const icon = (name, cls = "size-4") => `<i data-lucide="${name}" class="${cls}">
 const openQ = (n, text) => `<span class="open-q inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs" title="Open question ${n} in specs/README.md">${icon("circle-help","size-3")}Open Q${n}: ${text}</span>`;
 const pct = (a, b) => Math.round(a / b * 100);
 const STATUS = {
-  right:   { label: "Right",   color: "var(--chart-right)",   glyph: "✓", text: "#fff" },
-  guessed: { label: "Guessed", color: "var(--chart-guessed)", glyph: "?", text: "#30241a" },
-  wrong:   { label: "Wrong",   color: "var(--chart-wrong)",   glyph: "✕", text: "#fff" },
+  right:   { label: "Right",   color: "var(--chart-right)",  glyph: "✓", text: "#fff" },
+  guessed: { label: "Guessed", color: "var(--guessed-fill)", glyph: "?", text: "var(--guessed-ink)" },
+  wrong:   { label: "Wrong",   color: "var(--chart-wrong)",  glyph: "✕", text: "#140d08" },
 };
 const legend = (keys = ["right","guessed","wrong"]) => `<div class="flex items-center gap-4 text-xs text-muted">${keys.map(k => `<span class="flex items-center gap-1.5"><span class="swatch" style="background:${STATUS[k].color}"></span>${k === "right" ? "Right, sure" : k === "guessed" ? "Right, guessed" : "Wrong"}</span>`).join("")}</div>`;
 
@@ -172,7 +181,7 @@ function segBar(r, g, w, h = 8) {
 function tallBar(r, g, w) {
   const total = r + g + w;
   return `<div class="tall-bar" role="img" aria-label="${r} right and sure, ${g} guessed, ${w} wrong out of ${total}">${[["right", r], ["guessed", g], ["wrong", w]].filter(p => p[1]).map(([k, v]) =>
-    `<span data-tip="${k === "right" ? "Right, sure" : k === "guessed" ? "Right, guessed" : "Wrong"}: ${v} of ${total}" style="width:${v / total * 100}%;background:${STATUS[k].color};color:${STATUS[k].text}">${v / total > 0.1 ? v : ""}</span>`).join("")}</div>`;
+    `<span data-tip="${k === "right" ? "Right, sure" : k === "guessed" ? "Right, guessed" : "Wrong"}: ${v} of ${total}" style="width:${v / total * 100}%;background:${STATUS[k].color};color:${STATUS[k].text}">${v / total > 0.1 ? (k === "guessed" ? `<span class="px-1.5 rounded" style="background:var(--surface)">${v}</span>` : v) : ""}</span>`).join("")}</div>`;
 }
 /* Ranked horizontal bars, one series */
 function hbars(rows, unit = "") {
@@ -383,8 +392,8 @@ function filePreview() {
 }
 function optionRow(i, text, correct) {
   return `<div class="flex items-center gap-3">
-    <input type="checkbox" class="checkbox checkbox-sm ${correct ? "checkbox-success" : ""}" ${correct ? "checked" : ""} aria-label="Option ${i + 1} is correct">
-    <input class="input input-sm flex-1 ${correct ? "border-success" : ""}" value="${text}" aria-label="Option ${i + 1}">
+    <input type="checkbox" class="checkbox checkbox-sm" ${correct ? "checked" : ""} aria-label="Option ${i + 1} is correct">
+    <input class="input input-sm flex-1 ${correct ? "is-right" : ""}" value="${text}" aria-label="Option ${i + 1}">
     <button class="btn btn-ghost btn-sm btn-square" aria-label="Remove option ${i + 1}" ${state.optionCount <= 3 ? "disabled" : ""} onclick="state.optionCount--;render()">${icon("x")}</button>
   </div>`;
 }
@@ -544,14 +553,14 @@ function screenQuiz() {
   }).join("");
   const optionClass = i => {
     if (!answered) return state.picked.has(i) ? "border-primary bg-surface ring-1 ring-primary" : "border-base-300 bg-surface hover:border-field-border";
-    if (q.correct.includes(i)) return "border-success bg-surface ring-1 ring-success";
-    if (state.picked.has(i)) return "border-error bg-surface ring-1 ring-error";
+    if (q.correct.includes(i)) return "is-right bg-surface";
+    if (state.picked.has(i)) return "is-wrong bg-surface";
     return "border-base-300 opacity-60";
   };
   const optionMark = i => {
     if (!answered) return "";
-    if (q.correct.includes(i)) return `<span class="text-success text-sm flex items-center gap-1 font-semibold">${icon("check")}Correct</span>`;
-    if (state.picked.has(i)) return `<span class="text-error text-sm flex items-center gap-1 font-semibold">${icon("x")}Your pick</span>`;
+    if (q.correct.includes(i)) return `<span class="text-right-ink text-sm flex items-center gap-1 font-semibold">${icon("check")}Correct</span>`;
+    if (state.picked.has(i)) return `<span class="text-wrong-ink text-sm flex items-center gap-1 font-semibold">${icon("x")}Your pick</span>`;
     return "";
   };
   return `<div class="flex flex-col min-h-screen">
@@ -576,7 +585,7 @@ function screenQuiz() {
             <kbd class="kbd kbd-sm tabular-nums ${state.picked.has(i) && !answered ? "bg-primary text-primary-content border-primary" : ""}">${i + 1}</kbd><span class="flex-1 math">${o}</span>${optionMark(i)}</button>`).join("")}
         </div>
         ${answered ? `<div class="mt-8 panel p-6 rise" role="status">
-          <p class="font-semibold flex items-center gap-2 ${isRight ? "text-success" : "text-error"}">${icon(isRight ? "circle-check" : "circle-x","size-5")}${isRight ? "Correct" : partial ? "Wrong: incomplete, you missed a correct option" : "Wrong"}${state.flagged ? `<span class="badge ml-2" style="background:var(--color-accent);color:var(--color-accent-content)">${icon("flag","size-3")}Guessed</span>` : ""}</p>
+          <p class="font-semibold flex items-center gap-2 ${isRight ? "text-right-ink" : "text-wrong-ink"}">${icon(isRight ? "circle-check" : "circle-x","size-5")}${isRight ? "Correct" : partial ? "Wrong: incomplete, you missed a correct option" : "Wrong"}${state.flagged ? `<span class="badge guessed-chip ml-2">${icon("flag","size-3")}Guessed</span>` : ""}</p>
           <p class="mt-3 leading-relaxed math">${renderMd(q.explain)}</p>
           <p class="text-sm text-muted mt-4 flex items-center gap-2">${icon("book-open")}${q.source}</p>
           <p class="mt-4">${openQ(5, "should study mode show the explanation here")}</p>
@@ -584,7 +593,7 @@ function screenQuiz() {
         <div class="mt-8 flex items-center gap-3">
           ${answered ? `<button class="btn btn-primary" onclick="next()">Next question <kbd class="kbd kbd-xs">Enter</kbd></button>` :
             `<button class="btn btn-primary" onclick="submitAnswer()" ${state.picked.size ? "" : "disabled"}>Submit <kbd class="kbd kbd-xs">Enter</kbd></button>`}
-          <button class="btn ${state.flagged ? "" : "btn-ghost"}" style="${state.flagged ? "background:var(--color-accent);color:var(--color-accent-content);border-color:var(--color-accent)" : ""}" onclick="toggleFlag()" aria-pressed="${state.flagged}">${icon("flag")}${state.flagged ? "Flagged as guessed" : "I guessed"} <kbd class="kbd kbd-xs">F</kbd></button>
+          <button class="btn ${state.flagged ? "" : "btn-ghost"}" style="${state.flagged ? "background:var(--guessed-tint);color:var(--guessed-ink);border-color:var(--chart-right)" : ""}" onclick="toggleFlag()" aria-pressed="${state.flagged}">${icon("flag")}${state.flagged ? "Flagged as guessed" : "I guessed"} <kbd class="kbd kbd-xs">F</kbd></button>
           ${state.mode === "study" ? `<span class="ml-auto">${openQ(6,"going back in study mode")}</span>` : `<span class="ml-auto text-sm text-muted">No going back in exam mode</span>`}
         </div>
       </div>
@@ -614,7 +623,7 @@ function screenResults() {
     { q: quizQuestions[0], status: "guessed", yours: "Decode" },
     { q: quizQuestions[3], status: "right", yours: "Multiplies one element by factor" },
   ];
-  const statusBadge = s => s === "wrong" ? `<span class="text-error font-semibold flex items-center gap-1 text-sm">${icon("circle-x")}Wrong</span>` : s === "guessed" ? `<span class="font-semibold flex items-center gap-1 text-sm">${icon("flag")}Right, guessed</span>` : `<span class="text-success font-semibold flex items-center gap-1 text-sm">${icon("circle-check")}Right</span>`;
+  const statusBadge = s => s === "wrong" ? `<span class="text-wrong-ink font-semibold flex items-center gap-1 text-sm">${icon("circle-x")}Wrong</span>` : s === "guessed" ? `<span class="badge guessed-chip font-semibold gap-1">${icon("flag","size-3")}Right, guessed</span>` : `<span class="text-right-ink font-semibold flex items-center gap-1 text-sm">${icon("circle-check")}Right</span>`;
   const items = (perfect ? review.slice(3) : review).map(it => `<li class="p-6">
     <div class="flex items-start gap-8">
       <div class="flex-1 max-w-prose">

@@ -6,6 +6,7 @@ Clickable HTML prototype of every MVP screen, built with the `studyapp` DaisyUI 
 
 | Screen | States | Requirements | Feature files |
 |---|---|---|---|
+| Overview | normal, new user | R33 | overview |
 | Topics | normal, empty, delete confirmation | R1, R2, R3, R30 | topics |
 | Question editor + source preview | normal, error (no correct option), no file open | R4 to R12, R14 | questions, sources |
 | Bibliography | normal, empty, add source | R13 | sources |
@@ -70,3 +71,11 @@ Diagnosis: the previous version was clean but forgettable (every screen a headin
 - **Visual system**: raised panel surface, app mark in the sidebar, press feedback on buttons, short rise-in motion (off with reduced motion).
 
 All chart rules are in `docs/design-rules.md` section 9.
+
+## Round 4: accessible colour
+
+- Quiz outcomes moved off red and green, which collapse into one colour for protanopia (validator ΔE 1.0). Right is now blue (#025884), wrong is orange (#cc6c13), and guessed is a hatched light blue, meaning "right, but unsure". Validator: CVD separation 22.1, normal-vision 31.5, all at least 3:1 on the surface.
+- In greyscale the three read as dark solid, light hatched and mid solid, so they separate without colour. Checked with screenshots in colour, greyscale and a protanopia simulation.
+- Every outcome also has an icon and a word (✓ Correct, ✕ Your pick, ? guessed), a legend and a table view.
+- Text colours raised to WCAG AAA (7:1) on the page: secondary text, success, error, info and the new right/wrong text inks.
+- Red and green are now only used for system messages (validation errors, delete, score going up or down), always with an icon and words.

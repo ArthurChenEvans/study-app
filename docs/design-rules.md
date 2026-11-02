@@ -66,16 +66,20 @@ Warm paper-and-coffee neutrals with one primary and four state colours. Every te
 | base-200 | oklch(94% 0.014 78) | #f0eae1 | Sidebars, the preview pane, hover | |
 | base-300 | oklch(89% 0.018 75) | #e2d9ce | Dividers, selected rows | decorative only |
 | base-content | oklch(27% 0.025 60) | #30241a | Main text | 13.9 on base-100 |
-| muted (custom) | oklch(48% 0.022 65) | #675b51 | Secondary text | 6.0 on base-100, 5.5 on base-200 |
+| muted (custom) | oklch(42% 0.022 65) | #564b41 | Secondary text | 7.8 on base-100, 7.1 on base-200 (AAA) |
 | field border (custom) | oklch(58% 0.02 65) | #83786e | Input and checkbox borders | 3.9 on base-100 |
 | primary | oklch(40% 0.065 50) | #643d26 | The one main action per screen, focus rings | 8.6 with its content |
 | neutral | oklch(32% 0.02 60) | #3b3129 | Secondary solid buttons, tooltips | 10.7 with its content |
 | accent / warning | oklch(78% 0.13 78) | #e5ac4c | "Guessed" flag, timer running low | 7.5 with dark content |
-| success | oklch(50% 0.11 145) | #357339 | Correct answer | 5.2 |
-| error | oklch(50% 0.16 30) | #ac3225 | Wrong answer, destructive actions | 6.0 |
-| info | oklch(50% 0.07 235) | #386a86 | Neutral notices, source/citation links | 5.4 |
+| success | oklch(42% 0.11 145) | #1c5c23 | System success, score going up | 7.4 (AAA) |
+| error | oklch(44% 0.15 30) | #942318 | Validation errors, destructive actions | 7.7 (AAA) |
+| info | oklch(44% 0.07 235) | #265874 | Neutral notices, source/citation links | 7.0 (AAA) |
+| right (custom) | #025884, text #004d77 | | Quiz answer right | text 8.3 (AAA) |
+| wrong (custom) | #cc6c13, text #853900 | | Quiz answer wrong | text 7.5 (AAA) |
+| guessed (custom) | hatch of #025884 on #c1dcf0, text #013658 | | Right but guessed | text 8.9 on its tint |
 
 Rules:
+- Quiz outcomes use the blue / orange pair, not green / red, so they survive colour blindness. Green and red stay for system messages only.
 - Correct, wrong and guessed are **never shown by colour alone**. Always add an icon and a word ("Correct", "Wrong", "Guessed") for colour-blind use and the greyscale test.
 - Primary is not used for correct/wrong, so "this is the main button" and "you got it right" never get confused.
 - No gradients. No pure black or pure white.
@@ -102,13 +106,13 @@ Rules:
   --color-accent-content: oklch(27% 0.025 60);
   --color-neutral: oklch(32% 0.02 60);
   --color-neutral-content: oklch(94% 0.014 78);
-  --color-info: oklch(50% 0.07 235);
+  --color-info: oklch(44% 0.07 235);
   --color-info-content: oklch(97% 0.010 80);
-  --color-success: oklch(50% 0.11 145);
+  --color-success: oklch(42% 0.11 145);
   --color-success-content: oklch(97% 0.010 80);
   --color-warning: oklch(78% 0.13 78);
   --color-warning-content: oklch(27% 0.025 60);
-  --color-error: oklch(50% 0.16 30);
+  --color-error: oklch(44% 0.15 30);
   --color-error-content: oklch(97% 0.010 80);
 
   --radius-selector: 0.25rem;
@@ -125,7 +129,7 @@ Rules:
 }
 
 @theme {
-  --color-muted: oklch(48% 0.022 65);
+  --color-muted: oklch(42% 0.022 65);
   --color-field-border: oklch(58% 0.02 65);
   --font-sans: "IBM Plex Sans", ui-sans-serif, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
@@ -215,15 +219,15 @@ Rules:
 Charts show progress from saved attempts only. They never invent data the app doesn't store.
 
 **Colours**
-| Token | Hex | Job |
+| Token | Value | Job |
 |---|---|---|
-| `--chart-right` | #357339 | Right and sure |
-| `--chart-guessed` | #bc7d19 | Right but flagged as guessed (a darker step than the UI amber, which is too light for marks) |
-| `--chart-wrong` | #ac3225 | Wrong |
+| `--chart-right` | #025884 | Right and sure |
+| `--guessed-fill` | 135° hatch, #025884 2px on #c1dcf0 4px | Right but flagged as guessed |
+| `--chart-wrong` | #cc6c13 | Wrong |
 | `--chart-ink` | #643d26 | Any single-series chart (score trend, reason counts) |
 | `--chart-grid` | oklch(91% 0.016 76) | Gridlines, hairline and solid |
 
-The right / guessed / wrong set passes the colour-blind validator (lightness band, chroma floor, CVD separation 9.5, normal-vision floor 17.6, all at least 3:1 on the surface). In greyscale, right and wrong have similar lightness, so they are always drawn in the same order (right, guessed, wrong), separated by 2px gaps, and backed by a legend, tooltips and a table view.
+Validator (all pairs): lightness band, chroma floor, CVD separation 22.1, normal-vision 31.5 and 3:1 on the surface all pass. Greyscale lightness: right 0.33, wrong 0.52, guessed tint 0.84 plus hatch, so the three separate without colour. Labels inside fills: white on right (7.7:1), near-black on wrong, and guessed counts sit on a small surface-coloured label because text over the hatch is hard to read.
 
 **Forms**
 - Score over time: one line, 2px, 8 to 10% area wash, filled dots with a 2px surface ring, hollow dots for retries. Only the latest point is labelled.

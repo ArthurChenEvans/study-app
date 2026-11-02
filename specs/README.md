@@ -38,6 +38,7 @@ Behaviour specs in Gherkin for everything a user does in the MVP. Every scenario
 | R30 | Deleting a topic or question asks for confirmation and keeps past history intact |
 | R31 | Search updates as you type, with category tabs (modules, topics, tags, sources), sortable columns and combinable filters, across question text, options, explanations, tags and sources |
 | R32 | Keyboard shortcuts in quizzes: 1 to 5 pick an option, Enter submits, F flags as guessed |
+| R33 | An overview screen shows progress from saved attempts: accuracy for the last 7 days and its change from the 7 days before, questions answered, share of right answers that were guessed, score per quiz over time, topics ranked by their latest score, and wrong-answer reasons ranked by count. With no attempts it shows first steps instead |
 
 Preset wrong-answer reasons (R25): blank, misremembered, confused with something similar, misread the question, careless slip, second-guessed, never learned it.
 
@@ -69,6 +70,11 @@ Preset wrong-answer reasons (R25): blank, misremembered, confused with something
 - Rule R24: results contents. Example: 8/10 correct, 2 guessed.
 - Rule R26: retry set. Example: 2 wrong plus 1 guessed-right gives a 3-question retry.
 - Rule R28: history snapshot. Example: edit a question after a quiz, history shows the old text.
+
+**Overview (overview.feature)**
+- Rule R33: progress comes only from saved attempts. Example: 6 quizzes in the last 7 days at 63%, previous 7 days at 59%, shows "+4 points".
+- Example: OSI model at 27% is listed above CPU at 85%.
+- Example: no attempts yet, shows first steps instead of charts.
 
 **Search (search.feature)**
 - Rule R31: example: filter tag "hardware" in module "Computer Architecture".
@@ -109,6 +115,7 @@ Preset wrong-answer reasons (R25): blank, misremembered, confused with something
 | R30 | topics: Delete a topic that is in history, questions: Delete a question that is in history |
 | R31 | search: Search as you type, Search question content (outline), Search across categories (outline), Combine filters, Sort results |
 | R32 | taking-quiz: Keyboard shortcuts (outline) |
+| R33 | overview: Progress summary, Change from the previous week, Score per quiz, Weakest topics first, Topics never quizzed, Reasons ranked, Retries on the chart, First run |
 
 ## Open questions
 
