@@ -83,7 +83,7 @@ Rules:
 - Correct, wrong and guessed are **never shown by colour alone**. Always add an icon and a word ("Correct", "Wrong", "Guessed") for colour-blind use and the greyscale test.
 - Primary is not used for correct/wrong, so "this is the main button" and "you got it right" never get confused.
 - No gradients. No pure black or pure white.
-- Dark theme comes later, as a second theme block with the same token names.
+- Dark theme (`studyapp-dark`) is the default, with the same token names. See section 11.
 
 ### DaisyUI theme
 
@@ -245,6 +245,30 @@ Validator (all pairs): lightness band, chroma floor, CVD separation 22.1, normal
 - Page: base-100. Sidebar: base-200.
 - Panel (`.panel`): one raised surface, oklch(99% 0.006 80), 1px base-300 border, 12px radius, two-layer soft shadow. Used for things read as a unit: charts, stat tiles, the quiz summary, grouped settings, tables.
 - Nested radii: things inside a panel use 8px or less.
+
+## 11. Dark theme
+
+Dark is the default. A Dark / Light switch sits at the bottom of the sidebar and the choice is remembered on the device. Dark is its own palette, not an inversion: raised things get lighter.
+
+| Token | Value | Check |
+|---|---|---|
+| Sidebar (base-200) | oklch(16% 0.012 65) | Lowest surface |
+| Page (base-100) | oklch(19% 0.012 65) | |
+| Panel (`--surface`) | oklch(23% 0.014 65) | Raised, with a faint top highlight |
+| Borders (base-300) | oklch(32% 0.016 65) | Decorative only |
+| Text | oklch(93% 0.012 80) | 15.0 on page, 13.8 on panel |
+| Secondary text | oklch(78% 0.016 75) | 8.4 on panel (AAA) |
+| Field border | oklch(52% 0.018 70) | 3.1 on panel |
+| Primary (caramel) | oklch(74% 0.10 62), dark text on it | 7.8 on page, 8.0 for its label |
+| Success / error / info text | oklch(76%) steps | 8.3 / 7.5 / 8.0 on panel (AAA) |
+| Right | #0573aa, text #87c6f2 | text 9.2 |
+| Wrong | #d67523, text #f9b379 | text 9.5 |
+| Guessed | hatch #0573aa on #163c54, text #bbddf6 | text 7.6 on its tint |
+| Chart ink | the caramel primary | |
+
+The dark right / wrong pair was run through the validator against the dark panel: lightness band (0.48 to 0.67), chroma floor, CVD separation 21.4, normal-vision 30.0 and 3:1 all pass. Greyscale lightness: right 0.41, wrong 0.57, guessed darker plus hatch.
+
+Code blocks use Shiki's min-dark theme in dark and min-light in light.
 
 ## Sources
 

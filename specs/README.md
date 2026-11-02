@@ -39,6 +39,7 @@ Behaviour specs in Gherkin for everything a user does in the MVP. Every scenario
 | R31 | Search updates as you type, with category tabs (modules, topics, tags, sources), sortable columns and combinable filters, across question text, options, explanations, tags and sources |
 | R32 | Keyboard shortcuts in quizzes: 1 to 5 pick an option, Enter submits, F flags as guessed |
 | R33 | An overview screen shows progress from saved attempts: accuracy for the last 7 days and its change from the 7 days before, questions answered, share of right answers that were guessed, score per quiz over time, topics ranked by their latest score, and wrong-answer reasons ranked by count. With no attempts it shows first steps instead |
+| R34 | The app has a dark and a light theme, starts in dark, and remembers the chosen theme |
 
 Preset wrong-answer reasons (R25): blank, misremembered, confused with something similar, misread the question, careless slip, second-guessed, never learned it.
 
@@ -116,6 +117,7 @@ Preset wrong-answer reasons (R25): blank, misremembered, confused with something
 | R31 | search: Search as you type, Search question content (outline), Search across categories (outline), Combine filters, Sort results |
 | R32 | taking-quiz: Keyboard shortcuts (outline) |
 | R33 | overview: Progress summary, Change from the previous week, Score per quiz, Weakest topics first, Topics never quizzed, Reasons ranked, Retries on the chart, First run |
+| R34 | appearance: Dark by default, Switch to light, Choice is remembered |
 
 ## Open questions
 

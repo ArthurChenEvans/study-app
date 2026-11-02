@@ -79,3 +79,9 @@ All chart rules are in `docs/design-rules.md` section 9.
 - Every outcome also has an icon and a word (✓ Correct, ✕ Your pick, ? guessed), a legend and a table view.
 - Text colours raised to WCAG AAA (7:1) on the page: secondary text, success, error, info and the new right/wrong text inks.
 - Red and green are now only used for system messages (validation errors, delete, score going up or down), always with an icon and words.
+
+## Round 5: dark mode
+
+- Dark is the default, with a Dark / Light switch in the sidebar. The choice is remembered (R34).
+- Every hard-coded colour in the prototype was moved to a theme token, so both themes change together: field borders, the pipeline diagram, label colours inside chart fills, shadows, code highlighting.
+- Dark palette and its contrast checks are in `docs/design-rules.md` section 11. All text is AAA, and the chart pair passes the validator against the dark surface.
