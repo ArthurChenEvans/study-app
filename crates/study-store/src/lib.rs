@@ -36,6 +36,8 @@ pub enum StoreError {
     Json(#[from] serde_json::Error),
     #[error("{0} not found")]
     NotFound(&'static str),
+    #[error("{0}")]
+    Invalid(&'static str),
     #[error(
         "the database was made by a newer version of the app (schema {found}, this app knows up to {known})"
     )]
@@ -123,6 +125,17 @@ impl Store {
             })
         })?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
+    }
+
+    /// R43: topics in the module move to "No module". Nothing else is deleted.
+    pub fn delete_module(&mut self, module: ModuleId) -> Result<()> {
+        let tx = self.connection.transaction()?;
+        tx.execute("UPDATE topics SET module_id = NULL WHERE module_id = ?1", [module.0])?;
+        if tx.execute("DELETE FROM modules WHERE id = ?1", [module.0])? == 0 {
+            return Err(StoreError::NotFound("module"));
+        }
+        tx.commit()?;
+        Ok(())
     }
 
     pub fn create_topic(&mut self, name: &str, module: Option<ModuleId>) -> Result<TopicId> {
@@ -312,11 +325,41 @@ impl Store {
     // ---------- Bibliography (R13) ----------
 
     pub fn add_source(&mut self, fields: &SourceFields) -> Result<SourceId> {
+        check_source(fields)?;
         self.connection.execute(
             "INSERT INTO sources (authors, year, title, edition, description, publisher, url) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             params![fields.authors, fields.year, fields.title, fields.edition, fields.description, fields.publisher, fields.url],
         )?;
         Ok(SourceId(self.connection.last_insert_rowid()))
+    }
+
+    /// R45: questions show the new details. History keeps its own snapshot.
+    pub fn update_source(&mut self, id: SourceId, fields: &SourceFields) -> Result<()> {
+        check_source(fields)?;
+        let changed = self.connection.execute(
+            "UPDATE sources SET authors = ?2, year = ?3, title = ?4, edition = ?5, description = ?6, publisher = ?7, url = ?8 WHERE id = ?1",
+            params![id.0, fields.authors, fields.year, fields.title, fields.edition, fields.description, fields.publisher, fields.url],
+        )?;
+        if changed == 0 {
+            return Err(StoreError::NotFound("source"));
+        }
+        Ok(())
+    }
+
+    /// R44: removes the source and its citations, returning how many questions cited it.
+    pub fn delete_source(&mut self, id: SourceId) -> Result<usize> {
+        let tx = self.connection.transaction()?;
+        let cited: i64 = tx.query_row(
+            "SELECT COUNT(DISTINCT question_id) FROM citations WHERE source_id = ?1",
+            [id.0],
+            |row| row.get(0),
+        )?;
+        tx.execute("DELETE FROM citations WHERE source_id = ?1", [id.0])?;
+        if tx.execute("DELETE FROM sources WHERE id = ?1", [id.0])? == 0 {
+            return Err(StoreError::NotFound("source"));
+        }
+        tx.commit()?;
+        Ok(cited as usize)
     }
 
     pub fn sources(&self) -> Result<Vec<SourceRow>> {
@@ -490,3 +533,11 @@ fn write_question_parts(
 
 #[cfg(test)]
 mod tests;
+
+/// R46: a source needs a title. Every other field is optional.
+fn check_source(fields: &SourceFields) -> Result<()> {
+    if fields.title.trim().is_empty() {
+        return Err(StoreError::Invalid("a source needs a title"));
+    }
+    Ok(())
+}

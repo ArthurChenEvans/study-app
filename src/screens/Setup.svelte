@@ -1,5 +1,5 @@
 <script lang="ts">
-  // quiz-setup.feature (R15 to R19)
+  // quiz-setup.feature (R15 to R19, R36 to R38)
   import { CircleAlert, Play } from "@lucide/svelte";
   import { api, errorMessage, type Id, type ModuleRow, type QuizView, type TopicRow } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
@@ -28,7 +28,9 @@
   let starting = $state(false);
 
   const available = $derived(topics.filter((topic) => chosen.includes(topic.id)).reduce((sum, topic) => sum + topic.question_count, 0));
-  const questionCount = $derived(setNumber ? count : available);
+  // R36: asking for more than exist uses all of them.
+  const questionCount = $derived(setNumber ? Math.min(Number(count) || 0, available) : available);
+  const overAsked = $derived(setNumber && Number(count) > available && chosen.length > 0);
   const moduleName = (id: Id | null) => modules.find((module) => module.id === id)?.name ?? "No module";
 
   function toggle(id: Id) {
@@ -83,10 +85,11 @@
         <h2 class="eyebrow mb-3">Topics</h2>
         <div class="panel divide-y">
           {#each topics as topic (topic.id)}
-            <label class="flex cursor-pointer items-center gap-4 px-6 py-3 hover:bg-base-100">
-              <input type="checkbox" class="checkbox checkbox-sm" checked={chosen.includes(topic.id)} onchange={() => toggle(topic.id)} />
+            {@const empty = topic.question_count === 0}
+            <label class="flex items-center gap-4 px-6 py-3 {empty ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-base-100'}">
+              <input type="checkbox" class="checkbox checkbox-sm" checked={chosen.includes(topic.id)} disabled={empty} onchange={() => toggle(topic.id)} />
               <span class="flex-1"><span class="text-sm font-semibold">{topic.name}</span> <span class="text-sm text-muted">· {moduleName(topic.module)}</span></span>
-              <span class="text-xs tabular-nums text-muted">{topic.question_count} questions</span>
+              <span class="text-xs tabular-nums text-muted">{empty ? "no questions yet" : `${topic.question_count} questions`}</span>
             </label>
           {:else}
             <p class="px-6 py-4 text-sm text-muted">Create a topic and write some questions first.</p>
@@ -98,18 +101,19 @@
         <h2 class="eyebrow mb-3">Settings</h2>
         <div class="panel divide-y">
           {#snippet modeControl()}<Seg label="Mode" bind:value={exam} options={[{ value: false, label: "Study" }, { value: true, label: "Exam" }]} />{/snippet}
-          {@render row("Mode", "Study shows feedback after each question. Exam shows it at the end, and you can't go back.", modeControl)}
+          {@render row("Mode", "Study shows feedback after each question. Exam shows it at the end. You can't go back in either.", modeControl)}
 
           {#snippet amountControl()}
             <div class="flex items-center gap-2">
               <Seg label="Amount" bind:value={setNumber} options={[{ value: false, label: "All" }, { value: true, label: "Set number" }]} />
               <input class="input input-sm w-20 tabular-nums" type="number" min="1" aria-label="Number of questions" bind:value={count} disabled={!setNumber} />
             </div>
+            {#if overAsked}<p class="mt-1 text-right text-xs text-muted">Only {available} available</p>{/if}
           {/snippet}
           {@render row("Questions", "", amountControl)}
 
           {#snippet pickControl()}<Seg label="Pick" bind:value={even} options={[{ value: false, label: "Random" }, { value: true, label: "Even" }]} />{/snippet}
-          {@render row("Pick", "Random draws from all topics together. Even takes the same number from each.", pickControl)}
+          {@render row("Pick", "Random draws from all topics together. Even takes the same number from each, giving any extra to the first topics.", pickControl)}
 
           {#snippet questionOrder()}<Seg label="Question order" bind:value={shuffleQuestions} options={[{ value: false, label: "Keep", name: "Keep questions" }, { value: true, label: "Shuffle", name: "Shuffle questions" }]} />{/snippet}
           {@render row("Question order", "", questionOrder)}

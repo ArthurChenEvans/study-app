@@ -221,6 +221,10 @@ impl App {
             .create_module(required(name, "give the module a name")?)?)
     }
 
+    pub fn delete_module(&mut self, module: ModuleId) -> ApiResult<()> {
+        Ok(self.store.delete_module(module)?)
+    }
+
     pub fn topics(&self) -> ApiResult<Vec<TopicRow>> {
         Ok(self.store.topics()?)
     }
@@ -299,6 +303,16 @@ impl App {
     pub fn add_source(&mut self, fields: SourceFields) -> ApiResult<SourceId> {
         required(&fields.title, "give the source a title")?;
         Ok(self.store.add_source(&fields)?)
+    }
+
+    pub fn update_source(&mut self, id: SourceId, fields: SourceFields) -> ApiResult<()> {
+        required(&fields.title, "give the source a title")?;
+        Ok(self.store.update_source(id, &fields)?)
+    }
+
+    /// Returns how many questions cited the source.
+    pub fn delete_source(&mut self, id: SourceId) -> ApiResult<usize> {
+        Ok(self.store.delete_source(id)?)
     }
 
     pub fn sources(&self) -> ApiResult<Vec<SourceRow>> {

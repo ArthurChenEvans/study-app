@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../lib/api", async (original) => {
   const actual = await original<typeof import("../lib/api")>();
-  return { ...actual, api: { sources: vi.fn(), topics: vi.fn(), addSource: vi.fn() } };
+  return { ...actual, api: { sources: vi.fn(), topics: vi.fn(), addSource: vi.fn(), updateSource: vi.fn(), deleteSource: vi.fn() } };
 });
 
 import { api, type SourceRow } from "../lib/api";
@@ -73,5 +73,34 @@ describe("Bibliography", () => {
     await u.click(await screen.findByRole("button", { name: "Add your first source" }));
     await u.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Add source" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("give the source a title");
+  });
+
+  // R45
+  it("edits a source", async () => {
+    mocked.sources.mockResolvedValue([kirk]);
+    const u = userEvent.setup();
+    render(Bibliography);
+    await u.click(await screen.findByRole("button", { name: "Edit source" }));
+    const year = screen.getByLabelText("Year");
+    expect(year).toHaveValue("2022");
+    await u.clear(year);
+    await u.type(year, "2023");
+    await u.click(screen.getByRole("button", { name: "Save source" }));
+    expect(mocked.updateSource).toHaveBeenCalledWith(1, { ...kirk.fields, year: "2023" });
+  });
+
+  // R44
+  it("deletes a source after saying how many questions cite it", async () => {
+    mocked.sources.mockResolvedValue([kirk]);
+    mocked.deleteSource.mockResolvedValue(7);
+    const u = userEvent.setup();
+    render(Bibliography);
+    await u.click(await screen.findByRole("button", { name: "Delete source" }));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent("7 questions cite it");
+    mocked.sources.mockResolvedValue([]);
+    await u.click(within(dialog).getByRole("button", { name: "Delete source" }));
+    expect(mocked.deleteSource).toHaveBeenCalledWith(1);
+    expect(await screen.findByText("No sources yet")).toBeInTheDocument();
   });
 });

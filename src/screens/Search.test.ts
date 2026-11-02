@@ -43,6 +43,8 @@ describe("Search", () => {
     await u.click(await screen.findByRole("tab", { name: "Topics" }));
     expect(lastQuery().tab).toBe("Topics");
     expect(screen.getByRole("tab", { name: "Topics" })).toHaveAttribute("aria-selected", "true");
+    await u.click(screen.getByRole("tab", { name: "Questions" }));
+    expect(lastQuery().tab).toBe("Questions");
   });
 
   // search.feature: Combine filters

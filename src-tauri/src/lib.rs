@@ -86,6 +86,18 @@ fn add_source(state: AppState, fields: SourceFields) -> ApiResult<SourceId> {
     with(state, |app| app.add_source(fields))
 }
 #[tauri::command]
+fn update_source(state: AppState, id: SourceId, fields: SourceFields) -> ApiResult<()> {
+    with(state, |app| app.update_source(id, fields))
+}
+#[tauri::command]
+fn delete_source(state: AppState, id: SourceId) -> ApiResult<usize> {
+    with(state, |app| app.delete_source(id))
+}
+#[tauri::command]
+fn delete_module(state: AppState, module: ModuleId) -> ApiResult<()> {
+    with(state, |app| app.delete_module(module))
+}
+#[tauri::command]
 fn sources(state: AppState) -> ApiResult<Vec<SourceRow>> {
     with(state, |app| app.sources())
 }
@@ -166,6 +178,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             modules,
             create_module,
+            delete_module,
+            update_source,
+            delete_source,
             topics,
             create_topic,
             move_topic,

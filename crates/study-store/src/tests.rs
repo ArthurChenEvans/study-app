@@ -348,3 +348,68 @@ fn reasons_are_saved_and_feed_the_overview() {
     assert_eq!(records[0].day, 100);
     assert_eq!(records[0].sequence, id.0 as u64);
 }
+
+// R43: deleting a module moves its topics to "No module"
+#[test]
+fn deleting_a_module_keeps_its_topics() {
+    let mut store = store();
+    let arch = store.create_module("Computer Architecture").unwrap();
+    let gpu = store.create_topic("GPU", Some(arch)).unwrap();
+    store.save_question(&question(gpu, "Q1")).unwrap();
+    store.delete_module(arch).unwrap();
+    assert!(store.modules().unwrap().is_empty());
+    let topics = store.topics().unwrap();
+    assert_eq!(topics.len(), 1);
+    assert_eq!(topics[0].module, None);
+    assert_eq!(topics[0].question_count, 1);
+    assert!(matches!(store.delete_module(arch), Err(StoreError::NotFound(_))));
+}
+
+fn cited(topic: TopicId, source: SourceId) -> Question {
+    Question::new(QuestionDraft {
+        topic,
+        text: "Cited".into(),
+        kind: AnswerKind::Single,
+        options: (0..3)
+            .map(|i| AnswerOption { text: format!("O{i}"), correct: i == 0 })
+            .collect(),
+        explanation: String::new(),
+        tags: vec![],
+        citations: vec![study_core::question::Citation { source, location: "p. 4".into() }],
+    })
+    .unwrap()
+}
+
+// R45: editing a source updates it
+#[test]
+fn editing_a_source_updates_it() {
+    let mut store = store();
+    let id = store.add_source(&kirk()).unwrap();
+    let mut fields = kirk();
+    fields.year = Some("2023".into());
+    store.update_source(id, &fields).unwrap();
+    assert_eq!(store.sources().unwrap()[0].fields.year.as_deref(), Some("2023"));
+}
+
+// R46: a source needs a title
+#[test]
+fn a_source_needs_a_title() {
+    let mut store = store();
+    let mut fields = kirk();
+    fields.title = "  ".into();
+    assert!(matches!(store.add_source(&fields), Err(StoreError::Invalid(_))));
+    let id = store.add_source(&kirk()).unwrap();
+    assert!(matches!(store.update_source(id, &fields), Err(StoreError::Invalid(_))));
+}
+
+// R44: deleting a cited source removes the citations and says how many
+#[test]
+fn deleting_a_source_removes_its_citations() {
+    let mut store = store();
+    let gpu = store.create_topic("GPU", None).unwrap();
+    let source = store.add_source(&kirk()).unwrap();
+    let q = store.save_question(&cited(gpu, source)).unwrap();
+    assert_eq!(store.delete_source(source).unwrap(), 1);
+    assert!(store.sources().unwrap().is_empty());
+    assert!(store.question(q).unwrap().citations().is_empty());
+}

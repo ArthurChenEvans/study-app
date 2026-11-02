@@ -12,6 +12,8 @@ vi.mock("../lib/api", async (original) => {
       createTopic: vi.fn(),
       createModule: vi.fn(),
       deleteTopic: vi.fn(),
+      deleteModule: vi.fn(),
+      setTopicTags: vi.fn(),
     },
   };
 });
@@ -88,5 +90,33 @@ describe("Topics screen", () => {
     mocked.topics.mockResolvedValue([]);
     await user.click(within(dialog).getByRole("button", { name: "Delete topic" }));
     expect(mocked.deleteTopic).toHaveBeenCalledWith(1);
+  });
+
+  // R43
+  it("deletes a module after asking, keeping its topics", async () => {
+    given([{ id: 1, name: "CPU", module: 1, tags: [], question_count: 3 }]);
+    const u = userEvent.setup();
+    render(Topics);
+    await u.click(await screen.findByRole("button", { name: "Delete module Computer Architecture" }));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent('moved to "No module"');
+    given([{ id: 1, name: "CPU", module: null, tags: [], question_count: 3 }], []);
+    await u.click(within(dialog).getByRole("button", { name: "Delete module" }));
+    expect(mocked.deleteModule).toHaveBeenCalledWith(1);
+    expect(await screen.findByRole("region", { name: "No module" })).toHaveTextContent("CPU");
+  });
+
+  // R51
+  it("edits a topic's tags", async () => {
+    given([{ id: 1, name: "CPU", module: 1, tags: ["hardware"], question_count: 3 }]);
+    const u = userEvent.setup();
+    render(Topics);
+    await u.click(await screen.findByRole("button", { name: "Edit tags for CPU" }));
+    const input = screen.getByLabelText("Tags");
+    expect(input).toHaveValue("hardware");
+    await u.clear(input);
+    await u.type(input, "hardware, pipeline ,  ,exam");
+    await u.click(screen.getByRole("button", { name: "Save tags" }));
+    expect(mocked.setTopicTags).toHaveBeenCalledWith(1, ["hardware", "pipeline", "exam"]);
   });
 });

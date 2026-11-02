@@ -1,5 +1,5 @@
 <script lang="ts">
-  // search.feature (R31). Which tab questions belong under is open (Q16): they show under All.
+  // search.feature (R31, R50)
   import { ArrowDown, ArrowUp, ArrowUpDown, Search as SearchIcon, X } from "@lucide/svelte";
   import { api, type Id, type ModuleRow, type SearchHit, type SearchQuery } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
@@ -7,7 +7,7 @@
 
   let { onOpenTopic }: { onOpenTopic: (topic: Id) => void } = $props();
 
-  const tabs: SearchQuery["tab"][] = ["All", "Modules", "Topics", "Tags", "Sources"];
+  const tabs: SearchQuery["tab"][] = ["All", "Questions", "Modules", "Topics", "Tags", "Sources"];
   let text = $state("");
   let tab = $state<SearchQuery["tab"]>("All");
   let module = $state("");

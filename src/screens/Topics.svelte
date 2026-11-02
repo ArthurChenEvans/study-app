@@ -1,6 +1,6 @@
 <script lang="ts">
-  // topics.feature (R1, R2, R3, R30)
-  import { Folder, FolderOpen, FolderPlus, Library, Pencil, Play, Plus, Trash2 } from "@lucide/svelte";
+  // topics.feature (R1, R2, R3, R30, R43, R51)
+  import { Folder, FolderOpen, FolderPlus, Library, Pencil, Play, Plus, Tags, Trash2 } from "@lucide/svelte";
   import { api, errorMessage, type Id, type ModuleRow, type TopicRow } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
 
@@ -16,6 +16,30 @@
   let createError = $state("");
 
   let deleting = $state<TopicRow | null>(null);
+  let deletingModule = $state<{ id: Id; name: string; count: number } | null>(null);
+  let tagging = $state<TopicRow | null>(null);
+  let tagText = $state("");
+
+  function openTags(topic: TopicRow) {
+    tagging = topic;
+    tagText = topic.tags.join(", ");
+  }
+
+  async function saveTags(event: SubmitEvent) {
+    event.preventDefault();
+    if (!tagging) return;
+    const tags = tagText.split(",").map((tag) => tag.trim()).filter(Boolean);
+    await api.setTopicTags(tagging.id, tags);
+    tagging = null;
+    await load();
+  }
+
+  async function confirmDeleteModule() {
+    if (!deletingModule) return;
+    await api.deleteModule(deletingModule.id);
+    deletingModule = null;
+    await load();
+  }
 
   let creatingModule = $state(false);
   let moduleName = $state("");
@@ -35,10 +59,9 @@
 
   const groups = $derived.by(() => {
     const byModule = modules
-      .map((module) => ({ key: `m${module.id}`, name: module.name, topics: topics.filter((topic) => topic.module === module.id) }))
-      .filter((group) => group.topics.length > 0);
+      .map((module) => ({ key: `m${module.id}`, id: module.id as Id | null, name: module.name, topics: topics.filter((topic) => topic.module === module.id) }));
     const loose = topics.filter((topic) => topic.module === null);
-    return loose.length ? [...byModule, { key: "none", name: "No module", topics: loose }] : byModule;
+    return loose.length ? [...byModule, { key: "none", id: null, name: "No module", topics: loose }] : byModule;
   });
 
   async function load() {
@@ -93,7 +116,14 @@
     <section class="mt-8" aria-labelledby="group-{group.key}">
       <h2 id="group-{group.key}" class="mb-2 flex items-center gap-2 text-sm font-semibold text-muted">
         {#if group.key === "none"}<FolderOpen class="size-4" />{:else}<Folder class="size-4" />{/if}{group.name}
+        {#if group.id !== null}
+          {@const id = group.id}
+          <button class="btn btn-ghost btn-xs btn-square ml-1" aria-label="Delete module {group.name}" onclick={() => (deletingModule = { id, name: group.name, count: group.topics.length })}><Trash2 class="size-3.5" /></button>
+        {/if}
       </h2>
+      {#if group.topics.length === 0}
+        <p class="panel px-6 py-4 text-sm text-muted">No topics in this module yet.</p>
+      {:else}
       <div class="panel overflow-hidden">
         <table class="table table-fixed">
           <colgroup><col class="w-[30%]" /><col class="w-[30%]" /><col class="w-[12%]" /><col class="w-[28%]" /></colgroup>
@@ -104,6 +134,7 @@
                 <td class="font-semibold">{topic.name}</td>
                 <td>
                   {#each topic.tags as tag (tag)}<span class="badge badge-ghost mr-1 rounded-full text-xs">{tag}</span>{:else}<span class="text-sm text-muted">None</span>{/each}
+                  <button class="btn btn-ghost btn-xs btn-square" aria-label="Edit tags for {topic.name}" onclick={() => openTags(topic)}><Tags class="size-3.5" /></button>
                 </td>
                 <td class="text-right tabular-nums">{topic.question_count}</td>
                 <td class="whitespace-nowrap text-right">
@@ -116,6 +147,7 @@
           </tbody>
         </table>
       </div>
+      {/if}
     </section>
   {/each}
 </div>
@@ -172,6 +204,37 @@
       <div class="modal-action">
         <button type="button" class="btn btn-ghost" onclick={() => (creatingModule = false)}>Cancel</button>
         <button type="submit" class="btn btn-primary">Create module</button>
+      </div>
+    </form>
+  </dialog>
+{/if}
+
+{#if deletingModule}
+  <dialog open class="modal modal-open" aria-labelledby="delete-module-title">
+    <div class="modal-box max-w-md">
+      <h3 id="delete-module-title" class="text-lg font-semibold">Delete module "{deletingModule.name}"?</h3>
+      <p class="mt-2 text-muted">{deletingModule.count === 1 ? "Its 1 topic is" : `Its ${deletingModule.count} topics are`} moved to "No module". No topics or questions are deleted.</p>
+      <div class="modal-action">
+        <button class="btn btn-ghost" onclick={() => (deletingModule = null)}>Cancel</button>
+        <button class="btn btn-error" onclick={confirmDeleteModule}>Delete module</button>
+      </div>
+    </div>
+  </dialog>
+{/if}
+
+{#if tagging}
+  <dialog open class="modal modal-open" aria-labelledby="tags-title">
+    <form class="modal-box max-w-md" onsubmit={saveTags}>
+      <h3 id="tags-title" class="text-lg font-semibold">Tags for "{tagging.name}"</h3>
+      <label class="mt-6 block">
+        <span class="text-sm font-semibold">Tags</span>
+        <!-- svelte-ignore a11y_autofocus -->
+        <input class="input mt-1 w-full" aria-label="Tags" bind:value={tagText} autofocus placeholder="e.g. hardware, exam…" />
+        <span class="mt-1 block text-xs text-muted">Separate tags with commas.</span>
+      </label>
+      <div class="modal-action">
+        <button type="button" class="btn btn-ghost" onclick={() => (tagging = null)}>Cancel</button>
+        <button type="submit" class="btn btn-primary">Save tags</button>
       </div>
     </form>
   </dialog>

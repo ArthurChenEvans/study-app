@@ -119,23 +119,26 @@ Preset wrong-answer reasons (R25): blank, misremembered, confused with something
 | R33 | overview: Progress summary, Change from the previous week, Score per quiz, Weakest topics first, Topics never quizzed, Reasons ranked, Retries on the chart, First run |
 | R34 | appearance: Dark by default, Switch to light, Choice is remembered |
 
-## Open questions
+## Decided open questions
 
-These came up while writing the specs and aren't covered by any approved answer, so they aren't specified yet.
+All 16 open questions were answered on 2 Nov 2026 and are now requirements.
 
-1. **Unreadable or broken files:** what happens when a file can't be opened or converted (corrupt PDF, PowerPoint conversion fails)?
-2. **Set number bigger than the pool:** asking for 20 questions when the chosen topics have 12 in total.
-3. **Even split that doesn't divide:** 10 questions across 3 topics, or a topic with fewer questions than its share.
-4. **Empty topics:** can a topic with no questions be picked for a quiz?
-5. **Study mode feedback:** after each answer, is the explanation shown too, or only right/wrong?
-6. **Study mode going back:** exam mode can't go back. Can study mode?
-7. **Guessed questions that were wrong:** in the results, are they counted in "N guessed", or only correct ones?
-8. **Retry of a retry:** can you retry a retry, and does it use the retry's own wrong and guessed ones?
-9. **Deleting a module:** what happens to its topics?
-10. **Deleting a source** that questions cite.
-11. **Editing a source** after questions cite it: do questions show the new details, and does history?
-12. **Required source fields:** which APA fields must be filled in to save a source?
-13. **Incomplete attempts:** can you resume one, or is it final?
-14. **Shortcuts outside the quiz** (editor, search): any wanted?
-15. **Switching a question from multiple to single answer** when it has several options marked correct: refuse, or clear the extras?
-16. **Search tabs for questions:** the tabs are modules, topics, tags and sources. Which tab do matching questions appear under, or do they need their own tab?
+| ID | Was | Requirement |
+|---|---|---|
+| R35 | Q1 | A file that can't be opened or converted shows why inside its own tab. Other tabs keep working |
+| R36 | Q2 | Asking for more questions than the chosen topics have uses all of them, and setup says how many are available before starting |
+| R37 | Q3 | An even split gives the extra questions to topics in order (10 across 3 is 4, 3, 3). A topic short of its share gives all it has and the others make up the rest |
+| R38 | Q4 | Topics with no questions can't be picked for a quiz. Setup shows them greyed out with "no questions yet" |
+| R39 | Q5 | Study mode shows the explanation and sources straight after each answer |
+| R40 | Q6 | There's no going back to an earlier question in either mode |
+| R41 | Q7 | "N guessed" counts only right answers that were guesses. Wrong guesses count as wrong |
+| R42 | Q8 | A retry can be retried, using its own wrong and guessed questions, and stays linked to the original quiz |
+| R43 | Q9 | Deleting a module asks first, then moves its topics to "No module". Nothing else is deleted |
+| R44 | Q10 | Deleting a cited source asks first, saying how many questions cite it, then removes those citations. History keeps them |
+| R45 | Q11 | Editing a source updates what questions show. History keeps the old details |
+| R46 | Q12 | A source needs a title. Every other field is optional |
+| R47 | Q13 | An incomplete attempt is final. Retry covers what's left |
+| R48 | Q14 | `/` focuses search from anywhere, and Ctrl+S saves the question in the editor |
+| R49 | Q15 | Switching a question from multiple to single answer keeps the first tick, clears the rest and says so |
+| R50 | Q16 | Search has a Questions tab: All, Questions, Modules, Topics, Tags, Sources |
+| R51 | New | Topic tags can be edited from the Topics screen |

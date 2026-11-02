@@ -1,8 +1,9 @@
 //! Setting up a quiz: R15 (topics, all or a set number, random or even),
 //! R16 (question and option order), R17 (timers), R18 (mode), R19 (difficulty).
 //!
-//! Open questions Q2, Q3 and Q4 in specs/README.md are not decided, so those
-//! cases return `AssemblyError::Undecided` instead of guessing.
+//! R36: asking for more than exist uses all of them.
+//! R37: an even split gives extras to topics in order; short topics are made up by others.
+//! R38: topics with no questions are refused.
 
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -82,25 +83,14 @@ pub struct QuizItem {
     pub option_order: Vec<usize>,
 }
 
-/// An open question from specs/README.md that blocks a behaviour.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
-pub enum OpenQuestion {
-    /// Q2: more questions asked for than the chosen topics have.
-    MoreThanAvailable,
-    /// Q3: an even split that doesn't divide, or a topic short of its share.
-    UnevenSplit,
-    /// Q4: a chosen topic with no questions.
-    EmptyTopic,
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Error)]
 pub enum AssemblyError {
     #[error("pick at least one topic to start")]
     NoTopics,
     #[error("ask for at least one question")]
     ZeroQuestions,
-    #[error("not decided yet in the specs: {0:?}")]
-    Undecided(OpenQuestion),
+    #[error("a chosen topic has no questions yet")]
+    EmptyTopic(TopicId),
 }
 
 /// A question in the pool the quiz draws from.
@@ -134,16 +124,14 @@ pub fn assemble<R: Rng + ?Sized>(
             entries
         })
         .collect();
-    if per_topic.iter().any(Vec::is_empty) {
-        return Err(AssemblyError::Undecided(OpenQuestion::EmptyTopic));
+    if let Some(index) = per_topic.iter().position(Vec::is_empty) {
+        return Err(AssemblyError::EmptyTopic(settings.topics[index]));
     }
     let available: usize = per_topic.iter().map(Vec::len).sum();
 
     let mut chosen: Vec<&PoolEntry> = match settings.amount {
         Amount::All => per_topic.into_iter().flatten().collect(),
-        Amount::Count(count) if count > available => {
-            return Err(AssemblyError::Undecided(OpenQuestion::MoreThanAvailable));
-        }
+        Amount::Count(count) if count >= available => per_topic.into_iter().flatten().collect(),
         Amount::Count(count) => match settings.pick {
             Pick::Random => {
                 let mut all: Vec<&PoolEntry> = per_topic.into_iter().flatten().collect();
@@ -152,14 +140,21 @@ pub fn assemble<R: Rng + ?Sized>(
                 all
             }
             Pick::Even => {
-                let topics = settings.topics.len();
-                let share = count / topics;
-                if count % topics != 0 || per_topic.iter().any(|entries| entries.len() < share) {
-                    return Err(AssemblyError::Undecided(OpenQuestion::UnevenSplit));
+                // Hand out one question per topic in turn, skipping topics that have run out.
+                let mut shares = vec![0usize; per_topic.len()];
+                let mut left = count;
+                while left > 0 {
+                    for (index, entries) in per_topic.iter().enumerate() {
+                        if left > 0 && shares[index] < entries.len() {
+                            shares[index] += 1;
+                            left -= 1;
+                        }
+                    }
                 }
                 per_topic
                     .into_iter()
-                    .flat_map(|mut entries| {
+                    .zip(shares)
+                    .flat_map(|(mut entries, share)| {
                         entries.shuffle(rng);
                         entries.truncate(share);
                         entries
@@ -432,34 +427,69 @@ mod tests {
         );
     }
 
-    // Open questions: no behaviour is invented, the caller is told it's undecided.
+    fn count_per_topic(items: &[QuizItem], topic: fn(QuestionId) -> TopicId, t: TopicId) -> usize {
+        items.iter().filter(|item| topic(item.question) == t).count()
+    }
+
+    // R36: more than available uses all of them
     #[test]
-    fn open_question_cases_are_reported_not_guessed() {
+    fn more_than_available_uses_all() {
         let questions = questions();
-        let pool = pool(&questions);
-        let more = QuizSettings {
-            amount: Amount::Count(21),
+        let settings = QuizSettings {
+            amount: Amount::Count(25),
             ..QuizSettings::for_topics(vec![CPU, GPU])
         };
-        assert_eq!(
-            assemble(&pool, &more, &mut rng()),
-            Err(AssemblyError::Undecided(OpenQuestion::MoreThanAvailable))
-        );
+        let items = assemble(&pool(&questions), &settings, &mut rng()).unwrap();
+        assert_eq!(items.len(), 20);
+        let even = QuizSettings { pick: Pick::Even, ..settings };
+        assert_eq!(assemble(&pool(&questions), &even, &mut rng()).unwrap().len(), 20);
+    }
 
-        let uneven = QuizSettings {
-            amount: Amount::Count(7),
+    const MEM: TopicId = TopicId(4);
+    fn topic3(id: QuestionId) -> TopicId {
+        if id.0 <= 10 { CPU } else if id.0 <= 20 { GPU } else { MEM }
+    }
+    fn three_topics(mem: i64) -> Vec<(QuestionId, Question)> {
+        let mut all = questions();
+        all.extend((21..21 + mem).map(|id| (QuestionId(id), question(MEM))));
+        all
+    }
+
+    // R37: extras go to topics in order
+    #[test]
+    fn even_split_gives_extras_in_order() {
+        let questions = three_topics(10);
+        let settings = QuizSettings {
+            amount: Amount::Count(10),
             pick: Pick::Even,
-            ..QuizSettings::for_topics(vec![CPU, GPU])
+            ..QuizSettings::for_topics(vec![CPU, GPU, MEM])
         };
-        assert_eq!(
-            assemble(&pool, &uneven, &mut rng()),
-            Err(AssemblyError::Undecided(OpenQuestion::UnevenSplit))
-        );
+        let items = assemble(&pool(&questions), &settings, &mut rng()).unwrap();
+        let counts = [CPU, GPU, MEM].map(|t| count_per_topic(&items, topic3, t));
+        assert_eq!(counts, [4, 3, 3]);
+    }
 
-        let empty = QuizSettings::for_topics(vec![CPU, EMPTY]);
+    // R37: a short topic gives all it has, the others make up the rest
+    #[test]
+    fn short_topic_is_made_up_by_others() {
+        let questions = three_topics(1);
+        let settings = QuizSettings {
+            amount: Amount::Count(9),
+            pick: Pick::Even,
+            ..QuizSettings::for_topics(vec![CPU, GPU, MEM])
+        };
+        let items = assemble(&pool(&questions), &settings, &mut rng()).unwrap();
+        let counts = [CPU, GPU, MEM].map(|t| count_per_topic(&items, topic3, t));
+        assert_eq!(counts, [4, 4, 1]);
+    }
+
+    // R38: empty topics are refused
+    #[test]
+    fn empty_topic_is_refused() {
+        let questions = questions();
         assert_eq!(
-            assemble(&pool, &empty, &mut rng()),
-            Err(AssemblyError::Undecided(OpenQuestion::EmptyTopic))
+            assemble(&pool(&questions), &QuizSettings::for_topics(vec![CPU, EMPTY]), &mut rng()),
+            Err(AssemblyError::EmptyTopic(EMPTY))
         );
     }
 }

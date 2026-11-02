@@ -1,5 +1,5 @@
 <script lang="ts">
-  // questions.feature, sources.feature (R4 to R10, R14)
+  // questions.feature, sources.feature (R4 to R10, R14, R48, R49)
   import { BookOpen, Plus, X } from "@lucide/svelte";
   import Preview from "../components/Preview.svelte";
   import { api, errorMessage, type Id, type QuestionInput, type SourceRow } from "../lib/api";
@@ -35,7 +35,17 @@
     }));
   }
 
+  let switchNote = $state("");
+
+  // R49: going from multiple to single keeps the first tick and clears the rest.
   function setMultiple(multiple: boolean) {
+    switchNote = "";
+    if (!multiple && draft.multiple) {
+      const first = draft.options.findIndex((option) => option.correct);
+      const ticks = draft.options.filter((option) => option.correct).length;
+      draft.options = draft.options.map((option, index) => ({ ...option, correct: index === first }));
+      if (ticks > 1) switchNote = `Kept option ${first + 1} as the correct answer and cleared the others.`;
+    }
     draft.multiple = multiple;
   }
 
@@ -51,9 +61,10 @@
     };
   }
 
-  async function save(event: SubmitEvent) {
-    event.preventDefault();
+  async function save(event?: Event) {
+    event?.preventDefault();
     error = "";
+    switchNote = "";
     try {
       if (editing === null) await api.saveQuestion(input());
       else await api.updateQuestion(editing, input());
@@ -89,6 +100,13 @@
 
   load();
 </script>
+
+<svelte:window
+  onkeydown={(event) => {
+    // R48: Ctrl+S saves the question.
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") save(event);
+  }}
+/>
 
 <div class="flex h-screen">
   <section class="flex w-1/2 min-w-0 flex-col border-r border-base-300 bg-base-200" aria-label="Source preview">
@@ -139,6 +157,7 @@
         {/each}
         <div class="flex items-center gap-3">
           <button type="button" class="btn btn-ghost btn-sm" disabled={draft.options.length >= MAX} onclick={() => (draft.options = [...draft.options, { text: "", correct: false }])}><Plus class="size-4" />Add option</button>
+          {#if switchNote}<span role="status" class="block text-sm text-muted">{switchNote}</span>{/if}
           <span class="text-sm text-muted tabular-nums">{draft.options.length} of {MAX} options. {draft.multiple ? "Tick every correct answer." : "Tick the correct answer."}</span>
         </div>
       </fieldset>

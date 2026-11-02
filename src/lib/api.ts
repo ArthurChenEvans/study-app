@@ -104,7 +104,7 @@ export type SearchHit =
   | { Topic: { id: Id; name: string } }
   | { Tag: { name: string } }
   | { Source: { id: Id; apa: string } };
-export interface SearchQuery { text: string; tab: "All" | "Modules" | "Topics" | "Tags" | "Sources"; module: Id | null; tag: string | null; sort: "Question" | "Topic" | "Edited"; descending: boolean }
+export interface SearchQuery { text: string; tab: "All" | "Questions" | "Modules" | "Topics" | "Tags" | "Sources"; module: Id | null; tag: string | null; sort: "Question" | "Topic" | "Edited"; descending: boolean }
 
 /** Errors from the backend arrive as { message }. */
 export function errorMessage(error: unknown): string {
@@ -115,6 +115,7 @@ export function errorMessage(error: unknown): string {
 export const api = {
   modules: () => invoke<ModuleRow[]>("modules"),
   createModule: (name: string) => invoke<Id>("create_module", { name }),
+  deleteModule: (module: Id) => invoke<void>("delete_module", { module }),
   topics: () => invoke<TopicRow[]>("topics"),
   createTopic: (name: string, module: Id | null) => invoke<Id>("create_topic", { name, module }),
   moveTopic: (topic: Id, module: Id | null) => invoke<void>("move_topic", { topic, module }),
@@ -129,6 +130,9 @@ export const api = {
 
   addSource: (fields: SourceFields) => invoke<Id>("add_source", { fields }),
   sources: () => invoke<SourceRow[]>("sources"),
+  updateSource: (id: Id, fields: SourceFields) => invoke<void>("update_source", { id, fields }),
+  /** Returns how many questions cited the source. */
+  deleteSource: (id: Id) => invoke<number>("delete_source", { id }),
 
   startQuiz: (setup: QuizSetupInput) => invoke<QuizView>("start_quiz", { setup }),
   currentQuestion: () => invoke<QuizView>("current_question"),

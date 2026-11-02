@@ -134,4 +134,29 @@ describe("Question editor", () => {
     await u.click(screen.getByRole("button", { name: "Save question" }));
     expect(mocked.saveQuestion).toHaveBeenCalledWith(expect.objectContaining({ citations: [{ source: 5, location: "p. 88" }] }));
   });
+
+  // R49
+  it("switching to single keeps the first tick and says so", async () => {
+    const u = user();
+    render(Editor, { topic: 1 });
+    await screen.findByText("What does the ALU do?");
+    await u.click(screen.getByRole("radio", { name: "Multiple" }));
+    await u.click(screen.getByLabelText("Option 2 is correct"));
+    await u.click(screen.getByLabelText("Option 4 is correct"));
+    await u.click(screen.getByRole("radio", { name: "Single" }));
+    expect(screen.getByLabelText("Option 2 is correct")).toBeChecked();
+    expect(screen.getByLabelText("Option 4 is correct")).not.toBeChecked();
+    expect(screen.getByRole("status")).toHaveTextContent("Kept option 2 as the correct answer");
+  });
+
+  // R48
+  it("Ctrl+S saves the question", async () => {
+    const u = user();
+    mocked.saveQuestion.mockResolvedValue(11);
+    render(Editor, { topic: 1 });
+    await screen.findByText("What does the ALU do?");
+    await u.type(screen.getByLabelText("Question"), "Q?");
+    await u.keyboard("{Control>}s{/Control}");
+    expect(mocked.saveQuestion).toHaveBeenCalledWith(expect.objectContaining({ text: "Q?" }));
+  });
 });

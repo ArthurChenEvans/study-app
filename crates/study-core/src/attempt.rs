@@ -52,10 +52,8 @@ pub enum AttemptError {
     NothingPicked,
     #[error("option {0} doesn't exist on this question")]
     NoSuchOption(usize),
-    #[error("you can't go back in exam mode")]
-    NoGoingBackInExam,
-    #[error("not decided yet in the specs: going back in study mode (Q6)")]
-    GoingBackInStudyUndecided,
+    #[error("you can't go back to an earlier question")]
+    NoGoingBack,
     #[error("every question was answered right and none were guessed, so there's nothing to retry")]
     NothingToRetry,
 }
@@ -173,10 +171,8 @@ impl Attempt {
     }
 
     pub fn go_back(&mut self) -> Result<(), AttemptError> {
-        match self.settings.mode {
-            Mode::Exam => Err(AttemptError::NoGoingBackInExam),
-            Mode::Study => Err(AttemptError::GoingBackInStudyUndecided),
-        }
+        // R40: no going back in either mode.
+        Err(AttemptError::NoGoingBack)
     }
 
     /// The questions to retry: wrong ones plus right ones flagged as guessed,
@@ -330,17 +326,15 @@ mod tests {
     fn no_going_back_in_exam_mode() {
         let mut attempt = Attempt::start(settings(Mode::Exam), items(&[1, 3]), lookup);
         attempt.submit(&[0]).unwrap();
-        assert_eq!(attempt.go_back(), Err(AttemptError::NoGoingBackInExam));
+        assert_eq!(attempt.go_back(), Err(AttemptError::NoGoingBack));
     }
 
+    // R40: no going back in study mode either
     #[test]
-    fn going_back_in_study_mode_is_undecided() {
+    fn no_going_back_in_study_mode() {
         let mut attempt = Attempt::start(settings(Mode::Study), items(&[1, 3]), lookup);
         attempt.submit(&[0]).unwrap();
-        assert_eq!(
-            attempt.go_back(),
-            Err(AttemptError::GoingBackInStudyUndecided)
-        );
+        assert_eq!(attempt.go_back(), Err(AttemptError::NoGoingBack));
     }
 
     // taking-quiz.feature: Easy and hard mode (outline)

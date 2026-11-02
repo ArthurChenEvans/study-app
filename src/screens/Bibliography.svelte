@@ -1,6 +1,6 @@
 <script lang="ts">
-  // sources.feature (R13). Deleting or editing a cited source is open (Q10, Q11), so not offered yet.
-  import { BookOpen, Plus } from "@lucide/svelte";
+  // sources.feature (R13, R44 to R46)
+  import { BookOpen, Pencil, Plus, Trash2 } from "@lucide/svelte";
   import { api, errorMessage, type SourceFields, type SourceRow, type TopicRow } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
   import Rich from "../components/Rich.svelte";
@@ -11,6 +11,23 @@
   let adding = $state(false);
   let error = $state("");
   let draft = $state(blank());
+  let editing = $state<number | null>(null);
+  let deleting = $state<SourceRow | null>(null);
+
+  function edit(source: SourceRow) {
+    const f = source.fields;
+    draft = { authors: f.authors, year: f.year ?? "", title: f.title, edition: f.edition ?? "", description: f.description ?? "", publisher: f.publisher ?? "", url: f.url ?? "" };
+    error = "";
+    editing = source.id;
+    adding = true;
+  }
+
+  async function confirmDelete() {
+    if (!deleting) return;
+    await api.deleteSource(deleting.id);
+    deleting = null;
+    await load();
+  }
 
   function blank() {
     return { authors: "", year: "", title: "", edition: "", description: "", publisher: "", url: "" };
@@ -36,6 +53,7 @@
 
   function open() {
     draft = blank();
+    editing = null;
     error = "";
     adding = true;
   }
@@ -53,7 +71,8 @@
       url: optional(draft.url),
     };
     try {
-      await api.addSource(fieldsToSave);
+      if (editing === null) await api.addSource(fieldsToSave);
+      else await api.updateSource(editing, fieldsToSave);
       adding = false;
       await load();
     } catch (failure) {
@@ -86,6 +105,10 @@
             <div class="mt-2 h-1.5 rounded-full bg-base-200"><div class="h-full rounded-full" style="width: {(source.cited_by_questions / maxCited) * 100}%; background: var(--chart-ink)"></div></div>
             <p class="mt-3 flex flex-wrap gap-1">{#each source.used_by as id (id)}<span class="badge badge-ghost badge-sm">{topicName(id)}</span>{:else}<span class="text-muted">Not cited yet</span>{/each}</p>
           </div>
+          <div class="flex shrink-0 items-start gap-1">
+            <button class="btn btn-ghost btn-sm btn-square" aria-label="Edit source" title="Edit" onclick={() => edit(source)}><Pencil class="size-4" /></button>
+            <button class="btn btn-ghost btn-sm btn-square" aria-label="Delete source" title="Delete" onclick={() => (deleting = source)}><Trash2 class="size-4" /></button>
+          </div>
         </li>
       {/each}
     </ul>
@@ -95,7 +118,7 @@
 {#if adding}
   <dialog open class="modal modal-open" aria-labelledby="add-source-title">
     <form class="modal-box max-w-lg" onsubmit={add}>
-      <h3 id="add-source-title" class="text-lg font-semibold">Add source</h3>
+      <h3 id="add-source-title" class="text-lg font-semibold">{editing === null ? "Add source" : "Edit source"}</h3>
       <div class="mt-6 grid grid-cols-2 gap-4">
         {#each fields as field (field.key)}
           <label class="block {field.wide ? 'col-span-2' : ''}">
@@ -104,12 +127,29 @@
           </label>
         {/each}
       </div>
-      <p class="mt-4 text-sm text-muted">Shown in APA style once added. Leave anything you don't have blank.</p>
+      <p class="mt-4 text-sm text-muted">Shown in APA style. Only the title is needed. Leave anything you don't have blank.{editing === null ? "" : " Past quiz attempts keep the old details."}</p>
       {#if error}<p role="alert" class="mt-4 text-sm text-error">{error}</p>{/if}
       <div class="modal-action">
         <button type="button" class="btn btn-ghost" onclick={() => (adding = false)}>Cancel</button>
-        <button type="submit" class="btn btn-primary">Add source</button>
+        <button type="submit" class="btn btn-primary">{editing === null ? "Add source" : "Save source"}</button>
       </div>
     </form>
+  </dialog>
+{/if}
+
+{#if deleting}
+  <dialog open class="modal modal-open" aria-labelledby="delete-source-title">
+    <div class="modal-box max-w-md">
+      <h3 id="delete-source-title" class="text-lg font-semibold">Delete this source?</h3>
+      <p class="mt-2 text-muted">
+        {#if deleting.cited_by_questions === 0}It isn't cited by any questions.
+        {:else}{deleting.cited_by_questions === 1 ? "1 question cites it" : `${deleting.cited_by_questions} questions cite it`}, and those citations will be removed.{/if}
+        Past quiz attempts keep it as it was.
+      </p>
+      <div class="modal-action">
+        <button class="btn btn-ghost" onclick={() => (deleting = null)}>Cancel</button>
+        <button class="btn btn-error" onclick={confirmDelete}>Delete source</button>
+      </div>
+    </div>
   </dialog>
 {/if}

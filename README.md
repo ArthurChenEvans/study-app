@@ -10,6 +10,29 @@ pnpm install
 pnpm tauri dev       # opens the app
 ```
 
+## Install
+
+### Nix (NixOS)
+
+```sh
+nix --extra-experimental-features "nix-command flakes" build
+./result/bin/study-app
+```
+
+Or add it to your system flake: `inputs.study-app.url = "github:ArthurChenEvans/study-app/mvp-planning";` and put `study-app.packages.x86_64-linux.default` in `environment.systemPackages`. LibreOffice comes with it for PowerPoint previews.
+
+The first build stops with a hash mismatch for the pnpm dependencies. Copy the `got: sha256-...` value into `hash =` in `flake.nix` and build again. Do the same whenever `pnpm-lock.yaml` changes.
+
+### AppImage (other distros)
+
+```sh
+nix develop --extra-experimental-features "nix-command flakes"
+pnpm install
+pnpm tauri build --bundles appimage
+```
+
+The file lands in `target/release/bundle/appimage/`. On NixOS run it with `nix run nixpkgs#appimage-run -- "Study App_0.1.0_amd64.AppImage"`. PowerPoint previews need LibreOffice installed on the system, since it isn't bundled.
+
 ## Tests
 
 ```bash

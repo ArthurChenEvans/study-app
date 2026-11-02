@@ -356,3 +356,34 @@ fn sources_and_search_pass_through() {
         1
     );
 }
+
+// R43, R44, R45
+#[test]
+fn modules_and_sources_can_be_edited_and_deleted() {
+    let mut app = app();
+    let arch = app.create_module("Arch").unwrap();
+    let gpu = app.create_topic("GPU", Some(arch)).unwrap();
+    app.delete_module(arch).unwrap();
+    assert_eq!(app.topics().unwrap()[0].module, None);
+
+    let fields = SourceFields { authors: "Kirk".into(), title: "Parallel".into(), ..Default::default() };
+    let source = app.add_source(fields.clone()).unwrap();
+    app.update_source(source, SourceFields { title: "Massively parallel".into(), ..fields.clone() }).unwrap();
+    assert_eq!(app.sources().unwrap()[0].fields.title, "Massively parallel");
+    assert!(app.update_source(source, SourceFields { title: " ".into(), ..fields }).is_err());
+
+    let mut cited = input(gpu, "Q", false, &[0]);
+    cited.citations = vec![CitationInput { source, location: "p. 1".into() }];
+    app.save_question(cited).unwrap();
+    assert_eq!(app.delete_source(source).unwrap(), 1);
+    assert!(app.sources().unwrap().is_empty());
+}
+
+// R38
+#[test]
+fn empty_topic_cant_start_a_quiz() {
+    let mut app = app();
+    let empty = app.create_topic("Misc", None).unwrap();
+    let error = app.start_quiz(setup(vec![empty])).unwrap_err();
+    assert_eq!(error.message, "a chosen topic has no questions yet");
+}

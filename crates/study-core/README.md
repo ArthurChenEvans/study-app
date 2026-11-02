@@ -12,16 +12,14 @@ Pure domain rules for the Study App, built test-first from `specs/`. No IO, no d
 
 Each test is commented with the scenario it covers. Run with `cargo test -p study-core`.
 
-## Open questions
+## Decided rules
 
-Cases still open in `specs/README.md` return an error instead of guessing:
-
-- Q2, Q3, Q4 (quiz setup limits): `AssemblyError::Undecided`
-- Q6 (going back in study mode): `AttemptError::GoingBackInStudyUndecided`
-- Q7 (do wrong guesses count as "guessed"): `Tally` keeps `wrong_flagged` separate so either answer can be shown
+- R36 to R38 (quiz setup limits): capped to what's available, extras given out in topic order, empty topics refused with `AssemblyError::EmptyTopic`
+- R40: `go_back` always returns `AttemptError::NoGoingBack`
+- R41: "guessed" counts right guesses only. `Tally::wrong_flagged` is kept for the record
 
 ## Decisions made while building
 
-- A single-answer question with several options marked correct can't be saved (follows from R5). Q15, what happens when you switch a question from multiple to single, is still open.
+- A single-answer question with several options marked correct can't be saved (follows from R5). Switching multiple to single keeps the first tick (R49), handled in the editor.
 - When a quiz ends early (total timer or quitting), unanswered questions count towards the total, so a score reads "4 / 15" as in the designs.
 - Overview accuracy is right answers over questions asked in the window, matching how scores are shown.

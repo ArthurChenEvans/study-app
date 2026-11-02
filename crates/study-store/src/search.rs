@@ -13,6 +13,7 @@ use crate::{ModuleId, Result, Store};
 pub enum Tab {
     #[default]
     All,
+    Questions,
     Modules,
     Topics,
     Tags,
@@ -72,7 +73,7 @@ impl Store {
         let matches = |haystack: &str| text.is_empty() || haystack.to_lowercase().contains(&text);
         let mut hits = vec![];
 
-        if query.tab == Tab::All {
+        if matches!(query.tab, Tab::All | Tab::Questions) {
             hits.extend(self.search_questions(&text, query)?);
         }
         let show_other =
@@ -338,6 +339,8 @@ mod tests {
             )
         };
         assert_eq!(tab(Tab::Topics, "gpu"), vec!["T:GPU"]);
+        // R50: a Questions tab shows only questions
+        assert_eq!(tab(Tab::Questions, "shader"), vec!["Q:What is a shader core?"]);
         assert_eq!(
             tab(Tab::Modules, "architecture"),
             vec!["M:Computer Architecture"]

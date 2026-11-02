@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from "svelte";
   import Sidebar from "./components/Sidebar.svelte";
   import Topics from "./screens/Topics.svelte";
   import Editor from "./screens/Editor.svelte";
@@ -32,10 +33,21 @@
     window.scrollTo?.(0, 0);
   }
 
+  // R48: "/" focuses search from anywhere, except while typing or in a quiz.
+  async function shortcut(event: KeyboardEvent) {
+    if (event.key !== "/" || event.ctrlKey || event.metaKey || event.altKey || route.screen === "quiz") return;
+    const target = event.target as HTMLElement | null;
+    if (target && (target.closest("input, textarea, select, [contenteditable='true']"))) return;
+    event.preventDefault();
+    if (route.screen !== "search") go({ screen: "search" });
+    await tick();
+    document.querySelector<HTMLInputElement>('input[type="search"]')?.focus();
+  }
+
   const startQuiz = (view: QuizView) => go({ screen: "quiz", view, run: ++runs });
 </script>
 
-<svelte:window onhashchange={() => (route = { screen: screenFromHash(location.hash) })} />
+<svelte:window onhashchange={() => (route = { screen: screenFromHash(location.hash) })} onkeydown={shortcut} />
 
 <div class="flex min-h-screen">
   {#if route.screen !== "quiz"}<Sidebar current={navScreen} onNavigate={(screen) => go({ screen })} />{/if}

@@ -77,4 +77,28 @@ describe("Quiz setup", () => {
     await u.click(await screen.findByRole("button", { name: "Start quiz" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("not decided yet");
   });
+
+  // R38
+  it("greys out topics with no questions", async () => {
+    mocked.topics.mockResolvedValue([
+      { id: 1, name: "CPU", module: 1, tags: [], question_count: 10 },
+      { id: 3, name: "Misc", module: null, tags: [], question_count: 0 },
+    ]);
+    render(Setup, { onStarted: vi.fn() });
+    expect(await screen.findByRole("checkbox", { name: /Misc/ })).toBeDisabled();
+    expect(screen.getByText("no questions yet")).toBeInTheDocument();
+  });
+
+  // R36
+  it("says how many are available when asking for more", async () => {
+    const u = userEvent.setup();
+    render(Setup, { preselected: [1, 2], onStarted: vi.fn() });
+    await screen.findByRole("checkbox", { name: /CPU/ });
+    await u.click(screen.getByRole("radio", { name: "Set number" }));
+    const input = screen.getByLabelText("Number of questions");
+    await u.clear(input);
+    await u.type(input, "25");
+    expect(screen.getByLabelText("Quiz summary")).toHaveTextContent("20 questions");
+    expect(screen.getByText("Only 20 available")).toBeInTheDocument();
+  });
 });

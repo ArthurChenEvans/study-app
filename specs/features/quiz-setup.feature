@@ -62,3 +62,26 @@ Feature: Set up a quiz
   Scenario: Hard mode is the default
     When I set up a quiz without choosing easy or hard
     Then the quiz is set to hard
+
+  # R36 (was Q2)
+  Scenario: Asking for more questions than exist uses all of them
+    When I set up a quiz on "CPU" and "GPU" with 25 questions
+    Then I am told only 20 are available
+    And the quiz has 20 questions
+
+  # R37 (was Q3)
+  Scenario Outline: Even split with extras given out in order
+    Given a topic "Memory" with <memory> questions
+    When I set up a quiz on "CPU", "GPU" and "Memory" with <count> questions picked evenly
+    Then the quiz has <cpu> from "CPU", <gpu> from "GPU" and <mem> from "Memory"
+
+    Examples:
+      | memory | count | cpu | gpu | mem |
+      | 10     | 10    | 4   | 3   | 3   |
+      | 1      | 9     | 4   | 4   | 1   |
+
+  # R38 (was Q4)
+  Scenario: Empty topics can't be picked
+    Given a topic "Misc" with no questions
+    When I set up a quiz
+    Then "Misc" can't be picked and says "no questions yet"
