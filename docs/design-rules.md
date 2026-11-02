@@ -210,6 +210,38 @@ Rules:
 - [ ] Fitts's law: frequent targets are big and near where your attention already is
 - [ ] Jakob's law: common patterns (tabs, dialogs, search) behave how they do in other apps
 
+## 9. Data visualisation
+
+Charts show progress from saved attempts only. They never invent data the app doesn't store.
+
+**Colours**
+| Token | Hex | Job |
+|---|---|---|
+| `--chart-right` | #357339 | Right and sure |
+| `--chart-guessed` | #bc7d19 | Right but flagged as guessed (a darker step than the UI amber, which is too light for marks) |
+| `--chart-wrong` | #ac3225 | Wrong |
+| `--chart-ink` | #643d26 | Any single-series chart (score trend, reason counts) |
+| `--chart-grid` | oklch(91% 0.016 76) | Gridlines, hairline and solid |
+
+The right / guessed / wrong set passes the colour-blind validator (lightness band, chroma floor, CVD separation 9.5, normal-vision floor 17.6, all at least 3:1 on the surface). In greyscale, right and wrong have similar lightness, so they are always drawn in the same order (right, guessed, wrong), separated by 2px gaps, and backed by a legend, tooltips and a table view.
+
+**Forms**
+- Score over time: one line, 2px, 8 to 10% area wash, filled dots with a 2px surface ring, hollow dots for retries. Only the latest point is labelled.
+- Part of a whole (right / guessed / wrong): thin segmented bar (6 to 10px) in lists, tall segmented bar (28px, counts inside when they fit) as the hero of Results.
+- Ranked counts (wrong-answer reasons): horizontal bars, 12px thick, square at the baseline, 4px rounded end, value at the tip.
+- One headline number per view (accuracy on Overview, score on Results), 48px or larger, proportional figures.
+
+**Behaviour**
+- Every mark has a hover tooltip. The line chart has a crosshair and works with the arrow keys.
+- Every chart with more than one series has a legend. Every chart has a "Show as table" view.
+- Text in and around charts uses text colours, never the series colour.
+
+## 10. Surfaces
+
+- Page: base-100. Sidebar: base-200.
+- Panel (`.panel`): one raised surface, oklch(99% 0.006 80), 1px base-300 border, 12px radius, two-layer soft shadow. Used for things read as a unit: charts, stat tiles, the quiz summary, grouped settings, tables.
+- Nested radii: things inside a panel use 8px or less.
+
 ## Sources
 
 - Wathan, A. and Schoger, S. *Refactoring UI*. https://www.refactoringui.com

@@ -56,3 +56,17 @@ Every control was inventoried from the DOM and screenshotted at 2x in its states
 | Quit button | Quiz bar | Bold, label-only button heavier than the rest of the bar | 1 | Regular weight with an icon |
 
 Checked after the fixes: segmented controls and inputs share the same 32px height and baseline, contrast for the new seg text is 5.5:1 (muted on base-200) and 10.7:1 (selected), greyscale still shows the selected item clearly, and every screen still has exactly one primary button.
+
+## Round 3: data visualisation and experience
+
+Diagnosis: the previous version was clean but forgettable (every screen a heading and a table, no focal point, nothing showing whether you're improving).
+
+- **New Overview screen** (now the home screen): accuracy for the last 7 days with the change from the 7 days before, questions answered, share of right answers that were guesses, score-per-quiz line chart, topics ranked weakest first, and wrong-answer reasons ranked. Everything is derived from saved attempts (R24, R25, R27), so no new behaviour. Includes a first-run state.
+- **Results**: the score is the hero, with the change from the last quiz on the same topics, a tall right / guessed / wrong bar, a question-by-question grid and per-topic bars.
+- **History**: score-per-quiz chart above the table, and a result bar on every row.
+- **Topics**: each topic shows its latest quiz as a bar and %, plus a Quiz shortcut that opens setup.
+- **Quiz setup**: settings grouped in panels, with a live summary on the right (question count, split per topic, mode, timer, last score on these topics) holding the Start button.
+- **Quiz**: progress is a 20-cell track that fills with right / guessed / wrong in study mode (neutral in exam mode, so nothing is given away). Feedback appears in its own panel.
+- **Visual system**: raised panel surface, app mark in the sidebar, press feedback on buttons, short rise-in motion (off with reduced motion).
+
+All chart rules are in `docs/design-rules.md` section 9.

@@ -44,38 +44,82 @@
     --border: 1px;
     --depth: 0;
     --noise: 0;
+
+    /* Raised surface for panels, and chart tokens (validated, see design rules) */
+    --surface: oklch(99% 0.006 80);
+    --chart-right: #357339;
+    --chart-guessed: #bc7d19;
+    --chart-wrong: #ac3225;
+    --chart-ink: #643d26;
+    --chart-grid: oklch(91% 0.016 76);
+    --muted: oklch(48% 0.022 65);
+    --shadow-panel: 0 1px 2px oklch(27% 0.025 60 / .06), 0 6px 16px oklch(27% 0.025 60 / .05);
   }
   body { background: var(--color-base-100); color: var(--color-base-content); font-family: "IBM Plex Sans", ui-sans-serif, sans-serif; }
   code, pre, .font-mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  h1, h2 { text-wrap: balance; }
+  h1 { letter-spacing: -0.015em; }
   .input, .select, .textarea, .checkbox, .radio { border-color: oklch(58% 0.02 65); }
+  .input, .select, .textarea { background: var(--surface); }
   :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
-  pre.shiki { padding: 12px 16px; border-radius: var(--radius-box); font-size: 14px; overflow-x: auto; }
+  pre.shiki { padding: 12px 16px; border-radius: var(--radius-box); font-size: 14px; overflow-x: auto; border: 1px solid var(--color-base-300); }
   .divide-y > * { border-color: var(--color-base-300) !important; }
   .btn .kbd { background: transparent; border-color: currentColor; color: inherit; opacity: .8; }
+  .btn { transition: transform 120ms ease-out, background-color 150ms ease-out, box-shadow 150ms ease-out; }
+  .btn:active:not(:disabled) { transform: scale(.97); }
+  .btn-primary { box-shadow: 0 1px 2px oklch(27% 0.025 60 / .25), inset 0 1px 0 oklch(100% 0 0 / .12); }
 
-  /* Segmented control: one bordered unit, selected item solid */
+  /* Panels: the one raised surface. Used for groups you read as a unit (charts, summaries) */
+  .panel { background: var(--surface); border: 1px solid var(--color-base-300); border-radius: 12px; box-shadow: var(--shadow-panel); }
+  .eyebrow { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+
+  /* Segmented control */
   .seg { display: inline-flex; align-items: stretch; height: 2rem; padding: 2px; gap: 2px; border: 1px solid oklch(58% 0.02 65); border-radius: var(--radius-field); background: var(--color-base-200); vertical-align: middle; }
-  .seg > button { padding: 0 12px; font-size: 14px; line-height: 1; border-radius: calc(var(--radius-field) - 2px); color: oklch(48% 0.022 65); transition: background-color 150ms ease-out, color 150ms ease-out; }
+  .seg > button { padding: 0 12px; font-size: 14px; line-height: 1; border-radius: calc(var(--radius-field) - 2px); color: var(--muted); transition: background-color 150ms ease-out, color 150ms ease-out; }
   .seg > button:hover:not([aria-checked="true"]) { background: var(--color-base-300); color: var(--color-base-content); }
   .seg > button[aria-checked="true"] { background: var(--color-neutral); color: var(--color-neutral-content); font-weight: 600; }
   .seg > button:focus-visible { outline-offset: 1px; }
-  /* Fields: one focus ring, drawn on the border, never a second outline */
+  /* Fields: one focus ring */
   .input:focus, .input:focus-within, .select:focus, .textarea:focus { outline: none !important; border-color: var(--color-primary) !important; box-shadow: 0 0 0 1px var(--color-primary) !important; }
   label.input input:focus, label.input input:focus-visible { outline: none !important; box-shadow: none !important; }
   .input-sm, .seg { min-height: 2rem; }
-  /* Disabled buttons: hint fades with the label */
   .btn:disabled .kbd { opacity: .5; }
-  /* Toggle: on state fills the track so it reads in greyscale */
   .toggle:checked { background-color: var(--color-primary); border-color: var(--color-primary); color: var(--color-primary-content); }
-  /* Tab counts sit on the label baseline */
-  [role=tab] .count { font-size: 12px; margin-left: 4px; color: oklch(48% 0.022 65); font-weight: 400; }
-  .open-q { border: 1px dashed oklch(50% 0.07 235); color: oklch(50% 0.07 235); }
-  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+  [role=tab] .count { font-size: 12px; margin-left: 4px; color: var(--muted); font-weight: 400; }
+  .open-q { border: 1px dashed oklch(50% 0.07 235); color: oklch(50% 0.07 235); background: var(--surface); }
+
+  /* Navigation */
+  .nav-link { color: var(--muted); transition: background-color 150ms ease-out, color 150ms ease-out; }
+  .nav-link:hover { background: var(--color-base-300); color: var(--color-base-content); }
+  .nav-link[aria-current="page"] { background: var(--surface); color: var(--color-base-content); font-weight: 600; box-shadow: 0 1px 2px oklch(27% 0.025 60 / .08); }
+
+  /* Charts */
+  .seg-bar { display: flex; gap: 2px; border-radius: 999px; overflow: hidden; }
+  .seg-bar > span { display: block; height: 100%; }
+  .tall-bar { display: flex; gap: 2px; height: 28px; }
+  .tall-bar > span { border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: visible; }
+  .swatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+  .hbar { height: 12px; border-radius: 0 4px 4px 0; background: var(--chart-ink); transition: width 400ms ease-out; }
+  .cell { width: 24px; height: 24px; border-radius: 4px; display: grid; place-items: center; font-size: 12px; font-weight: 600; color: #fff; }
+  .chart-tip { position: fixed; pointer-events: none; z-index: 50; background: var(--color-neutral); color: var(--color-neutral-content); font-size: 12px; line-height: 1.4; padding: 8px 10px; border-radius: 6px; box-shadow: 0 4px 12px oklch(27% 0.025 60 / .2); opacity: 0; transition: opacity 120ms ease-out; max-width: 240px; }
+  .chart-tip.show { opacity: 1; }
+  details.table-view summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+
+  /* Quiz progress track */
+  .track { display: flex; gap: 2px; height: 6px; }
+  .track > span { flex: 1; border-radius: 2px; background: var(--color-base-300); }
+
+  /* Motion */
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .rise { animation: rise 260ms ease-out both; }
+  .rise-2 { animation-delay: 60ms; } .rise-3 { animation-delay: 120ms; } .rise-4 { animation-delay: 180ms; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
 </style>
 <style type="text/tailwindcss">
   @theme {
     --color-muted: oklch(48% 0.022 65);
     --color-field-border: oklch(58% 0.02 65);
+    --color-surface: oklch(99% 0.006 80);
     --font-sans: "IBM Plex Sans", ui-sans-serif, sans-serif;
     --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   }
@@ -83,45 +127,101 @@
 </head>
 <body class="min-h-screen">
 <div class="flex min-h-screen">
-  <!-- Navigation rail -->
-  <nav class="w-56 shrink-0 bg-base-200 border-r border-base-300 flex flex-col p-3 gap-1" aria-label="Main">
-    <div class="px-3 py-4 text-lg font-semibold">Study App</div>
-    <a href="#topics" data-nav="topics" class="nav-link flex items-center gap-2 px-3 py-2 rounded-box text-sm"><i data-lucide="library" class="size-4"></i>Topics</a>
-    <a href="#bibliography" data-nav="bibliography" class="nav-link flex items-center gap-2 px-3 py-2 rounded-box text-sm"><i data-lucide="book-open" class="size-4"></i>Bibliography</a>
-    <a href="#setup" data-nav="setup" class="nav-link flex items-center gap-2 px-3 py-2 rounded-box text-sm"><i data-lucide="play" class="size-4"></i>New quiz</a>
-    <a href="#history" data-nav="history" class="nav-link flex items-center gap-2 px-3 py-2 rounded-box text-sm"><i data-lucide="history" class="size-4"></i>History</a>
-    <a href="#search" data-nav="search" class="nav-link flex items-center gap-2 px-3 py-2 rounded-box text-sm"><i data-lucide="search" class="size-4"></i>Search</a>
-    <div class="mt-auto px-3 pt-6 text-xs text-muted">Design prototype. Screens and states are clickable, data is sample only.</div>
+  <nav class="w-60 shrink-0 bg-base-200 border-r border-base-300 flex flex-col p-3 gap-1 sticky top-0 h-screen" aria-label="Main">
+    <div class="flex items-center gap-2 px-3 py-4">
+      <span class="size-8 rounded-lg bg-primary text-primary-content grid place-items-center"><i data-lucide="layers" class="size-4"></i></span>
+      <span class="text-base font-semibold">Study App</span>
+    </div>
+    <a href="#overview" data-nav="overview" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="layout-dashboard" class="size-4"></i>Overview</a>
+    <a href="#topics" data-nav="topics" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="library" class="size-4"></i>Topics</a>
+    <a href="#bibliography" data-nav="bibliography" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="book-open" class="size-4"></i>Bibliography</a>
+    <a href="#history" data-nav="history" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="history" class="size-4"></i>History</a>
+    <a href="#search" data-nav="search" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="search" class="size-4"></i>Search</a>
+    <div class="px-3 mt-4"><a href="#setup" class="btn btn-outline btn-sm w-full justify-start border-field-border"><i data-lucide="play" class="size-4"></i>New quiz</a></div>
+    <div class="mt-auto px-3 pt-6 text-xs text-muted leading-relaxed">Design prototype. Screens and states are clickable, data is sample only.</div>
   </nav>
   <main id="app" class="flex-1 min-w-0"></main>
 </div>
 
-<!-- Prototype state switcher, not part of the app -->
-<div class="fixed bottom-4 right-4 bg-neutral text-neutral-content rounded-box px-3 py-2 text-xs flex items-center gap-2 shadow-lg" aria-label="Prototype state">
-  <span>State</span>
+<div class="fixed bottom-4 right-4 bg-neutral text-neutral-content rounded-lg px-3 py-2 text-xs flex items-center gap-2 shadow-lg z-40" aria-label="Prototype state">
+  <span class="opacity-70">State</span>
   <div id="states" class="flex gap-1"></div>
 </div>
+<div id="tip" class="chart-tip" role="tooltip"></div>
 
 <script>
+/* ---------------- Helpers ---------------- */
 const icon = (name, cls = "size-4") => `<i data-lucide="${name}" class="${cls}"></i>`;
-const openQ = (n, text) => `<span class="open-q inline-flex items-center gap-1 rounded-box px-2 py-0.5 text-xs" title="Open question ${n} in specs/README.md">${icon("circle-help","size-3")}Open Q${n}: ${text}</span>`;
+const openQ = (n, text) => `<span class="open-q inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs" title="Open question ${n} in specs/README.md">${icon("circle-help","size-3")}Open Q${n}: ${text}</span>`;
+const pct = (a, b) => Math.round(a / b * 100);
+const STATUS = {
+  right:   { label: "Right",   color: "var(--chart-right)",   glyph: "✓", text: "#fff" },
+  guessed: { label: "Guessed", color: "var(--chart-guessed)", glyph: "?", text: "#30241a" },
+  wrong:   { label: "Wrong",   color: "var(--chart-wrong)",   glyph: "✕", text: "#fff" },
+};
+const legend = (keys = ["right","guessed","wrong"]) => `<div class="flex items-center gap-4 text-xs text-muted">${keys.map(k => `<span class="flex items-center gap-1.5"><span class="swatch" style="background:${STATUS[k].color}"></span>${k === "right" ? "Right, sure" : k === "guessed" ? "Right, guessed" : "Wrong"}</span>`).join("")}</div>`;
 
+/* Thin segmented bar: right (sure) / guessed / wrong */
+function segBar(r, g, w, h = 8) {
+  const total = r + g + w;
+  const parts = [["right", r], ["guessed", g], ["wrong", w]].filter(p => p[1] > 0);
+  return `<div class="seg-bar" style="height:${h}px" role="img" aria-label="${r} right and sure, ${g} guessed, ${w} wrong">${parts.map(([k, v]) =>
+    `<span data-tip="${k === "right" ? "Right, sure" : k === "guessed" ? "Right, guessed" : "Wrong"}: ${v} of ${total} (${pct(v, total)}%)" style="width:${v / total * 100}%;background:${STATUS[k].color}"></span>`).join("")}</div>`;
+}
+/* Tall segmented bar with labels inside when they fit */
+function tallBar(r, g, w) {
+  const total = r + g + w;
+  return `<div class="tall-bar" role="img" aria-label="${r} right and sure, ${g} guessed, ${w} wrong out of ${total}">${[["right", r], ["guessed", g], ["wrong", w]].filter(p => p[1]).map(([k, v]) =>
+    `<span data-tip="${k === "right" ? "Right, sure" : k === "guessed" ? "Right, guessed" : "Wrong"}: ${v} of ${total}" style="width:${v / total * 100}%;background:${STATUS[k].color};color:${STATUS[k].text}">${v / total > 0.1 ? v : ""}</span>`).join("")}</div>`;
+}
+/* Ranked horizontal bars, one series */
+function hbars(rows, unit = "") {
+  const max = Math.max(...rows.map(r => r[1]));
+  return `<div class="space-y-3">${rows.map(([label, v, note]) => `<div class="grid grid-cols-[220px_1fr] items-center gap-4 text-sm" data-tip="${label}: ${v}${unit}${note ? " · " + note : ""}">
+    <span class="truncate">${label}</span>
+    <span class="flex items-center gap-2"><span class="hbar" style="width:${Math.max(v / max * 100, 2)}%"></span><span class="tabular-nums text-muted text-xs">${v}${unit}</span></span></div>`).join("")}</div>`;
+}
+const tableView = (head, rows) => `<details class="table-view mt-4"><summary>Show as table</summary>
+  <table class="table table-xs mt-2"><thead><tr>${head.map(h => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td class="tabular-nums">${c}</td>`).join("")}</tr>`).join("")}</tbody></table></details>`;
+
+/* ---------------- Sample data ---------------- */
 const pipelineSvg = `<svg viewBox="0 0 360 80" class="w-full max-w-md" role="img" aria-label="Five stage pipeline: fetch, decode, execute, memory, write back">
   ${["Fetch","Decode","Execute","Memory","Write back"].map((s,i)=>`<g><rect x="${i*72+2}" y="20" width="66" height="40" rx="6" fill="oklch(94% 0.014 78)" stroke="oklch(58% 0.02 65)"/><text x="${i*72+35}" y="45" text-anchor="middle" font-size="11" font-family="IBM Plex Sans, sans-serif" fill="oklch(27% 0.025 60)">${s}</text></g>${i<4?`<path d="M${i*72+68} 40h4" stroke="oklch(48% 0.022 65)"/>`:""}`).join("")}
 </svg>`;
 
 const topics = [
-  { name: "CPU", module: "Computer Architecture", tags: ["hardware","exam-1"], questions: 24, last: "2 days ago" },
-  { name: "GPU", module: "Computer Architecture", tags: ["hardware"], questions: 18, last: "Today" },
-  { name: "Memory hierarchy", module: "Computer Architecture", tags: ["exam-1"], questions: 12, last: "Never" },
-  { name: "OSI model", module: "Networking", tags: ["networks"], questions: 15, last: "1 week ago" },
-  { name: "Misc", module: null, tags: [], questions: 4, last: "Never" },
+  { name: "CPU", module: "Computer Architecture", tags: ["hardware","exam-1"], questions: 24, last: "Today", r: 14, g: 3, w: 3 },
+  { name: "GPU", module: "Computer Architecture", tags: ["hardware"], questions: 18, last: "Today", r: 9, g: 4, w: 5 },
+  { name: "Memory hierarchy", module: "Computer Architecture", tags: ["exam-1"], questions: 12, last: "Yesterday", r: 6, g: 2, w: 4 },
+  { name: "OSI model", module: "Networking", tags: ["networks"], questions: 15, last: "29 Oct", r: 3, g: 1, w: 11 },
+  { name: "Misc", module: null, tags: [], questions: 4, last: null },
+];
+
+/* Attempts, oldest first. right includes guessed */
+const attempts = [
+  { date: "12 Oct", topics: "CPU", mode: "Study", total: 15, right: 8, guessed: 3 },
+  { date: "14 Oct", topics: "CPU", mode: "Study", total: 15, right: 9, guessed: 2 },
+  { date: "16 Oct", topics: "OSI model", mode: "Exam", total: 15, right: 7, guessed: 2 },
+  { date: "18 Oct", topics: "CPU, GPU", mode: "Study", total: 20, right: 12, guessed: 4 },
+  { date: "20 Oct", topics: "CPU, GPU", mode: "Study", total: 6, right: 5, guessed: 1, retry: true },
+  { date: "22 Oct", topics: "GPU", mode: "Exam", total: 18, right: 11, guessed: 3 },
+  { date: "24 Oct", topics: "Memory hierarchy", mode: "Study", total: 12, right: 7, guessed: 2 },
+  { date: "26 Oct", topics: "CPU, GPU", mode: "Exam", total: 20, right: 13, guessed: 2 },
+  { date: "29 Oct", topics: "OSI model", mode: "Exam", total: 15, right: 4, guessed: 1, incomplete: true },
+  { date: "31 Oct", topics: "Memory hierarchy", mode: "Exam", total: 12, right: 8, guessed: 2 },
+  { date: "1 Nov", topics: "CPU, GPU", mode: "Study", total: 20, right: 16, guessed: 3 },
+  { date: "1 Nov", topics: "CPU, GPU", mode: "Study", total: 7, right: 6, guessed: 1, retry: true },
+];
+
+const reasons = [
+  ["Confused with something similar", 14], ["Misremembered", 11], ["Blank", 7], ["Incomplete (auto)", 6],
+  ["Misread the question", 4], ["Timed out (auto)", 3], ["Careless slip", 2], ["Second-guessed", 2], ["Never learned it", 1],
 ];
 
 const sources = [
-  { apa: "Patterson, D. A., & Hennessy, J. L. (2020). <i>Computer organization and design: The hardware/software interface</i> (RISC-V ed.). Morgan Kaufmann.", topics: ["CPU","GPU","Memory hierarchy"], cites: 31, author:"Patterson, D. A., & Hennessy, J. L.", year:"2020", title:"Computer organization and design" },
-  { apa: "University College Isle of Man. (2026). <i>Lecture 3: The processor pipeline</i> [Lecture slides].", topics: ["CPU"], cites: 9, author:"University College Isle of Man", year:"2026", title:"Lecture 3: The processor pipeline" },
-  { apa: "Kirk, D. B., & Hwu, W. W. (2022). <i>Programming massively parallel processors</i> (4th ed.). Morgan Kaufmann.", topics: ["GPU"], cites: 7, author:"Kirk, D. B., & Hwu, W. W.", year:"2022", title:"Programming massively parallel processors" },
+  { apa: "Patterson, D. A., & Hennessy, J. L. (2020). <i>Computer organization and design: The hardware/software interface</i> (RISC-V ed.). Morgan Kaufmann.", topics: ["CPU","GPU","Memory hierarchy"], cites: 31 },
+  { apa: "University College Isle of Man. (2026). <i>Lecture 3: The processor pipeline</i> [Lecture slides].", topics: ["CPU"], cites: 9 },
+  { apa: "Kirk, D. B., & Hwu, W. W. (2022). <i>Programming massively parallel processors</i> (4th ed.). Morgan Kaufmann.", topics: ["GPU"], cites: 7 },
 ];
 
 const quizQuestions = [
@@ -131,9 +231,13 @@ const quizQuestions = [
   { topic: "GPU", text: "What does this CUDA kernel compute for each thread?", code: `__global__ void scale(float *data, float factor, int n) {\n    int index = blockIdx.x * blockDim.x + threadIdx.x;\n    if (index < n) {\n        data[index] = data[index] * factor;\n    }\n}`, options: ["Multiplies one element by factor","Sums the whole array","Copies data to host memory"], correct: [0], multi: false, explain: "Each thread works out its global index and scales one element, with a bounds check for the last block.", source: "Kirk & Hwu (2022), p. 41" },
 ];
 
-const state = { screen: "topics", variant: "normal", quizIndex: 0, picked: new Set(), flagged: false, answered: false, mode: "study", optionCount: 4 };
+/* The finished quiz shown on Results: 20 questions in order */
+const resultStrip = "RRRGRWRRRGRRWRRGRWRW".split("").map(c => c === "R" ? "right" : c === "G" ? "guessed" : "wrong");
+
+const state = { screen: "overview", variant: "normal", quizIndex: 0, picked: new Set(), flagged: false, answered: false, mode: "study", optionCount: 4 };
 
 const variants = {
+  overview: ["normal","new user"],
   topics: ["normal","empty","delete"],
   editor: ["normal","error","no-file"],
   bibliography: ["normal","empty","add"],
@@ -145,51 +249,117 @@ const variants = {
 };
 
 function header(title, subtitle, actions = "") {
-  return `<header class="flex items-end justify-between gap-6 px-12 pt-12 pb-8">
+  return `<header class="flex items-end justify-between gap-6 pt-12 pb-8">
     <div><h1 class="text-3xl font-semibold leading-tight">${title}</h1>${subtitle ? `<p class="text-muted mt-2">${subtitle}</p>` : ""}</div>
     <div class="flex items-center gap-2">${actions}</div>
   </header>`;
 }
+const page = (inner, width = "max-w-6xl") => `<div class="${width} mx-auto px-12 pb-24">${inner}</div>`;
 
-/* ---------- Topics ---------- */
+/* ---------------- Overview (new: derived only from saved attempts) ---------------- */
+function screenOverview() {
+  if (state.variant === "new user") {
+    return page(header("Welcome") + `<div class="grid grid-cols-3 gap-6">
+      ${[["library","Create a topic","A topic holds questions on one subject, like CPU.","#topics","Create topic"],
+         ["pencil-line","Write questions","Open your lecture slides beside the editor and write as you read.","#editor","Open editor"],
+         ["play","Take a quiz","Mix topics, pick study or exam mode, and see what sticks.","#setup","Set up quiz"]].map(([ic, t, d, href, cta], i) => `
+        <div class="panel p-6 rise rise-${i + 1}"><span class="size-10 rounded-lg bg-base-200 grid place-items-center">${icon(ic,"size-5")}</span>
+        <p class="eyebrow mt-6">Step ${i + 1}</p><h2 class="text-lg font-semibold mt-1">${t}</h2><p class="text-sm text-muted mt-2 leading-relaxed">${d}</p>
+        <a href="${href}" class="btn ${i === 0 ? "btn-primary" : "btn-ghost"} btn-sm mt-6">${cta}</a></div>`).join("")}
+    </div><p class="text-sm text-muted mt-8">Your progress charts appear here after your first quiz.</p>`);
+  }
+  const last7 = attempts.slice(-6), prev = attempts.slice(-10, -6);
+  const acc = list => pct(list.reduce((s, a) => s + a.right, 0), list.reduce((s, a) => s + a.total, 0));
+  const nowAcc = acc(last7), prevAcc = acc(prev), delta = nowAcc - prevAcc;
+  const answered = last7.reduce((s, a) => s + a.total, 0);
+  const guessedShare = pct(last7.reduce((s, a) => s + a.guessed, 0), last7.reduce((s, a) => s + a.right, 0));
+  const weakest = topics.filter(t => t.last).sort((a, b) => (a.r + a.g) / (a.r + a.g + a.w) - (b.r + b.g) / (b.r + b.g + b.w));
+  return page(header("Overview", "Last 7 days, compared with the 7 days before", `<a href="#setup" class="btn btn-primary">${icon("play")}New quiz</a>`) + `
+  <section class="grid grid-cols-[1.4fr_1fr_1fr] gap-6">
+    <div class="panel p-6 rise">
+      <p class="text-sm text-muted">Accuracy</p>
+      <p class="text-5xl font-semibold leading-none mt-3">${nowAcc}%</p>
+      <p class="mt-3 text-sm flex items-center gap-1 ${delta >= 0 ? "text-success" : "text-error"} font-semibold">${icon(delta >= 0 ? "trending-up" : "trending-down")}${delta >= 0 ? "+" : ""}${delta} points <span class="text-muted font-normal">vs previous 7 days</span></p>
+    </div>
+    <div class="panel p-6 rise rise-2">
+      <p class="text-sm text-muted">Questions answered</p>
+      <p class="text-3xl font-semibold leading-none mt-3">${answered}</p>
+      <p class="mt-3 text-sm text-muted">across ${last7.length} quizzes</p>
+    </div>
+    <div class="panel p-6 rise rise-3">
+      <p class="text-sm text-muted">Right answers that were guesses</p>
+      <p class="text-3xl font-semibold leading-none mt-3">${guessedShare}%</p>
+      <p class="mt-3 text-sm text-muted">Lower means you really know it</p>
+    </div>
+  </section>
+
+  <section class="panel p-6 mt-6 rise rise-2">
+    <div class="flex items-baseline justify-between"><div><h2 class="font-semibold">Score per quiz</h2><p class="text-sm text-muted">% right, last ${attempts.length} quizzes. Hollow points are retries.</p></div>
+    <a href="#history" class="btn btn-ghost btn-sm">History ${icon("arrow-right")}</a></div>
+    <div class="mt-4" data-chart="trend" style="height:220px"></div>
+    ${tableView(["Date","Topics","Score","Retry"], attempts.map(a => [a.date, a.topics, pct(a.right, a.total) + "%", a.retry ? "Yes" : ""]))}
+  </section>
+
+  <section class="grid grid-cols-2 gap-6 mt-6">
+    <div class="panel p-6 rise rise-3">
+      <div class="flex items-baseline justify-between"><div><h2 class="font-semibold">Topics, weakest first</h2><p class="text-sm text-muted">Latest quiz on each topic</p></div></div>
+      <div class="mt-4">${legend()}</div>
+      <ul class="mt-5 space-y-5">${weakest.map(t => { const tot = t.r + t.g + t.w; return `<li>
+        <div class="flex items-baseline justify-between text-sm"><span class="font-semibold">${t.name}</span><span class="tabular-nums text-muted">${pct(t.r + t.g, tot)}% right</span></div>
+        <div class="mt-2">${segBar(t.r, t.g, t.w, 10)}</div></li>`; }).join("")}</ul>
+      <p class="text-sm text-muted mt-5">Misc hasn't been quizzed yet.</p>
+    </div>
+    <div class="panel p-6 rise rise-4">
+      <h2 class="font-semibold">Why you got things wrong</h2><p class="text-sm text-muted">Reasons on wrong answers, last 30 days</p>
+      <div class="mt-5">${hbars(reasons)}</div>
+      ${tableView(["Reason","Answers"], reasons)}
+    </div>
+  </section>`);
+}
+
+/* ---------------- Topics ---------------- */
 function screenTopics() {
   if (state.variant === "empty") {
-    return header("Topics") + `<section class="px-12"><div class="max-w-md py-24">
-      <h2 class="text-xl font-semibold">No topics yet</h2>
+    return page(header("Topics") + `<div class="panel p-10 max-w-lg">
+      <span class="size-10 rounded-lg bg-base-200 grid place-items-center">${icon("library","size-5")}</span>
+      <h2 class="text-xl font-semibold mt-6">No topics yet</h2>
       <p class="text-muted mt-2">A topic holds your questions on one subject, like "CPU". You can group topics into modules later.</p>
-      <button class="btn btn-primary mt-6">${icon("plus")}Create your first topic</button></div></section>`;
+      <button class="btn btn-primary mt-6">${icon("plus")}Create your first topic</button></div>`);
   }
   const groups = {};
   topics.forEach(t => { const k = t.module || "No module"; (groups[k] ||= []).push(t); });
   const rows = Object.entries(groups).map(([mod, list]) => `
-    <h2 class="text-sm font-semibold text-muted mt-8 mb-2 flex items-center gap-2">${mod === "No module" ? icon("folder-open") : icon("folder")}${mod}</h2>
-    <table class="table table-fixed">
-      <colgroup><col class="w-[28%]"><col class="w-[30%]"><col class="w-[12%]"><col class="w-[15%]"><col class="w-[15%]"></colgroup>
-      <thead><tr class="text-muted"><th>Topic</th><th>Tags</th><th class="text-right">Questions</th><th>Last quizzed</th><th></th></tr></thead>
-      <tbody>${list.map(t => `<tr class="hover:bg-base-200">
+    <section class="mt-8">
+    <h2 class="text-sm font-semibold text-muted mb-2 flex items-center gap-2">${mod === "No module" ? icon("folder-open") : icon("folder")}${mod}<span class="font-normal">· ${list.length}</span></h2>
+    <div class="panel overflow-hidden"><table class="table table-fixed">
+      <colgroup><col class="w-[22%]"><col class="w-[20%]"><col class="w-[10%]"><col class="w-[24%]"><col class="w-[24%]"></colgroup>
+      <thead><tr class="text-muted"><th>Topic</th><th>Tags</th><th class="text-right">Questions</th><th>Latest quiz</th><th></th></tr></thead>
+      <tbody>${list.map(t => { const tot = t.r + t.g + t.w; return `<tr class="hover:bg-base-100">
         <td class="font-semibold"><a href="#editor" class="hover:underline">${t.name}</a></td>
         <td>${t.tags.map(g => `<span class="badge badge-ghost rounded-full text-xs">${g}</span>`).join(" ") || `<span class="text-muted text-sm">None</span>`}</td>
         <td class="text-right tabular-nums">${t.questions}</td>
-        <td class="text-muted text-sm">${t.last}</td>
-        <td class="text-right whitespace-nowrap"><a href="#editor" class="btn btn-ghost btn-sm">${icon("pencil")}Edit</a><button class="btn btn-ghost btn-sm" aria-label="Delete ${t.name}" onclick="setVariant('delete')">${icon("trash-2")}</button></td>
-      </tr>`).join("")}</tbody>
-    </table>`).join("");
+        <td>${t.last ? `<div class="flex items-center gap-3" title="Latest quiz: ${t.last}"><div class="flex-1">${segBar(t.r, t.g, t.w, 6)}</div><span class="text-xs tabular-nums text-muted w-10 text-right">${pct(t.r + t.g, tot)}%</span></div><p class="text-xs text-muted mt-1">${t.last}</p>` : `<span class="text-sm text-muted">Not quizzed yet</span>`}</td>
+        <td class="text-right whitespace-nowrap"><a href="#setup" class="btn btn-ghost btn-sm">${icon("play")}Quiz</a><a href="#editor" class="btn btn-ghost btn-sm">${icon("pencil")}Edit</a><button class="btn btn-ghost btn-sm btn-square" aria-label="Delete ${t.name}" onclick="setVariant('delete')">${icon("trash-2")}</button></td>
+      </tr>`; }).join("")}</tbody>
+    </table></div></section>`).join("");
   const dialog = state.variant === "delete" ? `<dialog open class="modal modal-open"><div class="modal-box max-w-md">
       <h3 class="text-lg font-semibold">Delete "CPU"?</h3>
       <p class="mt-2 text-muted">Its 24 questions will be removed from your topics. Past quiz attempts keep the questions as they were, so your history isn't affected.</p>
       <div class="modal-action"><button class="btn btn-ghost" onclick="setVariant('normal')">Cancel</button><button class="btn btn-error">Delete topic</button></div>
     </div></dialog>` : "";
-  return header("Topics", "5 topics in 2 modules", `<button class="btn btn-ghost">${icon("folder-plus")}New module</button><button class="btn btn-primary">${icon("plus")}New topic</button>`) + `<section class="px-12 pb-16">${rows}</section>` + dialog;
+  return page(header("Topics", "5 topics in 2 modules", `<button class="btn btn-ghost">${icon("folder-plus")}New module</button><button class="btn btn-primary">${icon("plus")}New topic</button>`) +
+    `<div class="flex items-center justify-between">${legend()}<span class="text-xs text-muted">Bars show each topic's latest quiz</span></div>` + rows) + dialog;
 }
 
-/* ---------- Editor ---------- */
+/* ---------------- Editor ---------------- */
 function filePreview() {
   if (state.variant === "no-file") {
-    return `<div class="h-full flex flex-col items-start justify-center px-12 max-w-md">
-      <h2 class="text-lg font-semibold">Open a file to read alongside</h2>
+    return `<div class="h-full grid place-items-center p-12"><div class="panel p-8 max-w-sm text-center">
+      <span class="size-10 rounded-lg bg-base-200 grid place-items-center mx-auto">${icon("file-up","size-5")}</span>
+      <h2 class="text-lg font-semibold mt-4">Read alongside as you write</h2>
       <p class="text-muted mt-2 text-sm">Markdown, txt, PDF, PowerPoint or EPUB. Files are only shown here while you write, they aren't stored.</p>
-      <button class="btn btn-outline mt-4">${icon("file-up")}Open file</button>
-      <div class="mt-6">${openQ(1, "what happens when a file can't be opened")}</div></div>`;
+      <button class="btn btn-outline btn-sm mt-5">${icon("file-up")}Open file</button>
+      <div class="mt-5">${openQ(1, "what happens when a file can't be opened")}</div></div></div>`;
   }
   return `<div class="flex items-center gap-1 px-3 pt-3 border-b border-base-300" role="tablist" aria-label="Open files">
       <button role="tab" aria-selected="true" class="px-3 py-2 text-sm border-b-2 border-primary font-semibold flex items-center gap-2">${icon("presentation")}lecture-3.pptx<span class="text-muted" aria-label="Close">${icon("x","size-3")}</span></button>
@@ -198,7 +368,7 @@ function filePreview() {
       <span class="ml-auto text-xs text-muted tabular-nums">Slide 12 of 40</span>
     </div>
     <div class="p-8 overflow-auto">
-      <article class="bg-base-100 border border-base-300 rounded-box aspect-[16/9] p-10 max-w-2xl mx-auto">
+      <article class="bg-surface rounded-lg aspect-[16/9] p-10 max-w-2xl mx-auto" style="box-shadow:var(--shadow-panel)">
         <p class="text-xs text-muted">Lecture 3 · The processor pipeline</p>
         <h2 class="text-2xl font-semibold mt-2">Five-stage RISC pipeline</h2>
         <div class="mt-6">${pipelineSvg}</div>
@@ -211,15 +381,13 @@ function filePreview() {
       <p class="text-xs text-muted mt-3 text-center">PowerPoint is converted to PDF and rendered with PDF.js here. Text is selectable.</p>
     </div>`;
 }
-
 function optionRow(i, text, correct) {
   return `<div class="flex items-center gap-3">
-    <input type="checkbox" class="checkbox checkbox-sm" ${correct ? "checked" : ""} aria-label="Option ${i + 1} is correct">
-    <input class="input input-sm flex-1" value="${text}" aria-label="Option ${i + 1}">
-    <button class="btn btn-ghost btn-sm" aria-label="Remove option ${i + 1}" ${state.optionCount <= 3 ? "disabled" : ""} onclick="state.optionCount--;render()">${icon("x")}</button>
+    <input type="checkbox" class="checkbox checkbox-sm ${correct ? "checkbox-success" : ""}" ${correct ? "checked" : ""} aria-label="Option ${i + 1} is correct">
+    <input class="input input-sm flex-1 ${correct ? "border-success" : ""}" value="${text}" aria-label="Option ${i + 1}">
+    <button class="btn btn-ghost btn-sm btn-square" aria-label="Remove option ${i + 1}" ${state.optionCount <= 3 ? "disabled" : ""} onclick="state.optionCount--;render()">${icon("x")}</button>
   </div>`;
 }
-
 function screenEditor() {
   const err = state.variant === "error";
   const opts = ["Fetch","Decode","Execute","Write back","Memory"].slice(0, state.optionCount);
@@ -228,7 +396,7 @@ function screenEditor() {
     <section class="w-1/2 overflow-auto" aria-label="Question editor">
       <div class="px-10 pt-10 pb-6 flex items-end justify-between">
         <div><p class="text-sm text-muted">Computer Architecture / CPU</p><h1 class="text-2xl font-semibold mt-1">New question</h1></div>
-        <span class="text-sm text-muted tabular-nums">24 questions in this topic</span>
+        <span class="text-sm text-muted tabular-nums">Question 25 in this topic</span>
       </div>
       <form class="px-10 pb-16 space-y-8 max-w-2xl" onsubmit="return false">
         <fieldset class="space-y-2">
@@ -236,48 +404,34 @@ function screenEditor() {
           <textarea id="qtext" class="textarea w-full font-mono text-sm" rows="3">In the five-stage pipeline shown, which stage reads the register file?\n\n![Pipeline](pipeline.png)</textarea>
           <p class="text-sm text-muted">Markdown, \`code\`, $LaTeX$ and images. Paste an image or <a class="link">pick a file</a>.</p>
         </fieldset>
-
         <fieldset class="space-y-3">
           <div class="flex items-center justify-between">
             <span class="text-sm font-semibold">Answers</span>
-            <div class="seg" role="radiogroup" aria-label="Answer type">
-              <button type="button" role="radio" aria-checked="true">Single</button><button type="button" role="radio" aria-checked="false">Multiple</button>
-            </div>
+            <div class="seg" role="radiogroup" aria-label="Answer type"><button type="button" role="radio" aria-checked="true">Single</button><button type="button" role="radio" aria-checked="false">Multiple</button></div>
           </div>
           <div class="space-y-3">${opts.map((o, i) => optionRow(i, o, !err && i === 1)).join("")}</div>
           <div class="flex items-center gap-3">
             <button class="btn btn-ghost btn-sm" ${state.optionCount >= 5 ? "disabled" : ""} onclick="state.optionCount++;render()">${icon("plus")}Add option</button>
-            <span class="text-sm text-muted">3 to 5 options. Tick the correct answer.</span>
+            <span class="text-sm text-muted tabular-nums">${state.optionCount} of 5 options. Tick the correct answer.</span>
           </div>
           ${err ? `<p class="text-sm text-error flex items-center gap-2" role="alert">${icon("circle-alert")}Mark at least one correct option before saving.</p>` : ""}
         </fieldset>
-
         <fieldset class="space-y-2">
           <label class="text-sm font-semibold" for="explain">Explanation</label>
           <textarea id="explain" class="textarea w-full font-mono text-sm" rows="3">Operands are read from the register file during **decode**, while the instruction is being interpreted.</textarea>
         </fieldset>
-
         <fieldset class="space-y-3">
           <span class="text-sm font-semibold">Sources <span class="font-normal text-muted">(optional)</span></span>
-          <div class="flex items-center gap-3 text-sm">
-            ${icon("book-open")}<span class="flex-1">Patterson & Hennessy (2020)</span>
-            <input class="input input-sm w-28" value="p. 262" aria-label="Page">
-            <button class="btn btn-ghost btn-sm" aria-label="Remove source">${icon("x")}</button>
-          </div>
-          <div class="flex items-center gap-3 text-sm">
-            ${icon("book-open")}<span class="flex-1">Lecture 3: The processor pipeline (2026)</span>
-            <input class="input input-sm w-28" value="slide 12" aria-label="Slide">
-            <button class="btn btn-ghost btn-sm" aria-label="Remove source">${icon("x")}</button>
-          </div>
+          ${[["Patterson & Hennessy (2020)","p. 262","Page"],["Lecture 3: The processor pipeline (2026)","slide 12","Slide"]].map(([s, loc, l]) => `
+          <div class="flex items-center gap-3 text-sm">${icon("book-open")}<span class="flex-1">${s}</span>
+            <input class="input input-sm w-28" value="${loc}" aria-label="${l}"><button class="btn btn-ghost btn-sm btn-square" aria-label="Remove source">${icon("x")}</button></div>`).join("")}
           <button class="btn btn-ghost btn-sm">${icon("plus")}Cite a source</button>
         </fieldset>
-
         <fieldset class="space-y-2">
           <label class="text-sm font-semibold" for="tags">Tags</label>
-          <div class="flex flex-wrap items-center gap-2"><span class="badge badge-ghost rounded-full">pipeline</span><span class="badge badge-ghost rounded-full">registers</span><input id="tags" class="input input-sm w-40" placeholder="Add a tag"></div>
+          <div class="flex flex-wrap items-center gap-2"><span class="badge badge-ghost rounded-full">pipeline</span><span class="badge badge-ghost rounded-full">registers</span><input id="tags" class="input input-sm w-40" placeholder="Add a tag…"></div>
         </fieldset>
-
-        <div class="flex items-center gap-3 pt-4 border-t border-base-300">
+        <div class="flex items-center gap-3 pt-6 border-t border-base-300">
           <button class="btn btn-primary" onclick="setVariant(state.variant==='error'?'normal':'error')">Save question</button>
           <button class="btn btn-ghost">Save and write another</button>
           <span class="ml-auto">${openQ(15, "switching multiple to single")}</span>
@@ -287,114 +441,150 @@ function screenEditor() {
   </div>`;
 }
 
-/* ---------- Bibliography ---------- */
+/* ---------------- Bibliography ---------------- */
 function screenBibliography() {
   const actions = `<button class="btn btn-primary" onclick="setVariant('add')">${icon("plus")}Add source</button>`;
   if (state.variant === "empty") {
-    return header("Bibliography") + `<section class="px-12"><div class="max-w-md py-24">
-      <h2 class="text-xl font-semibold">No sources yet</h2>
+    return page(header("Bibliography") + `<div class="panel p-10 max-w-lg">
+      <span class="size-10 rounded-lg bg-base-200 grid place-items-center">${icon("book-open","size-5")}</span>
+      <h2 class="text-xl font-semibold mt-6">No sources yet</h2>
       <p class="text-muted mt-2">Add the books, papers and lectures you write questions from, then cite them on each question.</p>
-      <button class="btn btn-primary mt-6" onclick="setVariant('add')">${icon("plus")}Add your first source</button></div></section>`;
+      <button class="btn btn-primary mt-6" onclick="setVariant('add')">${icon("plus")}Add your first source</button></div>`);
   }
+  const maxC = Math.max(...sources.map(s => s.cites));
   const add = state.variant === "add" ? `<dialog open class="modal modal-open"><div class="modal-box max-w-lg">
       <h3 class="text-lg font-semibold">Add source</h3>
-      <form class="mt-6 space-y-4" onsubmit="return false">
-        ${[["Author(s)","Kirk, D. B., & Hwu, W. W."],["Year","2022"],["Title","Programming massively parallel processors"],["Edition","4th"],["Publisher","Morgan Kaufmann"],["URL",""]].map(([l,v])=>`<label class="block"><span class="text-sm font-semibold">${l}</span><input class="input w-full mt-1" value="${v}"></label>`).join("")}
-        <div class="bg-base-200 rounded-box p-4 text-sm"><p class="text-xs text-muted mb-1">APA preview</p>Kirk, D. B., & Hwu, W. W. (2022). <i>Programming massively parallel processors</i> (4th ed.). Morgan Kaufmann.</div>
-        <div>${openQ(12, "which fields are required")}</div>
+      <form class="mt-6 grid grid-cols-2 gap-4" onsubmit="return false">
+        ${[["Author(s)","Kirk, D. B., & Hwu, W. W.",2],["Year","2022",1],["Edition","4th",1],["Title","Programming massively parallel processors",2],["Publisher","Morgan Kaufmann",1],["URL","",1]].map(([l,v,span])=>`<label class="block ${span===2?"col-span-2":""}"><span class="text-sm font-semibold">${l}</span><input class="input w-full mt-1" value="${v}" ${l==="URL"?'placeholder="https://…"':""}></label>`).join("")}
+        <div class="col-span-2 bg-base-200 rounded-lg p-4 text-sm"><p class="eyebrow mb-2">APA preview</p><p class="pl-8 -indent-8">Kirk, D. B., & Hwu, W. W. (2022). <i>Programming massively parallel processors</i> (4th ed.). Morgan Kaufmann.</p></div>
+        <div class="col-span-2">${openQ(12, "which fields are required")}</div>
       </form>
       <div class="modal-action"><button class="btn btn-ghost" onclick="setVariant('normal')">Cancel</button><button class="btn btn-primary" onclick="setVariant('normal')">Add source</button></div>
     </div></dialog>` : "";
-  return header("Bibliography", "3 sources, formatted in APA", actions) + `<section class="px-12 pb-16 max-w-5xl">
-    <ul class="divide-y divide-base-300">${sources.map(s => `<li class="py-6 flex gap-8">
+  return page(header("Bibliography", "3 sources, formatted in APA", actions) + `
+    <div class="panel divide-y">${sources.map(s => `<div class="p-6 flex gap-10">
       <p class="flex-1 max-w-prose leading-relaxed pl-8 -indent-8">${s.apa}</p>
-      <div class="w-56 shrink-0 text-sm"><p class="text-muted">Used by ${s.cites} questions in</p><p class="mt-1">${s.topics.join(", ")}</p></div>
-      <button class="btn btn-ghost btn-sm self-start" aria-label="Edit source">${icon("pencil")}</button>
-    </li>`).join("")}</ul>
-    <div class="mt-6 flex gap-2">${openQ(10, "deleting a cited source")} ${openQ(11, "editing a cited source")}</div>
-  </section>` + add;
+      <div class="w-64 shrink-0 text-sm">
+        <p class="flex items-baseline justify-between"><span class="text-muted">Cited by</span><span class="font-semibold tabular-nums">${s.cites} questions</span></p>
+        <div class="h-1.5 rounded-full bg-base-200 mt-2"><div class="h-full rounded-full" style="width:${s.cites / maxC * 100}%;background:var(--chart-ink)"></div></div>
+        <p class="mt-3 flex flex-wrap gap-1">${s.topics.map(t => `<span class="badge badge-ghost badge-sm">${t}</span>`).join("")}</p>
+      </div>
+      <button class="btn btn-ghost btn-sm btn-square self-start" aria-label="Edit source">${icon("pencil")}</button>
+    </div>`).join("")}</div>
+    <div class="mt-6 flex gap-2">${openQ(10, "deleting a cited source")} ${openQ(11, "editing a cited source")}</div>`) + add;
 }
 
-/* ---------- Quiz setup ---------- */
+/* ---------------- Quiz setup ---------------- */
 function screenSetup() {
   const err = state.variant === "error";
   const seg = (name, opts, active) => `<div class="seg" role="radiogroup" aria-label="${name}">${opts.map((o,i)=>`<button type="button" role="radio" aria-checked="${i===active}" onclick="this.parentNode.querySelectorAll('button').forEach(b=>b.setAttribute('aria-checked',b===this))">${o}</button>`).join("")}</div>`;
-  const row = (label, help, control) => `<div class="flex items-start justify-between gap-8 py-4 border-b border-base-300"><div><p class="font-semibold">${label}</p>${help?`<p class="text-sm text-muted mt-1">${help}</p>`:""}</div><div class="shrink-0">${control}</div></div>`;
-  return header("New quiz", "Pick what to practise and how") + `<section class="px-12 pb-16 max-w-3xl">
-    <h2 class="text-sm font-semibold text-muted mb-3">Topics</h2>
-    <div class="space-y-1">${topics.slice(0,4).map((t,i)=>`<label class="flex items-center gap-3 py-2 px-3 rounded-box hover:bg-base-200 cursor-pointer">
-      <input type="checkbox" class="checkbox checkbox-sm" ${!err && i<2?"checked":""}><span class="flex-1">${t.name} <span class="text-muted text-sm">· ${t.module}</span></span><span class="text-sm text-muted tabular-nums">${t.questions} questions</span></label>`).join("")}</div>
-    ${err ? `<p class="text-sm text-error flex items-center gap-2 mt-3" role="alert">${icon("circle-alert")}Pick at least one topic to start.</p>` : `<p class="text-sm text-muted mt-3 tabular-nums">42 questions available</p>`}
-
-    <h2 class="text-sm font-semibold text-muted mt-10 mb-1">Settings</h2>
-    ${row("Mode","Study shows feedback after each question. Exam shows it at the end, and you can't go back.", seg("Mode",["Study","Exam"],0))}
-    ${row("Questions","", `<div class="flex items-center gap-2">${seg("Amount",["All","Set number"],1)}<input class="input input-sm w-20 tabular-nums" value="20" aria-label="Number of questions"></div>`)}
-    ${row("Pick","Random draws from all topics together. Even takes the same number from each.", seg("Pick",["Random","Even"],1))}
-    ${row("Question order","", seg("Question order",["Keep","Shuffle"],1))}
-    ${row("Option order","", seg("Option order",["Keep","Shuffle"],1))}
-    ${row("Total timer","", `<div class="flex items-center gap-2"><input type="checkbox" class="toggle toggle-sm toggle-primary" checked aria-label="Use total timer"><input class="input input-sm w-20 tabular-nums" value="20" aria-label="Minutes"><span class="text-sm text-muted">min</span></div>`)}
-    ${row("Per-question timer","Running out counts as wrong and moves on.", `<div class="flex items-center gap-2"><input type="checkbox" class="toggle toggle-sm toggle-primary" aria-label="Use per-question timer"><input class="input input-sm w-20 tabular-nums" value="45" disabled aria-label="Seconds"><span class="text-sm text-muted">sec</span></div>`)}
-    ${row("Difficulty","Easy shows how many answers to pick on multiple-answer questions.", seg("Difficulty",["Easy","Hard"],1))}
-    <div class="flex flex-wrap gap-2 mt-4">${openQ(2,"more questions than available")} ${openQ(3,"even split that doesn't divide")} ${openQ(4,"empty topics")}</div>
-    <div class="mt-8"><a href="#quiz" class="btn btn-primary" onclick="${err?"setVariant('normal');return false":""}">${icon("play")}Start quiz</a></div>
-  </section>`;
+  const row = (label, help, control) => `<div class="flex items-center justify-between gap-8 px-6 py-4"><div><p class="font-semibold text-sm">${label}</p>${help?`<p class="text-sm text-muted mt-1">${help}</p>`:""}</div><div class="shrink-0">${control}</div></div>`;
+  return page(header("New quiz", "Pick what to practise and how") + `<div class="grid grid-cols-[1fr_320px] gap-8 items-start">
+    <div class="space-y-8">
+      <section>
+        <h2 class="eyebrow mb-3">Topics</h2>
+        <div class="panel divide-y">${topics.slice(0,4).map((t,i)=>{ const tot = t.r + t.g + t.w; return `<label class="flex items-center gap-4 px-6 py-3 hover:bg-base-100 cursor-pointer">
+          <input type="checkbox" class="checkbox checkbox-sm" ${!err && i<2?"checked":""}>
+          <span class="flex-1"><span class="font-semibold text-sm">${t.name}</span> <span class="text-muted text-sm">· ${t.module}</span></span>
+          <span class="w-32">${segBar(t.r, t.g, t.w, 6)}</span>
+          <span class="text-xs text-muted tabular-nums w-24 text-right">${pct(t.r + t.g, tot)}% · ${t.questions} Qs</span></label>`; }).join("")}</div>
+        ${err ? `<p class="text-sm text-error flex items-center gap-2 mt-3" role="alert">${icon("circle-alert")}Pick at least one topic to start.</p>` : ""}
+      </section>
+      <section>
+        <h2 class="eyebrow mb-3">Settings</h2>
+        <div class="panel divide-y">
+        ${row("Mode","Study shows feedback after each question. Exam shows it at the end, and you can't go back.", seg("Mode",["Study","Exam"],0))}
+        ${row("Questions","", `<div class="flex items-center gap-2">${seg("Amount",["All","Set number"],1)}<input class="input input-sm w-20 tabular-nums" value="20" aria-label="Number of questions"></div>`)}
+        ${row("Pick","Random draws from all topics together. Even takes the same number from each.", seg("Pick",["Random","Even"],1))}
+        ${row("Question order","", seg("Question order",["Keep","Shuffle"],1))}
+        ${row("Option order","", seg("Option order",["Keep","Shuffle"],1))}
+        ${row("Total timer","", `<div class="flex items-center gap-2"><input type="checkbox" class="toggle toggle-sm" checked aria-label="Use total timer"><input class="input input-sm w-20 tabular-nums" value="20" aria-label="Minutes"><span class="text-sm text-muted">min</span></div>`)}
+        ${row("Per-question timer","Running out counts as wrong and moves on.", `<div class="flex items-center gap-2"><input type="checkbox" class="toggle toggle-sm" aria-label="Use per-question timer"><input class="input input-sm w-20 tabular-nums" value="45" disabled aria-label="Seconds"><span class="text-sm text-muted">sec</span></div>`)}
+        ${row("Difficulty","Easy shows how many answers to pick on multiple-answer questions.", seg("Difficulty",["Easy","Hard"],1))}
+        </div>
+        <div class="flex flex-wrap gap-2 mt-4">${openQ(2,"more questions than available")} ${openQ(3,"even split that doesn't divide")} ${openQ(4,"empty topics")}</div>
+      </section>
+    </div>
+    <aside class="panel p-6 sticky top-8" aria-label="Quiz summary">
+      <p class="eyebrow">Your quiz</p>
+      ${err ? `<p class="text-sm text-muted mt-4">Pick a topic to see your quiz.</p>` : `
+      <p class="text-4xl font-semibold mt-3 leading-none">20 <span class="text-base font-normal text-muted">questions</span></p>
+      <dl class="mt-6 space-y-3 text-sm">
+        <div class="flex justify-between"><dt class="text-muted">CPU</dt><dd class="tabular-nums">10</dd></div>
+        <div class="flex justify-between"><dt class="text-muted">GPU</dt><dd class="tabular-nums">10</dd></div>
+        <div class="flex justify-between border-t border-base-300 pt-3"><dt class="text-muted">Mode</dt><dd>Study</dd></div>
+        <div class="flex justify-between"><dt class="text-muted">Time limit</dt><dd>20 min total</dd></div>
+        <div class="flex justify-between"><dt class="text-muted">Order</dt><dd>Shuffled</dd></div>
+      </dl>
+      <p class="text-sm mt-6 leading-relaxed">Last time on CPU + GPU you scored <b>80%</b>.</p>`}
+      <a href="#quiz" class="btn btn-primary w-full mt-6 ${err ? "btn-disabled" : ""}" onclick="${err?"setVariant('normal');return false":""}">${icon("play")}Start quiz</a>
+      <p class="text-xs text-muted mt-3 text-center">Press <kbd class="kbd kbd-xs">1</kbd>–<kbd class="kbd kbd-xs">5</kbd> to answer, <kbd class="kbd kbd-xs">F</kbd> to flag a guess</p>
+    </aside>
+  </div>`);
 }
 
-/* ---------- Quiz ---------- */
-function renderMd(text) {
-  return text.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
-}
+/* ---------------- Quiz ---------------- */
+const renderMd = text => text.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+const quizSoFar = ["right","right","guessed","right","wrong","right"]; // the 6 answered before this one
 function screenQuiz() {
   const v = state.variant;
   state.mode = v === "exam" ? "exam" : "study";
-  const q = v === "incomplete" ? quizQuestions[1] : quizQuestions[state.quizIndex % quizQuestions.length];
   const qi = v === "incomplete" ? 1 : state.quizIndex % quizQuestions.length;
+  const q = quizQuestions[qi];
   if (v === "incomplete" && !state.answered) { state.picked = new Set([0]); state.answered = true; }
   const low = v === "timer-low";
   const answered = state.answered && state.mode === "study";
   const isRight = answered && q.correct.length === state.picked.size && q.correct.every(c => state.picked.has(c));
   const partial = answered && !isRight && [...state.picked].every(p => q.correct.includes(p)) && state.picked.size > 0;
-  const optionClass = (i) => {
-    if (!answered) return state.picked.has(i) ? "border-primary bg-base-200" : "border-base-300 hover:bg-base-200";
-    if (q.correct.includes(i)) return "border-success bg-base-200";
-    if (state.picked.has(i)) return "border-error bg-base-200";
-    return "border-base-300 opacity-70";
+  const current = 6 + state.quizIndex;
+  const track = Array.from({ length: 20 }, (_, i) => {
+    if (i < current) { const s = quizSoFar[i] || "right"; return state.mode === "exam" ? `<span style="background:var(--chart-ink)" data-tip="Question ${i + 1}: answered"></span>` : `<span style="background:${STATUS[s].color}" data-tip="Question ${i + 1}: ${s === "guessed" ? "right, guessed" : s}"></span>`; }
+    if (i === current) return `<span style="background:var(--color-base-content)" data-tip="Question ${i + 1}: current"></span>`;
+    return `<span data-tip="Question ${i + 1}"></span>`;
+  }).join("");
+  const optionClass = i => {
+    if (!answered) return state.picked.has(i) ? "border-primary bg-surface ring-1 ring-primary" : "border-base-300 bg-surface hover:border-field-border";
+    if (q.correct.includes(i)) return "border-success bg-surface ring-1 ring-success";
+    if (state.picked.has(i)) return "border-error bg-surface ring-1 ring-error";
+    return "border-base-300 opacity-60";
   };
-  const optionMark = (i) => {
+  const optionMark = i => {
     if (!answered) return "";
     if (q.correct.includes(i)) return `<span class="text-success text-sm flex items-center gap-1 font-semibold">${icon("check")}Correct</span>`;
     if (state.picked.has(i)) return `<span class="text-error text-sm flex items-center gap-1 font-semibold">${icon("x")}Your pick</span>`;
     return "";
   };
   return `<div class="flex flex-col min-h-screen">
-    <div class="flex items-center gap-6 px-12 py-4 border-b border-base-300">
-      <span class="badge ${state.mode==="exam"?"badge-neutral":"badge-ghost"}">${state.mode === "exam" ? "Exam" : "Study"}</span>
-      <span class="text-sm text-muted tabular-nums">Question ${qi + 7} of 20</span>
-      <progress class="progress progress-primary w-48" value="${qi + 7}" max="20" aria-label="Progress"></progress>
-      <span class="ml-auto flex items-center gap-2 tabular-nums font-semibold ${low ? "text-warning-content bg-warning px-3 py-1 rounded-box" : ""}" aria-live="polite">${icon("timer")}${low ? "0:58 left" : "12:40 left"}</span>
-      <a href="#results" class="btn btn-ghost btn-sm font-normal">${icon("log-out")}Quit</a>
+    <div class="px-12 pt-5 pb-4 border-b border-base-300 bg-base-100 sticky top-0 z-10">
+      <div class="flex items-center gap-6">
+        <span class="badge ${state.mode==="exam"?"badge-neutral":"badge-ghost"}">${state.mode === "exam" ? "Exam" : "Study"}</span>
+        <span class="text-sm text-muted">CPU + GPU</span>
+        <span class="text-sm tabular-nums"><b>${current + 1}</b> <span class="text-muted">of 20</span></span>
+        <span class="ml-auto flex items-center gap-2 tabular-nums font-semibold ${low ? "text-warning-content bg-warning px-3 py-1 rounded-lg" : ""}" aria-live="polite">${icon("timer")}${low ? "0:58 left" : "12:40 left"}</span>
+        <a href="#results" class="btn btn-ghost btn-sm font-normal">${icon("log-out")}Quit</a>
+      </div>
+      <div class="track mt-4" aria-label="Progress, question ${current + 1} of 20">${track}</div>
     </div>
     <div class="flex-1 px-12 py-12">
       <div class="max-w-prose mx-auto">
-        <p class="text-sm text-muted">${q.topic}${q.multi && state.mode==="study" && false ? "" : ""}</p>
+        <p class="eyebrow">${q.topic}${q.multi ? " · Select all that apply" : ""}</p>
         <h1 class="text-xl leading-snug mt-2 math">${q.text}</h1>
-        ${q.img ? `<div class="mt-6">${pipelineSvg}</div>` : ""}
+        ${q.img ? `<div class="mt-6 panel p-4">${pipelineSvg}</div>` : ""}
         ${q.code ? `<pre class="mt-6" data-code="cuda">${q.code.replace(/</g,"&lt;")}</pre>` : ""}
-        ${q.multi ? `<p class="text-sm text-muted mt-4">Hard mode: the number of correct answers is hidden.</p>` : ""}
         <div class="mt-8 space-y-3" role="${q.multi ? "group" : "radiogroup"}">
-          ${q.options.map((o, i) => `<button class="w-full min-h-11 text-left flex items-center gap-4 px-4 py-3 border rounded-box transition-colors duration-150 ${optionClass(i)}" onclick="pick(${i})" ${answered ? "disabled" : ""} aria-pressed="${state.picked.has(i)}">
-            <kbd class="kbd kbd-sm tabular-nums">${i + 1}</kbd><span class="flex-1 math">${o}</span>${optionMark(i)}</button>`).join("")}
+          ${q.options.map((o, i) => `<button class="w-full min-h-12 text-left flex items-center gap-4 px-4 py-3 border rounded-lg transition-all duration-150 active:scale-[.99] ${optionClass(i)}" onclick="pick(${i})" ${answered ? "disabled" : ""} aria-pressed="${state.picked.has(i)}">
+            <kbd class="kbd kbd-sm tabular-nums ${state.picked.has(i) && !answered ? "bg-primary text-primary-content border-primary" : ""}">${i + 1}</kbd><span class="flex-1 math">${o}</span>${optionMark(i)}</button>`).join("")}
         </div>
-        ${answered ? `<div class="mt-8 border-t border-base-300 pt-6" role="status">
-          <p class="font-semibold flex items-center gap-2 ${isRight ? "text-success" : "text-error"}">${icon(isRight ? "circle-check" : "circle-x")}${isRight ? "Correct" : partial ? "Wrong: incomplete, you missed a correct option" : "Wrong"}${state.flagged ? `<span class="badge badge-warning ml-2">${icon("flag","size-3")}Guessed</span>` : ""}</p>
+        ${answered ? `<div class="mt-8 panel p-6 rise" role="status">
+          <p class="font-semibold flex items-center gap-2 ${isRight ? "text-success" : "text-error"}">${icon(isRight ? "circle-check" : "circle-x","size-5")}${isRight ? "Correct" : partial ? "Wrong: incomplete, you missed a correct option" : "Wrong"}${state.flagged ? `<span class="badge ml-2" style="background:var(--color-accent);color:var(--color-accent-content)">${icon("flag","size-3")}Guessed</span>` : ""}</p>
           <p class="mt-3 leading-relaxed math">${renderMd(q.explain)}</p>
-          <p class="text-sm text-muted mt-3 flex items-center gap-2">${icon("book-open")}${q.source}</p>
-          <p class="mt-3">${openQ(5, "should study mode show the explanation here")}</p>
+          <p class="text-sm text-muted mt-4 flex items-center gap-2">${icon("book-open")}${q.source}</p>
+          <p class="mt-4">${openQ(5, "should study mode show the explanation here")}</p>
         </div>` : ""}
         <div class="mt-8 flex items-center gap-3">
           ${answered ? `<button class="btn btn-primary" onclick="next()">Next question <kbd class="kbd kbd-xs">Enter</kbd></button>` :
             `<button class="btn btn-primary" onclick="submitAnswer()" ${state.picked.size ? "" : "disabled"}>Submit <kbd class="kbd kbd-xs">Enter</kbd></button>`}
-          <button class="btn ${state.flagged ? "btn-warning" : "btn-ghost"}" onclick="toggleFlag()" aria-pressed="${state.flagged}">${icon("flag")}${state.flagged ? "Flagged as guessed" : "I guessed"} <kbd class="kbd kbd-xs">F</kbd></button>
+          <button class="btn ${state.flagged ? "" : "btn-ghost"}" style="${state.flagged ? "background:var(--color-accent);color:var(--color-accent-content);border-color:var(--color-accent)" : ""}" onclick="toggleFlag()" aria-pressed="${state.flagged}">${icon("flag")}${state.flagged ? "Flagged as guessed" : "I guessed"} <kbd class="kbd kbd-xs">F</kbd></button>
           ${state.mode === "study" ? `<span class="ml-auto">${openQ(6,"going back in study mode")}</span>` : `<span class="ml-auto text-sm text-muted">No going back in exam mode</span>`}
         </div>
       </div>
@@ -404,18 +594,20 @@ function screenQuiz() {
 function pick(i) {
   const q = quizQuestions[state.quizIndex % quizQuestions.length];
   if (state.answered && state.mode === "study") return;
-  if (q.multi) { state.picked.has(i) ? state.picked.delete(i) : state.picked.add(i); }
-  else state.picked = new Set([i]);
+  if (q.multi) { state.picked.has(i) ? state.picked.delete(i) : state.picked.add(i); } else state.picked = new Set([i]);
   render();
 }
 function submitAnswer() { if (!state.picked.size) return; if (state.mode === "exam") return next(); state.answered = true; render(); }
 function next() { state.quizIndex++; state.picked = new Set(); state.answered = false; state.flagged = false; render(); }
 function toggleFlag() { state.flagged = !state.flagged; render(); }
 
-/* ---------- Results ---------- */
+/* ---------------- Results ---------------- */
 function screenResults() {
   const perfect = state.variant === "perfect";
-  const reasons = ["Blank","Misremembered","Confused with something similar","Misread the question","Careless slip","Second-guessed","Never learned it"];
+  const strip = perfect ? Array(20).fill("right") : resultStrip;
+  const r = strip.filter(s => s === "right").length, g = strip.filter(s => s === "guessed").length, w = strip.filter(s => s === "wrong").length;
+  const score = r + g;
+  const reasonsList = ["Blank","Misremembered","Confused with something similar","Misread the question","Careless slip","Second-guessed","Never learned it"];
   const review = [
     { q: quizQuestions[1], status: "wrong", auto: "Incomplete", yours: "All threads in the warp run the same instruction at once" },
     { q: quizQuestions[2], status: "wrong", auto: null, yours: "$4.5\\,\\text{s}$" },
@@ -423,74 +615,89 @@ function screenResults() {
     { q: quizQuestions[3], status: "right", yours: "Multiplies one element by factor" },
   ];
   const statusBadge = s => s === "wrong" ? `<span class="text-error font-semibold flex items-center gap-1 text-sm">${icon("circle-x")}Wrong</span>` : s === "guessed" ? `<span class="font-semibold flex items-center gap-1 text-sm">${icon("flag")}Right, guessed</span>` : `<span class="text-success font-semibold flex items-center gap-1 text-sm">${icon("circle-check")}Right</span>`;
-  const items = (perfect ? review.slice(3) : review).map(r => `<li class="py-6">
-    <div class="flex items-start gap-6">
+  const items = (perfect ? review.slice(3) : review).map(it => `<li class="p-6">
+    <div class="flex items-start gap-8">
       <div class="flex-1 max-w-prose">
-        <p class="text-sm text-muted">${r.q.topic}</p>
-        <p class="mt-1 font-semibold math">${r.q.text}</p>
-        <p class="mt-3 text-sm"><span class="text-muted">Your answer:</span> <span class="math">${r.yours}</span></p>
-        <p class="text-sm"><span class="text-muted">Correct:</span> <span class="math">${r.q.correct.map(c => r.q.options[c]).join(", ")}</span></p>
-        <p class="mt-3 text-sm leading-relaxed math">${renderMd(r.q.explain)}</p>
+        <p class="eyebrow">${it.q.topic}</p>
+        <p class="mt-1 font-semibold math">${it.q.text}</p>
+        <dl class="mt-3 text-sm space-y-1"><div><dt class="inline text-muted">Your answer: </dt><dd class="inline math">${it.yours}</dd></div>
+        <div><dt class="inline text-muted">Correct: </dt><dd class="inline math">${it.q.correct.map(c => it.q.options[c]).join(", ")}</dd></div></dl>
+        <p class="mt-3 text-sm leading-relaxed math">${renderMd(it.q.explain)}</p>
       </div>
-      <div class="w-64 shrink-0">${statusBadge(r.status)}
-        ${r.status === "wrong" ? (r.auto ? `<p class="text-sm mt-3">Reason: <b>${r.auto}</b> <span class="text-muted">(recorded automatically)</span></p>` :
+      <div class="w-64 shrink-0">${statusBadge(it.status)}
+        ${it.status === "wrong" ? (it.auto ? `<p class="text-sm mt-3">Reason: <b>${it.auto}</b> <span class="text-muted">(recorded automatically)</span></p>` :
           `<label class="block mt-3"><span class="text-sm text-muted">Why did you get it wrong? <span class="text-xs">(optional)</span></span>
-            <select class="select select-sm w-full mt-1"><option>Pick a reason</option>${reasons.map(x=>`<option>${x}</option>`).join("")}<option>Other (write it)</option></select></label>
-            <input class="input input-sm w-full mt-2" placeholder="Or write your own reason">`) : ""}
+            <select class="select select-sm w-full mt-1"><option>Pick a reason…</option>${reasonsList.map(x=>`<option>${x}</option>`).join("")}<option>Other (write it)</option></select></label>
+            <input class="input input-sm w-full mt-2" placeholder="Or write your own reason…">`) : ""}
       </div>
     </div></li>`).join("");
-  return header("Results", "CPU + GPU · Study mode · 20 questions · 14 min", "") + `<section class="px-12 pb-16 max-w-5xl">
-    <div class="flex items-end gap-16">
-      <div><p class="text-4xl font-semibold leading-tight tabular-nums">${perfect ? "20 / 20" : "16 / 20"}</p><p class="text-muted mt-1">${perfect ? "None guessed" : "3 of those guessed"}</p></div>
-      <table class="table table-sm w-auto">
-        <thead><tr class="text-muted"><th>Topic</th><th class="text-right">Right</th><th class="text-right">Guessed</th></tr></thead>
-        <tbody><tr><td>CPU</td><td class="text-right tabular-nums">${perfect?"10 / 10":"9 / 10"}</td><td class="text-right tabular-nums">${perfect?0:1}</td></tr>
-        <tr><td>GPU</td><td class="text-right tabular-nums">${perfect?"10 / 10":"7 / 10"}</td><td class="text-right tabular-nums">${perfect?0:2}</td></tr></tbody>
-      </table>
-      <div class="ml-auto">${perfect ? `<p class="text-sm text-muted">Nothing to retry, every answer was right and none guessed.</p>` :
-        `<a href="#quiz" class="btn btn-primary">${icon("rotate-ccw")}Retry 7 questions</a><p class="text-xs text-muted mt-2">4 wrong + 3 guessed, same settings</p>`}</div>
+  const perTopic = perfect ? [["CPU",10,0,0],["GPU",10,0,0]] : [["CPU",8,1,1],["GPU",5,2,3]]; // sums to the strip: 13 sure, 3 guessed, 4 wrong
+  return page(header("Results", "CPU + GPU · Study mode · 20 questions · 14 min") + `
+  <section class="panel p-8 rise">
+    <div class="grid grid-cols-[auto_1fr_auto] gap-12 items-center">
+      <div>
+        <p class="text-6xl font-semibold leading-none">${score}<span class="text-3xl text-muted font-normal"> / 20</span></p>
+        <p class="mt-3 text-sm flex items-center gap-1 text-success font-semibold">${icon("trending-up")}${perfect ? "+35" : "+15"} points <span class="text-muted font-normal">vs your last CPU + GPU quiz</span></p>
+      </div>
+      <div>
+        ${tallBar(r, g, w)}
+        <div class="mt-3">${legend()}</div>
+      </div>
+      <div class="text-right">${perfect ? `<p class="text-sm text-muted max-w-48">Nothing to retry. Every answer was right and none were guesses.</p>` :
+        `<a href="#quiz" class="btn btn-primary">${icon("rotate-ccw")}Retry ${w + g} questions</a><p class="text-xs text-muted mt-2">${w} wrong + ${g} guessed, same settings</p>`}</div>
     </div>
-    <div class="mt-4">${openQ(7, "do wrong guesses count in \"guessed\"")}</div>
-    <h2 class="text-lg font-semibold mt-12">Review</h2>
-    <p class="text-sm text-muted">Wrong and guessed questions first.</p>
-    <ul class="divide-y divide-base-300 mt-2">${items}</ul>
-  </section>`;
+    <div class="mt-8 pt-6 border-t border-base-300 grid grid-cols-[1fr_1fr] gap-12">
+      <div>
+        <p class="text-sm font-semibold">Question by question</p>
+        <div class="grid grid-cols-10 w-fit gap-[2px] mt-3" role="list" aria-label="Each question's result">${strip.map((s, i) => `<span role="listitem" class="cell" style="background:${STATUS[s].color};color:${STATUS[s].text}" data-tip="Question ${i + 1}: ${s === "guessed" ? "right, guessed" : s}" aria-label="Question ${i + 1}: ${s}">${STATUS[s].glyph}</span>`).join("")}</div>
+      </div>
+      <div>
+        <p class="text-sm font-semibold">By topic</p>
+        <ul class="mt-3 space-y-3">${perTopic.map(([t, a, b, c]) => `<li class="grid grid-cols-[48px_1fr_56px] items-center gap-3 text-sm"><span>${t}</span>${segBar(a, b, c, 8)}<span class="tabular-nums text-muted text-right">${a + b} / ${a + b + c}</span></li>`).join("")}</ul>
+      </div>
+    </div>
+    ${tableView(["Question","Result"], strip.map((s, i) => [i + 1, s === "guessed" ? "Right, guessed" : s === "right" ? "Right" : "Wrong"]))}
+  </section>
+  <div class="mt-4">${openQ(7, 'do wrong guesses count in "guessed"')}</div>
+  <div class="flex items-baseline justify-between mt-12"><h2 class="text-lg font-semibold">Review</h2><p class="text-sm text-muted">Wrong and guessed first</p></div>
+  <ul class="panel divide-y mt-4">${items}</ul>`);
 }
 
-/* ---------- History ---------- */
+/* ---------------- History ---------------- */
 function screenHistory() {
   if (state.variant === "empty") {
-    return header("History") + `<section class="px-12"><div class="max-w-md py-24"><h2 class="text-xl font-semibold">No quizzes yet</h2>
-      <p class="text-muted mt-2">Every quiz you finish or quit is saved here.</p><a href="#setup" class="btn btn-primary mt-6">${icon("play")}Start a quiz</a></div></section>`;
+    return page(header("History") + `<div class="panel p-10 max-w-lg"><span class="size-10 rounded-lg bg-base-200 grid place-items-center">${icon("history","size-5")}</span>
+      <h2 class="text-xl font-semibold mt-6">No quizzes yet</h2>
+      <p class="text-muted mt-2">Every quiz you finish or quit is saved here, with a chart of how your scores change.</p><a href="#setup" class="btn btn-primary mt-6">${icon("play")}Start a quiz</a></div>`);
   }
-  const rows = [
-    ["Today 15:12","CPU, GPU","Study","16 / 20","3", ""],
-    ["Today 15:31","CPU, GPU","Study","6 / 7","1", "Retry"],
-    ["Yesterday","Memory hierarchy","Exam","8 / 12","0", ""],
-    ["29 Oct","OSI model","Exam","4 / 15","2", "Incomplete"],
-  ];
-  return header("History", "4 attempts") + `<section class="px-12 pb-16 max-w-5xl">
-    <table class="table">
-      <thead><tr class="text-muted"><th>Date</th><th>Topics</th><th>Mode</th><th class="text-right">Score</th><th class="text-right">Guessed</th><th></th><th></th></tr></thead>
-      <tbody>${rows.map(r => `<tr class="hover:bg-base-200"><td class="tabular-nums">${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td class="text-right tabular-nums font-semibold">${r[3]}</td><td class="text-right tabular-nums">${r[4]}</td>
-        <td>${r[5] === "Retry" ? `<span class="badge badge-ghost">${icon("rotate-ccw","size-3")}Retry</span>` : r[5] === "Incomplete" ? `<span class="badge badge-ghost">${icon("circle-pause","size-3")}Incomplete</span>` : ""}</td>
+  const rows = [...attempts].reverse();
+  return page(header("History", `${attempts.length} attempts since 12 Oct`) + `
+    <section class="panel p-6">
+      <h2 class="font-semibold">Score per quiz</h2><p class="text-sm text-muted">% right. Hollow points are retries.</p>
+      <div class="mt-4" data-chart="trend" style="height:200px"></div>
+    </section>
+    <div class="flex items-center justify-between mt-8 mb-3">${legend()}<div class="flex gap-2">${openQ(8, "retrying a retry")} ${openQ(13, "resuming an incomplete attempt")}</div></div>
+    <div class="panel overflow-hidden"><table class="table">
+      <thead><tr class="text-muted"><th>Date</th><th>Topics</th><th>Mode</th><th class="w-56">Result</th><th class="text-right">Score</th><th></th><th></th></tr></thead>
+      <tbody>${rows.map(a => `<tr class="hover:bg-base-100"><td class="tabular-nums">${a.date}</td><td>${a.topics}</td><td>${a.mode}</td>
+        <td>${segBar(a.right - a.guessed, a.guessed, a.total - a.right, 6)}</td>
+        <td class="text-right tabular-nums font-semibold">${a.right} / ${a.total}</td>
+        <td>${a.retry ? `<span class="badge badge-ghost badge-sm">${icon("rotate-ccw","size-3")}Retry</span>` : a.incomplete ? `<span class="badge badge-ghost badge-sm">${icon("circle-pause","size-3")}Incomplete</span>` : ""}</td>
         <td class="text-right"><a href="#results" class="btn btn-ghost btn-sm">View</a></td></tr>`).join("")}</tbody>
-    </table>
-    <div class="mt-4 flex gap-2">${openQ(8, "retrying a retry")} ${openQ(13, "resuming an incomplete attempt")}</div>
-  </section>`;
+    </table></div>`);
 }
 
-/* ---------- Search ---------- */
+/* ---------------- Search ---------------- */
 function screenSearch() {
   const none = state.variant === "no-results";
   const tabs = ["All","Modules","Topics","Tags","Sources"];
   const results = [
-    ["What is a shader core?", "GPU", "hardware, shaders", "Today"],
-    ["Which of these describe how a GPU warp executes?", "GPU", "hardware", "Today"],
-    ["In the five-stage pipeline shown, which stage reads the register file?", "CPU", "pipeline, registers", "2 days ago"],
+    ["What is a <mark class='bg-accent/40 rounded px-0.5'>shader</mark> core?", "GPU", ["hardware","shaders"], "Today"],
+    ["Which of these describe how a GPU warp executes?", "GPU", ["hardware"], "Today"],
+    ["In the five-stage pipeline shown, which stage reads the register file?", "CPU", ["pipeline","registers"], "2 days ago"],
   ];
-  return header("Search") + `<section class="px-12 pb-16 max-w-5xl">
-    <label class="input w-full flex items-center gap-2">${icon("search")}<input type="search" class="grow" value="${none ? "tensor core" : "hardware"}" aria-label="Search" autofocus></label>
+  return page(header("Search") + `
+    <label class="input input-lg w-full flex items-center gap-3 shadow-sm">${icon("search","size-5")}<input type="search" class="grow" value="${none ? "tensor core" : "hardware"}" aria-label="Search" autofocus><kbd class="kbd kbd-sm">/</kbd></label>
     <div class="flex items-center gap-1 mt-6 border-b border-base-300" role="tablist">${tabs.map((t,i)=>`<button role="tab" aria-selected="${i===0}" class="px-3 py-2 text-sm ${i===0?"border-b-2 border-primary font-semibold":"text-muted"}">${t}${i===0&&!none?`<span class="count tabular-nums">3</span>`:""}</button>`).join("")}</div>
     <div class="flex flex-wrap items-center gap-2 mt-4">
       <span class="text-sm text-muted">Filters</span>
@@ -499,53 +706,81 @@ function screenSearch() {
       <button class="btn btn-ghost btn-sm">${icon("plus")}Add filter</button>
       <span class="ml-auto">${openQ(16, "which tab questions appear under")}</span>
     </div>
-    ${none ? `<div class="py-16 max-w-md"><h2 class="text-lg font-semibold">No matches for "tensor core"</h2><p class="text-muted mt-2">Try fewer words, or remove a filter.</p><button class="btn btn-ghost mt-4">Clear filters</button></div>` :
-    `<table class="table mt-4">
+    ${none ? `<div class="panel p-10 mt-6 max-w-lg"><h2 class="text-lg font-semibold">No matches for "tensor core"</h2><p class="text-muted mt-2">Try fewer words, or remove a filter.</p><button class="btn btn-ghost btn-sm mt-4">Clear filters</button></div>` :
+    `<div class="panel overflow-hidden mt-6"><table class="table">
       <thead><tr class="text-muted"><th><button class="flex items-center gap-1">Question ${icon("arrow-up-down","size-3")}</button></th><th><button class="flex items-center gap-1">Topic ${icon("arrow-up-down","size-3")}</button></th><th>Tags</th><th><button class="flex items-center gap-1">Edited ${icon("arrow-down","size-3")}</button></th></tr></thead>
-      <tbody>${results.map(r=>`<tr class="hover:bg-base-200"><td class="max-w-md">${r[0]}</td><td>${r[1]}</td><td class="text-sm text-muted">${r[2]}</td><td class="text-sm text-muted">${r[3]}</td></tr>`).join("")}</tbody>
-    </table>`}
-  </section>`;
+      <tbody>${results.map(r=>`<tr class="hover:bg-base-100"><td class="max-w-md">${r[0]}</td><td>${r[1]}</td><td>${r[2].map(t=>`<span class="badge badge-ghost badge-sm mr-1">${t}</span>`).join("")}</td><td class="text-sm text-muted">${r[3]}</td></tr>`).join("")}</tbody>
+    </table></div>`}`);
 }
 
-const screens = { topics: screenTopics, editor: screenEditor, bibliography: screenBibliography, setup: screenSetup, quiz: screenQuiz, results: screenResults, history: screenHistory, search: screenSearch };
+/* ---------------- Line chart (SVG, sized to its container) ---------------- */
+function drawTrend(el) {
+  const W = el.clientWidth, H = el.clientHeight, m = { l: 40, r: 48, t: 12, b: 28 };
+  if (W < m.l + m.r + 40) { requestAnimationFrame(() => el.isConnected && drawTrend(el)); return; }
+  const pts = attempts.map((a, i) => ({ x: m.l + i * (W - m.l - m.r) / (attempts.length - 1), y: m.t + (1 - a.right / a.total) * (H - m.t - m.b), a, i }));
+  const line = pts.map((p, i) => `${i ? "L" : "M"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join("");
+  const area = `${line}L${pts.at(-1).x},${H - m.b}L${pts[0].x},${H - m.b}Z`;
+  const grid = [0, 50, 100].map(v => { const y = m.t + (1 - v / 100) * (H - m.t - m.b); return `<line x1="${m.l}" x2="${W - m.r}" y1="${y}" y2="${y}" stroke="var(--chart-grid)" stroke-width="1"/><text x="${m.l - 8}" y="${y + 4}" text-anchor="end" font-size="11" fill="var(--muted)" style="font-variant-numeric:tabular-nums">${v}%</text>`; }).join("");
+  const xl = pts.filter((_, i) => i % 2 === 0 || i === pts.length - 1).map(p => `<text x="${p.x}" y="${H - 8}" text-anchor="middle" font-size="11" fill="var(--muted)">${p.a.date}</text>`).join("");
+  const dots = pts.map(p => `<circle cx="${p.x}" cy="${p.y}" r="4.5" fill="${p.a.retry ? "var(--surface)" : "var(--chart-ink)"}" stroke="${p.a.retry ? "var(--chart-ink)" : "var(--surface)"}" stroke-width="2"/>`).join("");
+  const last = pts.at(-1); // label the latest point
+  el.innerHTML = `<svg width="${W}" height="${H}" role="img" aria-label="Score per quiz, from ${pct(attempts[0].right, attempts[0].total)}% to ${pct(last.a.right, last.a.total)}%" tabindex="0" class="outline-none focus-visible:outline-2">
+    ${grid}<path d="${area}" fill="var(--chart-ink)" opacity=".08"/><path d="${line}" fill="none" stroke="var(--chart-ink)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    ${xl}<line class="xh" y1="${m.t}" y2="${H - m.b}" stroke="var(--muted)" stroke-width="1" opacity="0"/>${dots}
+    <text x="${last.x - 8}" y="${last.y - 12}" text-anchor="end" font-size="12" font-weight="600" fill="var(--color-base-content)">${pct(last.a.right, last.a.total)}%</text>
+    <rect x="${m.l}" y="0" width="${W - m.l - m.r}" height="${H}" fill="transparent" class="hit"/></svg>`;
+  const svg = el.querySelector("svg"), xh = svg.querySelector(".xh");
+  let idx = pts.length - 1;
+  const show = (i, cx, cy) => { idx = i; const p = pts[i]; xh.setAttribute("x1", p.x); xh.setAttribute("x2", p.x); xh.setAttribute("opacity", ".5");
+    tip(`<b>${p.a.date}</b> · ${p.a.topics}${p.a.retry ? " (retry)" : ""}${p.a.incomplete ? " (incomplete)" : ""}<br>${p.a.right} / ${p.a.total} right · ${pct(p.a.right, p.a.total)}% · ${p.a.guessed} guessed`, cx, cy); };
+  svg.addEventListener("mousemove", e => { const rx = e.clientX - svg.getBoundingClientRect().left; let best = 0; pts.forEach((p, i) => { if (Math.abs(p.x - rx) < Math.abs(pts[best].x - rx)) best = i; }); const b = svg.getBoundingClientRect(); show(best, b.left + pts[best].x, b.top + pts[best].y); });
+  svg.addEventListener("mouseleave", () => { xh.setAttribute("opacity", "0"); hideTip(); });
+  svg.addEventListener("keydown", e => { if (!["ArrowLeft","ArrowRight"].includes(e.key)) return; e.preventDefault(); idx = Math.max(0, Math.min(pts.length - 1, idx + (e.key === "ArrowRight" ? 1 : -1))); const b = svg.getBoundingClientRect(); show(idx, b.left + pts[idx].x, b.top + pts[idx].y); });
+  svg.addEventListener("blur", () => { xh.setAttribute("opacity", "0"); hideTip(); });
+}
 
+/* ---------------- Tooltip ---------------- */
+const tipEl = document.getElementById("tip");
+function tip(html, x, y) { tipEl.innerHTML = html; tipEl.classList.add("show"); const r = tipEl.getBoundingClientRect(); tipEl.style.left = Math.min(x + 12, innerWidth - r.width - 8) + "px"; tipEl.style.top = Math.max(y - r.height - 12, 8) + "px"; }
+function hideTip() { tipEl.classList.remove("show"); }
+document.addEventListener("mouseover", e => { const t = e.target.closest("[data-tip]"); if (t) { const b = t.getBoundingClientRect(); tip(t.dataset.tip, b.left + b.width / 2, b.top); } });
+document.addEventListener("mouseout", e => { if (e.target.closest("[data-tip]")) hideTip(); });
+
+/* ---------------- Render ---------------- */
+const screens = { overview: screenOverview, topics: screenTopics, editor: screenEditor, bibliography: screenBibliography, setup: screenSetup, quiz: screenQuiz, results: screenResults, history: screenHistory, search: screenSearch };
 function setVariant(v) { state.variant = v; state.picked = new Set(); state.answered = false; state.flagged = false; render(); }
-
 function render() {
   const el = document.getElementById("app");
   el.innerHTML = screens[state.screen]();
   document.querySelectorAll(".nav-link").forEach(a => {
-    const on = a.dataset.nav === state.screen || (state.screen === "editor" && a.dataset.nav === "topics") || (["quiz","results"].includes(state.screen) && a.dataset.nav === "setup");
-    a.classList.toggle("bg-base-300", on); a.classList.toggle("font-semibold", on);
-    a.setAttribute("aria-current", on ? "page" : "false");
+    const on = a.dataset.nav === state.screen || (state.screen === "editor" && a.dataset.nav === "topics");
+    on ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current");
   });
   document.getElementById("states").innerHTML = variants[state.screen].map(v => `<button class="px-2 py-1 rounded ${v === state.variant ? "bg-neutral-content text-neutral font-semibold" : "hover:underline"}" onclick="setVariant('${v}')">${v}</button>`).join("");
   if (window.lucide) lucide.createIcons();
   if (window.renderMathInElement) renderMathInElement(el, { delimiters: [{ left: "$", right: "$", display: false }], throwOnError: false });
+  el.querySelectorAll('[data-chart="trend"]').forEach(drawTrend);
+  hideTip();
   highlight();
 }
-
 let highlighter;
 async function highlight() {
   const blocks = document.querySelectorAll("pre[data-code]");
   if (!blocks.length) return;
   try {
-    if (!highlighter) {
-      const shiki = await import("https://cdn.jsdelivr.net/npm/shiki@1.22.2/+esm");
-      highlighter = await shiki.createHighlighter({ themes: ["min-light"], langs: ["cpp"] });
-    }
+    if (!highlighter) { const shiki = await import("https://cdn.jsdelivr.net/npm/shiki@1.22.2/+esm"); highlighter = await shiki.createHighlighter({ themes: ["min-light"], langs: ["cpp"] }); }
     blocks.forEach(b => { b.outerHTML = highlighter.codeToHtml(b.textContent, { lang: "cpp", theme: "min-light" }); });
-  } catch (e) { blocks.forEach(b => b.classList.add("bg-base-200","p-4","rounded-box","text-sm","font-mono")); }
+  } catch (e) { blocks.forEach(b => b.classList.add("bg-surface","p-4","rounded-lg","text-sm","font-mono")); }
 }
-
 function route() {
-  const s = location.hash.slice(1) || "topics";
-  state.screen = screens[s] ? s : "topics";
+  const s = location.hash.slice(1) || "overview";
+  state.screen = screens[s] ? s : "overview";
   state.variant = variants[state.screen][0];
   state.picked = new Set(); state.answered = false; state.flagged = false; state.quizIndex = 0;
-  render();
+  render(); window.scrollTo(0, 0);
 }
 window.addEventListener("hashchange", route);
+window.addEventListener("resize", () => document.querySelectorAll('[data-chart="trend"]').forEach(drawTrend));
 document.addEventListener("keydown", e => {
   if (state.screen !== "quiz" || ["INPUT","TEXTAREA","SELECT"].includes(e.target.tagName)) return;
   const q = quizQuestions[state.quizIndex % quizQuestions.length];
