@@ -1,10 +1,8 @@
 // Every command the frontend invokes must be registered in the Tauri shell,
 // otherwise the app fails at runtime with "Command ... not found".
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-
-const api = readFileSync("src/lib/api.ts", "utf8");
-const shell = readFileSync("src-tauri/src/lib.rs", "utf8");
+import api from "./api.ts?raw";
+import shell from "../../src-tauri/src/lib.rs?raw";
 const handler = shell.slice(shell.indexOf("generate_handler!["), shell.indexOf("]", shell.indexOf("generate_handler![")));
 
 describe("Tauri commands", () => {
