@@ -658,7 +658,7 @@ function screenResults() {
     <div class="mt-8 pt-6 border-t border-base-300 grid grid-cols-[1fr_1fr] gap-12">
       <div>
         <p class="text-sm font-semibold">Question by question</p>
-        <div class="grid grid-cols-10 w-fit gap-[2px] mt-3" role="list" aria-label="Each question's result">${strip.map((s, i) => `<span role="listitem" class="cell" style="background:${STATUS[s].color};color:${STATUS[s].text}" data-tip="Question ${i + 1}: ${s === "guessed" ? "right, guessed" : s}" aria-label="Question ${i + 1}: ${s}">${STATUS[s].glyph}</span>`).join("")}</div>
+        <div class="grid grid-cols-10 w-fit gap-[2px] mt-3" role="list" aria-label="Each question's result">${strip.map((s, i) => `<span role="listitem" class="cell" style="background:${STATUS[s].color};color:${STATUS[s].text}" data-tip="Question ${i + 1}: ${s === "guessed" ? "right, guessed" : s}" aria-label="Question ${i + 1}: ${s}">${s === "guessed" ? `<span class="size-4 rounded-sm grid place-items-center" style="background:var(--surface)">?</span>` : STATUS[s].glyph}</span>`).join("")}</div>
       </div>
       <div>
         <p class="text-sm font-semibold">By topic</p>
