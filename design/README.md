@@ -435,3 +435,56 @@ Waiting for a greenlight. Open `design/exam-dates.html`, the strip at the top sw
 - **Cards:** only the due date is pulled in. FSRS sees an early review and handles it as it normally does, its memory model isn't changed.
 - **Drills** count when their topic is covered. Not-Solid drills are back tomorrow anyway, so this only matters for a drill moved far out.
 - **Never-quizzed topics** aren't made due automatically, they're flagged on the date's panel instead.
+
+# Lists at scale (lists-at-scale.html)
+
+Waiting for a greenlight. Built after testing the real app against the large profile (`STUDY_SEED=large`), where half the screens grew to 10 to 300 screens tall. Laid out like SkyUI's inventory: categories down the side, a filter box, sortable columns you can show or hide, and an item card for whatever's picked. The prototype has 171 generated topics and the filter, sort, rail, ticks and keyboard all work.
+
+| Screen | States |
+|---|---|
+| Topics | all, one module, filtering, due only, a topic picked, three ticked, columns, nothing matches |
+| New quiz | picking, whole module ticked, filtered |
+| Today | capped quizzes, quiz schedule |
+| Search | empty, typed, more results |
+| History | by month, filtered |
+| Suggestions | grouped by topic |
+| Bibliography | list, a source picked |
+| Overview | weakest few |
+| Cards | by topic |
+| Exam topics | picking topics (the exam dates dialog) |
+
+## The shared pieces
+
+- **Module rail:** every module with its topic count, plus All and No module. Picking one narrows the list, like SkyUI's category column.
+- **Filter box:** filters as you type, on names, modules and tags, with the match underlined and "9 of 171" beside it. `/` jumps to it from anywhere on the screen, `Esc` clears it. Looking inside questions stays Search's job, and "nothing matches" offers it.
+- **Status filter:** a segmented control for the states that matter on that screen, with counts (Topics: All, Due, Tightened, Not started).
+- **Sortable columns:** click a header to sort, again to flip it. "Columns" shows or hides the optional ones (tags, cards, last score). Headers stay put while the list scrolls.
+- **The list scrolls in its own pane,** so the page is never taller than the window and the filter, rail and item card are always in view.
+- **Item card:** picking a row shows its details and actions on the right, so rows don't each carry Quiz, Edit and Delete. `↑` `↓` move, `Enter` edits, `Space` ticks.
+- **Ticks:** tick rows (or a whole module) for "Quiz them", "Move to module" or "Tag" from a bar under the list.
+
+## Per screen
+
+- **Topics:** all of the above. The primary is "Quiz today's 5".
+- **New quiz and the exam's topics:** the same picker, with "Tick all 9 in Networks" when a module is picked. Your quiz lists the ticked topics as chips you can remove, and defaults to 20 questions spread evenly instead of every question.
+- **Today:** quizzes are capped at 5 topics a day, most overdue first. The rest wait in a folded "66 more waiting" with when the last of them comes in. A waiting topic keeps its step. "Quiz all 5 together" is 20 questions. Quiz schedule gets "Topics to quiz a day", and warns when more come due each day than that, since the queue would only grow.
+- **Search:** shows recent searches and recently edited questions until you type, then 50 results at a time with "Show 50 more".
+- **History:** the chart defaults to the last 30 quizzes (90 days and All one click away). The table is grouped by month, folded after the first two, with a filter and a kind filter.
+- **Suggestions:** grouped by topic (or module, day, none), biggest groups first, folded after the first, with "Dismiss these 14" per group and a filter.
+- **Bibliography:** one compact row per source (author, year, title, "20 in 9 topics"), sortable, with a filter. The full reference and the topics citing it go in the item card.
+- **Overview:** the 8 weakest topics with a module picker, and "See all in Topics".
+- **Cards:** the By topic table uses the rail, filter and pane, filtered to topics with cards due by default.
+
+## Calls made in the design, to confirm or change
+
+- **5 quizzes a day** by default (you can change it). Most overdue first, and waiting doesn't move a topic down its ladder.
+- **Row actions move to the item card.** One click to pick, then Quiz or Edit, instead of a button on every row. Double-click or `Enter` still edits straight away.
+- **Search starts empty** rather than listing everything.
+- **The rail and sort aren't remembered** between visits yet. SkyUI's lack of this is a common complaint, so the build could remember them per screen.
+
+## UI/UX test results
+
+- Every screen and state screenshotted in both themes at 1440 × 900: no console errors, no blocked requests, no horizontal scroll. The tallest page is now History at 1.4 window heights (Topics was 13.8 in the real app, Search 306).
+- Audit (contrast, 24px targets, at most one primary) passes everywhere. The first pass flagged the 20px checkboxes, now 24px.
+- Interaction test in the prototype: `/` focuses the filter, typing filters without losing focus, arrows move the selection into the item card, `Esc` clears, a header sorts both ways, the rail and Due narrow the list, and the page stays one window tall.
+- Found while building: DaisyUI's own `list` class made tables shrink to fit (renamed), and hidden screen-reader labels escaped the scroll pane and made the page 10,000px tall (fixed by containing them).
