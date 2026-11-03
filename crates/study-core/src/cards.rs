@@ -110,7 +110,29 @@ fn escape(text: &str) -> String {
         .replace('>', "&gt;")
 }
 
+/// Markdown on one line: code fences dropped and the lines joined, for a checklist point.
+fn one_line(markdown: &str) -> String {
+    markdown
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with("```"))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 impl Note {
+    /// The note as a recall point (R54): the text and, for basic and reversed cards, the
+    /// answer. A cloze note is its text with the gaps filled in and the answers in bold.
+    pub fn as_point(&self) -> (String, String) {
+        match self.kind {
+            NoteKind::Basic | NoteKind::Reversed => (one_line(&self.front), one_line(&self.back)),
+            NoteKind::Cloze => {
+                let text = fill(&self.text, &gaps(&self.text), |gap| format!("**{}**", gap.answer.trim()));
+                (one_line(&text), String::new())
+            }
+        }
+    }
+
     /// The cards this note makes (R62, R63).
     pub fn faces(&self) -> Result<Vec<Face>, CardError> {
         let need = |front: &str, back: &str| {
@@ -478,6 +500,21 @@ mod tests {
     use super::*;
 
     const TODAY: i64 = 20_760;
+
+    // free-recall.feature: Add points from flashcards
+    #[test]
+    fn a_note_as_a_recall_point() {
+        let mut basic = note(NoteKind::Basic);
+        basic.front = "  What caches translations? ".into();
+        basic.back = "The **TLB**\n\n```c\nflush();\n```\n".into();
+        assert_eq!(basic.as_point(), ("What caches translations?".to_string(), "The **TLB** flush();".to_string()));
+        let reversed = Note { kind: NoteKind::Reversed, ..note(NoteKind::Reversed) };
+        assert_eq!(reversed.as_point(), ("Front".to_string(), "Back".to_string()));
+        let mut cloze = note(NoteKind::Cloze);
+        cloze.text = "Pages live in {{c1::RAM}} or on {{c2::disk::slow}}, A & B".into();
+        cloze.extra = "Not part of the point".into();
+        assert_eq!(cloze.as_point(), ("Pages live in **RAM** or on **disk**, A & B".to_string(), String::new()));
+    }
 
     fn note(kind: NoteKind) -> Note {
         Note {

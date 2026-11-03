@@ -77,7 +77,7 @@ pub fn dispatch(app: &mut App, command: &str, args: &Value, today: i64) -> ApiRe
         "checklist" => json(app.checklist(arg(a, "id")?, today)),
         "save_points" => json(app.save_points(arg(a, "id")?, arg(a, "points")?)),
         "recall_candidates" => json(app.recall_candidates(arg(a, "id")?)),
-        "add_from_questions" => json(app.add_from_questions(arg(a, "id")?, arg(a, "add")?, arg(a, "remove")?)),
+        "add_from_items" => json(app.add_from_items(arg(a, "id")?, arg(a, "add")?, arg(a, "remove")?)),
         "preview_check" => json(app.preview_check(arg(a, "id")?, arg(a, "recalled")?, today)),
         "finish_check" => json(app.finish_check(arg(a, "id")?, arg(a, "dump")?, arg(a, "recalled")?, today)),
         "recall_history" => json(app.recall_history(arg(a, "id")?)),

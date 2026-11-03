@@ -8,7 +8,7 @@ vi.mock("../lib/api", async (original) => {
     ...actual,
     api: {
       checklist: vi.fn(), recallSchedule: vi.fn(), today: vi.fn(), savePoints: vi.fn(), recallCandidates: vi.fn(),
-      addFromQuestions: vi.fn(), recallHistory: vi.fn(), deleteChecklist: vi.fn(),
+      addFromItems: vi.fn(), recallHistory: vi.fn(), deleteChecklist: vi.fn(),
     },
   };
 });
@@ -18,7 +18,7 @@ import Checklist from "./Checklist.svelte";
 
 const mocked = vi.mocked(api);
 const TODAY = 20_760;
-const p = (text: string, question: number | null = null): RecallPoint => ({ text, question });
+const p = (text: string, question: number | null = null, note: number | null = null): RecallPoint => ({ text, question, note });
 const view = (points: RecallPoint[]): ChecklistView => ({
   row: { id: 4, subject_name: "Computer Architecture", module: true, subject_exists: true, points: points.length, step: "Month", next_step: "Monthly 1 of 6", position: [3, 1], due: TODAY, due_today: true, days_late: 0, last_score: 79 },
   points,
@@ -64,22 +64,62 @@ describe("Checklist editor", () => {
   it("adds questions as points and removes ones that are unticked", async () => {
     mocked.checklist.mockResolvedValue(view([p("Which stage reads registers? → Decode", 10)]));
     mocked.recallCandidates.mockResolvedValue([
-      { question: 10, topic_name: "CPU", text: "Which stage reads registers?", answer: "Decode", in_checklist: true },
-      { question: 11, topic_name: "Memory", text: "What does the TLB cache?", answer: "Page translations", in_checklist: false },
+      { item: { Question: 10 }, kind: "MCQ", topic_name: "CPU", text: "Which stage reads registers?", answer: "Decode", in_checklist: true },
+      { item: { Question: 11 }, kind: "MCQ", topic_name: "Memory", text: "What does the TLB cache?", answer: "Page translations", in_checklist: false },
     ]);
-    mocked.addFromQuestions.mockResolvedValue([p("What does the TLB cache? → Page translations", 11)]);
+    mocked.addFromItems.mockResolvedValue([p("What does the TLB cache? → Page translations", 11)]);
     const u = userEvent.setup();
     render(Checklist, { id: 4, onBack: vi.fn(), onStart: vi.fn() });
     expect(await screen.findByText("From MCQ")).toBeInTheDocument();
-    await u.click(screen.getByRole("button", { name: "Add from questions" }));
+    await u.click(screen.getByRole("button", { name: "Add from questions or cards" }));
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByRole("button", { name: "No changes yet" })).toBeDisabled();
     await u.click(within(dialog).getByRole("checkbox", { name: /TLB/ }));
     await u.click(within(dialog).getByRole("checkbox", { name: /reads registers/ }));
     expect(within(dialog).getByText("Will be removed")).toBeInTheDocument();
     await u.click(within(dialog).getByRole("button", { name: "Add 1, remove 1" }));
-    expect(mocked.addFromQuestions).toHaveBeenCalledWith(4, [11], [10]);
+    expect(mocked.addFromItems).toHaveBeenCalledWith(4, [{ Question: 11 }], [{ Question: 10 }]);
     expect(await screen.findByRole("status")).toHaveTextContent("Added 1, removed 1");
+  });
+
+  // free-recall.feature: Add points from flashcards
+  it("adds flashcards from their own tab, alongside questions", async () => {
+    mocked.checklist.mockResolvedValue(view([p("Thrashing → Paging more than running", null, 7)]));
+    mocked.recallCandidates.mockResolvedValue([
+      { item: { Question: 7 }, kind: "MCQ", topic_name: "CPU", text: "Which stage reads registers?", answer: "Decode", in_checklist: false },
+      { item: { Note: 7 }, kind: "Reversed card", topic_name: "Memory", text: "Thrashing", answer: "Paging more than running", in_checklist: true },
+      { item: { Note: 8 }, kind: "Cloze card", topic_name: "Memory", text: "Pages live in **RAM** or on **disk**", answer: "", in_checklist: false },
+    ]);
+    mocked.addFromItems.mockResolvedValue([p("Pages live in **RAM** or on **disk**", null, 8)]);
+    const u = userEvent.setup();
+    render(Checklist, { id: 4, onBack: vi.fn(), onStart: vi.fn() });
+    expect(await screen.findByText("From card")).toBeInTheDocument();
+    await u.click(screen.getByRole("button", { name: "Add from questions or cards" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("radio", { name: "MCQ 1" })).toHaveAttribute("aria-checked", "true");
+    await u.click(within(dialog).getByRole("checkbox", { name: /reads registers/ }));
+    await u.click(within(dialog).getByRole("radio", { name: "Flashcards 2" }));
+    const cards = within(dialog).getByRole("list", { name: "Flashcards" });
+    expect(within(cards).queryByText(/reads registers/)).toBeNull();
+    const cloze = within(cards).getByRole("checkbox", { name: /Pages live in/ });
+    expect(cloze.closest("label")).toHaveTextContent("Cloze card");
+    expect(cloze.closest("label")).not.toHaveTextContent("→");
+    expect(cloze.closest("label")!.querySelector("strong")).toHaveTextContent("RAM");
+    await u.click(cloze);
+    await u.click(within(cards).getByRole("checkbox", { name: /Thrashing/ }));
+    await u.click(within(dialog).getByRole("button", { name: "Add 2, remove 1" }));
+    expect(mocked.addFromItems).toHaveBeenCalledWith(4, [{ Question: 7 }, { Note: 8 }], [{ Note: 7 }]);
+  });
+
+  it("opens on the flashcards tab when a topic only has cards", async () => {
+    mocked.checklist.mockResolvedValue(view([]));
+    mocked.recallCandidates.mockResolvedValue([{ item: { Note: 8 }, kind: "Basic card", topic_name: "Memory", text: "What caches translations?", answer: "The TLB", in_checklist: false }]);
+    const u = userEvent.setup();
+    render(Checklist, { id: 4, onBack: vi.fn(), onStart: vi.fn() });
+    await u.click(await screen.findByRole("button", { name: "Add from questions or cards" }));
+    expect(screen.getByRole("radio", { name: "Flashcards 1" })).toHaveAttribute("aria-checked", "true");
+    await u.click(screen.getByRole("radio", { name: "MCQ 0" }));
+    expect(screen.getByText("There are no MCQs in these topics yet.")).toBeInTheDocument();
   });
 
   // free-recall.feature: A checklist needs a point before it can start

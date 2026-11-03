@@ -149,7 +149,7 @@ All 16 open questions were answered on 2 Nov 2026 and are now requirements.
 |---|---|
 | R52 | A checklist is about one module or one topic, picked when it's made |
 | R53 | A checklist has points, written by hand. Each point is Markdown with `$...$` maths, and can be edited, reordered and removed |
-| R54 | Points can be added from questions in the checklist's topics (MCQ now, short answer and flashcards when built) as "question → answer". Unticking an added question removes its point. The question is never changed |
+| R54 | Points can be added from MCQs and flashcards in the checklist's topics (short answer when built). An MCQ becomes "question → answer". A basic or reversed card becomes "front → back", and a cloze card becomes its text with the gaps filled in and the answers in bold. A note with every card archived isn't offered. Unticking an added item removes its point. The question or card is never changed |
 | R55 | A session starts with the dump: typed in the app (saved with the check) or done outside it. The checklist stays hidden until the dump is finished |
 | R56 | The check shows the dump beside the checklist. Each point is ticked recalled or not. The score, the pass mark and what will happen next update as you tick |
 | R57 | Finishing a check moves the checklist up one step at or over the pass mark, or back one step under it. The next date counts from the day the check was done. The result lists missed points and how often each has been missed |

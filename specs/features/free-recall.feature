@@ -31,6 +31,24 @@ Feature: Free recall with a checklist
     When I untick that question
     Then the point is removed and the question is unchanged
 
+  Scenario Outline: Add points from flashcards
+    Given a <kind> card in "Memory" with <content>
+    And a checklist about "Computer Architecture"
+    When I add that card to the checklist
+    Then the checklist has the point "<point>"
+    When I untick that card
+    Then the point is removed and the card is unchanged
+
+    Examples:
+      | kind     | content                                               | point                                  |
+      | basic    | front "What caches translations?" and back "The TLB"  | What caches translations? → The TLB    |
+      | reversed | front "Thrashing" and back "Paging more than running" | Thrashing → Paging more than running   |
+      | cloze    | text "Pages live in {{c1::RAM}} or on {{c2::disk}}"   | Pages live in **RAM** or on **disk**   |
+
+  Scenario: Archived cards aren't offered
+    Given a card in "Memory" with all of its cards archived
+    Then it isn't offered as a point
+
   Scenario: A checklist needs a point before it can start
     Given a checklist about "CPU" with no points
     When I try to start a recall

@@ -110,7 +110,7 @@ export interface SearchQuery { text: string; tab: "All" | "Questions" | "Modules
 // ---------- Free recall (R52 to R61) ----------
 export type ChecklistId = number;
 export type Subject = { Module: Id } | { Topic: Id };
-export interface RecallPoint { text: string; question: Id | null }
+export interface RecallPoint { text: string; question: Id | null; note: Id | null }
 export interface RecallRow {
   id: ChecklistId;
   subject_name: string;
@@ -126,7 +126,9 @@ export interface RecallRow {
   last_score: number | null;
 }
 export interface ChecklistView { row: RecallRow; points: RecallPoint[]; topics: string[] }
-export interface Candidate { question: Id; topic_name: string; text: string; answer: string; in_checklist: boolean }
+/** Something a checklist point can come from (R54). */
+export type RecallItem = { Question: Id } | { Note: Id };
+export interface Candidate { item: RecallItem; kind: string; topic_name: string; text: string; answer: string; in_checklist: boolean }
 export interface Preview { score: number; passed: boolean; to: string; next_due: number }
 export interface Missed { text: string; missed: number; checks: number }
 export interface CheckResult {
@@ -217,7 +219,7 @@ export const api = {
   checklist: (id: ChecklistId) => invoke<ChecklistView>("checklist", { id }),
   savePoints: (id: ChecklistId, points: RecallPoint[]) => invoke<RecallPoint[]>("save_points", { id, points }),
   recallCandidates: (id: ChecklistId) => invoke<Candidate[]>("recall_candidates", { id }),
-  addFromQuestions: (id: ChecklistId, add: Id[], remove: Id[]) => invoke<RecallPoint[]>("add_from_questions", { id, add, remove }),
+  addFromItems: (id: ChecklistId, add: RecallItem[], remove: RecallItem[]) => invoke<RecallPoint[]>("add_from_items", { id, add, remove }),
   previewCheck: (id: ChecklistId, recalled: number) => invoke<Preview>("preview_check", { id, recalled }),
   finishCheck: (id: ChecklistId, dump: string | null, recalled: number[]) => invoke<CheckResult>("finish_check", { id, dump, recalled }),
   recallHistory: (id: ChecklistId) => invoke<RecallHistory>("recall_history", { id }),

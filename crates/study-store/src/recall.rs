@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use study_core::question::{QuestionId, TopicId};
 use study_core::recall::{Position, Schedule};
 
+use crate::cards::NoteId;
 use crate::{ModuleId, Result, Store, StoreError};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -22,6 +23,9 @@ pub struct Point {
     pub text: String,
     /// Set when the point was added from a question (R54).
     pub question: Option<QuestionId>,
+    /// Set when the point was added from a flashcard note (R54).
+    #[serde(default)]
+    pub note: Option<NoteId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -102,8 +106,8 @@ impl Store {
         transaction.execute("DELETE FROM recall_points WHERE checklist_id = ?1", [id.0])?;
         for (position, point) in points.iter().enumerate() {
             transaction.execute(
-                "INSERT INTO recall_points (checklist_id, position, text, question_id) VALUES (?1, ?2, ?3, ?4)",
-                params![id.0, position as i64, point.text, point.question.map(|q| q.0)],
+                "INSERT INTO recall_points (checklist_id, position, text, question_id, note_id) VALUES (?1, ?2, ?3, ?4, ?5)",
+                params![id.0, position as i64, point.text, point.question.map(|q| q.0), point.note.map(|n| n.0)],
             )?;
         }
         transaction.commit()?;
@@ -112,12 +116,13 @@ impl Store {
 
     pub fn points(&self, id: ChecklistId) -> Result<Vec<Point>> {
         let mut statement = self.connection.prepare(
-            "SELECT text, question_id FROM recall_points WHERE checklist_id = ?1 ORDER BY position",
+            "SELECT text, question_id, note_id FROM recall_points WHERE checklist_id = ?1 ORDER BY position",
         )?;
         let rows = statement.query_map([id.0], |row| {
             Ok(Point {
                 text: row.get(0)?,
                 question: row.get::<_, Option<i64>>(1)?.map(QuestionId),
+                note: row.get::<_, Option<i64>>(2)?.map(NoteId),
             })
         })?;
         Ok(rows.collect::<rusqlite::Result<_>>()?)
@@ -280,6 +285,7 @@ mod tests {
         Point {
             text: text.into(),
             question: None,
+            note: None,
         }
     }
 
@@ -321,6 +327,26 @@ mod tests {
             store.create_checklist(Subject::Topic(TopicId(99)), TODAY),
             Err(StoreError::NotFound(_))
         ));
+    }
+
+    // free-recall.feature: Add points from flashcards
+    #[test]
+    fn a_point_remembers_its_card_until_the_card_is_deleted() {
+        use study_core::cards::{Note, NoteKind};
+        let mut store = Store::in_memory().unwrap();
+        let topic = store.create_topic("Memory", None).unwrap();
+        let note = Note { topic, kind: NoteKind::Basic, front: "What caches translations?".into(), back: "The TLB".into(), cues: vec![], text: String::new(), extra: String::new() };
+        let faces = note.faces().unwrap();
+        let note_id = store.save_note(None, &note, &faces, None, TODAY).unwrap();
+        let id = store.create_checklist(Subject::Topic(topic), TODAY).unwrap();
+        let from_card = Point { text: "What caches translations? → The TLB".into(), question: None, note: Some(note_id) };
+        store.set_points(id, &[from_card.clone(), point("Thrashing")]).unwrap();
+        assert_eq!(store.points(id).unwrap(), vec![from_card, point("Thrashing")]);
+
+        store.delete_note(note_id).unwrap();
+        let points = store.points(id).unwrap();
+        assert_eq!(points[0].text, "What caches translations? → The TLB", "the point stays");
+        assert_eq!(points[0].note, None, "but no longer links to the card");
     }
 
     // free-recall.feature: Write, reorder and remove points

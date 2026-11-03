@@ -1,8 +1,12 @@
 //! Free recall commands (R52 to R61). Thin over the store and the core's schedule.
 
+use std::collections::HashSet;
+
 use serde::{Deserialize, Serialize};
 
+use study_core::cards::NoteKind;
 use study_core::question::QuestionId;
+use study_store::cards::NoteId;
 use study_core::recall::Schedule;
 use study_store::recall::{CheckRecord, ChecklistId, ChecklistRow, Point, Subject};
 
@@ -36,9 +40,18 @@ pub struct ChecklistView {
     pub topics: Vec<String>,
 }
 
+/// Something a point can be added from (R54).
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Item {
+    Question(QuestionId),
+    Note(NoteId),
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Candidate {
-    pub question: QuestionId,
+    pub item: Item,
+    /// "MCQ", "Basic card", "Reversed card" or "Cloze card".
+    pub kind: String,
     pub topic_name: String,
     pub text: String,
     pub answer: String,
@@ -97,6 +110,8 @@ pub struct RecallHistory {
 pub struct PointInput {
     pub text: String,
     pub question: Option<QuestionId>,
+    #[serde(default)]
+    pub note: Option<NoteId>,
 }
 
 /// How often each point was missed across checks, most missed first.
@@ -220,6 +235,7 @@ impl App {
                 (!text.is_empty()).then(|| Point {
                     text: text.into(),
                     question: p.question,
+                    note: p.note,
                 })
             })
             .collect();
@@ -227,69 +243,116 @@ impl App {
         Ok(points)
     }
 
-    /// MCQs from the checklist's topics that can become points (R54).
+    /// MCQs and flashcard notes from the checklist's topics that can become points (R54).
+    /// A note is offered while any of its cards isn't archived.
     pub fn recall_candidates(&self, id: ChecklistId) -> ApiResult<Vec<Candidate>> {
         let row = self.store.checklist(id)?;
-        let in_checklist: Vec<QuestionId> = self
+        let in_checklist: HashSet<Item> = self
             .store
             .points(id)?
             .into_iter()
-            .filter_map(|p| p.question)
+            .flat_map(|p| [p.question.map(Item::Question), p.note.map(Item::Note)])
+            .flatten()
             .collect();
         let topics = self.subject_topics(row.subject)?;
         let ids: Vec<_> = topics.iter().map(|(id, _)| *id).collect();
-        Ok(self
+        let name_of = |topic| {
+            topics
+                .iter()
+                .find(|(id, _)| *id == topic)
+                .map(|(_, n)| n.clone())
+                .unwrap_or_default()
+        };
+        let mut candidates: Vec<Candidate> = self
             .store
             .questions_in(&ids)?
             .into_iter()
             .map(|(question_id, question)| {
-                let topic_name = topics
-                    .iter()
-                    .find(|(id, _)| *id == question.topic())
-                    .map(|(_, n)| n.clone())
-                    .unwrap_or_default();
                 let answer = question
                     .correct_indices()
                     .iter()
                     .map(|&i| question.options()[i].text.trim().to_string())
                     .collect::<Vec<_>>()
                     .join(", ");
+                let item = Item::Question(question_id);
                 Candidate {
-                    question: question_id,
-                    topic_name,
+                    item,
+                    kind: "MCQ".into(),
+                    topic_name: name_of(question.topic()),
                     text: question.text().trim().into(),
                     answer,
-                    in_checklist: in_checklist.contains(&question_id),
+                    in_checklist: in_checklist.contains(&item),
                 }
             })
-            .collect())
+            .collect();
+        for (topic, _) in &topics {
+            let mut notes: Vec<NoteId> = vec![];
+            for card in self.store.cards_in(*topic)? {
+                if !card.archived && !notes.contains(&card.note) {
+                    notes.push(card.note);
+                }
+            }
+            notes.sort_by_key(|note| note.0);
+            for note_id in notes {
+                let (note, _) = self.store.note(note_id)?;
+                let (text, answer) = note.as_point();
+                let item = Item::Note(note_id);
+                candidates.push(Candidate {
+                    item,
+                    kind: match note.kind {
+                        NoteKind::Basic => "Basic card",
+                        NoteKind::Reversed => "Reversed card",
+                        NoteKind::Cloze => "Cloze card",
+                    }
+                    .into(),
+                    topic_name: name_of(*topic),
+                    text,
+                    answer,
+                    in_checklist: in_checklist.contains(&item),
+                });
+            }
+        }
+        Ok(candidates)
     }
 
-    /// Adds questions as "question → answer" points and removes points of unticked ones.
-    pub fn add_from_questions(
+    /// Adds questions and cards as points ("question → answer", "front → back", or a
+    /// cloze's filled-in text) and removes the points of unticked ones.
+    pub fn add_from_items(
         &mut self,
         id: ChecklistId,
-        add: Vec<QuestionId>,
-        remove: Vec<QuestionId>,
+        add: Vec<Item>,
+        remove: Vec<Item>,
     ) -> ApiResult<Vec<Point>> {
         let candidates = self.recall_candidates(id)?;
+        let item_of = |p: &Point| p.question.map(Item::Question).or(p.note.map(Item::Note));
         let mut points: Vec<Point> = self
             .store
             .points(id)?
             .into_iter()
-            .filter(|p| !p.question.is_some_and(|q| remove.contains(&q)))
+            .filter(|p| !item_of(p).is_some_and(|item| remove.contains(&item)))
             .collect();
-        for question in add {
-            if points.iter().any(|p| p.question == Some(question)) {
+        for item in add {
+            if points.iter().any(|p| item_of(p) == Some(item)) {
                 continue;
             }
             let candidate = candidates
                 .iter()
-                .find(|c| c.question == question)
-                .ok_or_else(|| ApiError::new("that question isn't in this checklist's topics"))?;
+                .find(|c| c.item == item)
+                .ok_or_else(|| ApiError::new("that isn't in this checklist's topics"))?;
             points.push(Point {
-                text: format!("{} → {}", candidate.text, candidate.answer),
-                question: Some(question),
+                text: if candidate.answer.is_empty() {
+                    candidate.text.clone()
+                } else {
+                    format!("{} → {}", candidate.text, candidate.answer)
+                },
+                question: match item {
+                    Item::Question(question) => Some(question),
+                    Item::Note(_) => None,
+                },
+                note: match item {
+                    Item::Note(note) => Some(note),
+                    Item::Question(_) => None,
+                },
             });
         }
         self.store.set_points(id, &points)?;
@@ -438,6 +501,7 @@ mod tests {
                 .map(|i| PointInput {
                     text: format!("Point {i}"),
                     question: None,
+                    note: None,
                 })
                 .collect(),
         )
@@ -485,11 +549,11 @@ mod tests {
                 vec![
                     PointInput {
                         text: "  Amdahl's law ".into(),
-                        question: None,
+                        question: None, note: None,
                     },
                     PointInput {
                         text: " ".into(),
-                        question: None,
+                        question: None, note: None,
                     },
                 ],
             )
@@ -533,6 +597,7 @@ mod tests {
             vec![PointInput {
                 text: "Written".into(),
                 question: None,
+                note: None,
             }],
         )
         .unwrap();
@@ -543,13 +608,14 @@ mod tests {
             (
                 candidates[0].topic_name.as_str(),
                 candidates[0].answer.as_str(),
+                candidates[0].kind.as_str(),
                 candidates[0].in_checklist
             ),
-            ("CPU", "Decode", false)
+            ("CPU", "Decode", "MCQ", false)
         );
 
         let points = app
-            .add_from_questions(id, vec![reads, reads], vec![])
+            .add_from_items(id, vec![Item::Question(reads), Item::Question(reads)], vec![])
             .unwrap();
         assert_eq!(
             texts(&points),
@@ -557,7 +623,7 @@ mod tests {
         );
         assert!(app.recall_candidates(id).unwrap()[0].in_checklist);
 
-        let points = app.add_from_questions(id, vec![], vec![reads]).unwrap();
+        let points = app.add_from_items(id, vec![], vec![Item::Question(reads)]).unwrap();
         assert_eq!(texts(&points), vec!["Written"]);
         assert_eq!(
             app.question(reads).unwrap().text,
@@ -565,6 +631,56 @@ mod tests {
             "the question is unchanged"
         );
         assert_eq!(app.checklist(id, TODAY).unwrap().topics, vec!["CPU"]);
+    }
+
+    // free-recall.feature: Add points from flashcards, Archived cards aren't offered
+    #[test]
+    fn cards_become_points_and_can_be_removed() {
+        use crate::cards::NoteInput;
+        use study_core::cards::{Note, NoteKind};
+        let mut app = app();
+        let module = app.create_module("Computer Architecture").unwrap();
+        let memory = app.create_topic("Memory", Some(module)).unwrap();
+        let other = app.create_topic("Networks", None).unwrap();
+        let note = |topic, kind, front: &str, back: &str, text: &str| NoteInput {
+            note: Note { topic, kind, front: front.into(), back: back.into(), cues: vec![], text: text.into(), extra: String::new() },
+            suggestion: None,
+        };
+        let basic = app.save_note(None, note(memory, NoteKind::Basic, "What caches translations?", "The TLB", ""), TODAY).unwrap();
+        let reversed = app.save_note(None, note(memory, NoteKind::Reversed, "Thrashing", "Paging more than running", ""), TODAY).unwrap();
+        let cloze = app.save_note(None, note(memory, NoteKind::Cloze, "", "", "Pages live in {{c1::RAM}} or on {{c2::disk}}"), TODAY).unwrap();
+        let archived = app.save_note(None, note(memory, NoteKind::Basic, "Old", "Gone", ""), TODAY).unwrap();
+        for card in app.note_view(archived, TODAY).unwrap().cards {
+            app.archive_card(card.id, true).unwrap();
+        }
+        app.save_note(None, note(other, NoteKind::Basic, "Elsewhere", "Not here", ""), TODAY).unwrap();
+        // One card of the reversed note archived still offers the note.
+        let reverse_card = app.note_view(reversed, TODAY).unwrap().cards[1].id;
+        app.archive_card(reverse_card, true).unwrap();
+        let id = app.create_checklist(Subject::Module(module), TODAY).unwrap();
+
+        let candidates = app.recall_candidates(id).unwrap();
+        let shown: Vec<_> = candidates.iter().map(|c| (c.item, c.kind.as_str(), c.topic_name.as_str(), c.text.as_str(), c.answer.as_str())).collect();
+        assert_eq!(
+            shown,
+            vec![
+                (Item::Note(basic), "Basic card", "Memory", "What caches translations?", "The TLB"),
+                (Item::Note(reversed), "Reversed card", "Memory", "Thrashing", "Paging more than running"),
+                (Item::Note(cloze), "Cloze card", "Memory", "Pages live in **RAM** or on **disk**", ""),
+            ],
+            "cards in the module's topics, not archived ones or other topics"
+        );
+
+        let points = app.add_from_items(id, vec![Item::Note(basic), Item::Note(cloze), Item::Note(reversed)], vec![]).unwrap();
+        assert_eq!(texts(&points), vec!["What caches translations? → The TLB", "Pages live in **RAM** or on **disk**", "Thrashing → Paging more than running"]);
+        assert_eq!(points[0].note, Some(basic));
+        assert!(app.recall_candidates(id).unwrap().iter().all(|c| c.in_checklist));
+
+        let points = app.add_from_items(id, vec![], vec![Item::Note(cloze)]).unwrap();
+        assert_eq!(texts(&points), vec!["What caches translations? → The TLB", "Thrashing → Paging more than running"]);
+        assert_eq!(app.note_view(cloze, TODAY).unwrap().note.text, "Pages live in {{c1::RAM}} or on {{c2::disk}}", "the card is unchanged");
+        let error = app.add_from_items(id, vec![Item::Note(archived)], vec![]).unwrap_err();
+        assert_eq!(error.message, "that isn't in this checklist's topics");
     }
 
     // free-recall.feature: A checklist needs a point before it can start

@@ -1,7 +1,7 @@
 <script lang="ts">
   // free-recall.feature (R53, R54, R59): points, adding from questions, and history.
   import { ArrowLeft, FileText, GripVertical, ListPlus, Play, Plus, Trash2, X } from "@lucide/svelte";
-  import { api, errorMessage, type Candidate, type ChecklistView, type RecallHistory, type RecallPoint, type Schedule } from "../lib/api";
+  import { api, errorMessage, type Candidate, type ChecklistView, type RecallHistory, type RecallItem, type RecallPoint, type Schedule } from "../lib/api";
   import Ladder from "../components/Ladder.svelte";
   import Rich from "../components/Rich.svelte";
   import ScoreChart from "../components/ScoreChart.svelte";
@@ -24,8 +24,16 @@
   let importing = $state(false);
   let candidates = $state<Candidate[]>([]);
   let filter = $state("");
-  let picked = $state<Set<number>>(new Set());
-  let unpicked = $state<Set<number>>(new Set());
+  // Keyed "Question:12" or "Note:5", since a question and a card can share an id.
+  let picked = $state<Set<string>>(new Set());
+  let unpicked = $state<Set<string>>(new Set());
+  let from = $state<"mcq" | "cards">("mcq");
+  const keyOf = (item: RecallItem) => ("Question" in item ? `Question:${item.Question}` : `Note:${item.Note}`);
+  const itemOf = (key: string): RecallItem => {
+    const [kind, id] = key.split(":");
+    return kind === "Question" ? { Question: Number(id) } : { Note: Number(id) };
+  };
+  const isCard = (candidate: Candidate) => "Note" in candidate.item;
   let deleting = $state(false);
   let openDump = $state<number | null>(null);
 
@@ -48,7 +56,7 @@
   function add(event: SubmitEvent) {
     event.preventDefault();
     if (!newPoint.trim()) return;
-    save([...points, { text: newPoint.trim(), question: null }], "Point added");
+    save([...points, { text: newPoint.trim(), question: null, note: null }], "Point added");
     newPoint = "";
   }
 
@@ -76,21 +84,25 @@
 
   async function openImport() {
     candidates = await api.recallCandidates(id);
+    from = candidates.some((candidate) => !isCard(candidate)) || !candidates.length ? "mcq" : "cards";
     picked = new Set();
     unpicked = new Set();
     filter = "";
     importing = true;
   }
 
-  const shown = $derived(candidates.filter((c) => `${c.text} ${c.answer} ${c.topic_name}`.toLowerCase().includes(filter.trim().toLowerCase())));
+  const inTab = $derived(candidates.filter((c) => isCard(c) === (from === "cards")));
+  const shown = $derived(inTab.filter((c) => `${c.text} ${c.answer} ${c.topic_name}`.toLowerCase().includes(filter.trim().toLowerCase())));
+  const cardCount = $derived(candidates.filter(isCard).length);
   const adds = $derived(picked.size);
   const removes = $derived(unpicked.size);
   const importLabel = $derived(adds && removes ? `Add ${adds}, remove ${removes}` : adds ? `Add ${adds} ${adds === 1 ? "point" : "points"}` : removes ? `Remove ${removes} ${removes === 1 ? "point" : "points"}` : "No changes yet");
 
   function togglePick(candidate: Candidate) {
     const set = new Set(candidate.in_checklist ? unpicked : picked);
-    if (set.has(candidate.question)) set.delete(candidate.question);
-    else set.add(candidate.question);
+    const key = keyOf(candidate.item);
+    if (set.has(key)) set.delete(key);
+    else set.add(key);
     if (candidate.in_checklist) unpicked = set;
     else picked = set;
   }
@@ -98,7 +110,7 @@
   async function applyImport() {
     error = "";
     try {
-      points = await api.addFromQuestions(id, [...picked], [...unpicked]);
+      points = await api.addFromItems(id, [...picked].map(itemOf), [...unpicked].map(itemOf));
       if (view) view.row.points = points.length;
       importing = false;
       status = importLabel.replace(/^Add/, "Added").replace(/^Remove/, "Removed").replace(", remove", ", removed");
@@ -141,12 +153,12 @@
         <div>
           <div class="mb-3 flex items-center justify-between">
             <h2 class="text-sm font-semibold">Points to recall</h2>
-            <button class="btn btn-ghost btn-sm" onclick={openImport}><ListPlus class="size-4" />Add from questions</button>
+            <button class="btn btn-ghost btn-sm" onclick={openImport}><ListPlus class="size-4" />Add from questions or cards</button>
           </div>
           {#if points.length === 0}
             <div class="panel p-8 text-center">
               <p class="font-semibold">No points yet</p>
-              <p class="mt-1 text-sm text-muted">Write the main things you should be able to recall, one per point, or add them from your questions.</p>
+              <p class="mt-1 text-sm text-muted">Write the main things you should be able to recall, one per point, or add them from your questions and flashcards.</p>
             </div>
           {:else}
             <ol class="panel divide-y" aria-label="Points to recall">
@@ -165,7 +177,8 @@
                     <button class="min-w-0 flex-1 rounded px-2 py-1 text-left text-[15px] hover:bg-base-200" data-point={index} aria-label="Edit point {index + 1}: {point.text}" title="Click to edit, Alt+Up or Alt+Down to move"
                       onclick={() => (editingIndex = index)} onkeydown={(event) => pointKeys(event, index)}><Rich inline text={point.text} /></button>
                   {/if}
-                  {#if point.question !== null}<span class="badge-src" title="Added from an MCQ. Removing it here doesn't change the question.">From MCQ</span>{/if}
+                  {#if point.question !== null}<span class="badge-src" title="Added from an MCQ. Removing it here doesn't change the question.">From MCQ</span>
+                  {:else if point.note !== null}<span class="badge-src" title="Added from a flashcard. Removing it here doesn't change the card.">From card</span>{/if}
                   <button class="btn btn-ghost btn-sm btn-square" aria-label="Remove point {index + 1}" onclick={() => save(points.filter((_, position) => position !== index), "Point removed")}><X class="size-4" /></button>
                 </li>
               {/each}
@@ -240,28 +253,29 @@
 {#if importing}
   <dialog open class="modal modal-open" aria-labelledby="import-h">
     <div class="modal-box max-w-3xl">
-      <h3 id="import-h" class="text-lg font-semibold">Add points from questions</h3>
-      <p class="mt-2 text-sm text-muted">Each question becomes one point: the question, then its answer. You can edit the point after, and the question stays as it is. Untick one that's already in the checklist to remove its point.</p>
+      <h3 id="import-h" class="text-lg font-semibold">Add points from questions and cards</h3>
+      <p class="mt-2 text-sm text-muted">Each one becomes a point: a question and its answer, a card's front and back, or a cloze card's text with the answers in bold. You can edit the point after, and the question or card stays as it is. Untick one that's already in the checklist to remove its point.</p>
       <div class="mt-6 flex items-center justify-between gap-4">
-        <div class="seg" role="radiogroup" aria-label="Question type">
-          <button type="button" role="radio" aria-checked="true">MCQ <span class="text-xs tabular-nums opacity-80">{candidates.length}</span></button>
+        <div class="seg" role="radiogroup" aria-label="Add from">
+          <button type="button" role="radio" aria-checked={from === "mcq"} onclick={() => (from = "mcq")}>MCQ <span class="text-xs tabular-nums">{candidates.length - cardCount}</span></button>
           <button type="button" role="radio" aria-checked="false" disabled title="Not built yet" class="opacity-60">Short answer</button>
-          <button type="button" role="radio" aria-checked="false" disabled title="Not built yet" class="opacity-60">Flashcards</button>
+          <button type="button" role="radio" aria-checked={from === "cards"} onclick={() => (from = "cards")}>Flashcards <span class="text-xs tabular-nums">{cardCount}</span></button>
         </div>
-        <input type="search" class="input input-sm w-64" aria-label="Filter questions" placeholder="Filter…" bind:value={filter} />
+        <input type="search" class="input input-sm w-64" aria-label="Filter" placeholder="Filter…" bind:value={filter} />
       </div>
-      <p class="mt-2 text-xs text-muted">From {view?.topics.length ? view.topics.join(", ") : "no topics"}. Short answer and flashcards appear here once they're built.</p>
-      {#if candidates.length === 0}
-        <p class="panel mt-4 p-6 text-sm text-muted">There are no MCQs in these topics yet.</p>
+      <p class="mt-2 text-xs text-muted">From {view?.topics.length ? view.topics.join(", ") : "no topics"}. Archived cards aren't listed. Short answer appears here once it's built.</p>
+      {#if inTab.length === 0}
+        <p class="panel mt-4 p-6 text-sm text-muted">{from === "mcq" ? "There are no MCQs in these topics yet." : "There are no flashcards in these topics yet."}</p>
       {:else}
-        <ul class="panel mt-4 max-h-80 divide-y overflow-y-auto" aria-label="Questions">
-          {#each shown as candidate (candidate.question)}
-            {@const on = candidate.in_checklist ? !unpicked.has(candidate.question) : picked.has(candidate.question)}
+        <ul class="panel mt-4 max-h-80 divide-y overflow-y-auto" aria-label={from === "mcq" ? "Questions" : "Flashcards"}>
+          {#each shown as candidate (keyOf(candidate.item))}
+            {@const key = keyOf(candidate.item)}
+            {@const on = candidate.in_checklist ? !unpicked.has(key) : picked.has(key)}
             <li>
               <label class="flex cursor-pointer items-start gap-4 px-4 py-3 hover:bg-base-100">
                 <input type="checkbox" class="checkbox checkbox-sm mt-0.5" checked={on} onchange={() => togglePick(candidate)} />
-                <span class="flex-1"><span class="text-sm"><Rich inline text={candidate.text} /></span><span class="block text-sm text-muted">→ <Rich inline text={candidate.answer} /></span></span>
-                <span class="whitespace-nowrap text-xs {candidate.in_checklist && !on ? 'font-semibold text-wrong-ink' : 'text-muted'}">{candidate.in_checklist ? (on ? "In the checklist" : "Will be removed") : candidate.topic_name}</span>
+                <span class="flex-1"><span class="text-sm"><Rich inline text={candidate.text} /></span>{#if candidate.answer}<span class="block text-sm text-muted">→ <Rich inline text={candidate.answer} /></span>{/if}</span>
+                <span class="whitespace-nowrap text-right text-xs {candidate.in_checklist && !on ? 'font-semibold text-wrong-ink' : 'text-muted'}">{candidate.in_checklist ? (on ? "In the checklist" : "Will be removed") : candidate.topic_name}{#if isCard(candidate) && !candidate.in_checklist}<span class="block">{candidate.kind}</span>{/if}</span>
               </label>
             </li>
           {/each}

@@ -16,7 +16,7 @@ import RecallSession from "./RecallSession.svelte";
 const mocked = vi.mocked(api);
 const TODAY = 20_760;
 const row: RecallRow = { id: 4, subject_name: "Computer Architecture", module: true, subject_exists: true, points: 3, step: "Month", next_step: "Monthly 1 of 6", position: [3, 1], due: TODAY, due_today: true, days_late: 0, last_score: 79 };
-const view: ChecklistView = { row, points: [{ text: "Pipeline stages", question: null }, { text: "Cache levels", question: null }, { text: "Amdahl's law", question: null }], topics: ["CPU"] };
+const view: ChecklistView = { row, points: [{ text: "Pipeline stages", question: null, note: null }, { text: "Cache levels", question: null, note: null }, { text: "Amdahl's law", question: null, note: null }], topics: ["CPU"] };
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -92,7 +92,7 @@ describe("Recall session", () => {
     await u.click(await screen.findByRole("button", { name: /Done, check it/ }));
     await u.click(screen.getByRole("button", { name: "Add a point the list is missing" }));
     await u.type(screen.getByLabelText("Missing point"), "TLB{Enter}");
-    expect(mocked.savePoints).toHaveBeenCalledWith(4, [...view.points, { text: "TLB", question: null }]);
+    expect(mocked.savePoints).toHaveBeenCalledWith(4, [...view.points, { text: "TLB", question: null, note: null }]);
     expect(within(screen.getByRole("list", { name: "Checklist" })).getAllByRole("checkbox")).toHaveLength(4);
   });
 

@@ -61,7 +61,7 @@
   async function addMissing(event: SubmitEvent) {
     event.preventDefault();
     if (!view || !extra.trim()) return;
-    view.points = await api.savePoints(id, [...view.points, { text: extra.trim(), question: null }]);
+    view.points = await api.savePoints(id, [...view.points, { text: extra.trim(), question: null, note: null }]);
     view.row.points = view.points.length;
     extra = "";
     addingPoint = false;

@@ -242,7 +242,7 @@ pub fn seed_profile(app: &mut App, today: i64) -> ApiResult<SeedSummary> {
     let mut checklists = Vec::new();
     for (name, points) in CHECKLISTS {
         let id = app.create_checklist(names[name], start)?;
-        app.save_points(id, points.iter().map(|text| PointInput { text: text.to_string(), question: None }).collect())?;
+        app.save_points(id, points.iter().map(|text| PointInput { text: text.to_string(), question: None, note: None }).collect())?;
         checklists.push((id, points.len(), start));
         summary.checklists += 1;
     }

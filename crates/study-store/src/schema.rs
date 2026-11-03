@@ -159,6 +159,8 @@ const MIGRATIONS: &[&str] = &[
         status TEXT NOT NULL CHECK (status IN ('made', 'dismissed'))
     );
     ",
+    // 5: recall points added from flashcards (R54)
+    "ALTER TABLE recall_points ADD COLUMN note_id INTEGER REFERENCES notes(id) ON DELETE SET NULL;",
 ];
 
 pub const LATEST: i64 = MIGRATIONS.len() as i64;

@@ -991,11 +991,11 @@ mod tests {
             vec![
                 crate::recall::PointInput {
                     text: "Memory-mapped I/O".into(),
-                    question: None,
+                    question: None, note: None,
                 },
                 crate::recall::PointInput {
                     text: "Pipelines".into(),
-                    question: None,
+                    question: None, note: None,
                 },
             ],
         )

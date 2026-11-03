@@ -17,7 +17,7 @@ use study_core::results::GivenReason;
 use study_api::cards::{CardsHome, NoteInput, NoteView, ReviewStep, Suggestion, TopicCards};
 use study_core::cards::{CardSettings, Rating};
 use study_store::cards::{CardId, NoteId};
-use study_api::recall::{Candidate, CheckResult, ChecklistView, PointInput, Preview, RecallHistory, RecallRow};
+use study_api::recall::{Candidate, CheckResult, ChecklistView, Item, PointInput, Preview, RecallHistory, RecallRow};
 use study_core::recall::Schedule;
 use study_store::recall::{ChecklistId, Point, Subject};
 use study_store::search::{Hit, SearchQuery};
@@ -311,8 +311,8 @@ fn recall_candidates(state: AppState, id: ChecklistId) -> ApiResult<Vec<Candidat
     with(state, |app| app.recall_candidates(id))
 }
 #[tauri::command]
-fn add_from_questions(state: AppState, id: ChecklistId, add: Vec<QuestionId>, remove: Vec<QuestionId>) -> ApiResult<Vec<Point>> {
-    with(state, |app| app.add_from_questions(id, add, remove))
+fn add_from_items(state: AppState, id: ChecklistId, add: Vec<Item>, remove: Vec<Item>) -> ApiResult<Vec<Point>> {
+    with(state, |app| app.add_from_items(id, add, remove))
 }
 #[tauri::command]
 fn preview_check(state: AppState, id: ChecklistId, recalled: usize) -> ApiResult<Preview> {
@@ -376,7 +376,7 @@ pub fn run() {
             checklist,
             save_points,
             recall_candidates,
-            add_from_questions,
+            add_from_items,
             preview_check,
             finish_check,
             recall_history,

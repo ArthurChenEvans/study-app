@@ -174,6 +174,8 @@ Differences from the prototype, both for consistency with the rest of the app:
 - "New checklist" opens a small dialog to pick the module or topic (like "New topic"), then goes straight to the editor.
 - Leaving a session with something typed or ticked asks first, since nothing is saved until the check is finished.
 
+Flashcards were added to "Add from questions" once they were built (now "Add from questions or cards"). The dialog's Flashcards tab lists notes from the checklist's topics, skipping ones with every card archived. A basic or reversed card becomes "front → back", a cloze card its text with the answers in bold, and the point is badged "From card". The audit of that dialog found its tab counts at 4.37:1 in the light theme (faded with opacity), now full strength.
+
 Checked in the real app (`e2e/recall_test.py`, run by `e2e/run.sh`): makes a checklist, writes points with maths, adds one from an MCQ, types a dump with the checklist hidden, ticks under the pass mark with the live outcome, and checks the result, the recall list and the history. With `AUDIT` set it also measures every screen in both themes for text contrast, target size and primary buttons. That pass found the score chart's table header at 4.06:1 in the light theme (the same on the Overview chart). Fixed to the muted text colour, and now every screen passes.
 
 ---
