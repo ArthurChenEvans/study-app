@@ -10,6 +10,39 @@ pnpm install
 pnpm tauri dev       # opens the app
 ```
 
+## Try it with demo data
+
+`study-web` runs the same app in a browser, and can fill a database with a demo profile:
+5 topics across 3 modules, 20 questions with sources, and 60 days of quizzes, recall checks
+and card reviews (including a couple of cards flagged to rewrite and a late checklist).
+
+### In a container
+
+```bash
+podman compose up --build -d   # http://localhost:8080, seeded on the first start
+podman compose down            # stop, keep the database
+podman compose down -v         # stop and delete the database, the next up seeds again
+```
+
+Set `STUDY_SEED: "0"` in `compose.yaml` to start empty. PowerPoint previews need
+`SLIDES: "1"` there, which adds LibreOffice to the image (much bigger). Docker works the same.
+The port is only open to this computer, since there are no logins.
+
+### Without a container (inside `nix develop`)
+
+```bash
+# Desktop app on a throwaway seeded database
+export XDG_DATA_HOME=$(mktemp -d)
+cargo run -p study-web -- seed "$XDG_DATA_HOME/com.arthurchenevans.studyapp/study.sqlite"
+pnpm tauri dev
+
+# Or the browser version with hot reload: the server on :8080, Vite on :5173
+STUDY_DB=$(mktemp -d)/study.sqlite STUDY_SEED=1 cargo run -p study-web &
+pnpm dev
+```
+
+The browser and desktop versions each have their own database. They don't sync.
+
 ## Install
 
 ### Nix (NixOS)
@@ -36,7 +69,7 @@ The file lands in `target/release/bundle/appimage/`. On NixOS run it with `nix r
 ## Tests
 
 ```bash
-cargo test           # domain, storage and command layer
+cargo test           # domain, storage, command layer and the web server
 pnpm test            # Svelte screens (Vitest)
 ```
 

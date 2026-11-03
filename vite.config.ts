@@ -7,7 +7,8 @@ import { svelteTesting } from "@testing-library/svelte/vite";
 export default defineConfig({
   plugins: [svelte(), tailwindcss(), svelteTesting()],
   clearScreen: false,
-  server: { port: 5173, strictPort: true },
+  // In a browser, /api goes to study-web (cargo run -p study-web) so `pnpm dev` hot-reloads too.
+  server: { port: 5173, strictPort: true, proxy: { "/api": "http://127.0.0.1:8080" } },
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test-setup.ts"],

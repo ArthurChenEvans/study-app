@@ -1,6 +1,6 @@
-// Typed wrappers around the Tauri commands in src-tauri/src/lib.rs.
-// Each one forwards to study-api, where the behaviour is tested.
-import { invoke } from "@tauri-apps/api/core";
+// Typed wrappers around the commands in src-tauri/src/lib.rs (desktop) and
+// crates/study-web (browser). Each one forwards to study-api, where the behaviour is tested.
+import { invoke } from "./transport";
 
 export type Id = number;
 

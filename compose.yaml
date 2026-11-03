@@ -1,0 +1,20 @@
+# Browser version of the Study App with a seeded demo profile.
+#   podman compose up --build -d    build and start, seeded on first run
+#   podman compose down             stop, keep the database
+#   podman compose down -v          stop and delete the database (next up seeds again)
+services:
+  study:
+    build:
+      context: .
+      dockerfile: Containerfile
+      args:
+        SLIDES: "0" # "1" adds LibreOffice for PowerPoint previews (a much bigger image)
+    ports:
+      - "127.0.0.1:8080:8080" # only reachable from this computer, there are no logins
+    environment:
+      STUDY_SEED: "1" # "0" starts with an empty database instead
+    volumes:
+      - study-data:/data
+
+volumes:
+  study-data:

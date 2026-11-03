@@ -7,6 +7,7 @@
 pub mod cards;
 pub mod convert;
 pub mod recall;
+pub mod seed;
 
 use rand::SeedableRng;
 use rand::rngs::StdRng;
@@ -35,7 +36,7 @@ pub struct ApiError {
 }
 
 impl ApiError {
-    fn new(message: impl ToString) -> Self {
+    pub fn new(message: impl ToString) -> Self {
         Self {
             message: message.to_string(),
         }
