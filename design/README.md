@@ -406,3 +406,32 @@ Checked in the real app (`e2e/projects_calendar_test.py`, run by `e2e/run.sh`): 
 
 Found while building, all fixed: dates mid-sentence kept their capital ("started Today", "Last done Yesterday"), drill dates were lowercased whole ("fri 6 nov"), and the Cards first-time button said "1 suggestions".
 
+
+# Dates on the calendar (exam-dates.html)
+
+Waiting for a greenlight. Open `design/exam-dates.html`, the strip at the top switches screens and states.
+
+| Screen | States |
+|---|---|
+| Calendar | month with dates, the exam's day, the week before, add a date (covers a module), covers topics, a plain date, edit a date |
+| Topics and results | next quiz tightened, results with a tightened move |
+
+## How it works
+
+- **Any named date:** a name, a day and an optional kind (Exam, Deadline, Coursework, Mock exam are suggested, anything else is fine). "Add a date" is the Calendar's one primary button.
+- **Covers:** nothing, a module (every topic in it, including ones added later) or picked topics.
+- **"Tighten reviews before this":** a tick on each date, on by default when the kind is Exam, and only usable when the date covers something. Until the day, no topic quiz, card or drill for those topics waits longer than half the days left, and nothing lands after the date. Recall checklists aren't squeezed.
+- **Afterwards:** from the day after, everything goes back to its normal schedule, carrying on from where it is.
+- **Month view:** dates show as an outlined chip at the top of their day (a cap for exams, a flag for the rest), and a "Coming up" line above the grid gives the next dates with a countdown.
+- **Day view:** a date gets its own panel with the countdown, what it covers, each topic's next quiz and where it was pulled in from, and how many cards were brought forward. Topics never quizzed are listed with a Quiz button, since they have no schedule to tighten.
+- **Topics and results:** a tightened next quiz says "Tightened for Networks exam" under the date, and results show what the date would have been.
+- **Adding a date** previews what moves ("TCP/IP quiz moves from Sat 28 Nov to Tue 10 Nov") before you save.
+
+## Calls made in the design, to confirm or change
+
+- **The squeeze is worked out, not stored.** Each item's due date becomes the earlier of its normal date and "last review + half the days that were left then". So editing or deleting a date puts everything back, and items reviewed long ago can come up as due today straight away.
+- **The day before the date** there's nothing left to halve, so a review then is scheduled normally (after the date).
+- **Two dates covering the same topic:** the tighter one wins.
+- **Cards:** only the due date is pulled in. FSRS sees an early review and handles it as it normally does, its memory model isn't changed.
+- **Drills** count when their topic is covered. Not-Solid drills are back tomorrow anyway, so this only matters for a drill moved far out.
+- **Never-quizzed topics** aren't made due automatically, they're flagged on the date's panel instead.
