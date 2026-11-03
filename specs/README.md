@@ -142,3 +142,20 @@ All 16 open questions were answered on 2 Nov 2026 and are now requirements.
 | R49 | Q15 | Switching a question from multiple to single answer keeps the first tick, clears the rest and says so |
 | R50 | Q16 | Search has a Questions tab: All, Questions, Modules, Topics, Tags, Sources |
 | R51 | New | Topic tags can be edited from the Topics screen |
+
+## Free recall (approved 3 Nov 2026)
+
+| ID | Requirement |
+|---|---|
+| R52 | A checklist is about one module or one topic, picked when it's made |
+| R53 | A checklist has points, written by hand. Each point is Markdown with `$...$` maths, and can be edited, reordered and removed |
+| R54 | Points can be added from questions in the checklist's topics (MCQ now, short answer and flashcards when built) as "question → answer". Unticking an added question removes its point. The question is never changed |
+| R55 | A session starts with the dump: typed in the app (saved with the check) or done outside it. The checklist stays hidden until the dump is finished |
+| R56 | The check shows the dump beside the checklist. Each point is ticked recalled or not. The score, the pass mark and what will happen next update as you tick |
+| R57 | Finishing a check moves the checklist up one step at or over the pass mark, or back one step under it. The next date counts from the day the check was done. The result lists missed points and how often each has been missed |
+| R58 | The recall list shows what's due today first, then everything else by next date. The sidebar shows how many are due |
+| R59 | Each checklist has a history: score per check against the pass mark, each check's step change and dump, and the points missed most often |
+| R60 | The schedule (steps, intervals, repeats, pass mark, what happens under it) is editable and can be reset. Changes apply from each checklist's next check |
+| R61 | Keyboard: Ctrl+Enter finishes the dump and the check, Space ticks the focused point |
+
+Default schedule: the first check puts a new checklist on Day, then Week, Fortnight, Month, Monthly ×6, Seasonal ×4, then Yearly for good. Pass mark 70%. Going back from Day stays on Day.

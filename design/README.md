@@ -97,7 +97,7 @@ Clickable prototype: `free-recall.html`, same theme and components as the MVP pr
 - A checklist is about a module or a topic, chosen per checklist.
 - Points are written by hand, and can be added from questions. MCQ now, short answer and flashcards once they exist. Unticking an added question removes its point.
 - The dump can be typed in the app or done anywhere else. Only ticking the checklist is required.
-- Schedule is the calendar ladder by default: Day, Week, Fortnight, Month, Monthly ×6, Seasonal ×4, then Yearly, anchored to the day the checklist started, pass mark 70%. Steps, intervals, repeats and the pass mark are all editable.
+- Schedule is the calendar ladder by default: Day, Week, Fortnight, Month, Monthly ×6, Seasonal ×4, then Yearly, pass mark 70%. Answered after review: under the pass mark it goes back **one step**, and the next date counts from the day the check was **actually done**. Steps, intervals, repeats and the pass mark are all editable.
 
 ## Screen inventory
 
@@ -122,7 +122,7 @@ Clickable prototype: `free-recall.html`, same theme and components as the MVP pr
 | R60 | The schedule (steps, intervals, repeats, pass mark, what happens under it) is editable and can be reset. Changes apply from each checklist's next check |
 | R61 | Keyboard: Ctrl+Enter finishes the dump and the check, Space ticks the focused point |
 
-## Open questions (shown in the prototype as dashed "Open" badges)
+## Open questions (answered 3 Nov: one step, from the day it was done)
 
 - **A.** Under the pass mark, go back **one step** (Monthly 3 → Monthly 2) or back **a whole band** (Seasonal → start of Monthly)? Your notes say "drops it back a tier".
 - **B.** When a check is done late, does the next date count from the **planned** date (keeps checklists staggered) or the day it was **actually done**?
