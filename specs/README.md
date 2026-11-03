@@ -159,3 +159,24 @@ All 16 open questions were answered on 2 Nov 2026 and are now requirements.
 | R61 | Keyboard: Ctrl+Enter finishes the dump and the check, Space ticks the focused point |
 
 Default schedule: the first check puts a new checklist on Day, then Week, Fortnight, Month, Monthly ×6, Seasonal ×4, then Yearly for good. Pass mark 70%. Going back from Day stays on Day.
+
+## Flashcards with FSRS (approved 3 Nov 2026)
+
+| ID | Requirement |
+|---|---|
+| R62 | Cards live in topics. A note makes one or more cards: Basic (front and back), Basic and reversed (two cards, one each way) or Cloze (one card per gap number, `{{c1::answer}}` or `{{c1::answer::hint}}`, with optional extra text on the back) |
+| R63 | A Basic note can have more cues for the same answer. Each cue is its own card with the same back |
+| R64 | Fronts, backs and cloze text are Markdown with code, `$...$` maths and images, like questions. The cloze editor previews every card it will make |
+| R65 | Scheduling uses FSRS (the fsrs crate). Each card keeps its memory state, due day, reviews and Agains |
+| R66 | Review shows the front, then the answer on Show answer (Space), then Again, Hard, Good, Easy (1 to 4, Space is Good), each showing when the card would come back. Again shows the card again later in the same session |
+| R67 | A review session has Undo for the last answer and can be left at any time. Answers already given are kept |
+| R68 | The Cards screen shows what's due today as new, learning and to review, a 14-day forecast, retention over the last 30 days, and counts per topic. The sidebar shows how many are due |
+| R69 | New cards a day and most reviews a day are limits on a session |
+| R70 | A card is a leech once it has had Again a set number of times (8 by default). The review offers to rewrite it, the editor explains why, and saving a change clears the flag but keeps the schedule |
+| R71 | Cards can be archived (left out of reviews) and brought back |
+| R72 | Suggestions list points missed in the latest check of each recall checklist and questions answered wrong or right-but-guessed in quizzes. Nothing becomes a card until you make it. A suggestion can be dismissed |
+| R73 | A card made from a quiz mistake starts as the question and its answer. One made from a recall miss starts with the point as the back and the front left for you |
+| R74 | Settings: desired retention (90% by default), new cards a day (10), most reviews a day (200), the leech threshold (8). Reset to default is offered |
+| R75 | "Fit the scheduler to you" runs the FSRS optimiser on your review history and says if there isn't enough yet |
+| R76 | The done screen shows how many were reviewed, the share remembered against the target, time taken and cards worth rewriting |
+| R77 | Editing a card keeps its schedule. Removing a cue or cloze gap removes its card |
