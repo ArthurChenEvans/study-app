@@ -426,7 +426,9 @@ impl App {
 
     pub fn retry(&mut self, attempt: AttemptId) -> ApiResult<QuizView> {
         let (saved, _) = self.store.attempt(attempt)?;
-        self.active = Some(saved.retry(attempt.0 as usize)?);
+        // R42: a retry of a retry uses its own questions but links to the original quiz.
+        let original = saved.retry_of().unwrap_or(attempt.0 as usize);
+        self.active = Some(saved.retry(original)?);
         self.current_question()
     }
 

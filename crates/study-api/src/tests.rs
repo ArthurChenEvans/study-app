@@ -324,6 +324,26 @@ fn retry_starts_a_quiz_of_wrong_and_guessed() {
     assert_eq!(app.results(retry_id).unwrap().retry_count, 0);
 }
 
+// R42: a retry can be retried, and stays linked to the original quiz
+#[test]
+fn a_retry_can_be_retried_and_links_to_the_original() {
+    let (mut app, original) = finished_with_mistakes();
+    app.retry(original).unwrap();
+    app.answer(vec![3], TODAY).unwrap();
+    app.answer(vec![3], TODAY).unwrap();
+    let first_retry = finished(&app.answer(vec![3], TODAY).unwrap().next);
+    assert_eq!(app.results(first_retry).unwrap().retry_count, 3);
+
+    let view = app.retry(first_retry).unwrap();
+    assert_eq!(view.total, 3, "uses the retry's own wrong questions");
+    app.answer(vec![3], TODAY).unwrap();
+    app.answer(vec![3], TODAY).unwrap();
+    finished(&app.answer(vec![3], TODAY).unwrap().next);
+    let history = app.history().unwrap();
+    assert_eq!(history[0].retry_of, Some(original));
+    assert_eq!(history[1].retry_of, Some(original));
+}
+
 // ---------- Overview, bibliography, search ----------
 
 #[test]
