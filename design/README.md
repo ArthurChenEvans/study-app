@@ -332,3 +332,62 @@ Difference from the prototype: when a question has its own model answer, "Also a
 
 Checked in the real app (`e2e/short_answer_test.py`, run by `e2e/run.sh`): writes a question checked by accepted answers and one by keywords, uses Try an answer on both (a typo allowed, and "SYN-ACK" not also counting as "SYN" and "ACK"), picks short answers only in setup, answers wrongly and overrules with O, gets the keyword question right, then undoes the overrule on the results page and sees the score drop. It also checks the wrong answer becomes a card suggestion and both questions can be checklist points. With `AUDIT` set it measured the editor and quiz setup for the first time, which found two older problems, both fixed: the source preview's file input was a 1px "screen reader only" element, so it was an invisible extra Tab stop announced as a second "Open file" (now fully hidden, like the image picker), and the quiz setup's timer toggles were 20px tall (now the 24px size). Every screen passes contrast, target size and one-primary checks in both themes.
 
+
+---
+
+# Projects, drills and the calendar (proposed, waiting for a greenlight)
+
+Clickable prototype: `projects-drills-calendar.html`. Same theme and components as the other prototypes.
+
+## Answered (3 Nov 2026)
+
+- **Projects are not scheduled.** A project is anything applied (coding, Blender, past papers). It's where you log struggles while you work: what tripped you up, why it wasn't obvious, and the day.
+- **Struggles are reviewed at the end of each work session**, and can become a card suggestion, a recall checklist point or a drill, only when you choose.
+- **Issues are shared across projects.** When a struggle is given an issue that already has a drill, the app offers: schedule that drill again, or do a different drill.
+- **Drills are one-off and reactive.** A drill is scheduled once. Rated Solid, it's ticked off. Rated Struggled or Shaky, it comes back the next day until it's Solid. It only returns after that if its issue turns up again in a session review.
+- **Scheduling a drill** suggests tomorrow and asks you to confirm or pick another day.
+- **Quizzes are scheduled per topic** on a ladder like recall's.
+- **A unified calendar:** a month view of what's due on each day, and a day view listing everything.
+
+## Screen inventory
+
+| Screen | States |
+|---|---|
+| Calendar | month, today, a past day, a future day, move a drill |
+| Projects | list, first time, issues |
+| A project | struggles, session running, log a struggle |
+| Session review | recall miss, apply miss with a known drill, new drill, confirm the date, done |
+| Doing a drill | doing it, rated shaky, rated solid |
+| Quiz scheduling | topics with quiz due dates, results moving topics up or down, schedule settings |
+
+## How it works
+
+- **Sidebar:** Calendar sits under Overview with today's total. Projects sits after Recall with the drills due today. Topics shows the quizzes due.
+- **Month view:** weeks start on Monday. Each day lists what's due with an icon, a count and a word ("12 cards", "1 checklist", "2 quizzes", "1 drill"), so nothing relies on the icon alone. Past days show what you did, plus struggles logged. Today is outlined. Future card counts are FSRS's forecast and move as you review.
+- **Day view:** a section per type with a start button for each item, and one primary button ("Start with the drills"). Past days show what you did, with links to quiz results and the struggles logged that day. Drills can be moved to another day from here.
+- **A project:** "Start a session" starts a timer. While it runs, "Log a struggle" (Ctrl+L) takes what tripped you up, why it wasn't obvious, whether you couldn't recall it, couldn't apply it or aren't sure yet, and an optional topic. Struggles are grouped by day, searchable, and show what became of them.
+- **Session review** ("End session and review") steps through that session's struggles:
+  - *Couldn't recall it* suggests a card by default. The front starts as what tripped you up, with your "why" beside it to help write the cue. It can also be a checklist point, a drill, or nothing.
+  - *Couldn't apply it* asks for an issue (pick one you've had before, or name a new one). If the issue has a drill, you're offered "Schedule this drill again" or "Do a different drill". Otherwise you write a new drill: a small, specific task, a topic, and optional hints.
+  - Scheduling a drill asks when, with tomorrow picked. "Finish later" leaves the rest marked to review.
+- **Doing a drill:** the task, a timer, hints you can open, the struggles that led to it, and an optional note. Then Struggled, Shaky or Solid (keys 1 to 3). Solid is ticked off, the other two come back tomorrow.
+- **Issues tab:** every issue, how often and where it came up, and the state of its drill.
+- **Quiz scheduling:** Topics gets "Quiz step" and "Next quiz" columns and "Quiz the 2 due topics". Each topic in a quiz is scored on its own questions. At or above the pass mark (70%) it moves up, under it goes back one step, and the next date counts from the quiz day, the same rules as recall. Results show where each topic moved. The ladder and pass mark are editable in "Quiz schedule", separate from recall's.
+
+## Open question
+
+1. **Exam dates.** Want to add your own dates (exams, deadlines) to the calendar? It could also squeeze a topic's schedule as an exam gets close, which fits "more frequent reviews when there's an end date".
+
+## Calls made in the design, to confirm or change
+
+- Overdue things carry over to today, rather than staying on the day they were due.
+- Struggles are logged inside a running session, since the review happens when a session ends.
+- An issue can have more than one drill over time. The most recent one is offered again.
+- A topic's quiz schedule starts the first time you quiz it, and retries don't move it.
+
+## UI/UX test results
+
+- Every screen and state screenshotted in both themes at 1440 × 900: no console errors, no blocked requests, no horizontal scroll.
+- Measured audit (contrast, 24px targets, at most one primary per view) passes everywhere. Read-only views like the month grid have no primary, on purpose.
+- The first pass found the month grid's small icons for cards and drills too alike at 14px, so every count now has a word. Today's quizzes each got their own Quiz button, as well as "Quiz both together". "Log it" became the primary while a session runs, since logging is the main thing you do then.
+- Squint test (greyscale, blurred) on the month, today, a session review and a drill: today's outline and the one primary stand out, and everything else reads as calm detail. No bright wide bars: current positions are outlined, like the quiz track and ladder.

@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="en" data-theme="studyapp-dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#18130e">
+<title>Projects, Drills and Calendar Designs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/daisyui@5.0.43/daisyui.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<style>
+  /* studyapp theme, same values as docs/design-rules.md */
+  :root, [data-theme="studyapp"] {
+    color-scheme: light;
+    --color-base-100: oklch(97% 0.010 80);
+    --color-base-200: oklch(94% 0.014 78);
+    --color-base-300: oklch(89% 0.018 75);
+    --color-base-content: oklch(27% 0.025 60);
+    --color-primary: oklch(40% 0.065 50);
+    --color-primary-content: oklch(97% 0.010 80);
+    --color-secondary: oklch(32% 0.02 60);
+    --color-secondary-content: oklch(94% 0.014 78);
+    --color-accent: oklch(78% 0.13 78);
+    --color-accent-content: oklch(27% 0.025 60);
+    --color-neutral: oklch(32% 0.02 60);
+    --color-neutral-content: oklch(94% 0.014 78);
+    --color-info: oklch(44% 0.07 235);
+    --color-info-content: oklch(97% 0.010 80);
+    --color-success: oklch(42% 0.11 145);
+    --color-success-content: oklch(97% 0.010 80);
+    --color-warning: oklch(78% 0.13 78);
+    --color-warning-content: oklch(27% 0.025 60);
+    --color-error: oklch(44% 0.15 30);
+    --color-error-content: oklch(97% 0.010 80);
+    --radius-selector: 0.25rem;
+    --radius-field: 0.375rem;
+    --radius-box: 0.5rem;
+    --size-selector: 0.25rem;
+    --size-field: 0.25rem;
+    --border: 1px;
+    --depth: 0;
+    --noise: 0;
+
+    /* Raised surface for panels, and chart tokens (validated, see design rules) */
+    --surface: oklch(99% 0.006 80);
+    /* Quiz outcomes: blue / orange pair, colour-blind safe; guessed = hatched right */
+    --chart-right: #025884;
+    --chart-wrong: #cc6c13;
+    --right-ink: #004d77;
+    --wrong-ink: #853900;
+    --guessed-tint: #c1dcf0;
+    --guessed-ink: #013658;
+    --guessed-fill: repeating-linear-gradient(135deg, #025884 0 2px, #c1dcf0 2px 6px);
+    --chart-ink: #643d26;
+    --chart-grid: oklch(91% 0.016 76);
+    --muted: oklch(42% 0.022 65);
+    --shadow-panel: 0 1px 2px oklch(27% 0.025 60 / .06), 0 6px 16px oklch(27% 0.025 60 / .05);
+    --shadow-soft: 0 1px 2px oklch(27% 0.025 60 / .08);
+    --field-border: oklch(58% 0.02 65);
+    --on-right: #fff;
+    --on-wrong: #140d08;
+    --diagram-fill: oklch(94% 0.014 78);
+  }
+  /* Dark theme: its own palette, validated against the dark panel surface (see design rules) */
+  [data-theme="studyapp-dark"] {
+    color-scheme: dark;
+    --color-base-100: oklch(19% 0.012 65);
+    --color-base-200: oklch(16% 0.012 65);
+    --color-base-300: oklch(32% 0.016 65);
+    --color-base-content: oklch(93% 0.012 80);
+    --color-primary: oklch(74% 0.10 62);
+    --color-primary-content: oklch(18% 0.012 65);
+    --color-secondary: oklch(88% 0.015 75);
+    --color-secondary-content: oklch(18% 0.012 65);
+    --color-accent: oklch(80% 0.13 80);
+    --color-accent-content: oklch(18% 0.012 65);
+    --color-neutral: oklch(88% 0.015 75);
+    --color-neutral-content: oklch(18% 0.012 65);
+    --color-info: oklch(76% 0.08 235);
+    --color-info-content: oklch(18% 0.012 65);
+    --color-success: oklch(76% 0.13 145);
+    --color-success-content: oklch(18% 0.012 65);
+    --color-warning: oklch(80% 0.13 80);
+    --color-warning-content: oklch(18% 0.012 65);
+    --color-error: oklch(76% 0.13 30);
+    --color-error-content: oklch(18% 0.012 65);
+    --radius-selector: 0.25rem; --radius-field: 0.375rem; --radius-box: 0.5rem;
+    --size-selector: 0.25rem; --size-field: 0.25rem; --border: 1px; --depth: 0; --noise: 0;
+
+    --surface: oklch(23% 0.014 65);
+    --chart-right: #0573aa;
+    --chart-wrong: #d67523;
+    --right-ink: #87c6f2;
+    --wrong-ink: #f9b379;
+    --guessed-tint: #163c54;
+    --guessed-ink: #bbddf6;
+    --guessed-fill: repeating-linear-gradient(135deg, #0573aa 0 2px, #163c54 2px 6px);
+    --chart-ink: oklch(74% 0.10 62);
+    --chart-grid: oklch(30% 0.014 65);
+    --muted: oklch(78% 0.016 75);
+    --field-border: oklch(52% 0.018 70);
+    --on-right: #fff;
+    --on-wrong: #140d08;
+    --diagram-fill: oklch(28% 0.014 65);
+    --shadow-panel: 0 1px 0 oklch(100% 0 0 / .04) inset, 0 1px 2px oklch(0% 0 0 / .4), 0 8px 24px oklch(0% 0 0 / .25);
+    --shadow-soft: 0 1px 2px oklch(0% 0 0 / .4);
+  }
+  body { background: var(--color-base-100); color: var(--color-base-content); font-family: "IBM Plex Sans", ui-sans-serif, sans-serif; }
+  code, pre, .font-mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  h1, h2 { text-wrap: balance; }
+  h1 { letter-spacing: -0.015em; }
+  .input, .select, .textarea, .checkbox, .radio { border-color: var(--field-border); }
+  .input, .select, .textarea { background: var(--surface); }
+  :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+  pre.shiki { padding: 12px 16px; border-radius: var(--radius-box); font-size: 14px; overflow-x: auto; border: 1px solid var(--color-base-300); }
+  .divide-y > * { border-color: var(--color-base-300) !important; }
+  .btn .kbd { background: transparent; border-color: currentColor; color: inherit; opacity: .8; }
+  .btn { transition: transform 120ms ease-out, background-color 150ms ease-out, box-shadow 150ms ease-out; }
+  .btn:active:not(:disabled) { transform: scale(.97); }
+  .btn-primary { box-shadow: 0 1px 2px oklch(27% 0.025 60 / .25), inset 0 1px 0 oklch(100% 0 0 / .12); }
+
+  /* Panels: the one raised surface. Used for groups you read as a unit (charts, summaries) */
+  .panel { background: var(--surface); border: 1px solid var(--color-base-300); border-radius: 12px; box-shadow: var(--shadow-panel); }
+  .eyebrow { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+
+  /* Segmented control */
+  .seg { display: inline-flex; align-items: stretch; height: 2rem; padding: 2px; gap: 2px; border: 1px solid var(--field-border); border-radius: var(--radius-field); background: var(--color-base-200); vertical-align: middle; }
+  .seg > button { padding: 0 12px; font-size: 14px; line-height: 1; border-radius: calc(var(--radius-field) - 2px); color: var(--muted); transition: background-color 150ms ease-out, color 150ms ease-out; }
+  .seg > button:hover:not([aria-checked="true"]) { background: var(--color-base-300); color: var(--color-base-content); }
+  .seg > button[aria-checked="true"] { background: var(--color-neutral); color: var(--color-neutral-content); font-weight: 600; }
+  .seg > button:focus-visible { outline-offset: 1px; }
+  /* Fields: one focus ring */
+  .input:focus, .input:focus-within, .select:focus, .textarea:focus { outline: none !important; border-color: var(--color-primary) !important; box-shadow: 0 0 0 1px var(--color-primary) !important; }
+  label.input input:focus, label.input input:focus-visible { outline: none !important; box-shadow: none !important; }
+  .input-sm, .seg { min-height: 2rem; }
+  .btn:disabled .kbd { opacity: .5; }
+  .toggle:checked { background-color: var(--color-primary); border-color: var(--color-primary); color: var(--color-primary-content); }
+  [role=tab] .count { font-size: 12px; margin-left: 4px; color: var(--muted); font-weight: 400; }
+  .open-q { border: 1px dashed var(--color-info); color: var(--color-info); background: var(--surface); }
+
+  /* Navigation */
+  .nav-link { color: var(--muted); transition: background-color 150ms ease-out, color 150ms ease-out; }
+  .nav-link:hover { background: var(--color-base-300); color: var(--color-base-content); }
+  .nav-link[aria-current="page"] { background: var(--surface); color: var(--color-base-content); font-weight: 600; box-shadow: var(--shadow-soft); }
+
+  /* Charts */
+  .seg-bar { display: flex; gap: 2px; border-radius: 999px; overflow: hidden; }
+  .seg-bar > span { display: block; height: 100%; }
+  .tall-bar { display: flex; gap: 2px; height: 28px; }
+  .tall-bar > span { border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: visible; }
+  .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .text-right-ink { color: var(--right-ink); } .text-wrong-ink { color: var(--wrong-ink); }
+  .is-right { border-color: var(--chart-right) !important; box-shadow: 0 0 0 1px var(--chart-right); }
+  .is-wrong { border-color: var(--chart-wrong) !important; box-shadow: 0 0 0 1px var(--chart-wrong); }
+  .guessed-chip { background: var(--guessed-tint); color: var(--guessed-ink); border-color: var(--guessed-tint); }
+  .hbar { height: 12px; border-radius: 0 4px 4px 0; background: var(--chart-ink); transition: width 400ms ease-out; }
+  .cell { width: 24px; height: 24px; border-radius: 4px; display: grid; place-items: center; font-size: 12px; font-weight: 600; color: #fff; }
+  .chart-tip { position: fixed; pointer-events: none; z-index: 50; background: var(--color-neutral); color: var(--color-neutral-content); font-size: 12px; line-height: 1.4; padding: 8px 10px; border-radius: 6px; box-shadow: 0 4px 12px oklch(27% 0.025 60 / .2); opacity: 0; transition: opacity 120ms ease-out; max-width: 240px; }
+  .chart-tip.show { opacity: 1; }
+  details.table-view summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+
+  /* Quiz progress track */
+  .track { display: flex; gap: 2px; height: 6px; }
+  .track > span { flex: 1; border-radius: 2px; background: var(--color-base-300); }
+
+  /* Motion */
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .rise { animation: rise 260ms ease-out both; }
+  .rise-2 { animation-delay: 60ms; } .rise-3 { animation-delay: 120ms; } .rise-4 { animation-delay: 180ms; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+:root { --strip: 2.5rem; }
+</style>
+<style type="text/tailwindcss">
+  @theme {
+    --color-muted: var(--muted);
+    --color-field-border: var(--field-border);
+    --color-surface: var(--surface);
+    --font-sans: "IBM Plex Sans", ui-sans-serif, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+</style>
+<style>
+  /* Projects, drills and calendar additions. Same tokens as the other prototypes. */
+  .badge-src { font-size: 12px; color: var(--muted); border: 1px solid var(--color-base-300); border-radius: 4px; padding: 0 6px; line-height: 20px; white-space: nowrap; }
+  .kind { font-size: 12px; border-radius: 4px; padding: 0 6px; line-height: 20px; white-space: nowrap; border: 1px solid var(--field-border); }
+  .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .cal-day { min-height: 104px; border-right: 1px solid var(--color-base-300); border-bottom: 1px solid var(--color-base-300); padding: 6px 8px; text-align: left; display: flex; flex-direction: column; gap: 2px; }
+  .cal-day:hover { background: var(--color-base-200); }
+  .cal-day[aria-current="date"] { box-shadow: inset 0 0 0 2px var(--color-base-content); }
+  .cal-day[aria-selected="true"] { background: var(--color-base-200); }
+  .cal-day.other { color: var(--muted); }
+  .cal-day .num { font-size: 13px; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .cal-row { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .cal-row b { color: var(--color-base-content); font-weight: 600; }
+  .cal-past .cal-row { opacity: 1; }
+  .timer-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-variant-numeric: tabular-nums; border: 1px solid var(--field-border); border-radius: 999px; padding: 2px 10px; }
+  .step-dot { width: 24px; height: 24px; border-radius: 999px; display: grid; place-items: center; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .rate { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 9rem; padding: 10px 16px; height: auto; }
+  .rate .when { font-size: 12px; font-weight: 400; opacity: .85; }
+  .text-right-ink { color: var(--right-ink); } .text-wrong-ink { color: var(--wrong-ink); }
+  .ladder { display: flex; gap: 4px; }
+  .ladder > span { flex: 1; height: 6px; border-radius: 2px; background: var(--color-base-300); }
+  .ladder > span.on { background: var(--chart-ink); }
+  .ladder > span.now { background: transparent; box-shadow: inset 0 0 0 2px var(--color-base-content); }
+</style>
+</head>
+<body class="min-h-screen">
+<div id="proto-strip" class="sticky top-0 z-50 flex min-h-10 flex-wrap items-center gap-2 border-b border-base-300 bg-base-200 px-4 py-1.5 text-xs" aria-label="Prototype state">
+  <span class="mr-2 font-semibold uppercase tracking-wide text-muted">Prototype</span>
+  <span class="text-muted">Screen</span><div id="screens" class="flex gap-1 flex-wrap"></div>
+  <span class="ml-3 text-muted">State</span><div id="states" class="flex gap-1 flex-wrap"></div>
+</div>
+<div class="flex min-h-[calc(100vh-var(--strip))]">
+  <nav class="w-60 shrink-0 bg-base-200 border-r border-base-300 flex flex-col p-3 gap-1 sticky top-[var(--strip)] h-[calc(100vh-var(--strip))]" aria-label="Main">
+    <div class="flex items-center gap-2 px-3 py-4">
+      <span class="size-8 rounded-lg bg-primary text-primary-content grid place-items-center"><i data-lucide="layers" class="size-4"></i></span>
+      <span class="text-base font-semibold">Study App</span>
+    </div>
+    <a href="index.html#overview" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="layout-dashboard" class="size-4"></i>Overview</a>
+    <a href="#calendar" data-nav="calendar" onclick="event.preventDefault(); go('calendar')" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="calendar-days" class="size-4"></i><span class="flex-1">Calendar</span><span class="text-xs tabular-nums" aria-label="17 things due today">17</span></a>
+    <a href="#topics" data-nav="topics" onclick="event.preventDefault(); go('topics')" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="library" class="size-4"></i><span class="flex-1">Topics</span><span class="text-xs tabular-nums" aria-label="2 quizzes due today">2</span></a>
+    <a href="flashcards.html#cards" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="square-stack" class="size-4"></i><span class="flex-1">Cards</span><span class="text-xs tabular-nums" aria-label="12 cards due today">12</span></a>
+    <a href="free-recall.html#recall" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="brain" class="size-4"></i><span class="flex-1">Recall</span><span class="text-xs tabular-nums" aria-label="1 checklist due today">1</span></a>
+    <a href="#projects" data-nav="projects" onclick="event.preventDefault(); go('projects')" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="hammer" class="size-4"></i><span class="flex-1">Projects</span><span class="text-xs tabular-nums" aria-label="2 drills due today">2</span></a>
+    <a href="index.html#bibliography" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="book-open" class="size-4"></i>Bibliography</a>
+    <a href="index.html#history" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="history" class="size-4"></i>History</a>
+    <a href="index.html#search" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="search" class="size-4"></i>Search</a>
+    <div class="px-3 mt-4"><a href="index.html#setup" class="btn btn-outline btn-sm w-full justify-start border-field-border"><i data-lucide="play" class="size-4"></i>New quiz</a></div>
+    <div class="mt-auto px-3 pt-6">
+      <div class="seg w-full" role="radiogroup" aria-label="Theme" id="theme-switch">
+        <button type="button" role="radio" class="flex-1 flex items-center justify-center gap-1.5" data-theme-choice="studyapp-dark"><i data-lucide="moon" class="size-3.5"></i>Dark</button>
+        <button type="button" role="radio" class="flex-1 flex items-center justify-center gap-1.5" data-theme-choice="studyapp"><i data-lucide="sun" class="size-3.5"></i>Light</button>
+      </div>
+    </div>
+    <div class="px-3 pt-4 text-xs text-muted leading-relaxed">Projects, drills and calendar design prototype. Screens and states are clickable, data is sample only.</div>
+  </nav>
+  <main id="app" class="flex-1 min-w-0"></main>
+</div>
+
+<script>
+const icon = (name, cls = "size-4") => `<i data-lucide="${name}" class="${cls}" aria-hidden="true"></i>`;
+const kbd = (k) => `<kbd class="kbd kbd-xs">${k}</kbd>`;
+const header = (title, subtitle = "", actions = "") => `<header class="flex items-end justify-between gap-6 pt-12 pb-8"><div><h1 class="text-3xl font-semibold leading-tight">${title}</h1>${subtitle ? `<p class="mt-2 text-muted">${subtitle}</p>` : ""}</div><div class="flex items-center gap-2">${actions}</div></header>`;
+const back = (label, screen, v) => `<button class="mt-8 inline-flex items-center gap-1 py-1 text-sm text-muted hover:underline" onclick="go('${screen}'${v ? `,'${v}'` : ""})">${icon("arrow-left")}${label}</button>`;
+const TYPES = { cards: ["square-stack", "cards", "card", "Cards"], recall: ["brain", "checklists", "checklist", "Recall"], quiz: ["list-checks", "quizzes", "quiz", "Quizzes"], drill: ["dumbbell", "drills", "drill", "Drills"] };
+
+const variants = {
+  calendar: ["month", "today", "a past day", "a future day", "move a drill"],
+  projects: ["list", "first time", "issues"],
+  project: ["struggles", "session running", "log a struggle"],
+  review: ["recall miss", "apply miss, known drill", "new drill", "confirm the date", "done"],
+  drill: ["doing it", "rated shaky", "rated solid"],
+  topics: ["quiz due", "results move up", "schedule settings"],
+};
+const state = { screen: "calendar", variant: "month" };
+
+/* ---------------- Sample data ---------------- */
+const TODAY = 3; // Tue 3 Nov 2026
+const due = {
+  // day of November → counts
+  1: { done: { cards: 9 } }, 2: { done: { cards: 14, quiz: 1, struggles: 3 } },
+  3: { cards: 12, recall: 1, quiz: 2, drill: 2 },
+  4: { cards: 4, drill: 1 }, 5: { cards: 9, quiz: 1 }, 6: { cards: 3 }, 7: { cards: 7 }, 9: { cards: 31, recall: 1 },
+  10: { cards: 6, quiz: 1 }, 12: { cards: 5 }, 13: { cards: 8, recall: 1 }, 16: { cards: 4, quiz: 2 }, 17: { cards: 6 }, 20: { cards: 3, recall: 1 }, 24: { cards: 5, quiz: 1 }, 30: { cards: 2, recall: 1 },
+};
+const october = { 26: { done: { cards: 11, quiz: 1 } }, 27: { done: { cards: 8, recall: 1, struggles: 2 } }, 28: { done: { cards: 12 } }, 29: { done: { cards: 6, quiz: 2 } }, 30: { done: { cards: 10, struggles: 1 } }, 31: { done: { cards: 7 } } };
+
+/* ---------------- Calendar ---------------- */
+function rows(counts, past) {
+  return Object.entries(TYPES).filter(([key]) => counts[key]).map(([key, [ic, plural, single]]) =>
+    `<span class="cal-row">${icon(ic, "size-3.5")}<b>${counts[key]}</b> ${counts[key] === 1 ? single : plural}<span class="sr-only">${past ? " done" : " due"}</span></span>`).join("")
+    + (counts.struggles ? `<span class="cal-row">${icon("triangle-alert", "size-3.5")}<b>${counts.struggles}</b> ${counts.struggles === 1 ? "struggle" : "struggles"}</span>` : "");
+}
+function screenCalendar() {
+  const v = state.variant;
+  if (v !== "month") return dayView(v);
+  const cells = [];
+  [26, 27, 28, 29, 30, 31].forEach(d => cells.push({ d, other: true, counts: october[d].done, past: true }));
+  for (let d = 1; d <= 30; d++) { const info = due[d] || {}; cells.push({ d, past: d < TODAY, counts: d < TODAY ? info.done || {} : info }); }
+  for (let d = 1; d <= 6; d++) cells.push({ d, other: true, counts: d === 1 ? { cards: 4 } : d === 4 ? { cards: 6, recall: 1 } : {} });
+  return `<div class="mx-auto max-w-6xl px-12 pb-24">
+    ${header("Calendar", "Everything due, day by day. Past days show what you did.", `<button class="btn btn-ghost btn-square btn-sm" aria-label="Previous month">${icon("chevron-left")}</button><span class="w-36 text-center font-semibold">November 2026</span><button class="btn btn-ghost btn-square btn-sm" aria-label="Next month">${icon("chevron-right")}</button><button class="btn btn-outline btn-sm border-field-border ml-2">Today</button>`)}
+    <div class="mb-3 flex flex-wrap items-center gap-4 text-xs text-muted" aria-label="Key">
+      ${Object.values(TYPES).map(([ic, , , label]) => `<span class="flex items-center gap-1.5">${icon(ic, "size-3.5")}${label}</span>`).join("")}
+      <span class="flex items-center gap-1.5">${icon("triangle-alert", "size-3.5")}Struggles logged</span>
+      <span class="ml-auto">Future cards are a forecast and move as you review</span>
+    </div>
+    <div class="panel overflow-hidden">
+      <div class="cal border-b border-base-300 text-xs font-semibold text-muted">${["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(n => `<div class="px-2 py-2">${n}</div>`).join("")}</div>
+      <div class="cal" role="grid" aria-label="November 2026">${cells.map(c => `<button class="cal-day ${c.other ? "other" : ""}" ${!c.other && c.d === TODAY ? 'aria-current="date"' : ""} onclick="setVariant('${!c.other && c.d === TODAY ? "today" : c.past ? "a past day" : "a future day"}')" aria-label="${c.other ? "" : c.d + " November"}">
+        <span class="num">${c.d}</span>${rows(c.counts, c.past)}</button>`).join("")}</div>
+    </div>
+  </div>`;
+}
+function dayView(v) {
+  const past = v === "a past day", future = v === "a future day" || v === "move a drill", today = v === "today";
+  const title = today ? "Today, Tue 3 Nov" : past ? "Mon 2 Nov" : "Wed 4 Nov";
+  const start = (label) => `<button class="btn btn-outline btn-sm border-field-border">${icon("play")}${label}</button>`;
+  const section = (key, items) => `<section class="panel p-6" aria-labelledby="h-${key}"><h2 id="h-${key}" class="flex items-center gap-2 text-sm font-semibold">${icon(TYPES[key][0])}${TYPES[key][3]}</h2><ul class="mt-3 divide-y">${items}</ul></section>`;
+  const li = (main, sub, right) => `<li class="flex items-center justify-between gap-4 py-3"><div><p class="text-[15px]">${main}</p>${sub ? `<p class="text-sm text-muted">${sub}</p>` : ""}</div>${right || ""}</li>`;
+  let body;
+  if (past) body = `
+    ${section("cards", li("14 cards reviewed", "11 remembered · 3 times Again · 9 min"))}
+    ${section("quiz", li("Quiz: OSI model, TCP/IP", "7 of 10 right · OSI model moved up to Fortnight", `<button class="btn btn-ghost btn-sm">View results</button>`))}
+    <section class="panel p-6" aria-labelledby="h-str"><h2 id="h-str" class="flex items-center gap-2 text-sm font-semibold">${icon("triangle-alert")}Struggles logged</h2><ul class="mt-3 divide-y">
+      ${li("Forgot how to slice a string from the end in Rust", "Study app · Couldn't recall · reviewed: card suggested")}
+      ${li("Loop ran one too many times reading the file", "Study app · Couldn't apply · issue <b>Off-by-one in loops</b>, drill scheduled for today")}
+      ${li("Didn't know which modifier keeps the bevel even", "Blender mug · Couldn't recall · not reviewed yet")}</ul></section>`;
+  else body = `
+    ${section("drill", (today ? li("Write a loop over a slice without an off-by-one", "Issue: Off-by-one in loops · from Study app", start("Do drill")) + li("Mirror modifier with a clean centre seam", "Issue: Mirror seams · from Blender mug · second go, it was Shaky", start("Do drill")) : li("Mirror modifier with a clean centre seam", "Issue: Mirror seams · moved here from today", `<div class="flex gap-2">${v === "move a drill" ? "" : `<button class="btn btn-ghost btn-sm">${icon("calendar-arrow-up")}Move</button>`}${start("Do drill")}</div>`)))}
+    ${section("cards", li(today ? "12 cards due" : "About 4 cards", today ? "3 new · 0 learning · 9 to review · about 6 minutes" : "A forecast, it changes as you review", today ? start("Start review") : ""))}
+    ${today ? section("recall", li("Computer Architecture", "Checklist · Week step · 8 points", start("Start recall"))) : ""}
+    ${today ? section("quiz", li("CPU", "Quiz due · Week step · 7 questions", "") + li("OSI model", "Quiz due · Day step · 6 questions", "") + `<li class="pt-3"><button class="btn btn-outline btn-sm border-field-border">${icon("play")}Quiz both due topics</button></li>`) : ""}`;
+  const moving = v === "move a drill";
+  return `<div class="mx-auto max-w-4xl px-12 pb-24">
+    ${back("November", "calendar", "month")}
+    <div class="flex items-end justify-between gap-6 pb-8 pt-4"><div><h1 class="text-3xl font-semibold">${title}</h1><p class="mt-2 text-muted">${past ? "What you did" : today ? "17 things due · about 35 minutes" : "What's due so far"}</p></div>
+      <div class="flex gap-2"><button class="btn btn-ghost btn-square btn-sm" aria-label="Previous day">${icon("chevron-left")}</button><button class="btn btn-ghost btn-square btn-sm" aria-label="Next day">${icon("chevron-right")}</button></div></div>
+    ${today ? `<div class="mb-6 flex justify-start"><button class="btn btn-primary">${icon("play")}Start with the drills</button></div>` : ""}
+    <div class="space-y-6">${body}</div>
+    ${moving ? `<dialog open class="modal modal-open" aria-labelledby="move-h"><div class="modal-box max-w-md"><h3 id="move-h" class="text-lg font-semibold">Move this drill</h3><p class="mt-2 text-sm text-muted">Mirror modifier with a clean centre seam</p>
+      <label class="mt-5 block"><span class="text-sm font-semibold">Do it on</span><input type="date" class="input mt-1 w-full" value="2026-11-05"></label>
+      <div class="modal-action"><button class="btn btn-ghost" onclick="setVariant('a future day')">Cancel</button><button class="btn btn-primary" onclick="setVariant('a future day')">Move to Thu 5 Nov</button></div></div></dialog>` : ""}
+  </div>`;
+}
+
+/* ---------------- Projects ---------------- */
+const projects = [
+  { name: "Study app", kind: "Coding", last: "Today", struggles: 14, open: 2, drills: 1 },
+  { name: "Blender mug", kind: "Blender", last: "Yesterday", struggles: 6, open: 1, drills: 1 },
+  { name: "Networks past paper 2024", kind: "Past paper", last: "Fri 30 Oct", struggles: 4, open: 0, drills: 0 },
+];
+function screenProjects() {
+  const v = state.variant;
+  if (v === "first time") return `<div class="mx-auto max-w-6xl px-12 pb-24">${header("Projects")}
+    <div class="panel max-w-xl p-10"><span class="grid size-10 place-items-center rounded-lg bg-base-200">${icon("hammer", "size-5")}</span>
+      <h2 class="mt-6 text-xl font-semibold">Log what trips you up while you work</h2>
+      <p class="mt-2 max-w-prose text-muted">A project is anything applied: code, a Blender scene, a past paper. While you work, note each struggle and why it wasn't obvious. At the end of the session, review them: a missed fact can become a card, and something you couldn't apply can become a drill.</p>
+      <button class="btn btn-primary mt-6">${icon("plus")}New project</button></div></div>`;
+  if (v === "issues") return `<div class="mx-auto max-w-6xl px-12 pb-24">${header("Projects", "", `<button class="btn btn-ghost">${icon("plus")}New project</button>`)}
+    ${tabs("issues")}
+    <p class="mb-3 text-sm text-muted">Issues are shared by every project. When the same one comes up again, its drill is offered.</p>
+    <div class="panel overflow-hidden"><table class="table" aria-label="Issues"><thead><tr class="text-muted"><th>Issue</th><th>Seen</th><th>Last seen</th><th>Drill</th></tr></thead><tbody>
+      ${[["Off-by-one in loops", "4 times in 2 projects", "Mon 2 Nov", "Due today"], ["Mirror seams", "2 times in Blender mug", "Sun 1 Nov", "Again today, was Shaky"], ["Subnet maths", "3 times in 2 projects", "Fri 30 Oct", "Solid on 28 Oct"], ["Borrowing in closures", "1 time in Study app", "Tue 27 Oct", "None"]].map(([n, s, l, d]) => `<tr class="hover:bg-base-100"><td><button class="py-1 font-semibold hover:underline">${n}</button></td><td class="text-sm">${s}</td><td class="text-sm">${l}</td><td class="text-sm ${d === "None" ? "text-muted" : ""}">${d}</td></tr>`).join("")}
+    </tbody></table></div></div>`;
+  return `<div class="mx-auto max-w-6xl px-12 pb-24">${header("Projects", "", `<button class="btn btn-primary">${icon("plus")}New project</button>`)}
+    ${tabs("projects")}
+    <div class="panel overflow-hidden"><table class="table" aria-label="Projects"><thead><tr class="text-muted"><th>Project</th><th>Last worked on</th><th>Struggles</th><th>To review</th><th>Drills due</th></tr></thead><tbody>
+      ${projects.map(p => `<tr class="hover:bg-base-100"><td><button class="py-1 text-left font-semibold hover:underline" onclick="go('project')">${p.name}</button><div class="text-xs text-muted">${p.kind}</div></td><td class="text-sm">${p.last}</td><td class="tabular-nums">${p.struggles}</td><td class="tabular-nums ${p.open ? "font-semibold" : "text-muted"}">${p.open || "None"}</td><td class="tabular-nums ${p.drills ? "" : "text-muted"}">${p.drills || "None"}</td></tr>`).join("")}
+    </tbody></table></div></div>`;
+}
+const tabs = (now) => `<div role="tablist" class="mb-6 flex gap-1 border-b border-base-300">${[["projects", "Projects", 3], ["issues", "Issues", 4]].map(([k, l, n]) => `<button role="tab" aria-selected="${now === k}" class="px-3 py-2 text-sm ${now === k ? "border-b-2 border-base-content font-semibold" : "text-muted"}" onclick="setVariant('${k === "projects" ? "list" : "issues"}')">${l}<span class="count">${n}</span></button>`).join("")}</div>`;
+
+function screenProject() {
+  const v = state.variant;
+  const running = v !== "struggles";
+  const logging = v === "log a struggle";
+  const struggle = (what, why, kind, topic, status) => `<li class="flex items-start gap-6 px-6 py-4"><div class="flex-1"><p class="text-[15px]">${what}</p><p class="mt-1 text-sm text-muted">Why it wasn't obvious: ${why}</p>
+    <div class="mt-2 flex flex-wrap items-center gap-2"><span class="kind">${kind}</span>${topic ? `<span class="badge-src">${topic}</span>` : ""}</div></div><span class="whitespace-nowrap text-sm ${status.startsWith("To review") ? "font-semibold" : "text-muted"}">${status}</span></li>`;
+  return `<div class="mx-auto max-w-6xl px-12 pb-24">
+    ${back("Projects", "projects")}
+    <div class="flex items-end justify-between gap-6 pb-6 pt-4"><div><p class="text-sm text-muted">Coding · started 12 Oct · 14 struggles</p><h1 class="mt-1 text-3xl font-semibold">Study app</h1></div>
+      <div class="flex items-center gap-3">${running ? `<span class="timer-chip" role="timer" aria-label="Session time">${icon("timer")}0:42</span><button class="btn btn-outline border-field-border" onclick="go('review')">${icon("square")}End session and review</button>` : `<button class="btn btn-primary" onclick="setVariant('session running')">${icon("play")}Start a session</button>`}</div></div>
+    ${running ? `<form class="panel p-6" onsubmit="event.preventDefault()" aria-label="Log a struggle">
+      <div class="flex items-baseline justify-between"><h2 class="text-sm font-semibold">Log a struggle</h2><span class="text-xs text-muted">${kbd("Ctrl")}${kbd("L")} from anywhere in this project</span></div>
+      <div class="mt-4 grid grid-cols-2 gap-6">
+        <div><label class="block text-sm font-semibold" for="what">What tripped you up</label><textarea id="what" class="textarea mt-1 w-full text-[15px]" rows="2" placeholder="e.g. Loop ran one too many times reading the file…">${logging ? "Couldn't remember how to borrow inside a closure that outlives the loop" : ""}</textarea></div>
+        <div><label class="block text-sm font-semibold" for="why">Why wasn't it obvious?</label><textarea id="why" class="textarea mt-1 w-full text-[15px]" rows="2" placeholder="The cue that was missing, in your words…">${logging ? "I thought of it as a lifetime problem, not an ownership one" : ""}</textarea></div>
+      </div>
+      <div class="mt-4 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-4"><div class="seg" role="radiogroup" aria-label="What kind of struggle"><button type="button" role="radio" aria-checked="false">Couldn't recall it</button><button type="button" role="radio" aria-checked="${logging}">Couldn't apply it</button><button type="button" role="radio" aria-checked="false">Not sure yet</button></div>
+          <select class="select select-sm w-44" aria-label="Topic (optional)"><option>Topic (optional)</option><option ${logging ? "selected" : ""}>Rust ownership</option></select></div>
+        <button class="btn btn-primary" ${logging ? "" : "disabled"}>${icon("plus")}Log it ${kbd("Ctrl")}${kbd("Enter")}</button></div>
+      <p class="mt-3 text-sm text-muted">Logged today, Tue 3 Nov. You'll decide what to do with it when you end the session.</p>
+    </form>` : ""}
+    <div class="mt-8 mb-3 flex items-center justify-between gap-4"><h2 class="text-lg font-semibold">Struggles</h2>
+      <div class="flex items-center gap-3"><input type="search" class="input input-sm w-56" aria-label="Search struggles" placeholder="Search…"><div class="seg" role="radiogroup" aria-label="Show"><button role="radio" aria-checked="true">All</button><button role="radio" aria-checked="false">To review</button></div></div></div>
+    <p class="eyebrow mb-2">Today · Tue 3 Nov</p>
+    <ul class="panel divide-y">${struggle("Lifetime error returning a reference from a match", "I didn't see the match arm was borrowing the temporary", "Couldn't apply it", "Rust ownership", "To review at the end of this session")}${running ? "" : ""}</ul>
+    <p class="eyebrow mb-2 mt-6">Mon 2 Nov</p>
+    <ul class="panel divide-y">${struggle("Forgot how to slice a string from the end", "I was thinking in Python's negative indexes", "Couldn't recall it", "Rust strings", "Card suggested")}${struggle("Loop ran one too many times reading the file", "I used <= out of habit from the C course", "Couldn't apply it", "", "Issue: Off-by-one in loops · drill today")}</ul>
+  </div>`;
+}
+
+/* ---------------- Session review ---------------- */
+function screenReview() {
+  const v = state.variant;
+  const stepNo = { "recall miss": 1, "apply miss, known drill": 2, "new drill": 3, "confirm the date": 3, done: 4 }[v];
+  const steps = `<ol class="flex items-center gap-2 text-sm" aria-label="Struggles to review">${[1, 2, 3].map(n => `<li class="flex items-center gap-2 ${n === stepNo ? "font-semibold" : "text-muted"}" ${n === stepNo ? 'aria-current="step"' : ""}><span class="step-dot ${n < stepNo ? "bg-neutral text-neutral-content" : n === stepNo ? "border-2 border-base-content" : "border border-field-border"}">${n < stepNo ? "✓" : n}</span>Struggle ${n}</li>${n < 3 ? '<li aria-hidden="true" class="h-px w-6 bg-base-300"></li>' : ""}`).join("")}</ol>`;
+  const top = `<div class="sticky top-[var(--strip)] z-10 flex items-center justify-between gap-6 border-b border-base-300 bg-base-100 px-12 py-4">
+    <div class="flex items-center gap-3 text-sm"><span class="text-muted">Study app</span>${icon("chevron-right", "size-3.5")}<span class="font-semibold">Session review</span><span class="text-muted">· 1 h 12 min, 3 struggles</span></div>${steps}
+    <button class="btn btn-ghost btn-sm font-normal">${icon("clock")}Finish later</button></div>`;
+  if (v === "done") return `${top}<div class="mx-auto max-w-3xl px-12 pb-24 pt-12">
+    <h1 class="flex items-center gap-3 text-3xl font-semibold">${icon("circle-check", "size-7")}Session reviewed</h1>
+    <ul class="panel mt-8 divide-y" aria-label="What happens next">
+      <li class="flex items-center gap-4 px-6 py-4">${icon("square-stack")}<span class="flex-1">1 card suggestion, waiting in Suggestions</span><button class="btn btn-ghost btn-sm">Open Suggestions</button></li>
+      <li class="flex items-center gap-4 px-6 py-4">${icon("dumbbell")}<span class="flex-1">2 drills: "Off-by-one loops" again tomorrow, and a new one for "Borrowing in closures" tomorrow</span><button class="btn btn-ghost btn-sm">See in calendar</button></li>
+    </ul>
+    <div class="mt-8 flex justify-end"><button class="btn btn-primary">Back to Study app</button></div></div>`;
+  const card = (what, why, kind) => `<section class="panel p-6"><div class="flex items-center gap-2"><span class="kind">${kind}</span><span class="text-sm text-muted">Logged 14:20</span></div><p class="mt-3 text-lg">${what}</p><p class="mt-1 text-muted">Why it wasn't obvious: ${why}</p></section>`;
+  const issuePicker = (value, known) => `<div><label class="block text-sm font-semibold" for="issue">Issue</label>
+    <div class="mt-1 flex items-center gap-2"><input id="issue" class="input w-full" value="${value}" list="issues" placeholder="Name the issue, or pick one you've had before…"></div>
+    <p class="mt-1 text-sm text-muted">${known ? `Seen 4 times before, in Study app and Networks past paper 2024.` : "New issue. Name it so you'd recognise it next time it comes up."}</p></div>`;
+  let body;
+  if (v === "recall miss") body = `${card("Forgot how to slice a string from the end", "I was thinking in Python's negative indexes", "Couldn't recall it")}
+    <fieldset class="space-y-3"><legend class="text-sm font-semibold">What should happen with it?</legend>
+      ${choice(true, "square-stack", "Suggest a card", "The front starts as what tripped you up, with your 'why' beside it to help write the cue. You'll still accept it in Suggestions.")}
+      ${choice(false, "list-checks", "Add to a recall checklist", "Rust strings checklist")}
+      ${choice(false, "dumbbell", "Schedule a drill", "")}
+      ${choice(false, "minus", "Nothing, just keep it logged", "")}</fieldset>`;
+  else if (v === "apply miss, known drill") body = `${card("Wrote <= instead of < reading the bytes back", "Same habit from the C course, didn't think about the length", "Couldn't apply it")}
+    ${issuePicker("Off-by-one in loops", true)}
+    <div class="panel flex items-start gap-4 p-5" role="note">${icon("dumbbell", "size-5 shrink-0 mt-0.5")}<div class="flex-1"><p class="font-semibold">You have a drill for this issue</p><p class="mt-1 text-sm text-muted">"Write a loop over a slice without an off-by-one". Last done Wed 28 Oct, rated Solid.</p>
+      <div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-outline btn-sm border-field-border" onclick="setVariant('confirm the date')">${icon("repeat")}Schedule this drill again</button><button class="btn btn-ghost btn-sm" onclick="setVariant('new drill')">${icon("plus")}Do a different drill</button></div></div></div>`;
+  else body = `${card("Couldn't remember how to borrow inside a closure that outlives the loop", "I thought of it as a lifetime problem, not an ownership one", "Couldn't apply it")}
+    ${issuePicker("Borrowing in closures", false)}
+    <div class="space-y-4"><div><label class="block text-sm font-semibold" for="drill">The drill</label><textarea id="drill" class="textarea mt-1 w-full text-[15px]" rows="2" placeholder="A small task that practises exactly this…">Write a function that spawns 3 threads, each using a value from a Vec, without cloning the Vec</textarea>
+      <p class="mt-1 text-sm text-muted">Make it small and specific, something you can finish in one sitting. Done right, it's ticked off. Rated Struggled or Shaky, it comes back the next day.</p></div>
+      <div class="grid grid-cols-2 gap-6"><label class="block"><span class="block text-sm font-semibold">Topic</span><select class="select mt-1 w-full"><option>Rust ownership</option></select></label>
+        <label class="block"><span class="block text-sm font-semibold">Steps or hints <span class="font-normal text-muted">(optional)</span></span><input class="input mt-1 w-full" placeholder="Shown only if you ask while drilling…"></label></div></div>`;
+  const confirm = v === "confirm the date" || v === "new drill";
+  return `${top}<div class="mx-auto max-w-3xl px-12 pb-24 pt-10"><div class="space-y-8">${body}</div>
+    <div class="mt-10 flex items-center justify-between gap-3 border-t border-base-300 pt-6"><button class="btn btn-ghost">${icon("arrow-left")}Back</button>
+      <button class="btn btn-primary" onclick="setVariant('${v === "recall miss" ? "apply miss, known drill" : "confirm the date"}')">${confirm ? "Schedule the drill" : "Next struggle"} ${kbd("Ctrl")}${kbd("Enter")}</button></div>
+    ${v === "confirm the date" ? `<dialog open class="modal modal-open" aria-labelledby="when-h"><div class="modal-box max-w-md"><h3 id="when-h" class="text-lg font-semibold">When do you want to do it?</h3>
+      <p class="mt-2 text-sm text-muted">Write a loop over a slice without an off-by-one</p>
+      <div class="mt-5 space-y-3"><label class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-primary px-4 py-2"><input type="radio" name="when" class="radio radio-sm" checked><span class="flex-1">Tomorrow, Wed 4 Nov</span></label>
+        <label class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border border-field-border px-4 py-2"><input type="radio" name="when" class="radio radio-sm"><span>Another day</span><input type="date" class="input input-sm ml-auto w-40" aria-label="Pick a day" value="2026-11-05"></label></div>
+      <p class="mt-3 text-sm text-muted">Wednesday already has about 4 cards due.</p>
+      <div class="modal-action"><button class="btn btn-ghost" onclick="setVariant('apply miss, known drill')">Back</button><button class="btn btn-primary" onclick="setVariant('done')">Schedule for tomorrow</button></div></div></dialog>` : ""}
+  </div>`;
+}
+const choice = (on, ic, title, sub) => `<label class="flex min-h-12 cursor-pointer items-start gap-4 rounded-lg border ${on ? "border-primary" : "border-field-border"} bg-surface px-4 py-3"><input type="radio" name="do" class="radio radio-sm mt-0.5" ${on ? "checked" : ""}><span class="flex-1"><span class="flex items-center gap-2 font-semibold">${icon(ic)}${title}</span>${sub ? `<span class="mt-1 block text-sm text-muted">${sub}</span>` : ""}</span></label>`;
+
+/* ---------------- Doing a drill ---------------- */
+function screenDrill() {
+  const v = state.variant;
+  const top = `<div class="sticky top-[var(--strip)] z-10 flex items-center justify-between gap-6 border-b border-base-300 bg-base-100 px-12 py-4">
+    <div class="flex items-center gap-3 text-sm"><span class="text-muted">Drills today</span>${icon("chevron-right", "size-3.5")}<span class="font-semibold">1 of 2</span></div>
+    <span class="timer-chip" role="timer" aria-label="Time on this drill">${icon("timer")}6:18</span>
+    <button class="btn btn-ghost btn-sm font-normal">${icon("log-out")}Leave</button></div>`;
+  if (v === "rated solid" || v === "rated shaky") {
+    const solid = v === "rated solid";
+    return `${top}<div class="mx-auto max-w-3xl px-12 pb-24 pt-12">
+      <p class="text-sm text-muted">Off-by-one in loops</p>
+      <h1 class="mt-2 flex items-center gap-3 text-3xl font-semibold">${icon(solid ? "circle-check" : "repeat", "size-7")}${solid ? "Ticked off" : "Again tomorrow"}</h1>
+      <p class="mt-3 max-w-prose text-muted">${solid ? "This drill is done. It only comes back if the same issue turns up in a project review, and then you'll be asked first." : "Rated Shaky, so it's back on Wed 4 Nov. It keeps coming back daily until it's Solid."}</p>
+      ${solid ? "" : `<div class="panel mt-6 p-5"><p class="text-sm font-semibold">Your note</p><p class="mt-1">Got the bound right but second-guessed it for ages.</p></div>`}
+      <div class="mt-10 flex items-center justify-between gap-4"><button class="btn btn-ghost">${icon("calendar")}${solid ? "Back to today" : "Move it to another day"}</button><button class="btn btn-primary">Next drill: Mirror seams</button></div></div>`;
+  }
+  return `${top}<div class="mx-auto max-w-prose px-6 pb-48 pt-16">
+    <p class="text-sm text-muted">Off-by-one in loops · Rust · from Study app</p>
+    <div class="mt-3 text-xl leading-relaxed" role="heading" aria-level="1">Write a loop over a slice without an off-by-one</div>
+    <p class="mt-6 text-muted">Do it outside the app, in your editor or on paper. Come back and rate it when you're done.</p>
+    <details class="panel mt-8 p-5"><summary class="cursor-pointer text-sm font-semibold">Show the hints</summary><p class="mt-3 text-sm">Index with \`0..slice.len()\`, or skip indexes with \`.iter()\`.</p></details>
+    <div class="panel mt-6 p-5"><p class="text-sm font-semibold">Why it was made</p><ul class="mt-2 space-y-1 text-sm text-muted"><li>Mon 2 Nov, Study app: "Loop ran one too many times reading the file"</li><li>Fri 23 Oct, Networks past paper: "Counted one extra host in the subnet"</li></ul></div>
+    <label class="mt-6 block"><span class="text-sm font-semibold">Note <span class="font-normal text-muted">(optional)</span></span><textarea class="textarea mt-1 w-full" rows="2" placeholder="What went wrong, or what made it click…"></textarea></label>
+  </div>
+  <div class="fixed bottom-0 left-0 right-0 border-t border-base-300 bg-base-100 py-6"><div class="mx-auto flex max-w-prose items-center justify-center gap-3">
+    <button class="btn rate btn-outline border-field-border" style="color: var(--wrong-ink)" onclick="setVariant('rated shaky')"><span>Struggled ${kbd("1")}</span><span class="when">Again tomorrow</span></button>
+    <button class="btn rate btn-outline border-field-border" onclick="setVariant('rated shaky')"><span>Shaky ${kbd("2")}</span><span class="when">Again tomorrow</span></button>
+    <button class="btn rate btn-primary" onclick="setVariant('rated solid')"><span>Solid ${kbd("3")}</span><span class="when">Ticked off</span></button>
+  </div><p class="mt-3 text-center text-xs text-muted">How did it go?</p></div>`;
+}
+
+/* ---------------- Topics with quiz scheduling ---------------- */
+function screenTopics() {
+  const v = state.variant;
+  if (v === "results move up") return `<div class="mx-auto max-w-6xl px-12 pb-24">${header("Results", "Study mode · 13 questions")}
+    <section class="panel p-8"><p class="text-6xl font-semibold leading-none">10 <span class="text-3xl font-normal text-muted">/ 13</span></p></section>
+    <section class="panel mt-6 p-6" aria-labelledby="sched-h"><h2 id="sched-h" class="text-sm font-semibold">Quiz schedule</h2>
+      <ul class="mt-4 divide-y">
+        <li class="grid grid-cols-[160px_1fr_auto] items-center gap-6 py-3"><span class="font-semibold">CPU</span><span class="flex items-center gap-2 text-sm text-right-ink font-semibold">${icon("arrow-up")}86%, moves up to Fortnight</span><span class="text-sm text-muted">Next quiz Tue 17 Nov</span></li>
+        <li class="grid grid-cols-[160px_1fr_auto] items-center gap-6 py-3"><span class="font-semibold">OSI model</span><span class="flex items-center gap-2 text-sm text-wrong-ink font-semibold">${icon("arrow-down")}50%, under 70%, stays on Day</span><span class="text-sm text-muted">Next quiz tomorrow</span></li>
+      </ul><p class="mt-3 text-xs text-muted">Each topic is scored on its own questions in this quiz. Retries don't move the schedule.</p></section></div>`;
+  if (v === "schedule settings") return `<div class="mx-auto max-w-6xl px-12 pb-24 opacity-40" aria-hidden="true">${header("Topics")}</div>
+    <dialog open class="modal modal-open" aria-labelledby="qs-h"><div class="modal-box max-w-xl"><h3 id="qs-h" class="text-lg font-semibold">Quiz schedule</h3>
+      <p class="mt-2 text-sm text-muted">The same kind of ladder as recall, kept separately. Changes apply from each topic's next quiz.</p>
+      <ol class="mt-5 space-y-2">${[["Day", 1, 1], ["Week", 1, 1], ["Fortnight", 2, 1], ["Month", 1, 6], ["Season", 3, 4], ["Year", 1, "for good"]].map(([n, c, r], i) => `<li class="flex items-center gap-3"><span class="w-6 text-right text-xs tabular-nums text-muted">${i + 1}</span><input class="input input-sm w-32" aria-label="Step ${i + 1} name" value="${n}"><span class="text-sm text-muted">every</span><input class="input input-sm w-16 tabular-nums" aria-label="Step ${i + 1} count" value="${n === "Fortnight" ? 2 : n === "Season" ? 3 : 1}"><select class="select select-sm w-28" aria-label="Step ${i + 1} unit"><option>${n === "Day" ? "days" : n === "Week" || n === "Fortnight" ? "weeks" : n === "Year" ? "years" : "months"}</option></select><span class="text-sm text-muted">× ${r}</span></li>`).join("")}</ol>
+      <label class="mt-5 flex items-center gap-3"><span class="text-sm font-semibold">Pass mark</span><input class="input input-sm w-20 tabular-nums" value="70"><span class="text-sm text-muted">% of the topic's questions right</span></label>
+      <div class="modal-action"><button class="btn btn-ghost mr-auto">${icon("rotate-ccw")}Reset</button><button class="btn btn-ghost">Cancel</button><button class="btn btn-primary">Save schedule</button></div></div></dialog>`;
+  const rowsT = [["CPU", "Computer Architecture", 7, "Week", "Today", 3, true], ["OSI model", "Networks", 6, "Day", "Today", 1, true], ["Memory", "Computer Architecture", 4, "Fortnight", "Mon 9 Nov", 4, false], ["TCP/IP", "Networks", 5, "Not started", "Quiz it to start", 0, false]];
+  return `<div class="mx-auto max-w-6xl px-12 pb-24">${header("Topics", "2 quizzes due today", `<button class="btn btn-ghost">${icon("settings-2")}Quiz schedule</button><button class="btn btn-ghost">${icon("plus")}New topic</button><button class="btn btn-primary">${icon("play")}Quiz the 2 due topics</button>`)}
+    <div class="panel overflow-hidden"><table class="table" aria-label="Topics"><thead><tr class="text-muted"><th>Topic</th><th>Questions</th><th>Quiz step</th><th>Next quiz</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>
+      ${rowsT.map(([n, m, q, s, next, pos, dueNow]) => `<tr class="hover:bg-base-100"><td><span class="font-semibold">${n}</span><div class="text-xs text-muted">${m}</div></td><td class="tabular-nums">${q}</td>
+        <td><div class="w-40"><span class="text-sm">${s}</span>${pos ? `<div class="ladder mt-1" aria-hidden="true">${[1, 2, 3, 4, 5, 6].map(i => `<span class="${i < pos ? "on" : i === pos ? "now" : ""}"></span>`).join("")}</div>` : ""}</div></td>
+        <td class="text-sm ${dueNow ? "font-semibold" : next.startsWith("Quiz") ? "text-muted" : ""}">${next}</td>
+        <td class="text-right"><div class="flex justify-end gap-1"><button class="btn btn-ghost btn-sm">Edit</button><button class="btn btn-ghost btn-sm">Quiz</button></div></td></tr>`).join("")}
+    </tbody></table></div>
+    <p class="mt-3 text-sm text-muted">A topic's schedule starts the first time you quiz it. Each quiz scores every topic in it on its own questions.</p></div>`;
+}
+
+/* ---------------- Render ---------------- */
+const screens = { calendar: screenCalendar, projects: screenProjects, project: screenProject, review: screenReview, drill: screenDrill, topics: screenTopics };
+const screenNames = { calendar: "Calendar", projects: "Projects", project: "A project", review: "Session review", drill: "Doing a drill", topics: "Quiz scheduling" };
+const navOf = { calendar: "calendar", projects: "projects", project: "projects", review: "projects", drill: "projects", topics: "topics" };
+function setVariant(v) { state.variant = v; render(); }
+function go(screen, v) { state.screen = screen; state.variant = v || variants[screen][0]; try { history.replaceState(null, "", `#${screen}`); } catch (e) {} render(); window.scrollTo(0, 0); }
+function render() {
+  const el = document.getElementById("app");
+  el.innerHTML = screens[state.screen]();
+  document.querySelector('nav[aria-label="Main"]').hidden = state.screen === "review" || state.screen === "drill";
+  document.querySelectorAll(".nav-link").forEach(a => a.dataset.nav && a.dataset.nav === navOf[state.screen] ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
+  document.getElementById("screens").innerHTML = Object.keys(screens).map(s => `<button class="px-2 py-1 rounded ${s === state.screen ? "bg-neutral text-neutral-content font-semibold" : "hover:underline"}" onclick="go('${s}')">${screenNames[s]}</button>`).join("");
+  document.getElementById("states").innerHTML = variants[state.screen].map(v => `<button class="px-2 py-1 rounded ${v === state.variant ? "bg-neutral text-neutral-content font-semibold" : "hover:underline"}" onclick="setVariant('${v}')">${v}</button>`).join("");
+  if (window.lucide) lucide.createIcons();
+}
+function applyTheme(name, save = true) {
+  document.documentElement.dataset.theme = name;
+  document.querySelector('meta[name="theme-color"]').content = name === "studyapp-dark" ? "#18130e" : "#f9f4ee";
+  document.querySelectorAll("[data-theme-choice]").forEach(b => b.setAttribute("aria-checked", b.dataset.themeChoice === name));
+  if (save) { try { localStorage.setItem("studyapp-theme", name); } catch (e) {} render(); }
+}
+document.getElementById("theme-switch").addEventListener("click", e => { const b = e.target.closest("[data-theme-choice]"); if (b) applyTheme(b.dataset.themeChoice); });
+(() => { let saved = null; try { saved = localStorage.getItem("studyapp-theme"); } catch (e) {} applyTheme(saved === "studyapp" ? "studyapp" : "studyapp-dark", false); })();
+document.addEventListener("keydown", e => {
+  if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) return;
+  if (state.screen === "drill" && state.variant === "doing it" && /^[1-3]$/.test(e.key)) setVariant(e.key === "3" ? "rated solid" : "rated shaky");
+});
+const start = location.hash.slice(1);
+if (screens[start]) state.screen = start, state.variant = variants[start][0];
+render();
+const strip = document.getElementById("proto-strip");
+new ResizeObserver(() => document.documentElement.style.setProperty("--strip", strip.offsetHeight + "px")).observe(strip);
+</script>
+</body>
+</html>
