@@ -144,7 +144,7 @@
 
           {#snippet totalTimer()}
             <div class="flex items-center gap-2">
-              <input type="checkbox" class="toggle toggle-sm" aria-label="Use total timer" bind:checked={useTotal} />
+              <input type="checkbox" class="toggle" aria-label="Use total timer" bind:checked={useTotal} />
               <input class="input input-sm w-20 tabular-nums" type="number" min="1" aria-label="Minutes" bind:value={totalMinutes} disabled={!useTotal} /><span class="text-sm text-muted">min</span>
             </div>
           {/snippet}
@@ -152,7 +152,7 @@
 
           {#snippet perQuestionTimer()}
             <div class="flex items-center gap-2">
-              <input type="checkbox" class="toggle toggle-sm" aria-label="Use per-question timer" bind:checked={usePerQuestion} />
+              <input type="checkbox" class="toggle" aria-label="Use per-question timer" bind:checked={usePerQuestion} />
               <input class="input input-sm w-20 tabular-nums" type="number" min="5" aria-label="Seconds" bind:value={perQuestionSeconds} disabled={!usePerQuestion} /><span class="text-sm text-muted">sec</span>
             </div>
           {/snippet}

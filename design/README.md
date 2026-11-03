@@ -269,7 +269,7 @@ Checked in the real app (`e2e/flashcards_test.py`, run by `e2e/run.sh`): writes 
 
 ---
 
-# Short answer (proposed, waiting for a greenlight)
+# Short answer (built)
 
 Clickable prototype: `short-answer.html`. Same theme and components as the other prototypes, built into the existing editor, quiz, results and setup screens rather than new ones.
 
@@ -304,7 +304,7 @@ Clickable prototype: `short-answer.html`. Same theme and components as the other
 - **Checklist import:** the Short answer tab becomes "question → model answer" (or the first accepted answer).
 - **Suggestions:** a wrong or guessed short answer shows what you wrote, and making a card starts with the question as the front and the model answer as the back.
 
-## Open questions
+## Open questions (answered 3 Nov 2026: any order, right or wrong only, the typo rule as written)
 
 1. **Keyword order.** The TCP handshake question says "in order", but keywords are checked in any order. Should there be an "in this order" option per question, or is any order fine?
 2. **Half marks.** "2 of 3 keywords" counts as wrong (or right, if you set "at least 2"), so every answer is right or wrong and the tallies stay simple. Is that OK, or do you want half marks?
@@ -323,3 +323,12 @@ Clickable prototype: `short-answer.html`. Same theme and components as the other
 - The first pass found the quiz's current-question marker drawn as a solid bright bar, which the app already replaced with an outline after the bright-bar recheck. Fixed to match. It also found the keyword rule needed spelling out ("SYN-ACK" vs "SYN" and "ACK").
 - Squint test (greyscale, blurred) on the keyword editor, a wrong answer and the results review: the question, your answer, then the verdict read in that order, and the one primary (Next or Save) stands out.
 - Verdicts never rely on colour alone: every one has an icon and a word, and keyword chips have a tick or cross plus solid vs dashed borders.
+
+## Built (3 Nov 2026)
+
+Short answer is built from these designs, test-first, with requirements R78 to R86 in `specs/README.md` and scenarios in `specs/features/short-answer.feature`. Keywords are checked in any order, every answer is right or wrong (no half marks), and the typo rule is as written above.
+
+Difference from the prototype: when a question has its own model answer, "Also accepted" lists every accepted answer, since none of them is the one already shown.
+
+Checked in the real app (`e2e/short_answer_test.py`, run by `e2e/run.sh`): writes a question checked by accepted answers and one by keywords, uses Try an answer on both (a typo allowed, and "SYN-ACK" not also counting as "SYN" and "ACK"), picks short answers only in setup, answers wrongly and overrules with O, gets the keyword question right, then undoes the overrule on the results page and sees the score drop. It also checks the wrong answer becomes a card suggestion and both questions can be checklist points. With `AUDIT` set it measured the editor and quiz setup for the first time, which found two older problems, both fixed: the source preview's file input was a 1px "screen reader only" element, so it was an invisible extra Tab stop announced as a second "Open file" (now fully hidden, like the image picker), and the quiz setup's timer toggles were 20px tall (now the 24px size). Every screen passes contrast, target size and one-primary checks in both themes.
+

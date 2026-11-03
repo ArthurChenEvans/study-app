@@ -61,7 +61,7 @@
   }
 </script>
 
-<input bind:this={input} type="file" class="sr-only" accept={ACCEPT} multiple aria-label="Open file" onchange={onFiles} />
+<input bind:this={input} type="file" class="hidden" accept={ACCEPT} multiple aria-label="Open file" onchange={onFiles} />
 
 {#if tabs.length === 0}
   <div class="grid h-full place-items-center p-12">
