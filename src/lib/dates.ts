@@ -16,3 +16,14 @@ export function dayFromUtc(timestamp: string): number {
   const date = new Date(`${timestamp.replace(" ", "T")}Z`);
   return Math.floor((date.getTime() - date.getTimezoneOffset() * 60_000) / 86_400_000);
 }
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/** Upcoming dates: "Today", "Tomorrow", "Thu 5 Nov" within the year, "3 Feb 2027" after. */
+export function dueLabel(day: number, today: number): string {
+  if (day <= today) return "Today";
+  if (day === today + 1) return "Tomorrow";
+  const date = new Date(day * 86_400_000);
+  const label = dayLabel(day, today);
+  return date.getUTCFullYear() === new Date(today * 86_400_000).getUTCFullYear() ? `${WEEKDAYS[date.getUTCDay()]} ${label}` : label;
+}

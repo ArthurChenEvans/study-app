@@ -30,4 +30,17 @@ describe("Sidebar", () => {
     expect(document.documentElement.dataset.theme).toBe("studyapp");
     expect(screen.getByRole("radio", { name: "Light" })).toHaveAttribute("aria-checked", "true");
   });
+
+  // free-recall.feature: Due checklists come first (the sidebar shows how many are due)
+  it("shows how many checklists are due", () => {
+    render(Sidebar, { current: "recall", onNavigate: vi.fn(), recallDue: 2 });
+    const link = screen.getByRole("link", { name: /Recall/ });
+    expect(link).toHaveAttribute("aria-current", "page");
+    expect(screen.getByLabelText("2 due today")).toBeInTheDocument();
+  });
+
+  it("hides the count when nothing is due", () => {
+    render(Sidebar, { current: "overview", onNavigate: vi.fn(), recallDue: 0 });
+    expect(screen.queryByLabelText(/due today/)).toBeNull();
+  });
 });

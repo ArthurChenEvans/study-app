@@ -106,6 +106,39 @@ export type SearchHit =
   | { Source: { id: Id; apa: string } };
 export interface SearchQuery { text: string; tab: "All" | "Questions" | "Modules" | "Topics" | "Tags" | "Sources"; module: Id | null; tag: string | null; sort: "Question" | "Topic" | "Edited"; descending: boolean }
 
+
+// ---------- Free recall (R52 to R61) ----------
+export type ChecklistId = number;
+export type Subject = { Module: Id } | { Topic: Id };
+export interface RecallPoint { text: string; question: Id | null }
+export interface RecallRow {
+  id: ChecklistId;
+  subject_name: string;
+  module: boolean;
+  subject_exists: boolean;
+  points: number;
+  step: string | null;
+  next_step: string;
+  position: [number, number] | null;
+  due: number;
+  due_today: boolean;
+  days_late: number;
+  last_score: number | null;
+}
+export interface ChecklistView { row: RecallRow; points: RecallPoint[]; topics: string[] }
+export interface Candidate { question: Id; topic_name: string; text: string; answer: string; in_checklist: boolean }
+export interface Preview { score: number; passed: boolean; to: string; next_due: number }
+export interface Missed { text: string; missed: number; checks: number }
+export interface CheckResult {
+  score: number; recalled: number; total: number; passed: boolean; previous_score: number | null;
+  from: string | null; to: string; position: [number, number]; next_step: string; next_due: number; missed: Missed[];
+}
+export interface CheckView { day: number; score: number; passed: boolean; from: string | null; to: string; dump: string | null }
+export interface RecallHistory { checks: CheckView[]; most_missed: Missed[]; pass_mark: number }
+export type Unit = "Days" | "Weeks" | "Months" | "Years";
+export interface ScheduleStep { name: string; every: { count: number; unit: Unit }; repeats: number }
+export interface Schedule { steps: ScheduleStep[]; pass_mark: number; under_pass: "BackOneStep" | "Stay" }
+
 /** Errors from the backend arrive as { message }. */
 export function errorMessage(error: unknown): string {
   if (error && typeof error === "object" && "message" in error) return String((error as { message: unknown }).message);
@@ -153,6 +186,20 @@ export const api = {
   addImage: async (file: Blob) => invoke<Id>("add_image", { data: await toBase64(file) }),
   image: async (id: Id) => new Uint8Array(await invoke<ArrayBuffer | number[]>("image", { id })),
   /** Sends slides as base64 JSON (works on every IPC path) and gets PDF bytes back. Nothing is stored. */
+  recallList: () => invoke<RecallRow[]>("recall_list"),
+  recallDueCount: () => invoke<number>("recall_due_count"),
+  createChecklist: (subject: Subject) => invoke<ChecklistId>("create_checklist", { subject }),
+  deleteChecklist: (id: ChecklistId) => invoke<void>("delete_checklist", { id }),
+  checklist: (id: ChecklistId) => invoke<ChecklistView>("checklist", { id }),
+  savePoints: (id: ChecklistId, points: RecallPoint[]) => invoke<RecallPoint[]>("save_points", { id, points }),
+  recallCandidates: (id: ChecklistId) => invoke<Candidate[]>("recall_candidates", { id }),
+  addFromQuestions: (id: ChecklistId, add: Id[], remove: Id[]) => invoke<RecallPoint[]>("add_from_questions", { id, add, remove }),
+  previewCheck: (id: ChecklistId, recalled: number) => invoke<Preview>("preview_check", { id, recalled }),
+  finishCheck: (id: ChecklistId, dump: string | null, recalled: number[]) => invoke<CheckResult>("finish_check", { id, dump, recalled }),
+  recallHistory: (id: ChecklistId) => invoke<RecallHistory>("recall_history", { id }),
+  recallSchedule: () => invoke<Schedule>("recall_schedule"),
+  setRecallSchedule: (schedule: Schedule) => invoke<void>("set_recall_schedule", { schedule }),
+  resetRecallSchedule: () => invoke<Schedule>("reset_recall_schedule"),
   slidesToPdf: async (file: File) => {
     const pdf = await invoke<ArrayBuffer | number[]>("slides_to_pdf", { name: file.name, data: await toBase64(file) });
     return new Uint8Array(pdf);

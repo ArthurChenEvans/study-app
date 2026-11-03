@@ -70,6 +70,8 @@ pub struct CheckResult {
     pub from: Option<String>,
     pub to: String,
     pub position: (usize, u32),
+    /// The step a pass on the next check would lead to.
+    pub next_step: String,
     pub next_due: i64,
     pub missed: Vec<Missed>,
 }
@@ -365,6 +367,7 @@ impl App {
             from,
             to,
             position: (outcome.to.step, outcome.to.rep),
+            next_step: schedule.label(schedule.after_pass(Some(outcome.to))),
             next_due: outcome.next_due,
             missed,
         })

@@ -1,15 +1,16 @@
 <script lang="ts">
-  import { BookOpen, History, Layers, LayoutDashboard, Library, Moon, Play, Search, Sun } from "@lucide/svelte";
+  import { BookOpen, Brain, History, Layers, LayoutDashboard, Library, Moon, Play, Search, Sun } from "@lucide/svelte";
   import { DARK, LIGHT, applyTheme, type Theme } from "../lib/theme";
   import type { Screen } from "../lib/router";
 
-  let { current, onNavigate }: { current: Screen; onNavigate: (screen: Screen) => void } = $props();
+  let { current, onNavigate, recallDue = 0 }: { current: Screen; onNavigate: (screen: Screen) => void; recallDue?: number } = $props();
 
   let theme = $state<Theme>((document.documentElement.dataset.theme as Theme) ?? DARK);
 
   const links: { screen: Screen; label: string; icon: typeof Library }[] = [
     { screen: "overview", label: "Overview", icon: LayoutDashboard },
     { screen: "topics", label: "Topics", icon: Library },
+    { screen: "recall", label: "Recall", icon: Brain },
     { screen: "bibliography", label: "Bibliography", icon: BookOpen },
     { screen: "history", label: "History", icon: History },
     { screen: "search", label: "Search", icon: Search },
@@ -38,7 +39,8 @@
       aria-current={current === link.screen ? "page" : undefined}
       onclick={(event) => go(event, link.screen)}
     >
-      <link.icon class="size-4" />{link.label}
+      <link.icon class="size-4" /><span class="flex-1">{link.label}</span>
+      {#if link.screen === "recall" && recallDue > 0}<span class="text-xs tabular-nums" aria-label="{recallDue} due today">{recallDue}</span>{/if}
     </a>
   {/each}
   <div class="mt-4 px-3">
