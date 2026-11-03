@@ -90,7 +90,7 @@
       <p class="mt-2 max-w-prose text-muted">Cards are for the things you keep forgetting. Write them in a topic, or make them from what you missed in a recall or got wrong in a quiz. The app picks which ones to show each day, so you only see a card just before you'd forget it.</p>
       <div class="mt-6 flex gap-3">
         <button class="btn btn-primary" onclick={onNewCard}><Plus class="size-4" />Write your first card</button>
-        {#if home.suggestions}<button class="btn btn-outline border-field-border" onclick={onSuggestions}><Inbox class="size-4" />{home.suggestions} suggestions</button>{/if}
+        {#if home.suggestions}<button class="btn btn-outline border-field-border" onclick={onSuggestions}><Inbox class="size-4" />{home.suggestions} {home.suggestions === 1 ? "suggestion" : "suggestions"}</button>{/if}
       </div>
     </div>
   {:else if home}

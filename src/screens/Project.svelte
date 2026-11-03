@@ -3,7 +3,7 @@
   import { ArrowLeft, ListChecks, Play, Plus, Square, Timer } from "@lucide/svelte";
   import { onDestroy, tick } from "svelte";
   import { api, errorMessage, type Id, type ProjectView, type StruggleKind, type StruggleView, type TopicRow } from "../lib/api";
-  import { dayLabel, fullLabel, onDay } from "../lib/dates";
+  import { fullLabel, onDay, pastOn } from "../lib/dates";
 
   let { id, onBack = () => {}, onReview = () => {} }: { id: Id; onBack?: () => void; onReview?: (project: Id) => void } = $props();
 
@@ -113,7 +113,7 @@
   <button class="mt-8 inline-flex items-center gap-1 py-1 text-sm text-muted hover:underline" onclick={onBack}><ArrowLeft class="size-4" />Projects</button>
   {#if view}
     <div class="flex items-end justify-between gap-6 pb-6 pt-4">
-      <div><p class="text-sm text-muted">{view.row.kind ? `${view.row.kind} · ` : ""}started {dayLabel(view.row.created, today)} · {view.row.struggles} {view.row.struggles === 1 ? "struggle" : "struggles"}</p><h1 class="mt-1 text-3xl font-semibold">{view.row.name}</h1></div>
+      <div><p class="text-sm text-muted">{view.row.kind ? `${view.row.kind} · ` : ""}started {pastOn(view.row.created, today).replace(/^on /, "")} · {view.row.struggles} {view.row.struggles === 1 ? "struggle" : "struggles"}</p><h1 class="mt-1 text-3xl font-semibold">{view.row.name}</h1></div>
       <div class="flex items-center gap-3">
         {#if session}
           <span class="timer-chip" role="timer" aria-label="Session time"><Timer class="size-4" />{clock(elapsed)}</span>

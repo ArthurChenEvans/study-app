@@ -1,13 +1,17 @@
 <script lang="ts">
   // calendar.feature (R98, R99): what's due each day, and what was done on past days.
   import { ArrowLeft, Brain, CalendarArrowUp, ChevronLeft, ChevronRight, Dumbbell, ListChecks, Play, SquareStack, TriangleAlert } from "@lucide/svelte";
+  import { untrack } from "svelte";
   import { api, errorMessage, type CalendarDay, type DayView, type DrillView, type Id, type StruggleView } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
   import { dateOf, dayFromIso, dueLabel, fullLabel, isoOf, monthGrid, monthLabel, onDay } from "../lib/dates";
 
   let {
+    initialDay = null, onOpenDay = () => {},
     onCards = () => {}, onRecall = () => {}, onQuiz = () => {}, onDrills = () => {}, onResults = () => {}, onProject = () => {},
   }: {
+    /** A day to open straight away, so coming back from a drill lands on it. */
+    initialDay?: number | null; onOpenDay?: (day: number | null) => void;
     onCards?: () => void; onRecall?: (id: Id) => void; onQuiz?: (topics: Id[]) => void; onDrills?: (ids: Id[]) => void;
     onResults?: (attempt: Id) => void; onProject?: (project: Id) => void;
   } = $props();
@@ -35,9 +39,11 @@
 
   async function load() {
     today = await api.today();
-    const now = dateOf(today);
+    const start = untrack(() => initialDay);
+    const now = dateOf(start ?? today);
     [year, month] = [now.year, now.month];
-    await loadMonth();
+    if (start !== null) await open(start);
+    else await loadMonth();
   }
 
   async function loadMonth() {
@@ -53,6 +59,7 @@
 
   async function open(value: number) {
     selected = value;
+    onOpenDay(value);
     error = "";
     day = await api.calendarDay(value);
   }
@@ -70,6 +77,7 @@
 
   async function back() {
     selected = null;
+    onOpenDay(null);
     day = null;
     await loadMonth();
   }

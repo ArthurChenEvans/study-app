@@ -13,8 +13,10 @@ pnpm tauri dev       # opens the app
 ## Try it with demo data
 
 `study-web` runs the same app in a browser, and can fill a database with a demo profile:
-5 topics across 3 modules, 20 questions with sources, and 60 days of quizzes, recall checks
-and card reviews (including a couple of cards flagged to rewrite and a late checklist).
+5 topics across 3 modules, MCQ and short answer questions with sources, and 60 days of
+quizzes, recall checks and card reviews (including cards flagged to rewrite and a late
+checklist), plus three projects with sessions, struggles, shared issues and drills, so the
+calendar, quiz schedules and today's drills all have something in them.
 
 ### In a container
 

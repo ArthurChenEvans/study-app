@@ -76,3 +76,9 @@ export function fullLabel(day: number, today: number): string {
   const label = `${WEEKDAYS[date.getUTCDay()]} ${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]}`;
   return date.getUTCFullYear() === new Date(today * 86_400_000).getUTCFullYear() ? label : `${label} ${date.getUTCFullYear()}`;
 }
+
+/** A past day for use mid-sentence: "today", "yesterday", "on 28 Oct". */
+export function pastOn(day: number, today: number): string {
+  const label = dayLabel(day, today);
+  return label === "Today" || label === "Yesterday" ? label.toLowerCase() : `on ${label}`;
+}

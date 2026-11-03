@@ -36,6 +36,7 @@
     | { screen: "topic-cards"; topic: Id; note: Id | "new" | null; notice?: string }
     | { screen: "card-review"; scope: Subject | null; run: number }
     | { screen: "suggestions" }
+    | { screen: "calendar-day"; day: number }
     | { screen: "project"; id: Id }
     | { screen: "session-review"; project: Id; run: number }
     | { screen: "drills"; ids: Id[]; back: Route; run: number };
@@ -44,7 +45,7 @@
   let runs = 0;
 
   const navScreen = $derived<Screen>(
-    route.screen === "project" || route.screen === "session-review" || route.screen === "drills" ? "projects" : route.screen === "editor" ? "topics" : route.screen === "topic-cards" || route.screen === "card-review" || route.screen === "suggestions" ? "cards" : route.screen === "checklist" || route.screen === "recall-session" ? "recall" : route.screen === "setup-for" || route.screen === "quiz" || route.screen === "results" ? "setup" : route.screen,
+    route.screen === "calendar-day" ? "calendar" : route.screen === "project" || route.screen === "session-review" || route.screen === "drills" ? "projects" : route.screen === "editor" ? "topics" : route.screen === "topic-cards" || route.screen === "card-review" || route.screen === "suggestions" ? "cards" : route.screen === "checklist" || route.screen === "recall-session" ? "recall" : route.screen === "setup-for" || route.screen === "quiz" || route.screen === "results" ? "setup" : route.screen,
   );
 
   function go(next: Route) {
@@ -128,8 +129,8 @@
       {#key route.run}<CardReview scope={route.scope} {scopeName} onLeave={() => go({ screen: "cards" })} onEdit={(topic, note) => go({ screen: "topic-cards", topic, note })} />{/key}
     {:else if route.screen === "suggestions"}
       <Suggestions onBack={() => go({ screen: "cards" })} onChanged={refreshDue} />
-    {:else if route.screen === "calendar"}
-      <Calendar onCards={() => startCards(null)} onRecall={startRecall} onQuiz={(topics) => go({ screen: "setup-for", topics })} onDrills={startDrills} onResults={(attempt) => go({ screen: "results", attempt })} onProject={(id) => go({ screen: "project", id })} />
+    {:else if route.screen === "calendar" || route.screen === "calendar-day"}
+      <Calendar initialDay={route.screen === "calendar-day" ? route.day : null} onOpenDay={(day) => (route = day === null ? { screen: "calendar" } : { screen: "calendar-day", day })} onCards={() => startCards(null)} onRecall={startRecall} onQuiz={(topics) => go({ screen: "setup-for", topics })} onDrills={startDrills} onResults={(attempt) => go({ screen: "results", attempt })} onProject={(id) => go({ screen: "project", id })} />
     {:else if route.screen === "projects"}
       <Projects onOpen={(id) => go({ screen: "project", id })} onDrills={startDrills} />
     {:else if route.screen === "project"}

@@ -8,8 +8,8 @@ use study_web::{Config, router, today};
 fn seed(app: &mut App) -> Result<(), String> {
     let summary = study_api::seed::seed_profile(app, today()).map_err(|error| error.message)?;
     println!(
-        "seeded {} modules, {} topics, {} questions, {} sources, {} quizzes, {} recall checks and {} card reviews over {} days",
-        summary.modules, summary.topics, summary.questions, summary.sources, summary.quizzes, summary.checks, summary.reviews, study_api::seed::DAYS
+        "seeded {} modules, {} topics, {} questions, {} sources, {} quizzes, {} recall checks, {} card reviews and {} projects with {} struggles over {} days",
+        summary.modules, summary.topics, summary.questions, summary.sources, summary.quizzes, summary.checks, summary.reviews, summary.projects, summary.struggles, study_api::seed::DAYS
     );
     Ok(())
 }

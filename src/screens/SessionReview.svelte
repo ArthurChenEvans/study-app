@@ -2,7 +2,7 @@
   // projects.feature (R90 to R92, R95): review a session's struggles one at a time.
   import { CalendarDays, CircleCheck, Clock, Dumbbell, ListChecks, Minus, Plus, Repeat, SquareStack } from "@lucide/svelte";
   import { api, errorMessage, type DrillView, type Id, type IssueView, type RecallRow, type ReviewChoice, type StruggleView, type TopicRow } from "../lib/api";
-  import { dayFromIso, dayLabel, dueLabel, fullLabel, isoOf, onDay } from "../lib/dates";
+  import { dayFromIso, dueLabel, fullLabel, isoOf, onDay, pastOn } from "../lib/dates";
 
   let { project, onDone = () => {}, onSuggestions = () => {}, onCalendar = () => {} }: { project: Id; onDone?: () => void; onSuggestions?: () => void; onCalendar?: () => void } = $props();
 
@@ -129,7 +129,7 @@
     <form class="mx-auto max-w-3xl px-12 pb-24 pt-10" onsubmit={next}>
       <div class="space-y-8">
         <section class="panel p-6" aria-label="The struggle">
-          <div class="flex items-center gap-2"><span class="kind">{kindLabel[current.kind]}</span><span class="text-sm text-muted">Logged {current.day === today ? "" : `${dayLabel(current.day, today)} `}{time(current.minute)}</span>{#if current.topic_name}<span class="badge-src">{current.topic_name}</span>{/if}</div>
+          <div class="flex items-center gap-2"><span class="kind">{kindLabel[current.kind]}</span><span class="text-sm text-muted">Logged {current.day === today ? "" : `${pastOn(current.day, today).replace(/^on /, "")} `}at {time(current.minute)}</span>{#if current.topic_name}<span class="badge-src">{current.topic_name}</span>{/if}</div>
           <p class="mt-3 text-lg">{current.what}</p>
           {#if current.why}<p class="mt-1 text-muted">Why it wasn't obvious: {current.why}</p>{/if}
         </section>
@@ -160,7 +160,7 @@
           {#if known}
             <div class="panel flex items-start gap-4 p-5" role="note"><Dumbbell class="mt-0.5 size-5 shrink-0" />
               <div class="flex-1"><p class="font-semibold">You have a drill for this issue</p>
-                <p class="mt-1 text-sm text-muted">"{known.task}". {known.last ? `Last done ${dayLabel(known.last.day, today)}, rated ${known.last.rating}.` : known.due !== null ? `Already due ${dueLabel(known.due, today)}.` : "Not done yet."}</p>
+                <p class="mt-1 text-sm text-muted">"{known.task}". {known.last ? `Last done ${pastOn(known.last.day, today)}, rated ${known.last.rating}.` : known.due !== null ? `Already due ${dueLabel(known.due, today)}.` : "Not done yet."}</p>
                 <div class="mt-4 flex flex-wrap gap-2">
                   <button type="button" class="btn btn-sm {drillMode === 'again' ? 'btn-outline border-primary' : 'btn-ghost'}" aria-pressed={drillMode === "again"} onclick={() => (drillMode = "again")}><Repeat class="size-4" />Schedule this drill again</button>
                   <button type="button" class="btn btn-sm {drillMode === 'new' ? 'btn-outline border-primary' : 'btn-ghost'}" aria-pressed={drillMode === "new"} onclick={() => (drillMode = "new")}><Plus class="size-4" />Do a different drill</button>

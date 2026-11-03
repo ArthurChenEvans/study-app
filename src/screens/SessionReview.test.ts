@@ -58,7 +58,7 @@ describe("Session review", () => {
     await u.tab();
     const note = await screen.findByRole("note");
     expect(note).toHaveTextContent("You have a drill for this issue");
-    expect(note).toHaveTextContent("Last done 28 Oct, rated Solid.");
+    expect(note).toHaveTextContent("Last done on 28 Oct, rated Solid.");
     expect(screen.getByText("Seen 4 times before, in Networks past paper and Study app.")).toBeInTheDocument();
     expect(within(note).getByRole("button", { name: /Schedule this drill again/ })).toHaveAttribute("aria-pressed", "true");
     await u.click(screen.getByRole("button", { name: /Schedule the drill/ }));

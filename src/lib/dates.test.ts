@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayLabel, dueLabel, onDay , dateOf, dayFromIso, dayOf, isoOf, monthGrid, monthLabel } from "./dates";
+import { dayLabel, dueLabel, onDay, pastOn, dateOf, dayFromIso, dayOf, isoOf, monthGrid, monthLabel } from "./dates";
 
 // Days are numbered from 1970-01-01 in local time, as the backend stores them.
 const NOV_1_2026 = 20758;
@@ -59,3 +59,12 @@ describe("calendar helpers", () => {
     expect(dayFromIso("2026-11-05")).toBe(20_762);
   });
 });
+
+describe("pastOn", () => {
+  it("reads mid-sentence for past days", () => {
+    expect(pastOn(20_760, 20_760)).toBe("today");
+    expect(pastOn(20_759, 20_760)).toBe("yesterday");
+    expect(pastOn(20_754, 20_760)).toBe("on 28 Oct");
+  });
+});
+

@@ -3,7 +3,7 @@
   import { Hammer, Plus } from "@lucide/svelte";
   import { api, errorMessage, type Id, type IssueView, type ProjectRow } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
-  import { dayLabel, dueLabel } from "../lib/dates";
+  import { dayLabel, dueLabel, pastOn } from "../lib/dates";
 
   let { onOpen = () => {}, onDrills = () => {} }: { onOpen?: (project: Id) => void; onDrills?: (ids: Id[]) => void } = $props();
 
@@ -41,7 +41,7 @@
   const drillState = (issue: IssueView) => {
     const drill = issue.drill;
     if (!drill) return "None";
-    if (drill.due === null) return drill.last ? `Solid on ${dayLabel(drill.last.day, today)}` : "Ticked off";
+    if (drill.due === null) return drill.last ? `Solid ${pastOn(drill.last.day, today)}` : "Ticked off";
     if (drill.due <= today) return drill.last && drill.last.rating !== "Solid" ? `Again today, was ${drill.last.rating}` : "Due today";
     return `Due ${dueLabel(drill.due, today)}`;
   };

@@ -108,4 +108,10 @@ describe("Cards home", () => {
     await u.click(screen.getByRole("button", { name: /Run now/ }));
     expect(await screen.findByText("Fitted to 1,840 reviews.")).toBeInTheDocument();
   });
+
+  it("says 1 suggestion, not 1 suggestions, the first time", async () => {
+    mocked.cardsHome.mockResolvedValueOnce({ ...home, total_cards: 0, per_topic: [], suggestions: 1, due: { new: 0, learning: 0, review: 0 } });
+    render(Cards, props());
+    expect(await screen.findByRole("button", { name: /^1 suggestion$/ })).toBeInTheDocument();
+  });
 });

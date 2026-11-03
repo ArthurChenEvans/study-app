@@ -335,7 +335,7 @@ Checked in the real app (`e2e/short_answer_test.py`, run by `e2e/run.sh`): write
 
 ---
 
-# Projects, drills and the calendar (proposed, waiting for a greenlight)
+# Projects, drills and the calendar (built)
 
 Clickable prototype: `projects-drills-calendar.html`. Same theme and components as the other prototypes.
 
@@ -391,3 +391,18 @@ Clickable prototype: `projects-drills-calendar.html`. Same theme and components 
 - Measured audit (contrast, 24px targets, at most one primary per view) passes everywhere. Read-only views like the month grid have no primary, on purpose.
 - The first pass found the month grid's small icons for cards and drills too alike at 14px, so every count now has a word. Today's quizzes each got their own Quiz button, as well as "Quiz both together". "Log it" became the primary while a session runs, since logging is the main thing you do then.
 - Squint test (greyscale, blurred) on the month, today, a session review and a drill: today's outline and the one primary stand out, and everything else reads as calm detail. No bright wide bars: current positions are outlined, like the quiz track and ladder.
+
+## Built (3 Nov 2026)
+
+Built from these designs, test-first, with requirements R87 to R100 in `specs/README.md` and scenarios in `specs/features/projects.feature` and `specs/features/calendar.feature`. Exam dates (the open question) aren't in this build.
+
+Differences from the prototype:
+- The session review has no Back button. Each struggle is saved as soon as you move on, so "Finish later" leaves the rest to review instead.
+- The day view's primary button starts whatever comes first: drills, then cards, then recall, then quizzes.
+- Leaving a drill session returns to the calendar day you started from.
+- Recall's schedule editor is now shared with the quiz schedule (`ScheduleDialog`), so both work the same way.
+
+Checked in the real app (`e2e/projects_calendar_test.py`, run by `e2e/run.sh`): makes a project, starts a session, logs two struggles (Ctrl+Enter, the button, and Ctrl+L to jump to the log), reviews them into a card suggestion and a new drill for tomorrow, checks the project, the Issues tab and Suggestions, does the drill from today's calendar view (Shaky brings it back tomorrow), and checks a finished quiz starts its topic's quiz schedule. With `AUDIT` set every new screen passes contrast, target size and one-primary checks in both themes.
+
+Found while building, all fixed: dates mid-sentence kept their capital ("started Today", "Last done Yesterday"), drill dates were lowercased whole ("fri 6 nov"), and the Cards first-time button said "1 suggestions".
+

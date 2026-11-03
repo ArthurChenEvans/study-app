@@ -1,6 +1,6 @@
 //! A realistic demo profile for trying the app out: modules, topics, questions with
-//! sources, about two months of quizzes, recall checks and card reviews, and a few cards
-//! that keep slipping. Everything goes through the same `App` functions the screens use,
+//! sources, about two months of quizzes, recall checks and card reviews, a few cards that
+//! keep slipping, and three projects with sessions, struggles, shared issues and drills. Everything goes through the same `App` functions the screens use,
 //! with past day numbers, so the history is exactly what real use would leave behind.
 //! Deterministic: the same `today` always gives the same profile.
 
@@ -16,6 +16,9 @@ use study_core::results::GivenReason;
 use study_store::recall::Subject;
 
 use crate::cards::{NoteInput, ReviewStep};
+use crate::practice::{Clock, ReviewChoice, StruggleInput};
+use study_core::practice::{DrillRating, StruggleKind};
+use study_store::practice::ProjectId;
 use crate::recall::PointInput;
 use crate::{ApiError, ApiResult, App, CitationInput, Next, OptionInput, QuestionInput, QuizSetupInput};
 use study_core::short::{Check, Keyword, ShortAnswer};
@@ -36,6 +39,38 @@ pub struct SeedSummary {
     pub checks: usize,
     pub notes: usize,
     pub reviews: usize,
+    pub projects: usize,
+    pub sessions: usize,
+    pub struggles: usize,
+    pub drill_runs: usize,
+}
+
+/// (what tripped you up, why it wasn't obvious, kind, the issue and its drill if it needs one)
+type StruggleSeed = (&'static str, &'static str, StruggleKind, Option<(&'static str, &'static str, &'static str)>);
+
+const OFF_BY_ONE: (&str, &str, &str) = ("Off-by-one in loops", "Write a loop over a slice without an off-by-one", "Index with 0..len, or skip indexes with .iter()");
+
+const PROJECTS: &[(&str, &str, &[StruggleSeed])] = &[
+    ("Study app", "Coding", &[
+        ("Loop ran one too many times reading the file", "Used <= out of habit from the C course", StruggleKind::Apply, Some(OFF_BY_ONE)),
+        ("Forgot how to slice a string from the end", "I was thinking in Python's negative indexes", StruggleKind::Recall, None),
+        ("Couldn't borrow inside a closure that outlives the loop", "I thought of it as a lifetime problem, not an ownership one", StruggleKind::Apply, Some(("Borrowing in closures", "Spawn 3 threads that each use a value from a Vec, without cloning the Vec", "move it in, and Arc if they share it"))),
+        ("Lifetime error returning a reference from a match", "Didn't see the match arm was borrowing the temporary", StruggleKind::Unsure, None),
+    ]),
+    ("Blender mug", "Blender", &[
+        ("Mirror modifier left a seam down the middle", "Didn't know Clipping had to be on", StruggleKind::Apply, Some(("Mirror seams", "Mirror a simple mug with a clean centre seam", "Apply scale first, then turn on Clipping"))),
+        ("Couldn't remember which modifier keeps a bevel even", "Mixed up Bevel and Solidify", StruggleKind::Recall, None),
+        ("Handle normals came out inverted", "Forgot to recalculate after the boolean", StruggleKind::Unsure, None),
+    ]),
+    ("Networks past paper 2024", "Past paper", &[
+        ("Counted one extra host in the subnet", "Forgot the network and broadcast addresses", StruggleKind::Apply, Some(OFF_BY_ONE)),
+        ("Mixed up which layer adds port numbers", "Learned the layers as a list, not by what each does", StruggleKind::Recall, None),
+        ("The /27 mask took ages", "Still doing powers of two by hand", StruggleKind::Apply, Some(("Subnet maths", "Work out the hosts and mask for /24 to /30 without a table", "Hosts = 2^(32 - n) - 2"))),
+    ]),
+];
+
+fn at(day: i64, minute: u32) -> Clock {
+    Clock { day, minute, unix: day * 86_400 + minute as i64 * 60 }
 }
 
 struct TopicSeed {
@@ -293,8 +328,31 @@ pub fn seed_profile(app: &mut App, today: i64) -> ApiResult<SeedSummary> {
 
     // Day by day: cards every day you study, a quiz every few days, recall checks when due.
     // Today is left untouched so there's something due.
+    // Projects: made a little after the start, worked on every few days (R87).
+    let mut projects: Vec<ProjectId> = vec![];
+    for (name, kind, _) in PROJECTS {
+        projects.push(app.create_project(name, kind, start + 3)?);
+        summary.projects += 1;
+    }
+    let mut next_struggle = [0usize; 3];
+
     for day in start..today {
         let progress = (day - start) as f64 / DAYS as f64;
+        // Drills due today get done first, getting better on the second go (R93).
+        for drill in app.drills_due(day)? {
+            let rating = match (drill.runs, rng.random_range(0..10)) {
+                (0, 0..2) => DrillRating::Struggled,
+                (0, 2..6) => DrillRating::Shaky,
+                (_, 0..2) => DrillRating::Shaky,
+                _ => DrillRating::Solid,
+            };
+            app.rate_drill(drill.id, rating, rng.random_range(240..1200), "", day)?;
+            summary.drill_runs += 1;
+        }
+        if day >= start + 4 && (day - start) % 5 == 4 {
+            let which = summary.sessions % PROJECTS.len();
+            work_session(app, projects[which], PROJECTS[which].2, &mut next_struggle[which], day, true, &mut rng, &mut summary)?;
+        }
         if rng.random_bool(0.85) {
             summary.reviews += review_day(app, day, &slippery_notes, &mut rng)?;
         }
@@ -318,7 +376,49 @@ pub fn seed_profile(app: &mut App, today: i64) -> ApiResult<SeedSummary> {
             summary.checks += 1;
         }
     }
+    // Yesterday's session on the study app: the off-by-one came back, and one struggle is
+    // left to review, so there's a drill due today and something waiting in the project.
+    next_struggle[0] = 0;
+    work_session(app, projects[0], PROJECTS[0].2, &mut next_struggle[0], today - 1, true, &mut rng, &mut summary)?;
+    app.start_session(projects[0], at(today - 1, 21 * 60))?;
+    app.log_struggle(projects[0], StruggleInput { what: "Iterator chain wouldn't collect into a HashMap".into(), why: "Didn't know collect needs the target type spelled out".into(), kind: StruggleKind::Unsure, topic: None }, at(today - 1, 21 * 60 + 20))?;
+    app.end_session(projects[0], at(today - 1, 21 * 60 + 45))?;
+    summary.sessions += 1;
+    summary.struggles += 1;
     Ok(summary)
+}
+
+/// One work session: log one to three struggles, then review them like the app asks (R90, R91).
+#[allow(clippy::too_many_arguments)]
+fn work_session(app: &mut App, project: ProjectId, pool: &[StruggleSeed], next: &mut usize, day: i64, review: bool, rng: &mut StdRng, summary: &mut SeedSummary) -> ApiResult<()> {
+    app.start_session(project, at(day, 18 * 60))?;
+    let count = rng.random_range(1..=3).min(pool.len());
+    let mut logged = vec![];
+    for offset in 0..count {
+        let (what, why, kind, issue) = pool[(*next + offset) % pool.len()];
+        let view = app.log_struggle(project, StruggleInput { what: what.into(), why: why.into(), kind, topic: None }, at(day, 18 * 60 + 10 + offset as u32 * 20))?;
+        logged.push((view.id, kind, issue));
+        summary.struggles += 1;
+    }
+    *next += count;
+    app.end_session(project, at(day, 19 * 60 + 30))?;
+    summary.sessions += 1;
+    if !review {
+        return Ok(());
+    }
+    for (id, kind, issue) in logged {
+        let choice = match (kind, issue) {
+            (StruggleKind::Recall, _) => ReviewChoice::Card,
+            (StruggleKind::Apply, Some((name, task, hints))) => match app.known_drill(name)? {
+                Some(drill) if drill.due.is_some() => ReviewChoice::Nothing,
+                Some(drill) => ReviewChoice::DrillAgain { issue: name.into(), drill: drill.id, day: day + 1 },
+                None => ReviewChoice::NewDrill { issue: name.into(), task: task.into(), hints: hints.into(), topic: None, day: day + 1 },
+            },
+            _ => ReviewChoice::Nothing,
+        };
+        app.review_struggle(id, choice, day)?;
+    }
+    Ok(())
 }
 
 fn add_sources(app: &mut App) -> ApiResult<Vec<SourceId>> {
@@ -476,9 +576,27 @@ mod tests {
     }
 
     #[test]
+    fn projects_have_struggles_issues_drills_and_quiz_schedules() {
+        let (app, summary) = seeded();
+        assert_eq!(summary.projects, 3);
+        assert!(summary.sessions >= 10 && summary.struggles >= 15 && summary.drill_runs >= 3, "{summary:?}");
+        let projects = app.projects(TODAY).unwrap();
+        assert!(projects.iter().all(|p| p.struggles > 0 && p.session.is_none()));
+        assert_eq!(projects.iter().map(|p| p.to_review).sum::<usize>(), 1, "one struggle waits for review");
+        let issues = app.issues().unwrap();
+        assert!(issues.len() >= 3);
+        assert!(issues.iter().any(|i| i.projects.len() == 2), "an issue shared by two projects");
+        assert!(!app.drills_due(TODAY).unwrap().is_empty(), "a drill is due today");
+        assert!(app.card_suggestions(TODAY).unwrap().iter().any(|s| s.kind == crate::cards::SuggestionKind::Struggle));
+        assert!(app.topic_quizzes(TODAY).unwrap().len() >= 4, "quizzes started the topics' schedules");
+        let month = app.calendar_month(TODAY - 30, TODAY + 14, TODAY).unwrap();
+        assert!(month.iter().any(|d| d.struggles > 0) && month.iter().any(|d| d.day > TODAY && d.quizzes > 0));
+    }
+
+    #[test]
     fn cards_have_history_due_cards_and_leeches() {
         let (mut app, summary) = seeded();
-        assert!(summary.reviews >= 300, "{summary:?}");
+        assert!(summary.reviews >= 250, "two months of reviews: {summary:?}");
         let home = app.cards_home(TODAY).unwrap();
         assert!(home.due.review > 0 && home.due.new > 0, "{:?}", home.due);
         assert!(home.retention.is_some());

@@ -130,4 +130,15 @@ describe("Calendar", () => {
     await u.click(within(dialog).getByRole("button", { name: "Move to Thu 5 Nov" }));
     expect(mocked.moveDrill).toHaveBeenCalledWith(5, TODAY + 2);
   });
+
+  it("opens a given day straight away and says which day is open", async () => {
+    const u = userEvent.setup();
+    const onOpenDay = vi.fn();
+    mocked.calendarDay.mockResolvedValue(emptyDay(TODAY, "Today"));
+    render(Calendar, { initialDay: TODAY, onOpenDay });
+    expect(await screen.findByRole("heading", { name: "Today, Tue 3 Nov" })).toBeInTheDocument();
+    expect(onOpenDay).toHaveBeenLastCalledWith(TODAY);
+    await u.click(screen.getByRole("button", { name: /November 2026/ }));
+    expect(onOpenDay).toHaveBeenLastCalledWith(null);
+  });
 });
