@@ -3,7 +3,7 @@
   // surface ring, hollow dots for retries, only the latest point labelled. Hover, arrow keys
   // and a table view make every value reachable without the graphic.
   type Point = { label: string; percent: number; retry: boolean; detail: string };
-  let { points, width: fixedWidth, height = 220 }: { points: Point[]; width?: number; height?: number } = $props();
+  let { points, width: fixedWidth, height = 220, detailLabel = "Quiz" }: { points: Point[]; width?: number; height?: number; detailLabel?: string } = $props();
 
   let measured = $state(0);
   const width = $derived(fixedWidth ?? (measured || 640));
@@ -89,7 +89,7 @@
   <details class="table-view mt-4">
     <summary>Show as table</summary>
     <table class="table table-xs mt-2">
-      <thead><tr><th>Date</th><th>Score</th><th>Quiz</th></tr></thead>
+      <thead><tr class="text-muted"><th>Date</th><th>Score</th><th>{detailLabel}</th></tr></thead>
       <tbody>
         {#each points as point, index (index)}<tr><td>{point.label}</td><td class="tabular-nums">{point.percent}%</td><td>{point.detail}{point.retry ? " (retry)" : ""}</td></tr>{/each}
       </tbody>

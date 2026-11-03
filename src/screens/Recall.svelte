@@ -4,7 +4,7 @@
   import { api, errorMessage, type ModuleRow, type RecallRow, type Schedule, type TopicRow, type Unit } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
   import Ladder from "../components/Ladder.svelte";
-  import { dueLabel } from "../lib/dates";
+  import { dueLabel, onDay } from "../lib/dates";
 
   let { onOpen, onStart, onChanged = () => {} }: { onOpen: (id: number) => void; onStart: (id: number) => void; onChanged?: () => void } = $props();
 
@@ -133,7 +133,7 @@
   {:else if loaded && rows.length}
     <div class="panel flex max-w-xl items-center gap-4 p-6">
       <CircleCheck class="size-5" />
-      <div><p class="font-semibold">All caught up</p><p class="text-sm text-muted">Next up: {later[0].subject_name}, {dueLabel(later[0].due, today)}.</p></div>
+      <div><p class="font-semibold">All caught up</p><p class="text-sm text-muted">Next up is {later[0].subject_name}, {onDay(later[0].due, today)}.</p></div>
     </div>
   {/if}
 

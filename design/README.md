@@ -165,3 +165,13 @@ Clickable prototype: `free-recall.html`, same theme and components as the MVP pr
 - No console errors, no horizontal scroll at 1440 px.
 
 **Nielsen's 10:** status (live score and what happens next, timer, step track, due count), real-world words (checklist, point, recalled, pass mark), control (Leave on every session step, Cancel on dialogs, Reset schedule), consistency (same sidebar, panels, segmented controls and shortcuts as quizzes), error prevention (checklist hidden during the dump, can't start with no points, import button says exactly what will change), recognition (next step and date shown before you commit), efficiency (Ctrl+Enter, Space), minimalism (one primary per view), recovery (hint says what's needed), help (one-line hints under each control).
+
+## Built (3 Nov 2026)
+
+Free recall is built from these designs, test-first, with requirements R52 to R61 in `specs/README.md` and scenarios in `specs/features/free-recall.feature`.
+
+Differences from the prototype, both for consistency with the rest of the app:
+- "New checklist" opens a small dialog to pick the module or topic (like "New topic"), then goes straight to the editor.
+- Leaving a session with something typed or ticked asks first, since nothing is saved until the check is finished.
+
+Checked in the real app (`e2e/recall_test.py`, run by `e2e/run.sh`): makes a checklist, writes points with maths, adds one from an MCQ, types a dump with the checklist hidden, ticks under the pass mark with the live outcome, and checks the result, the recall list and the history. With `AUDIT` set it also measures every screen in both themes for text contrast, target size and primary buttons. That pass found the score chart's table header at 4.06:1 in the light theme (the same on the Overview chart). Fixed to the muted text colour, and now every screen passes.

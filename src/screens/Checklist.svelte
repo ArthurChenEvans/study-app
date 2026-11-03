@@ -5,7 +5,7 @@
   import Ladder from "../components/Ladder.svelte";
   import Rich from "../components/Rich.svelte";
   import ScoreChart from "../components/ScoreChart.svelte";
-  import { dayLabel, dueLabel } from "../lib/dates";
+  import { dayLabel, onDay } from "../lib/dates";
 
   let { id, onBack, onStart }: { id: number; onBack: () => void; onStart: (id: number) => void } = $props();
 
@@ -183,7 +183,7 @@
         <aside class="panel sticky top-8 p-6" aria-label="Schedule">
           <p class="eyebrow">Schedule</p>
           <p class="mt-3 text-2xl font-semibold">{view.row.step ?? "Not started"}</p>
-          <p class="text-sm text-muted">Next check {dueLabel(view.row.due, today).toLowerCase()}</p>
+          <p class="text-sm text-muted">Next check {onDay(view.row.due, today)}</p>
           <div class="mt-4"><Ladder steps={schedule.steps} position={view.row.position} step={view.row.step} next={view.row.next_step} /></div>
           <dl class="mt-6 space-y-3 text-sm">
             <div class="flex justify-between"><dt class="text-muted">Last check</dt><dd class="tabular-nums">{view.row.last_score === null ? "None yet" : `${view.row.last_score}%`}</dd></div>
@@ -201,7 +201,7 @@
           <div class="space-y-8">
             <section class="panel p-6" aria-labelledby="trend-h">
               <div class="flex items-baseline justify-between"><h2 id="trend-h" class="text-sm font-semibold">Score per check</h2><span class="text-xs text-muted">Pass mark {history.pass_mark}%</span></div>
-              <div class="mt-4"><ScoreChart points={[...history.checks].reverse().map((check) => ({ label: dayLabel(check.day, today), percent: check.score, retry: false, detail: check.from ? `${check.from} → ${check.to}` : `Started on ${check.to}` }))} /></div>
+              <div class="mt-4"><ScoreChart points={[...history.checks].reverse().map((check) => ({ label: dayLabel(check.day, today), percent: check.score, retry: false, detail: check.from ? `${check.from} → ${check.to}` : `Started on ${check.to}` }))} detailLabel="Step" /></div>
             </section>
             <section aria-labelledby="checks-h">
               <h2 id="checks-h" class="eyebrow mb-3">Checks</h2>
@@ -227,7 +227,7 @@
             <p class="eyebrow">Missed most often</p>
             {#if history.most_missed.length}
               <ol class="mt-4 space-y-4 text-sm">
-                {#each history.most_missed as missed (missed.text)}<li><p><Rich inline text={missed.text} /></p><p class="text-xs tabular-nums text-muted">Missed {missed.missed} of {missed.checks} checks</p></li>{/each}
+                {#each history.most_missed as missed (missed.text)}<li><p><Rich inline text={missed.text} /></p><p class="text-xs tabular-nums text-muted">Missed {missed.missed} of {missed.checks} {missed.checks === 1 ? "check" : "checks"}</p></li>{/each}
               </ol>
             {:else}<p class="mt-4 text-sm text-muted">Nothing missed yet.</p>{/if}
           </aside>

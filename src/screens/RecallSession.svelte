@@ -5,7 +5,7 @@
   import { api, errorMessage, type CheckResult, type ChecklistView, type Preview, type RecallRow, type Schedule } from "../lib/api";
   import Ladder from "../components/Ladder.svelte";
   import Rich from "../components/Rich.svelte";
-  import { dueLabel } from "../lib/dates";
+  import { onDay } from "../lib/dates";
 
   let { id, onLeave, onEdit, onNext }: { id: number; onLeave: () => void; onEdit: (id: number) => void; onNext: (id: number) => void } = $props();
 
@@ -160,7 +160,7 @@
               </div>
               <div class="meter mt-3" role="img" aria-label="{preview.score}% with the pass mark at {schedule.pass_mark}%"><div class="fill" style="width: {preview.score}%"></div><div class="mark" style="left: {schedule.pass_mark}%"></div></div>
               <div class="mt-4 flex items-center justify-between gap-4">
-                <p class="text-sm text-muted" aria-live="polite">{view.row.position === null ? "Starts on" : preview.passed ? "Moves up to" : preview.to === view.row.step ? "Stays on" : "Goes back to"} {preview.to}, next on {dueLabel(preview.next_due, today)}</p>
+                <p class="text-sm text-muted" aria-live="polite">{view.row.position === null ? "Starts on" : preview.passed ? "Moves up to" : preview.to === view.row.step ? "Stays on" : "Goes back to"} {preview.to}, next check {onDay(preview.next_due, today)}</p>
                 <button class="btn btn-primary shrink-0" disabled={busy} onclick={finish}>Finish check <kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">Enter</kbd></button>
               </div>
             </div>
@@ -204,7 +204,7 @@
         <h2 id="next-h" class="flex items-center gap-2 text-lg font-semibold">
           {#if result.from === null}Started on {result.to}{:else if result.from === result.to}Stayed on {result.to}{:else if result.passed}<ArrowUp class="size-5" />Up a step{:else}<ArrowDown class="size-5" />Back a step{/if}
         </h2>
-        <p class="mt-1 text-muted">{result.from ? `${result.from} → ${result.to}. ` : ""}Next check on <span class="font-semibold text-base-content">{dueLabel(result.next_due, today)}</span>.</p>
+        <p class="mt-1 text-muted">{result.from ? `${result.from} → ${result.to}. ` : ""}Next check <span class="font-semibold text-base-content">{onDay(result.next_due, today)}</span>.</p>
         <div class="mt-6"><Ladder steps={schedule.steps} position={result.position} step={result.to} next={result.next_step} /></div>
       </section>
       {#if result.missed.length}
@@ -212,7 +212,7 @@
           <h2 id="missed-h" class="eyebrow mb-3">Missed this time · {result.missed.length}</h2>
           <ul class="panel divide-y" aria-label="Missed points">
             {#each result.missed as missed (missed.text)}
-              <li class="flex items-center gap-4 px-4 py-3"><span class="text-wrong-ink" aria-hidden="true"><X class="size-4" /></span><span class="flex-1 text-[15px]"><Rich inline text={missed.text} /></span>{#if missed.checks > 1}<span class="whitespace-nowrap text-xs text-muted">Missed {missed.missed} of {missed.checks} checks</span>{/if}</li>
+              <li class="flex items-center gap-4 px-4 py-3"><span class="text-wrong-ink" aria-hidden="true"><X class="size-4" /></span><span class="flex-1 text-[15px]"><Rich inline text={missed.text} /></span>{#if missed.checks > 1}<span class="whitespace-nowrap text-xs text-muted">Missed {missed.missed} of {missed.checks} {missed.checks === 1 ? "check" : "checks"}</span>{/if}</li>
             {/each}
           </ul>
           <p class="mt-3 text-sm text-muted">These are what to look over before the next check.</p>

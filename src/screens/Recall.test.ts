@@ -68,7 +68,7 @@ describe("Recall list", () => {
     mocked.recallList.mockResolvedValue([row({ due: TODAY + 1, due_today: false })]);
     render(Recall, { onOpen: vi.fn(), onStart: vi.fn() });
     expect(await screen.findByText("All caught up")).toBeInTheDocument();
-    expect(screen.getByText("Next up: CPU, Tomorrow.")).toBeInTheDocument();
+    expect(screen.getByText("Next up is CPU, tomorrow.")).toBeInTheDocument();
   });
 
   it("offers to add points instead of starting an empty checklist", async () => {

@@ -58,7 +58,7 @@ describe("Recall session", () => {
     const score = screen.getByLabelText("Score so far");
     expect(score).toHaveTextContent("67%");
     expect(score).toHaveTextContent("Under the pass mark");
-    expect(score).toHaveTextContent("Goes back to Fortnight, next on Tue 17 Nov");
+    expect(score).toHaveTextContent("Goes back to Fortnight, next check on Tue 17 Nov");
 
     await u.keyboard("{Control>}{Enter}{/Control}");
     expect(mocked.finishCheck).toHaveBeenCalledWith(4, "Fetch decode execute, caches", [0, 1]);

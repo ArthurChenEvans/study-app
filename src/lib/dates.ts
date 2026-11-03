@@ -19,6 +19,12 @@ export function dayFromUtc(timestamp: string): number {
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+/** For use mid-sentence: "today", "tomorrow", "on Thu 5 Nov". */
+export function onDay(day: number, today: number): string {
+  const label = dueLabel(day, today);
+  return label === "Today" || label === "Tomorrow" ? label.toLowerCase() : `on ${label}`;
+}
+
 /** Upcoming dates: "Today", "Tomorrow", "Thu 5 Nov" within the year, "3 Feb 2027" after. */
 export function dueLabel(day: number, today: number): string {
   if (day <= today) return "Today";

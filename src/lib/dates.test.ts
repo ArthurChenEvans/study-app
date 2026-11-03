@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayLabel, dueLabel } from "./dates";
+import { dayLabel, dueLabel, onDay } from "./dates";
 
 // Days are numbered from 1970-01-01 in local time, as the backend stores them.
 const NOV_1_2026 = 20758;
@@ -16,6 +16,14 @@ describe("dayLabel", () => {
 
   it("adds the year for other years", () => {
     expect(dayLabel(NOV_1_2026 - 365, NOV_1_2026)).toBe("1 Nov 2025");
+  });
+});
+
+describe("onDay", () => {
+  it("reads naturally mid-sentence", () => {
+    expect(onDay(20_760, 20_760)).toBe("today");
+    expect(onDay(20_761, 20_760)).toBe("tomorrow");
+    expect(onDay(20_762, 20_760)).toBe("on Thu 5 Nov");
   });
 });
 

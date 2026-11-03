@@ -24,7 +24,9 @@
   {/each}
 </div>
 {#if !compact}
-  <p class="mt-2 flex justify-between gap-4 text-sm">
-    <span class="font-semibold">{step ?? "Not started"}</span><span class="text-muted">{step ? "then" : "first"} {next}</span>
-  </p>
+  {#if position}
+    <p class="mt-2 flex justify-between gap-4 text-sm"><span class="font-semibold">{step}</span><span class="text-muted">then {next}</span></p>
+  {:else}
+    <p class="mt-2 text-sm text-muted">First step: {next}</p>
+  {/if}
 {/if}
