@@ -28,7 +28,7 @@
     | { screen: "results"; attempt: Id }
     | { screen: "checklist"; id: Id }
     | { screen: "recall-session"; id: Id; run: number }
-    | { screen: "topic-cards"; topic: Id; note: Id | "new" | null }
+    | { screen: "topic-cards"; topic: Id; note: Id | "new" | null; notice?: string }
     | { screen: "card-review"; scope: Subject | null; run: number }
     | { screen: "suggestions" };
 
@@ -111,7 +111,7 @@
     {:else if route.screen === "cards"}
       <Cards onReview={startCards} onTopic={(topic) => go({ screen: "topic-cards", topic, note: null })} onSuggestions={() => go({ screen: "suggestions" })} onNewCard={newCard} />
     {:else if route.screen === "topic-cards"}
-      {#key `${route.topic}:${route.note}`}<TopicCards topic={route.topic} editNote={route.note} onBack={() => go({ screen: "cards" })} onReview={startCards} />{/key}
+      {#key `${route.topic}:${route.note}`}<TopicCards topic={route.topic} editNote={route.note} notice={route.notice} onTopic={(topic, notice) => go({ screen: "topic-cards", topic, note: null, notice })} onBack={() => go({ screen: "cards" })} onReview={startCards} />{/key}
     {:else if route.screen === "card-review"}
       {#key route.run}<CardReview scope={route.scope} {scopeName} onLeave={() => go({ screen: "cards" })} onEdit={(topic, note) => go({ screen: "topic-cards", topic, note })} />{/key}
     {:else if route.screen === "suggestions"}

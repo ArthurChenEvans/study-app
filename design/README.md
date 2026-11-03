@@ -178,7 +178,7 @@ Checked in the real app (`e2e/recall_test.py`, run by `e2e/run.sh`): makes a che
 
 ---
 
-# Flashcards with FSRS (proposed, waiting for a greenlight)
+# Flashcards with FSRS (built)
 
 Clickable prototype: `flashcards.html`. Same theme and components as the other prototypes. The dark bar in the bottom right switches screens and states. Scheduling would use the [fsrs crate](https://docs.rs/crate/fsrs/6.6.2), which gives the interval for each answer button (`next_states`), a desired-retention setting, and fitting the parameters to your own review history (`compute_parameters`).
 
@@ -250,3 +250,17 @@ Reported: "a long white bar in random places on each page".
 - **Cause 4, the quiz track's current question (in the real app too).** It was a solid near-white segment, the loudest thing on the quiz screen. Now an outlined segment, so it still reads as "you are here" without shouting, and stays distinct from answered (caramel) and upcoming in greyscale.
 
 Checked after: an automated scan of 55 screens (every dark prototype state plus the real app's recall flow) for light horizontal bands 300 px or wider found none. The contrast, target-size and keyboard audits still pass on both prototypes and in the real app.
+
+## Built (3 Nov 2026)
+
+Flashcards are built from these designs, test-first, with requirements R62 to R77 in `specs/README.md` and scenarios in `specs/features/flashcards.feature`. Scheduling uses the fsrs crate 6.6.2.
+
+Differences from the prototype:
+- "New card" on the Cards home opens the editor with a Topic picker (it starts on the topic with the most cards). Saving into another topic opens that topic.
+- The review's "Again" label says "Later today" instead of "<10 min", since Again brings the card back three cards later in the same session, not after a set time.
+- Z undoes the last grade, as well as the Undo button.
+- The done screen says "Under a minute" for very short sessions.
+- The sidebar stays hidden on the done screen, and "Back to Cards" returns to it.
+
+Checked in the real app (`e2e/flashcards_test.py`, run by `e2e/run.sh`): writes a basic card with an extra cue into a picked topic, a reversed card and a cloze card with two gaps (one from Ctrl+Shift+C, one from the button), checks the preview and the topic list, reviews all 6 with the keyboard (one Again that comes back, one Undo), checks the summary, and turns a recall miss into a card from Suggestions. With `AUDIT` set it measures every screen in both themes. That run found one real bug, fixed: after accepting the last suggestion, the "Card saved" message disappeared with the list. Every screen passes contrast, target size and one-primary checks.
+

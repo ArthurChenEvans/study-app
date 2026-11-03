@@ -122,6 +122,13 @@ describe("Card review", () => {
     expect(handlers.onEdit).toHaveBeenCalledWith(1, 101);
   });
 
+  it("says under a minute for a quick session", async () => {
+    mocked.startReview.mockResolvedValueOnce({ Done: { ...done, reviewed: 3, seconds: 40 } });
+    render(CardReview, props());
+    expect(await screen.findByText("Under a minute")).toBeInTheDocument();
+    expect(screen.getByText("13 s a card")).toBeInTheDocument();
+  });
+
   it("says when nothing is due", async () => {
     mocked.startReview.mockResolvedValueOnce({ Done: { ...done, reviewed: 0, worth_rewriting: [], busiest: null } });
     render(CardReview, props());

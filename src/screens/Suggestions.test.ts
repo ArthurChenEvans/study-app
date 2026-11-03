@@ -73,5 +73,6 @@ describe("Suggestions", () => {
     await u.click(await screen.findByRole("button", { name: "Dismiss: Amdahl's law" }));
     expect(mocked.dismissSuggestion).toHaveBeenCalledWith("recall:4:Amdahl's law");
     expect(await screen.findByText("No suggestions right now")).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Suggestion dismissed");
   });
 });

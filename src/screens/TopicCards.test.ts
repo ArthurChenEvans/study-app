@@ -38,7 +38,7 @@ beforeEach(() => {
   mocked.saveNote.mockResolvedValue(200);
 });
 
-const props = (extra = {}) => ({ topic: 1, onBack: vi.fn(), onReview: vi.fn(), ...extra });
+const props = (extra = {}) => ({ topic: 1, onBack: vi.fn(), onReview: vi.fn(), onTopic: vi.fn(), ...extra });
 
 describe("Topic cards", () => {
   // flashcards.feature: A topic's cards, Archive a card
@@ -62,6 +62,11 @@ describe("Topic cards", () => {
     expect(handlers.onReview).toHaveBeenCalledWith({ Topic: 1 });
   });
 
+  it("shows a notice it was opened with", async () => {
+    render(TopicCards, props({ notice: "2 cards added to CPU" }));
+    expect(await screen.findByRole("status")).toHaveTextContent("2 cards added to CPU");
+  });
+
   // flashcards.feature: Write a basic card with extra cues
   it("writes a basic card with an extra cue", async () => {
     const u = userEvent.setup();
@@ -78,9 +83,10 @@ describe("Topic cards", () => {
   });
 
   // flashcards.feature: A reversed card makes two
-  it("can save a reversed card into another topic", async () => {
+  it("can save a reversed card into another topic, then opens that topic", async () => {
     const u = userEvent.setup();
-    render(TopicCards, props({ editNote: "new" }));
+    const handlers = props({ editNote: "new" });
+    render(TopicCards, handlers);
     await u.click(await screen.findByRole("radio", { name: "Basic and reversed" }));
     expect(screen.getByText(/Makes two cards/)).toBeInTheDocument();
     await u.type(screen.getByLabelText("Front"), "TLB");
@@ -88,7 +94,7 @@ describe("Topic cards", () => {
     await u.selectOptions(screen.getByLabelText("Topic"), "2");
     await u.click(screen.getByRole("button", { name: /Save 2 cards/ }));
     expect(mocked.saveNote.mock.calls[0][1].note).toMatchObject({ topic: 2, kind: "Reversed" });
-    expect(await screen.findByText("2 cards added to Memory")).toBeInTheDocument();
+    await vi.waitFor(() => expect(handlers.onTopic).toHaveBeenCalledWith(2, "2 cards added to Memory"));
   });
 
   // flashcards.feature: Cloze cards from gaps

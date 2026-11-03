@@ -150,7 +150,7 @@
         <div class="mt-8 grid grid-cols-3 gap-6">
           <div class="panel p-5"><p class="text-sm text-muted">Reviewed</p><p class="mt-1 text-3xl font-semibold tabular-nums">{done.reviewed}</p><p class="text-sm text-muted">{done.new} new</p></div>
           <div class="panel p-5"><p class="text-sm text-muted">Remembered</p><p class="mt-1 text-3xl font-semibold tabular-nums">{done.remembered === null ? "None yet" : `${done.remembered}%`}</p><p class="text-sm text-muted">Aiming for {done.target}% · {done.again} {done.again === 1 ? "time" : "times"} Again</p></div>
-          <div class="panel p-5"><p class="text-sm text-muted">Time</p><p class="mt-1 text-3xl font-semibold tabular-nums">{Math.max(1, Math.round(done.seconds / 60))} min</p><p class="text-sm text-muted">{Math.round(done.seconds / done.reviewed)} s a card</p></div>
+          <div class="panel p-5"><p class="text-sm text-muted">Time</p><p class="mt-1 text-3xl font-semibold tabular-nums">{done.seconds < 60 ? "Under a minute" : `${Math.round(done.seconds / 60)} min`}</p><p class="text-sm text-muted">{Math.round(done.seconds / done.reviewed)} s a card</p></div>
         </div>
       {:else}
         <p class="mt-3 text-muted">There are no cards due here today.</p>

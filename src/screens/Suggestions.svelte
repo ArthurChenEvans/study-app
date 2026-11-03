@@ -61,6 +61,7 @@
     <h1 class="text-3xl font-semibold">Suggestions</h1>
     <p class="mt-1 text-sm text-muted">Things you missed in a recall or got wrong in a quiz. Make a card for the ones that matter, dismiss the rest.</p>
   </div>
+  {#if status}<p role="status" class="mb-3 text-sm text-muted">{status}</p>{/if}
   {#if items}
     {#if items.length === 0}
       <div class="panel max-w-lg p-8"><p class="font-semibold">No suggestions right now</p><p class="mt-1 text-sm text-muted">Points you miss in a recall check, and quiz questions you get wrong or guess, show up here.</p></div>
@@ -73,7 +74,6 @@
         </div>
         <span class="text-sm text-muted">Nothing becomes a card until you say so</span>
       </div>
-      {#if status}<p role="status" class="mb-3 text-sm text-muted">{status}</p>{/if}
       <ul class="panel divide-y" aria-label="Suggestions">
         {#each shown as item (item.key)}
           {@const open = making?.key === item.key}

@@ -1,18 +1,18 @@
 <script lang="ts">
   // flashcards.feature (R62 to R64, R70, R71, R77): a topic's cards and the note editor.
   import { Archive, ArchiveRestore, ArrowLeft, Brackets, Flag, Play, Plus, Trash2, X } from "@lucide/svelte";
-  import { tick } from "svelte";
+  import { tick, untrack } from "svelte";
   import { api, errorMessage, type Note, type NoteKind, type NoteView, type Subject, type TopicCards, type TopicRow } from "../lib/api";
   import Rich from "../components/Rich.svelte";
   import { dueLabel } from "../lib/dates";
 
-  let { topic, editNote = null, onBack, onReview }: { topic: number; editNote?: number | "new" | null; onBack: () => void; onReview: (scope: Subject) => void } = $props();
+  let { topic, editNote = null, notice = "", onBack, onReview, onTopic = () => {} }: { topic: number; editNote?: number | "new" | null; notice?: string; onBack: () => void; onReview: (scope: Subject) => void; onTopic?: (topic: number, notice: string) => void } = $props();
 
   let data = $state<TopicCards | null>(null);
   let today = $state(0);
   let editing = $state<{ id: number | null; note: Note; view: NoteView | null } | null>(null);
   let error = $state("");
-  let status = $state("");
+  let status = $state(untrack(() => notice)); // the route is keyed, so the first value is the one wanted
   let deleting = $state(false);
   let clozeBox = $state<HTMLTextAreaElement | null>(null);
   let topics = $state<TopicRow[]>([]);
@@ -41,9 +41,9 @@
     try {
       const note = $state.snapshot(editing.note);
       await api.saveNote(editing.id, { note, suggestion: null });
-      const elsewhere = note.topic !== topic ? ` to ${topics.find((row) => row.id === note.topic)?.name ?? "another topic"}` : "";
-      status = editing.id === null ? `${count(note)} added${elsewhere}` : "Changes saved";
+      status = editing.id === null ? `${count(note)} added` : "Changes saved";
       editing = null;
+      if (note.topic !== topic) return onTopic(note.topic, `${status} to ${topics.find((row) => row.id === note.topic)?.name ?? "another topic"}`);
       await load();
     } catch (failure) {
       error = errorMessage(failure);
