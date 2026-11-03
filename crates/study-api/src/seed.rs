@@ -46,7 +46,7 @@ pub struct SeedSummary {
 }
 
 /// (what tripped you up, why it wasn't obvious, kind, the issue and its drill if it needs one)
-type StruggleSeed = (&'static str, &'static str, StruggleKind, Option<(&'static str, &'static str, &'static str)>);
+pub(crate) type StruggleSeed = (&'static str, &'static str, StruggleKind, Option<(&'static str, &'static str, &'static str)>);
 
 const OFF_BY_ONE: (&str, &str, &str) = ("Off-by-one in loops", "Write a loop over a slice without an off-by-one", "Index with 0..len, or skip indexes with .iter()");
 
@@ -357,7 +357,8 @@ pub fn seed_profile(app: &mut App, today: i64) -> ApiResult<SeedSummary> {
             summary.reviews += review_day(app, day, &slippery_notes, &mut rng)?;
         }
         if (day - start) % 4 == 1 {
-            quiz(app, day, progress, &topic_ids, &correct, &typed_right, &mut rng)?;
+            let ids: Vec<TopicId> = topic_ids.iter().map(|(id, _)| *id).collect();
+            quiz(app, day, progress, &ids, &correct, &typed_right, &mut rng)?;
             summary.quizzes += 1;
         }
         for (index, (id, points, due)) in checklists.iter_mut().enumerate() {
@@ -390,7 +391,7 @@ pub fn seed_profile(app: &mut App, today: i64) -> ApiResult<SeedSummary> {
 
 /// One work session: log one to three struggles, then review them like the app asks (R90, R91).
 #[allow(clippy::too_many_arguments)]
-fn work_session(app: &mut App, project: ProjectId, pool: &[StruggleSeed], next: &mut usize, day: i64, review: bool, rng: &mut StdRng, summary: &mut SeedSummary) -> ApiResult<()> {
+pub(crate) fn work_session(app: &mut App, project: ProjectId, pool: &[StruggleSeed], next: &mut usize, day: i64, review: bool, rng: &mut StdRng, summary: &mut SeedSummary) -> ApiResult<()> {
     app.start_session(project, at(day, 18 * 60))?;
     let count = rng.random_range(1..=3).min(pool.len());
     let mut logged = vec![];
@@ -442,7 +443,7 @@ fn add_sources(app: &mut App) -> ApiResult<Vec<SourceId>> {
 }
 
 /// One day's review session. Returns how many grades were given.
-fn review_day(app: &mut App, day: i64, slippery: &HashSet<study_store::cards::NoteId>, rng: &mut StdRng) -> ApiResult<usize> {
+pub(crate) fn review_day(app: &mut App, day: i64, slippery: &HashSet<study_store::cards::NoteId>, rng: &mut StdRng) -> ApiResult<usize> {
     let mut step = app.start_review(None, day)?;
     let mut seen = HashSet::new();
     let mut graded = 0;
@@ -483,9 +484,9 @@ fn with_typo(answer: &str) -> String {
     answer.replacen(longest, &letters.into_iter().collect::<String>(), 1).to_lowercase()
 }
 
-fn quiz(app: &mut App, day: i64, progress: f64, topics: &[(TopicId, &TopicSeed)], correct: &HashMap<String, Vec<usize>>, typed_right: &HashMap<String, String>, rng: &mut StdRng) -> ApiResult<()> {
+pub(crate) fn quiz(app: &mut App, day: i64, progress: f64, topics: &[TopicId], correct: &HashMap<String, Vec<usize>>, typed_right: &HashMap<String, String>, rng: &mut StdRng) -> ApiResult<()> {
     let first = rng.random_range(0..topics.len());
-    let chosen: Vec<TopicId> = (0..rng.random_range(2..=3)).map(|offset| topics[(first + offset) % topics.len()].0).collect();
+    let chosen: Vec<TopicId> = (0..rng.random_range(2..=3)).map(|offset| topics[(first + offset) % topics.len()]).collect();
     let exam = rng.random_bool(0.25);
     let mut view = app.start_quiz(QuizSetupInput {
         topics: chosen,

@@ -10,6 +10,7 @@ pub mod convert;
 pub mod practice;
 pub mod recall;
 pub mod seed;
+pub mod seed_large;
 
 use rand::SeedableRng;
 use rand::rngs::StdRng;

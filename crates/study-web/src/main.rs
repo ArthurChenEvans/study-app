@@ -1,15 +1,21 @@
 //! `study-web` serves the app in a browser. `study-web seed <database>` fills an empty
-//! database with the demo profile (works on the desktop app's database too).
+//! database with the demo profile (works on the desktop app's database too), and
+//! `study-web seed <database> --large` with the heavy one for testing at scale.
 
 use study_api::App;
 use study_store::Store;
 use study_web::{Config, router, today};
 
-fn seed(app: &mut App) -> Result<(), String> {
-    let summary = study_api::seed::seed_profile(app, today()).map_err(|error| error.message)?;
+fn seed(app: &mut App, large: bool) -> Result<(), String> {
+    let (summary, days) = if large {
+        (study_api::seed_large::seed_large(app, today()), study_api::seed_large::LARGE_DAYS)
+    } else {
+        (study_api::seed::seed_profile(app, today()), study_api::seed::DAYS)
+    };
+    let summary = summary.map_err(|error| error.message)?;
     println!(
         "seeded {} modules, {} topics, {} questions, {} sources, {} quizzes, {} recall checks, {} card reviews and {} projects with {} struggles over {} days",
-        summary.modules, summary.topics, summary.questions, summary.sources, summary.quizzes, summary.checks, summary.reviews, summary.projects, summary.struggles, study_api::seed::DAYS
+        summary.modules, summary.topics, summary.questions, summary.sources, summary.quizzes, summary.checks, summary.reviews, summary.projects, summary.struggles, days
     );
     Ok(())
 }
@@ -25,15 +31,15 @@ fn open(path: &std::path::Path) -> Result<App, String> {
 async fn main() -> Result<(), String> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.first().map(String::as_str) == Some("seed") {
-        let path = args.get(1).ok_or("usage: study-web seed <path to study.sqlite>")?;
-        return seed(&mut open(path.as_ref())?);
+        let path = args.get(1).ok_or("usage: study-web seed <path to study.sqlite> [--large]")?;
+        return seed(&mut open(path.as_ref())?, args.iter().any(|arg| arg == "--large"));
     }
 
     let config = Config::from_env();
     let mut app = open(&config.db)?;
     if config.seed {
         if app.topics().map_err(|error| error.message)?.is_empty() {
-            seed(&mut app)?;
+            seed(&mut app, config.large)?;
         } else {
             println!("the database already has data, so it wasn't seeded");
         }

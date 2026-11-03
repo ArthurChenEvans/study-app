@@ -101,6 +101,8 @@ pub struct Config {
     pub dist: PathBuf,
     pub address: String,
     pub seed: bool,
+    /// `STUDY_SEED=large` seeds the heavy profile for testing how screens cope with a lot of data.
+    pub large: bool,
 }
 
 impl Config {
@@ -110,7 +112,8 @@ impl Config {
             db: var("STUDY_DB", "study-web.sqlite").into(),
             dist: var("STUDY_DIST", "dist").into(),
             address: var("STUDY_ADDRESS", "127.0.0.1:7392"),
-            seed: matches!(var("STUDY_SEED", "").as_str(), "1" | "true" | "yes"),
+            seed: matches!(var("STUDY_SEED", "").as_str(), "1" | "true" | "yes" | "large"),
+            large: var("STUDY_SEED", "") == "large",
         }
     }
 }

@@ -270,18 +270,15 @@ impl App {
         let settings = self.store.card_settings()?;
         let cards = self.in_scope(None)?;
         let due = self.due_counts(&cards, &settings, today)?;
+        // Today's bar is today's session (new cards within the daily limit), so a big
+        // backlog of unseen cards doesn't flatten the rest of the chart.
         let forecast = (0..14)
             .map(|offset| {
-                cards
-                    .iter()
-                    .filter(|c| {
-                        if offset == 0 {
-                            c.schedule.due <= today
-                        } else {
-                            c.schedule.due == today + offset
-                        }
-                    })
-                    .count()
+                if offset == 0 {
+                    due.new + due.learning + due.review
+                } else {
+                    cards.iter().filter(|c| c.schedule.due == today + offset).count()
+                }
             })
             .collect();
         let reviews = self.store.reviews_since(today - 29)?;
@@ -988,6 +985,8 @@ mod tests {
         let step = app.start_review(None, TODAY).unwrap();
         assert_eq!(card(&step).total, 10);
         assert_eq!(app.cards_home(TODAY).unwrap().due.new, 10);
+        // Today's bar in the forecast is today's session, not every unseen card.
+        assert_eq!(app.cards_home(TODAY).unwrap().forecast[0], 10);
     }
 
     // flashcards.feature: Archived cards are left out

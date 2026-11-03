@@ -26,7 +26,10 @@ podman compose down            # stop, keep the database
 podman compose down -v         # stop and delete the database, the next up seeds again
 ```
 
-Set `STUDY_SEED: "0"` in `compose.yaml` to start empty. PowerPoint previews need
+Set `STUDY_SEED: "0"` in `compose.yaml` to start empty. `STUDY_SEED=large podman compose up -d`
+(after a `down -v`) seeds a heavy profile instead: about 170 topics in 14 modules, thousands of
+questions and cards and four months of history, for checking how screens cope with a lot of data.
+Outside a container that's `study-web seed <database> --large`. PowerPoint previews need
 `SLIDES: "1"` there, which adds LibreOffice to the image (much bigger). Docker works the same.
 It's on port 7392, only open to this computer since there are no logins. If that's taken,
 `STUDY_PORT=7400 podman compose up -d` uses another. Outside a container, `STUDY_ADDRESS=127.0.0.1:7400` does the same.
