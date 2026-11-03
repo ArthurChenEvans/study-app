@@ -139,6 +139,30 @@ export type Unit = "Days" | "Weeks" | "Months" | "Years";
 export interface ScheduleStep { name: string; every: { count: number; unit: Unit }; repeats: number }
 export interface Schedule { steps: ScheduleStep[]; pass_mark: number; under_pass: "BackOneStep" | "Stay" }
 
+
+// ---------- Flashcards (R62 to R77) ----------
+export type NoteKind = "Basic" | "Reversed" | "Cloze";
+export interface Note { topic: Id; kind: NoteKind; front: string; back: string; cues: string[]; text: string; extra: string }
+export interface NoteInput { note: Note; suggestion: string | null }
+export interface DueCounts { new: number; learning: number; review: number }
+export interface TopicCounts { topic: Id; name: string; module: string | null; due: DueCounts; total: number; retention: number | null }
+export interface CardsHome { due: DueCounts; total_cards: number; minutes: number; forecast: number[]; retention: number | null; target: number; per_topic: TopicCounts[]; suggestions: number }
+export interface CardListRow { id: Id; note: Id; front: string; kind: string; source: string | null; due: number; is_new: boolean; lapses: number; leech: boolean; archived: boolean }
+export interface TopicCards { topic: Id; name: string; module: string | null; due: number; cards: CardListRow[] }
+export interface CardDetail { id: Id; key: string; reps: number; lapses: number; leech: boolean; due: number; is_new: boolean; archived: boolean; remember_now: number | null }
+export interface NoteView { id: Id; note: Note; source: string | null; cards: CardDetail[] }
+export interface ReviewCard {
+  card: Id; note: Id; front: string; back: string; topic_name: string; kind: string; source: string | null;
+  intervals: [number, number, number, number]; lapses: number; leech: boolean; left: DueCounts; queue: "new" | "learning" | "review";
+  done: number; total: number; can_undo: boolean;
+}
+export interface Rewrite { note: Id; topic: Id; front: string; agains: number }
+export interface ReviewDone { reviewed: number; new: number; again: number; remembered: number | null; target: number; seconds: number; worth_rewriting: Rewrite[]; due_tomorrow: number; busiest: [number, number] | null }
+export type ReviewStep = { Card: ReviewCard } | { Done: ReviewDone };
+export type CardRating = "Again" | "Hard" | "Good" | "Easy";
+export interface Suggestion { key: string; kind: "Recall" | "Quiz"; from: string; day: number; note: string; text: string; answer: string | null; topic: Id | null }
+export interface CardSettings { desired_retention: number; new_per_day: number; max_reviews: number | null; leech_after: number; parameters: number[] }
+
 /** Errors from the backend arrive as { message }. */
 export function errorMessage(error: unknown): string {
   if (error && typeof error === "object" && "message" in error) return String((error as { message: unknown }).message);
@@ -200,6 +224,24 @@ export const api = {
   recallSchedule: () => invoke<Schedule>("recall_schedule"),
   setRecallSchedule: (schedule: Schedule) => invoke<void>("set_recall_schedule", { schedule }),
   resetRecallSchedule: () => invoke<Schedule>("reset_recall_schedule"),
+  cardsHome: () => invoke<CardsHome>("cards_home"),
+  cardsDueCount: () => invoke<number>("cards_due_count"),
+  topicCards: (topic: Id) => invoke<TopicCards>("topic_cards", { topic }),
+  noteView: (id: Id) => invoke<NoteView>("note_view", { id }),
+  saveNote: (id: Id | null, input: NoteInput) => invoke<Id>("save_note", { id, input }),
+  deleteNote: (id: Id) => invoke<void>("delete_note", { id }),
+  archiveCard: (id: Id, archived: boolean) => invoke<void>("archive_card", { id, archived }),
+  startReview: (scope: Subject | null) => invoke<ReviewStep>("start_review", { scope }),
+  currentCard: () => invoke<ReviewStep>("current_card"),
+  gradeCard: (rating: CardRating, seconds: number) => invoke<ReviewStep>("grade_card", { rating, seconds }),
+  undoCard: () => invoke<ReviewStep>("undo_card"),
+  leaveReview: () => invoke<void>("leave_review"),
+  cardSuggestions: () => invoke<Suggestion[]>("card_suggestions"),
+  dismissSuggestion: (key: string) => invoke<void>("dismiss_suggestion", { key }),
+  cardSettings: () => invoke<CardSettings>("card_settings"),
+  setCardSettings: (settings: CardSettings) => invoke<void>("set_card_settings", { settings }),
+  resetCardSettings: () => invoke<CardSettings>("reset_card_settings"),
+  fitScheduler: () => invoke<number>("fit_scheduler"),
   slidesToPdf: async (file: File) => {
     const pdf = await invoke<ArrayBuffer | number[]>("slides_to_pdf", { name: file.name, data: await toBase64(file) });
     return new Uint8Array(pdf);

@@ -10,6 +10,13 @@ async function highlighted(text: string): Promise<string> {
 
 // R7: Markdown with images, highlighted code and $LaTeX$, in questions, options and explanations
 describe("renderMarkdown", () => {
+  // flashcards.feature: Cloze cards from gaps (the backend's spans survive sanitising)
+  it("keeps the cloze gap and answer spans", () => {
+    const html = renderMarkdown('L3 is <span class="cloze-gap">[...]</span> and <span class="cloze-answer">40 &amp; up</span> <img src=x onerror=alert(1)>');
+    expect(html).toContain('<span class="cloze-gap">[...]</span>');
+    expect(html).toContain('<span class="cloze-answer">40 &amp; up</span>');
+    expect(html).not.toContain("onerror");
+  });
   it("renders Markdown", () => {
     expect(renderMarkdown("Operands are read in **decode**")).toContain("<strong>decode</strong>");
   });

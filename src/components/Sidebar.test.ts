@@ -43,4 +43,13 @@ describe("Sidebar", () => {
     render(Sidebar, { current: "overview", onNavigate: vi.fn(), recallDue: 0 });
     expect(screen.queryByLabelText(/due today/)).toBeNull();
   });
+
+  // flashcards.feature: See what's due today (the sidebar shows how many cards are due)
+  it("shows how many cards are due next to Cards", () => {
+    render(Sidebar, { current: "cards", onNavigate: vi.fn(), recallDue: 1, cardsDue: 27 });
+    const link = screen.getByRole("link", { name: /Cards/ });
+    expect(link).toHaveAttribute("aria-current", "page");
+    expect(link).toHaveTextContent("27");
+    expect(screen.getByRole("link", { name: /Recall/ })).toHaveTextContent("1");
+  });
 });

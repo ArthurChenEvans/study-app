@@ -13,8 +13,12 @@
   import Recall from "./screens/Recall.svelte";
   import Checklist from "./screens/Checklist.svelte";
   import RecallSession from "./screens/RecallSession.svelte";
+  import Cards from "./screens/Cards.svelte";
+  import TopicCards from "./screens/TopicCards.svelte";
+  import CardReview from "./screens/CardReview.svelte";
+  import Suggestions from "./screens/Suggestions.svelte";
   import { screenFromHash, type Screen } from "./lib/router";
-  import { api, type Id, type QuizView } from "./lib/api";
+  import { api, type Id, type QuizView, type Subject } from "./lib/api";
 
   type Route =
     | { screen: Screen }
@@ -23,38 +27,55 @@
     | { screen: "quiz"; view: QuizView; run: number }
     | { screen: "results"; attempt: Id }
     | { screen: "checklist"; id: Id }
-    | { screen: "recall-session"; id: Id; run: number };
+    | { screen: "recall-session"; id: Id; run: number }
+    | { screen: "topic-cards"; topic: Id; note: Id | "new" | null }
+    | { screen: "card-review"; scope: Subject | null; run: number }
+    | { screen: "suggestions" };
 
   let route = $state<Route>({ screen: screenFromHash(location.hash) });
   let runs = 0;
 
   const navScreen = $derived<Screen>(
-    route.screen === "editor" ? "topics" : route.screen === "checklist" || route.screen === "recall-session" ? "recall" : route.screen === "setup-for" || route.screen === "quiz" || route.screen === "results" ? "setup" : route.screen,
+    route.screen === "editor" ? "topics" : route.screen === "topic-cards" || route.screen === "card-review" || route.screen === "suggestions" ? "cards" : route.screen === "checklist" || route.screen === "recall-session" ? "recall" : route.screen === "setup-for" || route.screen === "quiz" || route.screen === "results" ? "setup" : route.screen,
   );
 
   function go(next: Route) {
     route = next;
-    if (["overview", "topics", "recall", "bibliography", "history", "search", "setup"].includes(next.screen)) history.replaceState(null, "", `#${next.screen}`);
+    if (["overview", "topics", "cards", "recall", "bibliography", "history", "search", "setup"].includes(next.screen)) history.replaceState(null, "", `#${next.screen}`);
     window.scrollTo?.(0, 0);
     refreshDue();
   }
 
   // R58: the sidebar shows how many checklists are due.
   let recallDue = $state(0);
+  let cardsDue = $state(0);
   async function refreshDue() {
-    try {
-      const count = await api.recallDueCount();
-      recallDue = typeof count === "number" ? count : 0;
-    } catch {
-      recallDue = 0;
-    }
+    const [recall, cards] = await Promise.allSettled([api.recallDueCount(), api.cardsDueCount()]);
+    recallDue = recall.status === "fulfilled" && typeof recall.value === "number" ? recall.value : 0;
+    cardsDue = cards.status === "fulfilled" && typeof cards.value === "number" ? cards.value : 0;
   }
   refreshDue();
+  // The review's top bar names what is being reviewed.
+  let scopeName = $state("All topics");
+  async function startCards(scope: Subject | null) {
+    scopeName = "All topics";
+    try {
+      if (scope && "Topic" in scope) scopeName = (await api.topics()).find((topic) => topic.id === scope.Topic)?.name ?? "Topic";
+      if (scope && "Module" in scope) scopeName = (await api.modules()).find((module) => module.id === scope.Module)?.name ?? "Module";
+    } catch { /* keep the default name */ }
+    go({ screen: "card-review", scope, run: ++runs });
+  }
+  // A new card from the Cards home starts in the busiest topic, and the editor lets you change it.
+  async function newCard() {
+    const [home, topics] = await Promise.all([api.cardsHome(), api.topics()]);
+    const topic = home.per_topic[0]?.topic ?? topics[0]?.id;
+    go(topic === undefined ? { screen: "topics" } : { screen: "topic-cards", topic, note: "new" });
+  }
   const startRecall = (id: Id) => go({ screen: "recall-session", id, run: ++runs });
 
   // R48: "/" focuses search from anywhere, except while typing or in a quiz.
   async function shortcut(event: KeyboardEvent) {
-    if (event.key !== "/" || event.ctrlKey || event.metaKey || event.altKey || route.screen === "quiz" || route.screen === "recall-session") return;
+    if (event.key !== "/" || event.ctrlKey || event.metaKey || event.altKey || route.screen === "quiz" || route.screen === "recall-session" || route.screen === "card-review") return;
     const target = event.target as HTMLElement | null;
     if (target && (target.closest("input, textarea, select, [contenteditable='true']"))) return;
     event.preventDefault();
@@ -69,7 +90,7 @@
 <svelte:window onhashchange={() => (route = { screen: screenFromHash(location.hash) })} onkeydown={shortcut} />
 
 <div class="flex min-h-screen">
-  {#if route.screen !== "quiz" && route.screen !== "recall-session"}<Sidebar current={navScreen} {recallDue} onNavigate={(screen) => go({ screen })} />{/if}
+  {#if route.screen !== "quiz" && route.screen !== "recall-session" && route.screen !== "card-review"}<Sidebar current={navScreen} {recallDue} {cardsDue} onNavigate={(screen) => go({ screen })} />{/if}
   <main class="min-w-0 flex-1">
     {#if route.screen === "topics"}
       <Topics onEdit={(topic) => go({ screen: "editor", topic })} onQuiz={(topic) => go({ screen: "setup-for", topics: [topic] })} />
@@ -87,6 +108,14 @@
       {#key route.id}<Checklist id={route.id} onBack={() => go({ screen: "recall" })} onStart={startRecall} />{/key}
     {:else if route.screen === "recall-session"}
       {#key route.run}<RecallSession id={route.id} onLeave={() => go({ screen: "recall" })} onEdit={(id) => go({ screen: "checklist", id })} onNext={startRecall} />{/key}
+    {:else if route.screen === "cards"}
+      <Cards onReview={startCards} onTopic={(topic) => go({ screen: "topic-cards", topic, note: null })} onSuggestions={() => go({ screen: "suggestions" })} onNewCard={newCard} />
+    {:else if route.screen === "topic-cards"}
+      {#key `${route.topic}:${route.note}`}<TopicCards topic={route.topic} editNote={route.note} onBack={() => go({ screen: "cards" })} onReview={startCards} />{/key}
+    {:else if route.screen === "card-review"}
+      {#key route.run}<CardReview scope={route.scope} {scopeName} onLeave={() => go({ screen: "cards" })} onEdit={(topic, note) => go({ screen: "topic-cards", topic, note })} />{/key}
+    {:else if route.screen === "suggestions"}
+      <Suggestions onBack={() => go({ screen: "cards" })} onChanged={refreshDue} />
     {:else if route.screen === "bibliography"}
       <Bibliography />
     {:else if route.screen === "history"}

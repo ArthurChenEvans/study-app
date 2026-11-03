@@ -209,3 +209,18 @@
 .meter > .fill { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: var(--chart-right); transition: width 200ms ease-out; }
 .meter > .mark { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--color-base-content); border-radius: 1px; }
 .badge-src { font-size: 12px; color: var(--muted); border: 1px solid var(--color-base-300); border-radius: 4px; padding: 0 6px; line-height: 20px; white-space: nowrap; }
+
+/* Flashcards (design/flashcards.html) */
+.cloze-gap { padding: 0 .35em; border-radius: 4px; background: var(--color-base-200); border: 1px dashed var(--color-field-border); color: var(--muted); font-weight: 600; }
+.cloze-answer { padding: 0 .35em; border-radius: 4px; background: var(--color-base-300); color: var(--color-base-content); font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
+.grade { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 7.5rem; padding: 10px 16px; height: auto; }
+.grade .when { font-size: 12px; font-weight: 400; opacity: .85; font-variant-numeric: tabular-nums; }
+.grade-again { color: var(--wrong-ink); border-color: var(--color-field-border); }
+.queue-now { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 2px; }
+.forecast { display: flex; align-items: flex-end; gap: 4px; height: 64px; }
+.forecast > span { flex: 1; background: var(--chart-ink); border-radius: 3px 3px 0 0; min-height: 2px; }
+/* Slider (design rules section 6): thin track, primary fill, 16px thumb, 24px hit area */
+.slider { -webkit-appearance: none; appearance: none; height: 24px; background: transparent; cursor: pointer; }
+.slider::-webkit-slider-runnable-track { height: 6px; border-radius: 999px; background: linear-gradient(to right, var(--color-primary) var(--fill), var(--color-base-300) var(--fill)); }
+.slider::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -5px; border-radius: 50%; background: var(--color-primary); border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--color-primary); }
+.slider:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 4px; border-radius: 4px; }
