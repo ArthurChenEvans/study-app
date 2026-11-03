@@ -237,3 +237,14 @@ Clickable prototype: `flashcards.html`. Same theme and components as the other p
 | One-line card fronts 21 px tall, "Change topic" and the retention slider 20 px | Padded to 24 px or more |
 
 Then: every text node passes WCAG 2.2 AA, every target is at least 24 px, one primary per view (none on "all done" and the suggestions list, on purpose). Keyboard: Space shows the answer, 3 grades Good, E opens the rewrite from a leech, and all 10 tab stops on the answer view show a focus ring. The squint test keeps the count and Start review, the Good button, "Done for today" and Save card on top. No console errors, no horizontal scroll at 1440 px.
+
+## UI/UX recheck (3 Nov 2026): bright bars
+
+Reported: "a long white bar in random places on each page".
+
+- **Cause 1, the prototypes' own switcher.** The screen and state picker floated over the page, fixed to the bottom right. In the dark theme it's near-white, so wherever you scrolled it sat across tables, buttons and hints. It's now a slim strip above the app in all three prototypes (`index.html`, `free-recall.html`, `flashcards.html`), so it never covers content. The sidebar and sticky headers sit under it.
+- **Cause 2, full-page screenshots.** The sidebar is one screen tall, so long pages showed a band of page colour under it in the captures. Screenshots now render at the page's full height.
+- **Cause 3, the retention slider.** DaisyUI's `range` fill is as tall as its thumb, a thick near-white slab in dark. Replaced with a hand-built slider (6px track, 16px thumb, 24px hit area) and added to the design rules.
+- **Cause 4, the quiz track's current question (in the real app too).** It was a solid near-white segment, the loudest thing on the quiz screen. Now an outlined segment, so it still reads as "you are here" without shouting, and stays distinct from answered (caramel) and upcoming in greyscale.
+
+Checked after: an automated scan of 55 screens (every dark prototype state plus the real app's recall flow) for light horizontal bands 300 px or wider found none. The contrast, target-size and keyboard audits still pass on both prototypes and in the real app.

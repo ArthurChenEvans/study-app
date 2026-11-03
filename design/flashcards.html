@@ -173,6 +173,7 @@
   .rise { animation: rise 260ms ease-out both; }
   .rise-2 { animation-delay: 60ms; } .rise-3 { animation-delay: 120ms; } .rise-4 { animation-delay: 180ms; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+:root { --strip: 2.5rem; }
 </style>
 <style type="text/tailwindcss">
   @theme {
@@ -185,6 +186,13 @@
 </style>
 <style>
   /* Flashcards additions. Same tokens as the MVP and free recall prototypes. */
+  /* Slider (design rules section 6): thin track, primary fill, 16px thumb, 24px hit area */
+  .slider { -webkit-appearance: none; appearance: none; height: 24px; background: transparent; cursor: pointer; }
+  .slider::-webkit-slider-runnable-track { height: 6px; border-radius: 999px; background: linear-gradient(to right, var(--color-primary) var(--fill), var(--color-base-300) var(--fill)); }
+  .slider::-moz-range-track { height: 6px; border-radius: 999px; background: linear-gradient(to right, var(--color-primary) var(--fill), var(--color-base-300) var(--fill)); }
+  .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -5px; border-radius: 50%; background: var(--color-primary); border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--color-primary); }
+  .slider::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--color-primary); border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--color-primary); }
+  .slider:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 4px; border-radius: 4px; }
   .queue-now { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 2px; }
   .grade { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 7.5rem; padding: 10px 16px; height: auto; }
   .grade .when { font-size: 12px; font-weight: 400; opacity: .85; font-variant-numeric: tabular-nums; }
@@ -199,8 +207,13 @@
 </style>
 </head>
 <body class="min-h-screen">
-<div class="flex min-h-screen">
-  <nav class="w-60 shrink-0 bg-base-200 border-r border-base-300 flex flex-col p-3 gap-1 sticky top-0 h-screen" aria-label="Main">
+<div id="proto-strip" class="sticky top-0 z-50 flex min-h-10 flex-wrap items-center gap-2 border-b border-base-300 bg-base-200 px-4 py-1.5 text-xs" aria-label="Prototype state">
+  <span class="mr-2 font-semibold uppercase tracking-wide text-muted">Prototype</span>
+  <span class="text-muted">Screen</span><div id="screens" class="flex gap-1 flex-wrap"></div>
+  <span class="ml-3 text-muted">State</span><div id="states" class="flex gap-1 flex-wrap"></div>
+</div>
+<div class="flex min-h-[calc(100vh-var(--strip))]">
+  <nav class="w-60 shrink-0 bg-base-200 border-r border-base-300 flex flex-col p-3 gap-1 sticky top-[var(--strip)] h-[calc(100vh-var(--strip))]" aria-label="Main">
     <div class="flex items-center gap-2 px-3 py-4">
       <span class="size-8 rounded-lg bg-primary text-primary-content grid place-items-center"><i data-lucide="layers" class="size-4"></i></span>
       <span class="text-base font-semibold">Study App</span>
@@ -224,10 +237,6 @@
   <main id="app" class="flex-1 min-w-0"></main>
 </div>
 
-<div class="fixed bottom-4 right-4 bg-neutral text-neutral-content rounded-lg px-3 py-2 text-xs flex items-center gap-2 shadow-lg z-40 max-w-[72vw] flex-wrap" aria-label="Prototype state">
-  <span class="opacity-70">Screen</span><div id="screens" class="flex gap-1 flex-wrap"></div>
-  <span class="opacity-70 ml-2">State</span><div id="states" class="flex gap-1 flex-wrap"></div>
-</div>
 
 <script>
 const icon = (name, cls = "size-4") => `<i data-lucide="${name}" class="${cls}" aria-hidden="true"></i>`;
@@ -326,7 +335,7 @@ function settingsDialog() {
       <h3 id="set-h" class="text-lg font-semibold">Card settings</h3>
       <div class="mt-6 space-y-6">
         <label class="block"><span class="block text-sm font-semibold">How much to remember</span>
-          <span class="mt-2 flex items-center gap-4"><input type="range" min="70" max="97" value="90" class="range range-md flex-1" aria-label="Desired retention"><span class="w-12 text-right font-semibold tabular-nums">90%</span></span>
+          <span class="mt-2 flex items-center gap-4"><input type="range" min="70" max="97" value="90" class="slider flex-1" style="--fill: 74%" aria-label="Desired retention" oninput="this.style.setProperty('--fill', ((this.value - 70) / 27 * 100) + '%'); this.parentElement.querySelector('.slider-value').textContent = this.value + '%'"><span class="slider-value w-12 text-right font-semibold tabular-nums">90%</span></span>
           <span class="mt-1 block text-sm text-muted">The chance you still remember a card when it comes back. Higher means more reviews a day. 90% is the usual choice.</span></label>
         <div class="grid grid-cols-2 gap-6">
           <label class="block"><span class="block text-sm font-semibold">New cards a day</span><input class="input mt-1 w-24 tabular-nums" type="number" min="0" value="10"></label>
@@ -421,7 +430,7 @@ function editor(leech) {
 
 /* ---------------- Review ---------------- */
 function reviewBar(n, l, r) {
-  return `<div class="flex items-center justify-between gap-6 px-12 py-4 border-b border-base-300 bg-base-100 sticky top-0 z-10">
+  return `<div class="flex items-center justify-between gap-6 px-12 py-4 border-b border-base-300 bg-base-100 sticky top-[var(--strip)] z-10">
     <div class="flex items-center gap-3 text-sm"><span class="text-muted">Cards</span>${icon("chevron-right","size-3.5")}<span class="font-semibold">All topics</span></div>
     <p class="flex items-center gap-3 text-sm" aria-label="Left today: ${n} new, ${l} learning, ${r} to review. This card is a review.">${counts(n, l, r).replace('<span class="font-semibold">' + r + '</span>', '<span class="font-semibold queue-now">' + r + '</span>')}</p>
     <div class="flex items-center gap-1"><button class="btn btn-ghost btn-sm font-normal" title="Edit this card (E)">${icon("pencil")}Edit</button><button class="btn btn-ghost btn-sm font-normal">${icon("undo-2")}Undo</button><button class="btn btn-ghost btn-sm font-normal" onclick="go('cards','due today')">${icon("log-out")}Leave</button></div>
@@ -523,8 +532,8 @@ function render() {
   document.querySelector('nav[aria-label="Main"]').hidden = state.screen === "review" && state.variant !== "done";
   document.getElementById("due-badge").hidden = (state.screen === "cards" && ["all done", "first time"].includes(state.variant)) || (state.screen === "review" && state.variant === "done");
   document.querySelectorAll(".nav-link").forEach(a => a.dataset.nav === "cards" ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
-  document.getElementById("screens").innerHTML = Object.keys(screens).map(s => `<button class="px-2 py-1 rounded ${s === state.screen ? "bg-neutral-content text-neutral font-semibold" : "hover:underline"}" onclick="go('${s}')">${screenNames[s]}</button>`).join("");
-  document.getElementById("states").innerHTML = variants[state.screen].map(v => `<button class="px-2 py-1 rounded ${v === state.variant ? "bg-neutral-content text-neutral font-semibold" : "hover:underline"}" onclick="setVariant('${v}')">${v}</button>`).join("");
+  document.getElementById("screens").innerHTML = Object.keys(screens).map(s => `<button class="px-2 py-1 rounded ${s === state.screen ? "bg-neutral text-neutral-content font-semibold" : "hover:underline"}" onclick="go('${s}')">${screenNames[s]}</button>`).join("");
+  document.getElementById("states").innerHTML = variants[state.screen].map(v => `<button class="px-2 py-1 rounded ${v === state.variant ? "bg-neutral text-neutral-content font-semibold" : "hover:underline"}" onclick="setVariant('${v}')">${v}</button>`).join("");
   if (window.lucide) lucide.createIcons();
   if (window.renderMathInElement) renderMathInElement(el, { delimiters: [{ left: "$", right: "$", display: false }], throwOnError: false });
   el.querySelectorAll("pre[data-code]").forEach(b => b.classList.add("bg-surface", "p-4", "rounded-lg", "font-mono", "border", "border-base-300"));
@@ -553,6 +562,8 @@ document.addEventListener("keydown", e => {
 const start = location.hash.slice(1);
 if (screens[start]) state.screen = start, state.variant = variants[start][0];
 render();
+  const strip = document.getElementById("proto-strip");
+  new ResizeObserver(() => document.documentElement.style.setProperty("--strip", strip.offsetHeight + "px")).observe(strip);
 </script>
 </body>
 </html>

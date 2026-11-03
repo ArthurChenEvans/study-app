@@ -173,6 +173,7 @@
   .rise { animation: rise 260ms ease-out both; }
   .rise-2 { animation-delay: 60ms; } .rise-3 { animation-delay: 120ms; } .rise-4 { animation-delay: 180ms; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+:root { --strip: 2.5rem; }
 </style>
 <style type="text/tailwindcss">
   @theme {
@@ -185,8 +186,13 @@
 </style>
 </head>
 <body class="min-h-screen">
-<div class="flex min-h-screen">
-  <nav class="w-60 shrink-0 bg-base-200 border-r border-base-300 flex flex-col p-3 gap-1 sticky top-0 h-screen" aria-label="Main">
+<div id="proto-strip" class="sticky top-0 z-50 flex min-h-10 flex-wrap items-center gap-2 border-b border-base-300 bg-base-200 px-4 py-1.5 text-xs" aria-label="Prototype state">
+  <span class="mr-2 font-semibold uppercase tracking-wide text-muted">Prototype</span>
+  <span class="text-muted">State</span>
+  <div id="states" class="flex gap-1"></div>
+</div>
+<div class="flex min-h-[calc(100vh-var(--strip))]">
+  <nav class="w-60 shrink-0 bg-base-200 border-r border-base-300 flex flex-col p-3 gap-1 sticky top-[var(--strip)] h-[calc(100vh-var(--strip))]" aria-label="Main">
     <div class="flex items-center gap-2 px-3 py-4">
       <span class="size-8 rounded-lg bg-primary text-primary-content grid place-items-center"><i data-lucide="layers" class="size-4"></i></span>
       <span class="text-base font-semibold">Study App</span>
@@ -208,10 +214,6 @@
   <main id="app" class="flex-1 min-w-0"></main>
 </div>
 
-<div class="fixed bottom-4 right-4 bg-neutral text-neutral-content rounded-lg px-3 py-2 text-xs flex items-center gap-2 shadow-lg z-40" aria-label="Prototype state">
-  <span class="opacity-70">State</span>
-  <div id="states" class="flex gap-1"></div>
-</div>
 <div id="tip" class="chart-tip" role="tooltip"></div>
 
 <script>
@@ -456,7 +458,7 @@ function optionRow(i, text, correct) {
 function screenEditor() {
   const err = state.variant === "error";
   const opts = ["Fetch","Decode","Execute","Write back","Memory"].slice(0, state.optionCount);
-  return `<div class="flex h-screen">
+  return `<div class="flex h-[calc(100vh-var(--strip))]">
     <section class="w-1/2 bg-base-200 border-r border-base-300 flex flex-col min-w-0" aria-label="Source preview">${filePreview()}</section>
     <section class="w-1/2 overflow-auto" aria-label="Question editor">
       <div class="px-10 pt-10 pb-6 flex items-end justify-between">
@@ -604,7 +606,7 @@ function screenQuiz() {
   const current = 6 + state.quizIndex;
   const track = Array.from({ length: 20 }, (_, i) => {
     if (i < current) { const s = quizSoFar[i] || "right"; return state.mode === "exam" ? `<span style="background:var(--chart-ink)" data-tip="Question ${i + 1}: answered"></span>` : `<span style="background:${STATUS[s].color}" data-tip="Question ${i + 1}: ${s === "guessed" ? "right, guessed" : s}"></span>`; }
-    if (i === current) return `<span style="background:var(--color-base-content)" data-tip="Question ${i + 1}: current"></span>`;
+    if (i === current) return `<span style="background:transparent; box-shadow: inset 0 0 0 2px var(--color-base-content)" data-tip="Question ${i + 1}: current"></span>`;
     return `<span data-tip="Question ${i + 1}"></span>`;
   }).join("");
   const optionClass = i => {
@@ -620,7 +622,7 @@ function screenQuiz() {
     return "";
   };
   return `<div class="flex flex-col min-h-screen">
-    <div class="px-12 pt-5 pb-4 border-b border-base-300 bg-base-100 sticky top-0 z-10">
+    <div class="px-12 pt-5 pb-4 border-b border-base-300 bg-base-100 sticky top-[var(--strip)] z-10">
       <div class="flex items-center gap-6">
         <span class="badge ${state.mode==="exam"?"badge-neutral":"badge-ghost"}">${state.mode === "exam" ? "Exam" : "Study"}</span>
         <span class="text-sm text-muted">CPU + GPU</span>
@@ -821,7 +823,7 @@ function render() {
     const on = a.dataset.nav === state.screen || (state.screen === "editor" && a.dataset.nav === "topics");
     on ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current");
   });
-  document.getElementById("states").innerHTML = variants[state.screen].map(v => `<button class="px-2 py-1 rounded ${v === state.variant ? "bg-neutral-content text-neutral font-semibold" : "hover:underline"}" onclick="setVariant('${v}')">${v}</button>`).join("");
+  document.getElementById("states").innerHTML = variants[state.screen].map(v => `<button class="px-2 py-1 rounded ${v === state.variant ? "bg-neutral text-neutral-content font-semibold" : "hover:underline"}" onclick="setVariant('${v}')">${v}</button>`).join("");
   if (window.lucide) lucide.createIcons();
   if (window.renderMathInElement) renderMathInElement(el, { delimiters: [{ left: "$", right: "$", display: false }], throwOnError: false });
   el.querySelectorAll('[data-chart="trend"]').forEach(drawTrend);
@@ -866,6 +868,8 @@ document.addEventListener("keydown", e => {
   else if (e.key.toLowerCase() === "f") toggleFlag();
 });
 route();
+  const strip = document.getElementById("proto-strip");
+  new ResizeObserver(() => document.documentElement.style.setProperty("--strip", strip.offsetHeight + "px")).observe(strip);
 </script>
 </body>
 </html>

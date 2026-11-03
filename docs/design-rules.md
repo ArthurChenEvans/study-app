@@ -170,6 +170,10 @@ Rules:
 - Search updates as you type, with category tabs and sortable column headers (SkyUI model).
 - Empty states say what to do next and have one button that does it ("No topics yet. Create your first topic").
 
+**Sliders:** a 6px track in base-300 with the filled part in primary, a 16px round thumb in primary with a surface ring, and a 24px tall hit area. Don't use DaisyUI's default `range`: its fill is as tall as the thumb, which reads as a heavy slab (near-white in the dark theme). Show the value as text next to the slider.
+
+**Nothing bright and wide unless it's the point.** In the dark theme a full-width or long light shape (a filled bar, a light chip, a floating toolbar) pulls the eye more than anything else on the page. Reserve light fills for the one primary action and small marks. Current-position markers (like the quiz track) are outlined, not filled.
+
 **Icons:** Lucide, 16px inline with text, 20px standalone, always with a label or tooltip.
 
 **Motion:** 150ms ease-out for hovers and toggles, 200ms for dialogs. Nothing bounces. Respect `prefers-reduced-motion`.

@@ -173,6 +173,7 @@
   .rise { animation: rise 260ms ease-out both; }
   .rise-2 { animation-delay: 60ms; } .rise-3 { animation-delay: 120ms; } .rise-4 { animation-delay: 180ms; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+:root { --strip: 2.5rem; }
 </style>
 <style type="text/tailwindcss">
   @theme {
@@ -208,8 +209,15 @@
 </style>
 </head>
 <body class="min-h-screen">
-<div class="flex min-h-screen">
-  <nav class="w-60 shrink-0 bg-base-200 border-r border-base-300 flex flex-col p-3 gap-1 sticky top-0 h-screen" aria-label="Main">
+<div id="proto-strip" class="sticky top-0 z-50 flex min-h-10 flex-wrap items-center gap-2 border-b border-base-300 bg-base-200 px-4 py-1.5 text-xs" aria-label="Prototype state">
+  <span class="mr-2 font-semibold uppercase tracking-wide text-muted">Prototype</span>
+  <span class="text-muted">Screen</span>
+  <div id="screens" class="flex gap-1 flex-wrap"></div>
+  <span class="ml-3 text-muted">State</span>
+  <div id="states" class="flex gap-1 flex-wrap"></div>
+</div>
+<div class="flex min-h-[calc(100vh-var(--strip))]">
+  <nav class="w-60 shrink-0 bg-base-200 border-r border-base-300 flex flex-col p-3 gap-1 sticky top-[var(--strip)] h-[calc(100vh-var(--strip))]" aria-label="Main">
     <div class="flex items-center gap-2 px-3 py-4">
       <span class="size-8 rounded-lg bg-primary text-primary-content grid place-items-center"><i data-lucide="layers" class="size-4"></i></span>
       <span class="text-base font-semibold">Study App</span>
@@ -232,12 +240,6 @@
   <main id="app" class="flex-1 min-w-0"></main>
 </div>
 
-<div class="fixed bottom-4 right-4 bg-neutral text-neutral-content rounded-lg px-3 py-2 text-xs flex items-center gap-2 shadow-lg z-40 max-w-[70vw] flex-wrap" aria-label="Prototype state">
-  <span class="opacity-70">Screen</span>
-  <div id="screens" class="flex gap-1 flex-wrap"></div>
-  <span class="opacity-70 ml-2">State</span>
-  <div id="states" class="flex gap-1 flex-wrap"></div>
-</div>
 <div id="tip" class="chart-tip" role="tooltip"></div>
 
 <script>
@@ -553,7 +555,7 @@ function drawTrend(el) {
 /* ---------------- Session: dump, check, result ---------------- */
 function sessionBar(stepIndex) {
   const steps = ["Recall", "Check", "Result"];
-  return `<div class="flex items-center justify-between gap-6 px-12 py-4 border-b border-base-300 bg-base-100 sticky top-0 z-10">
+  return `<div class="flex items-center justify-between gap-6 px-12 py-4 border-b border-base-300 bg-base-100 sticky top-[var(--strip)] z-10">
     <div class="flex items-center gap-3 text-sm"><span class="text-muted">Recall</span>${icon("chevron-right","size-3.5")}<span class="font-semibold">Computer Architecture</span><span class="text-muted">· Month</span></div>
     <ol class="flex items-center gap-2 text-sm" aria-label="Session steps">${steps.map((s, i) => `<li class="flex items-center gap-2 ${i === stepIndex ? "font-semibold" : "text-muted"}" ${i === stepIndex ? 'aria-current="step"' : ""}><span class="size-6 rounded-full grid place-items-center text-xs tabular-nums ${i < stepIndex ? "bg-neutral text-neutral-content" : i === stepIndex ? "border-2 border-base-content" : "border border-field-border"}">${i < stepIndex ? "✓" : i + 1}</span>${s}</li>${i < 2 ? `<li aria-hidden="true" class="w-6 h-px bg-base-300"></li>` : ""}`).join("")}</ol>
     <button class="btn btn-ghost btn-sm font-normal" onclick="go('recall','two due')">${icon("log-out")}Leave</button>
@@ -603,7 +605,7 @@ function outcome(n) {
 }
 function checkView() {
   const n = state.ticked.size, o = outcome(n);
-  return `${sessionBar(1)}<div class="grid grid-cols-2 gap-0 h-[calc(100vh-65px)]">
+  return `${sessionBar(1)}<div class="grid grid-cols-2 gap-0 h-[calc(100vh-65px-var(--strip))]">
     <section class="bg-base-200 px-10 py-10 border-r border-base-300 overflow-y-auto" aria-labelledby="dump-h">
       <h2 id="dump-h" class="eyebrow">Your recall</h2>
       <div class="mt-4 max-w-prose leading-relaxed whitespace-pre-line text-[15px]">Von Neumann puts instructions and data in one memory, Harvard splits them, which is why it can fetch both at once.
@@ -699,8 +701,8 @@ function render() {
   const noneDue = state.screen === "recall" && ["nothing due", "first time"].includes(state.variant);
   document.getElementById("due-badge").hidden = noneDue;
   document.querySelectorAll(".nav-link").forEach(a => a.dataset.nav === "recall" ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
-  document.getElementById("screens").innerHTML = Object.keys(screens).map(s => `<button class="px-2 py-1 rounded ${s === state.screen ? "bg-neutral-content text-neutral font-semibold" : "hover:underline"}" onclick="go('${s}')">${screenNames[s]}</button>`).join("");
-  document.getElementById("states").innerHTML = variants[state.screen].map(v => `<button class="px-2 py-1 rounded ${v === state.variant ? "bg-neutral-content text-neutral font-semibold" : "hover:underline"}" onclick="setVariant('${v}')">${v}</button>`).join("");
+  document.getElementById("screens").innerHTML = Object.keys(screens).map(s => `<button class="px-2 py-1 rounded ${s === state.screen ? "bg-neutral text-neutral-content font-semibold" : "hover:underline"}" onclick="go('${s}')">${screenNames[s]}</button>`).join("");
+  document.getElementById("states").innerHTML = variants[state.screen].map(v => `<button class="px-2 py-1 rounded ${v === state.variant ? "bg-neutral text-neutral-content font-semibold" : "hover:underline"}" onclick="setVariant('${v}')">${v}</button>`).join("");
   if (window.lucide) lucide.createIcons();
   if (window.renderMathInElement) renderMathInElement(el, { delimiters: [{ left: "$", right: "$", display: false }], throwOnError: false });
   el.querySelectorAll('[data-chart="trend"]').forEach(drawTrend);
@@ -731,6 +733,8 @@ document.addEventListener("keydown", e => {
 const start = location.hash.slice(1);
 if (screens[start]) state.screen = start, state.variant = variants[start][0];
 render();
+  const strip = document.getElementById("proto-strip");
+  new ResizeObserver(() => document.documentElement.style.setProperty("--strip", strip.offsetHeight + "px")).observe(strip);
 </script>
 </body>
 </html>

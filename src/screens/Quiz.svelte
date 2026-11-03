@@ -45,7 +45,8 @@
     RightGuessed: "background: var(--guessed-fill)",
     Wrong: "background: var(--chart-wrong)",
     Answered: "background: var(--chart-ink)",
-    Current: "background: var(--color-base-content)",
+    // Outlined, not filled: a solid near-white bar was the loudest thing on the dark theme.
+    Current: "background: transparent; box-shadow: inset 0 0 0 2px var(--color-base-content)",
     Upcoming: "",
   };
 
