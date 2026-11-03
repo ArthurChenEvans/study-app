@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="en" data-theme="studyapp-dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#18130e">
+<title>Flashcard Designs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/daisyui@5.0.43/daisyui.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<style>
+  /* studyapp theme, same values as docs/design-rules.md */
+  :root, [data-theme="studyapp"] {
+    color-scheme: light;
+    --color-base-100: oklch(97% 0.010 80);
+    --color-base-200: oklch(94% 0.014 78);
+    --color-base-300: oklch(89% 0.018 75);
+    --color-base-content: oklch(27% 0.025 60);
+    --color-primary: oklch(40% 0.065 50);
+    --color-primary-content: oklch(97% 0.010 80);
+    --color-secondary: oklch(32% 0.02 60);
+    --color-secondary-content: oklch(94% 0.014 78);
+    --color-accent: oklch(78% 0.13 78);
+    --color-accent-content: oklch(27% 0.025 60);
+    --color-neutral: oklch(32% 0.02 60);
+    --color-neutral-content: oklch(94% 0.014 78);
+    --color-info: oklch(44% 0.07 235);
+    --color-info-content: oklch(97% 0.010 80);
+    --color-success: oklch(42% 0.11 145);
+    --color-success-content: oklch(97% 0.010 80);
+    --color-warning: oklch(78% 0.13 78);
+    --color-warning-content: oklch(27% 0.025 60);
+    --color-error: oklch(44% 0.15 30);
+    --color-error-content: oklch(97% 0.010 80);
+    --radius-selector: 0.25rem;
+    --radius-field: 0.375rem;
+    --radius-box: 0.5rem;
+    --size-selector: 0.25rem;
+    --size-field: 0.25rem;
+    --border: 1px;
+    --depth: 0;
+    --noise: 0;
+
+    /* Raised surface for panels, and chart tokens (validated, see design rules) */
+    --surface: oklch(99% 0.006 80);
+    /* Quiz outcomes: blue / orange pair, colour-blind safe; guessed = hatched right */
+    --chart-right: #025884;
+    --chart-wrong: #cc6c13;
+    --right-ink: #004d77;
+    --wrong-ink: #853900;
+    --guessed-tint: #c1dcf0;
+    --guessed-ink: #013658;
+    --guessed-fill: repeating-linear-gradient(135deg, #025884 0 2px, #c1dcf0 2px 6px);
+    --chart-ink: #643d26;
+    --chart-grid: oklch(91% 0.016 76);
+    --muted: oklch(42% 0.022 65);
+    --shadow-panel: 0 1px 2px oklch(27% 0.025 60 / .06), 0 6px 16px oklch(27% 0.025 60 / .05);
+    --shadow-soft: 0 1px 2px oklch(27% 0.025 60 / .08);
+    --field-border: oklch(58% 0.02 65);
+    --on-right: #fff;
+    --on-wrong: #140d08;
+    --diagram-fill: oklch(94% 0.014 78);
+  }
+  /* Dark theme: its own palette, validated against the dark panel surface (see design rules) */
+  [data-theme="studyapp-dark"] {
+    color-scheme: dark;
+    --color-base-100: oklch(19% 0.012 65);
+    --color-base-200: oklch(16% 0.012 65);
+    --color-base-300: oklch(32% 0.016 65);
+    --color-base-content: oklch(93% 0.012 80);
+    --color-primary: oklch(74% 0.10 62);
+    --color-primary-content: oklch(18% 0.012 65);
+    --color-secondary: oklch(88% 0.015 75);
+    --color-secondary-content: oklch(18% 0.012 65);
+    --color-accent: oklch(80% 0.13 80);
+    --color-accent-content: oklch(18% 0.012 65);
+    --color-neutral: oklch(88% 0.015 75);
+    --color-neutral-content: oklch(18% 0.012 65);
+    --color-info: oklch(76% 0.08 235);
+    --color-info-content: oklch(18% 0.012 65);
+    --color-success: oklch(76% 0.13 145);
+    --color-success-content: oklch(18% 0.012 65);
+    --color-warning: oklch(80% 0.13 80);
+    --color-warning-content: oklch(18% 0.012 65);
+    --color-error: oklch(76% 0.13 30);
+    --color-error-content: oklch(18% 0.012 65);
+    --radius-selector: 0.25rem; --radius-field: 0.375rem; --radius-box: 0.5rem;
+    --size-selector: 0.25rem; --size-field: 0.25rem; --border: 1px; --depth: 0; --noise: 0;
+
+    --surface: oklch(23% 0.014 65);
+    --chart-right: #0573aa;
+    --chart-wrong: #d67523;
+    --right-ink: #87c6f2;
+    --wrong-ink: #f9b379;
+    --guessed-tint: #163c54;
+    --guessed-ink: #bbddf6;
+    --guessed-fill: repeating-linear-gradient(135deg, #0573aa 0 2px, #163c54 2px 6px);
+    --chart-ink: oklch(74% 0.10 62);
+    --chart-grid: oklch(30% 0.014 65);
+    --muted: oklch(78% 0.016 75);
+    --field-border: oklch(52% 0.018 70);
+    --on-right: #fff;
+    --on-wrong: #140d08;
+    --diagram-fill: oklch(28% 0.014 65);
+    --shadow-panel: 0 1px 0 oklch(100% 0 0 / .04) inset, 0 1px 2px oklch(0% 0 0 / .4), 0 8px 24px oklch(0% 0 0 / .25);
+    --shadow-soft: 0 1px 2px oklch(0% 0 0 / .4);
+  }
+  body { background: var(--color-base-100); color: var(--color-base-content); font-family: "IBM Plex Sans", ui-sans-serif, sans-serif; }
+  code, pre, .font-mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  h1, h2 { text-wrap: balance; }
+  h1 { letter-spacing: -0.015em; }
+  .input, .select, .textarea, .checkbox, .radio { border-color: var(--field-border); }
+  .input, .select, .textarea { background: var(--surface); }
+  :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+  pre.shiki { padding: 12px 16px; border-radius: var(--radius-box); font-size: 14px; overflow-x: auto; border: 1px solid var(--color-base-300); }
+  .divide-y > * { border-color: var(--color-base-300) !important; }
+  .btn .kbd { background: transparent; border-color: currentColor; color: inherit; opacity: .8; }
+  .btn { transition: transform 120ms ease-out, background-color 150ms ease-out, box-shadow 150ms ease-out; }
+  .btn:active:not(:disabled) { transform: scale(.97); }
+  .btn-primary { box-shadow: 0 1px 2px oklch(27% 0.025 60 / .25), inset 0 1px 0 oklch(100% 0 0 / .12); }
+
+  /* Panels: the one raised surface. Used for groups you read as a unit (charts, summaries) */
+  .panel { background: var(--surface); border: 1px solid var(--color-base-300); border-radius: 12px; box-shadow: var(--shadow-panel); }
+  .eyebrow { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+
+  /* Segmented control */
+  .seg { display: inline-flex; align-items: stretch; height: 2rem; padding: 2px; gap: 2px; border: 1px solid var(--field-border); border-radius: var(--radius-field); background: var(--color-base-200); vertical-align: middle; }
+  .seg > button { padding: 0 12px; font-size: 14px; line-height: 1; border-radius: calc(var(--radius-field) - 2px); color: var(--muted); transition: background-color 150ms ease-out, color 150ms ease-out; }
+  .seg > button:hover:not([aria-checked="true"]) { background: var(--color-base-300); color: var(--color-base-content); }
+  .seg > button[aria-checked="true"] { background: var(--color-neutral); color: var(--color-neutral-content); font-weight: 600; }
+  .seg > button:focus-visible { outline-offset: 1px; }
+  /* Fields: one focus ring */
+  .input:focus, .input:focus-within, .select:focus, .textarea:focus { outline: none !important; border-color: var(--color-primary) !important; box-shadow: 0 0 0 1px var(--color-primary) !important; }
+  label.input input:focus, label.input input:focus-visible { outline: none !important; box-shadow: none !important; }
+  .input-sm, .seg { min-height: 2rem; }
+  .btn:disabled .kbd { opacity: .5; }
+  .toggle:checked { background-color: var(--color-primary); border-color: var(--color-primary); color: var(--color-primary-content); }
+  [role=tab] .count { font-size: 12px; margin-left: 4px; color: var(--muted); font-weight: 400; }
+  .open-q { border: 1px dashed var(--color-info); color: var(--color-info); background: var(--surface); }
+
+  /* Navigation */
+  .nav-link { color: var(--muted); transition: background-color 150ms ease-out, color 150ms ease-out; }
+  .nav-link:hover { background: var(--color-base-300); color: var(--color-base-content); }
+  .nav-link[aria-current="page"] { background: var(--surface); color: var(--color-base-content); font-weight: 600; box-shadow: var(--shadow-soft); }
+
+  /* Charts */
+  .seg-bar { display: flex; gap: 2px; border-radius: 999px; overflow: hidden; }
+  .seg-bar > span { display: block; height: 100%; }
+  .tall-bar { display: flex; gap: 2px; height: 28px; }
+  .tall-bar > span { border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: visible; }
+  .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .text-right-ink { color: var(--right-ink); } .text-wrong-ink { color: var(--wrong-ink); }
+  .is-right { border-color: var(--chart-right) !important; box-shadow: 0 0 0 1px var(--chart-right); }
+  .is-wrong { border-color: var(--chart-wrong) !important; box-shadow: 0 0 0 1px var(--chart-wrong); }
+  .guessed-chip { background: var(--guessed-tint); color: var(--guessed-ink); border-color: var(--guessed-tint); }
+  .hbar { height: 12px; border-radius: 0 4px 4px 0; background: var(--chart-ink); transition: width 400ms ease-out; }
+  .cell { width: 24px; height: 24px; border-radius: 4px; display: grid; place-items: center; font-size: 12px; font-weight: 600; color: #fff; }
+  .chart-tip { position: fixed; pointer-events: none; z-index: 50; background: var(--color-neutral); color: var(--color-neutral-content); font-size: 12px; line-height: 1.4; padding: 8px 10px; border-radius: 6px; box-shadow: 0 4px 12px oklch(27% 0.025 60 / .2); opacity: 0; transition: opacity 120ms ease-out; max-width: 240px; }
+  .chart-tip.show { opacity: 1; }
+  details.table-view summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+
+  /* Quiz progress track */
+  .track { display: flex; gap: 2px; height: 6px; }
+  .track > span { flex: 1; border-radius: 2px; background: var(--color-base-300); }
+
+  /* Motion */
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .rise { animation: rise 260ms ease-out both; }
+  .rise-2 { animation-delay: 60ms; } .rise-3 { animation-delay: 120ms; } .rise-4 { animation-delay: 180ms; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+</style>
+<style type="text/tailwindcss">
+  @theme {
+    --color-muted: var(--muted);
+    --color-field-border: var(--field-border);
+    --color-surface: var(--surface);
+    --font-sans: "IBM Plex Sans", ui-sans-serif, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+</style>
+<style>
+  /* Flashcards additions. Same tokens as the MVP and free recall prototypes. */
+  .queue-now { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 2px; }
+  .grade { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 7.5rem; padding: 10px 16px; height: auto; }
+  .grade .when { font-size: 12px; font-weight: 400; opacity: .85; font-variant-numeric: tabular-nums; }
+  .grade-again { color: var(--wrong-ink); border-color: var(--field-border); }
+  .badge-src { font-size: 12px; color: var(--muted); border: 1px solid var(--color-base-300); border-radius: 4px; padding: 0 6px; line-height: 20px; white-space: nowrap; }
+  .text-right-ink { color: var(--right-ink); } .text-wrong-ink { color: var(--wrong-ink); }
+  .forecast { display: flex; align-items: flex-end; gap: 4px; height: 64px; }
+  .forecast > span { flex: 1; background: var(--chart-ink); border-radius: 3px 3px 0 0; min-height: 2px; }
+  .rich > * + * { margin-top: .75em; }
+  .rich code { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: .9em; }
+  .rich :not(pre) > code { background: var(--color-base-200); padding: .1em .35em; border-radius: 4px; }
+</style>
+</head>
+<body class="min-h-screen">
+<div class="flex min-h-screen">
+  <nav class="w-60 shrink-0 bg-base-200 border-r border-base-300 flex flex-col p-3 gap-1 sticky top-0 h-screen" aria-label="Main">
+    <div class="flex items-center gap-2 px-3 py-4">
+      <span class="size-8 rounded-lg bg-primary text-primary-content grid place-items-center"><i data-lucide="layers" class="size-4"></i></span>
+      <span class="text-base font-semibold">Study App</span>
+    </div>
+    <a href="index.html#overview" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="layout-dashboard" class="size-4"></i>Overview</a>
+    <a href="index.html#topics" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="library" class="size-4"></i>Topics</a>
+    <a href="#cards" data-nav="cards" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="square-stack" class="size-4"></i><span class="flex-1">Cards</span><span id="due-badge" class="text-xs tabular-nums" aria-label="27 cards due today">27</span></a>
+    <a href="free-recall.html#recall" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="brain" class="size-4"></i>Recall</a>
+    <a href="index.html#bibliography" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="book-open" class="size-4"></i>Bibliography</a>
+    <a href="index.html#history" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="history" class="size-4"></i>History</a>
+    <a href="index.html#search" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="search" class="size-4"></i>Search</a>
+    <div class="px-3 mt-4"><a href="index.html#setup" class="btn btn-outline btn-sm w-full justify-start border-field-border"><i data-lucide="play" class="size-4"></i>New quiz</a></div>
+    <div class="mt-auto px-3 pt-6">
+      <div class="seg w-full" role="radiogroup" aria-label="Theme" id="theme-switch">
+        <button type="button" role="radio" class="flex-1 flex items-center justify-center gap-1.5" data-theme-choice="studyapp-dark"><i data-lucide="moon" class="size-3.5"></i>Dark</button>
+        <button type="button" role="radio" class="flex-1 flex items-center justify-center gap-1.5" data-theme-choice="studyapp"><i data-lucide="sun" class="size-3.5"></i>Light</button>
+      </div>
+    </div>
+    <div class="px-3 pt-4 text-xs text-muted leading-relaxed">Flashcards design prototype. Screens and states are clickable, data is sample only.</div>
+  </nav>
+  <main id="app" class="flex-1 min-w-0"></main>
+</div>
+
+<div class="fixed bottom-4 right-4 bg-neutral text-neutral-content rounded-lg px-3 py-2 text-xs flex items-center gap-2 shadow-lg z-40 max-w-[72vw] flex-wrap" aria-label="Prototype state">
+  <span class="opacity-70">Screen</span><div id="screens" class="flex gap-1 flex-wrap"></div>
+  <span class="opacity-70 ml-2">State</span><div id="states" class="flex gap-1 flex-wrap"></div>
+</div>
+
+<script>
+const icon = (name, cls = "size-4") => `<i data-lucide="${name}" class="${cls}" aria-hidden="true"></i>`;
+const openQ = (n, text) => `<span class="open-q inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs" title="Open question ${n}, see design/README.md">${icon("circle-help","size-3")}Open ${n}: ${text}</span>`;
+const header = (title, subtitle = "", actions = "") => `<header class="flex items-end justify-between gap-6 pt-12 pb-8"><div><h1 class="text-3xl font-semibold leading-tight">${title}</h1>${subtitle ? `<p class="mt-2 text-muted">${subtitle}</p>` : ""}</div><div class="flex items-center gap-2">${actions}</div></header>`;
+const counts = (n, l, r) => `<span class="tabular-nums"><span class="font-semibold">${n}</span> <span class="text-muted">new</span></span><span class="text-muted" aria-hidden="true">·</span><span class="tabular-nums"><span class="font-semibold">${l}</span> <span class="text-muted">learning</span></span><span class="text-muted" aria-hidden="true">·</span><span class="tabular-nums"><span class="font-semibold">${r}</span> <span class="text-muted">to review</span></span>`;
+
+/* ---------------- Sample data ---------------- */
+const topics = [
+  { name: "CPU", module: "Computer Architecture", total: 24, n: 4, l: 2, r: 9, retention: 91 },
+  { name: "Memory", module: "Computer Architecture", total: 18, n: 6, l: 1, r: 3, retention: 88 },
+  { name: "OSI model", module: "Networks", total: 30, n: 0, l: 0, r: 2, retention: 79 },
+  { name: "Cryptography", module: "Cryptography", total: 12, n: 0, l: 0, r: 0, retention: 94 },
+];
+const cards = [
+  { front: "I need the CPU to fetch an instruction and its data in the same cycle. Which design lets it?", back: "**Harvard architecture**: separate instruction and data memory, so both can be read at once.", src: "Written", next: "Today", lapses: 0, state: "Review" },
+  { front: "A load is followed straight away by an instruction that uses its result. What still forces a stall with forwarding?", back: "A **load-use hazard**. The value isn't ready until after the memory stage.", src: "From recall miss", next: "Today", lapses: 1, state: "Review" },
+  { front: "I've sped up 60% of a program by 4×. How do I work out the overall speedup?", back: "Amdahl's law: $S = \\frac{1}{(1-p) + p/n}$, so $\\frac{1}{0.4 + 0.15} \\approx 1.82\\times$", src: "From wrong MCQ", next: "Today", lapses: 9, state: "Review", leech: true },
+  { front: "The compiler keeps caching a memory-mapped register in a CPU register. What stops it?", back: "Declare it `volatile`:\n\n```c\nvolatile uint32_t *status = (uint32_t *)0x40021000;\n```", src: "Written", next: "Thu 5 Nov", lapses: 0, state: "Review" },
+  { front: "Which stage reads the registers?", back: "Decode", src: "From wrong MCQ", next: "New", lapses: 0, state: "New" },
+  { front: "Why does a direct-mapped cache get conflict misses that a 2-way one avoids?", back: "Two hot addresses that map to the same line keep evicting each other. With 2 ways both fit in the set.", src: "Written", next: "Sat 7 Nov", lapses: 0, state: "Suspended" },
+];
+const suggestions = [
+  { from: "Recall: Computer Architecture, 3 Nov", kind: "recall", miss: "Memory-mapped I/O vs port I/O", note: "Missed 4 of 6 checks" },
+  { from: "Recall: Computer Architecture, 3 Nov", kind: "recall", miss: "Control hazards: branch prediction, the cost of a misprediction", note: "Missed 2 of 6 checks" },
+  { from: "Quiz: CPU, 2 Nov", kind: "mcq", miss: "What does the program counter hold?", answer: "The address of the next instruction", note: "Wrong, you picked “The current instruction”" },
+  { from: "Quiz: Memory, 1 Nov", kind: "mcq", miss: "What does the TLB cache?", answer: "Virtual to physical page translations", note: "Right but guessed" },
+];
+
+/* ---------------- State ---------------- */
+const variants = {
+  cards: ["due today", "all done", "first time", "settings"],
+  topic: ["cards", "new card", "edit leech card"],
+  review: ["front", "answer", "leech", "done"],
+  suggestions: ["list", "make a card"],
+};
+const state = { screen: "cards", variant: "due today" };
+
+/* ---------------- Cards home ---------------- */
+function screenCards() {
+  const v = state.variant;
+  if (v === "first time") return `<div class="mx-auto max-w-6xl px-12 pb-24">${header("Cards")}
+    <div class="panel max-w-xl p-10 rise">
+      <span class="grid size-10 place-items-center rounded-lg bg-base-200">${icon("square-stack","size-5")}</span>
+      <h2 class="mt-6 text-xl font-semibold">No cards yet</h2>
+      <p class="mt-2 text-muted max-w-prose">Cards are for the things you keep forgetting. Write them in a topic, or make them from what you missed in a recall or got wrong in a quiz. The app picks which ones to show each day, so you only see a card just before you'd forget it.</p>
+      <div class="mt-6 flex gap-3"><button class="btn btn-primary" onclick="go('topic','new card')">${icon("plus")}Write your first card</button></div>
+    </div></div>`;
+  const done = v === "all done";
+  const dueTotal = done ? 0 : 27;
+  return `<div class="mx-auto max-w-6xl px-12 pb-24">
+    ${header("Cards", done ? "All reviewed for today" : `${dueTotal} due today`, `<button class="btn btn-ghost" onclick="setVariant('settings')">${icon("settings-2")}Settings</button><button class="btn btn-ghost" onclick="go('topic','new card')">${icon("plus")}New card</button>`)}
+    <div class="grid grid-cols-[1fr_340px] gap-8 items-start">
+      <section class="panel p-8 rise" aria-labelledby="today-h">
+        <h2 id="today-h" class="eyebrow">Today</h2>
+        ${done ? `<div class="mt-4 flex items-center gap-4">${icon("circle-check","size-6")}<div><p class="text-2xl font-semibold">Done for today</p><p class="mt-1 text-muted">43 reviewed in 18 min. 9 are due tomorrow.</p></div></div>`
+        : `<p class="mt-4 text-5xl font-semibold tabular-nums leading-none">27 <span class="text-lg font-normal text-muted">cards</span></p>
+          <p class="mt-4 flex flex-wrap items-center gap-3 text-sm">${counts(10, 3, 14)}</p>
+          <p class="mt-2 text-sm text-muted">About 12 minutes. New cards are capped at 10 a day.</p>
+          <div class="mt-8 flex items-center gap-3"><button class="btn btn-primary btn-lg" onclick="go('review','front')">${icon("play")}Start review <kbd class="kbd kbd-xs">Enter</kbd></button>
+            <select class="select w-56" aria-label="Review which topics"><option>All topics</option><optgroup label="Modules"><option>Computer Architecture</option><option>Networks</option></optgroup><optgroup label="Topics"><option>CPU</option><option>Memory</option><option>OSI model</option></optgroup></select></div>`}
+        <div class="mt-10">
+          <div class="flex items-baseline justify-between"><h3 class="text-sm font-semibold">Next 14 days</h3><span class="text-xs text-muted">cards due per day</span></div>
+          <div class="forecast mt-3" role="img" aria-label="Cards due over the next 14 days, highest 31 on Mon 9 Nov">${[done ? 1 : 27, 9, 14, 6, 11, 4, 31, 8, 12, 5, 9, 16, 7, 10].map((n, i) => `<span style="height:${n / 31 * 100}%" title="${n} cards"></span>`).join("")}</div>
+          <div class="mt-1 grid grid-cols-14 text-xs text-muted" style="grid-template-columns: repeat(14, 1fr)"><span class="col-span-3">Today</span><span class="col-start-7 col-span-4 tabular-nums">Mon 9 Nov · 31</span><span class="col-start-12 col-span-3 text-right">Mon 16 Nov</span></div>
+        </div>
+      </section>
+      <aside class="space-y-6 rise rise-2">
+        <section class="panel p-6" aria-labelledby="sugg-h">
+          <div class="flex items-center justify-between"><h2 id="sugg-h" class="text-sm font-semibold flex items-center gap-2">${icon("inbox")}Suggestions</h2><span class="text-sm tabular-nums text-muted">4</span></div>
+          <p class="mt-2 text-sm text-muted">2 points you missed in recalls and 2 questions you got wrong or guessed could become cards.</p>
+          <button class="btn btn-outline btn-sm mt-4 border-field-border" onclick="go('suggestions','list')">Look through them</button>
+        </section>
+        <section class="panel p-6" aria-labelledby="ret-h">
+          <h2 id="ret-h" class="text-sm font-semibold">Retention, last 30 days</h2>
+          <p class="mt-2"><span class="text-3xl font-semibold tabular-nums">89%</span> <span class="text-sm text-muted">aiming for 90%</span></p>
+          <p class="mt-1 text-sm text-muted">Share of reviews you got without pressing Again.</p>
+        </section>
+      </aside>
+    </div>
+    <section class="mt-12 rise rise-3" aria-labelledby="by-topic-h">
+      <h2 id="by-topic-h" class="eyebrow mb-3">By topic</h2>
+      <div class="panel overflow-hidden"><table class="table table-fixed" aria-label="Cards by topic">
+        <colgroup><col class="w-[30%]"><col class="w-[14%]"><col class="w-[14%]"><col class="w-[14%]"><col class="w-[14%]"><col class="w-[14%]"></colgroup>
+        <thead><tr class="text-muted"><th>Topic</th><th>New</th><th>Learning</th><th>To review</th><th>Cards</th><th>Retention</th></tr></thead>
+        <tbody>${topics.map(t => `<tr class="hover:bg-base-100"><td><button class="py-0.5 font-semibold hover:underline text-left" onclick="go('topic','cards')">${t.name}</button><div class="text-xs text-muted">${t.module}</div></td>
+          <td class="tabular-nums">${done ? 0 : t.n}</td><td class="tabular-nums">${done ? 0 : t.l}</td><td class="tabular-nums">${done ? 0 : t.r}</td><td class="tabular-nums">${t.total}</td><td class="tabular-nums">${t.retention}%</td></tr>`).join("")}</tbody>
+      </table></div>
+    </section>
+  </div>${v === "settings" ? settingsDialog() : ""}`;
+}
+
+function settingsDialog() {
+  return `<dialog open class="modal modal-open" aria-labelledby="set-h">
+    <form class="modal-box max-w-xl" onsubmit="event.preventDefault(); setVariant('due today')">
+      <h3 id="set-h" class="text-lg font-semibold">Card settings</h3>
+      <div class="mt-6 space-y-6">
+        <label class="block"><span class="block text-sm font-semibold">How much to remember</span>
+          <span class="mt-2 flex items-center gap-4"><input type="range" min="70" max="97" value="90" class="range range-md flex-1" aria-label="Desired retention"><span class="w-12 text-right font-semibold tabular-nums">90%</span></span>
+          <span class="mt-1 block text-sm text-muted">The chance you still remember a card when it comes back. Higher means more reviews a day. 90% is the usual choice.</span></label>
+        <div class="grid grid-cols-2 gap-6">
+          <label class="block"><span class="block text-sm font-semibold">New cards a day</span><input class="input mt-1 w-24 tabular-nums" type="number" min="0" value="10"></label>
+          <label class="block"><span class="block text-sm font-semibold">Most reviews a day</span><input class="input mt-1 w-24 tabular-nums" type="number" min="0" value="200"><span class="mt-1 block text-xs text-muted">Leave blank for no limit</span></label>
+        </div>
+        <label class="block"><span class="block text-sm font-semibold">Ask me to rewrite a card after</span>
+          <span class="mt-1 flex items-center gap-2"><input class="input w-20 tabular-nums" type="number" min="2" value="8"><span class="text-sm text-muted">times pressing Again</span></span></label>
+        <div class="panel p-4">
+          <div class="flex items-start justify-between gap-4">
+            <div><p class="text-sm font-semibold">Fit the scheduler to you</p><p class="mt-1 text-sm text-muted">Tunes FSRS to your own review history. Works better the more you've reviewed. Last run 12 Oct, from 1,840 reviews.</p></div>
+            <button type="button" class="btn btn-outline btn-sm border-field-border shrink-0">${icon("refresh-cw")}Run now</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-action">
+        <button type="button" class="btn btn-ghost mr-auto">${icon("rotate-ccw")}Reset to default</button>
+        <button type="button" class="btn btn-ghost" onclick="setVariant('due today')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save settings</button>
+      </div>
+    </form></dialog>`;
+}
+
+/* ---------------- Topic: card list and editor ---------------- */
+function screenTopic() {
+  const v = state.variant;
+  const list = `<div class="panel overflow-hidden"><table class="table table-fixed" aria-label="Cards in CPU">
+      <colgroup><col class="w-[46%]"><col class="w-[16%]"><col class="w-[14%]"><col class="w-[12%]"><col class="w-[12%]"></colgroup>
+      <thead><tr class="text-muted"><th>Front</th><th>From</th><th>Next</th><th>Again</th><th><span class="sr-only">Actions</span></th></tr></thead>
+      <tbody>${cards.map((c, i) => `<tr class="hover:bg-base-100">
+        <td><button class="py-1 text-left hover:underline line-clamp-2 ${c.state === "Suspended" ? "text-muted" : ""}" onclick="setVariant('${c.leech ? "edit leech card" : "new card"}')">${c.front}</button></td>
+        <td>${c.src === "Written" ? `<span class="text-sm text-muted">Written</span>` : `<span class="badge-src">${c.src}</span>`}</td>
+        <td class="text-sm tabular-nums">${c.state === "Suspended" ? `<span class="flex items-center gap-1 text-muted">${icon("archive","size-3.5")}Archived</span>` : c.next}</td>
+        <td class="text-sm tabular-nums">${c.leech ? `<span class="flex items-center gap-1 text-wrong-ink font-semibold">${icon("flag","size-3.5")}${c.lapses}×</span>` : c.lapses ? `${c.lapses}×` : `<span class="text-muted">None</span>`}</td>
+        <td class="text-right"><button class="btn btn-ghost btn-sm btn-square" aria-label="More for card ${i + 1}">${icon("ellipsis")}</button></td></tr>`).join("")}</tbody>
+    </table></div>`;
+  return `<div class="mx-auto max-w-6xl px-12 pb-24">
+    <a href="#cards" class="mt-8 inline-flex items-center gap-1 py-1 text-sm text-muted hover:underline" onclick="event.preventDefault(); go('cards','due today')">${icon("arrow-left")}Cards</a>
+    <div class="flex items-end justify-between gap-6 pt-4 pb-6"><div><p class="text-sm text-muted">Computer Architecture · 24 cards · 15 due</p><h1 class="mt-1 text-3xl font-semibold">CPU</h1></div>
+      <div class="flex items-center gap-2"><button class="btn btn-ghost" onclick="setVariant('new card')">${icon("plus")}New card</button><button class="btn ${v === "cards" ? "btn-primary" : "btn-outline border-field-border"}" onclick="go('review','front')">${icon("play")}Review CPU</button></div></div>
+    ${v === "cards" ? list : editor(v === "edit leech card")}
+  </div>`;
+}
+
+function editor(leech) {
+  const c = leech ? cards[2] : { front: "", back: "" };
+  return `<div class="grid grid-cols-[1fr_300px] gap-12 items-start">
+    <form class="space-y-8" onsubmit="event.preventDefault(); setVariant('cards')">
+      ${leech ? `<div class="panel p-5 flex gap-4 items-start" role="note">${icon("flag","size-5 shrink-0 mt-0.5")}
+        <div><p class="font-semibold">You've pressed Again on this card 9 times</p><p class="mt-1 text-sm text-muted">It probably needs a better cue, or splitting into smaller cards. Ask yourself why the answer wasn't obvious, then write that cue as the front. Saving a change clears this flag. The card keeps its schedule.</p></div></div>` : ""}
+      <div class="space-y-2">
+        <label class="text-sm font-semibold" for="front">Front</label>
+        <textarea id="front" class="textarea w-full text-[15px]" rows="3" placeholder="e.g. I want X to happen, what handles it?…">${c.front}</textarea>
+        <p class="text-sm text-muted">Write the cue as the thought you'll actually have when you need this, not as "what is the name of".</p>
+      </div>
+      <div class="space-y-2">
+        <label class="text-sm font-semibold" for="back">Back</label>
+        <textarea id="back" class="textarea w-full font-mono text-sm" rows="4">${c.back}</textarea>
+        <p class="text-sm text-muted">Markdown, <code>code</code>, maths in <code>$…$</code> and images, same as questions.</p>
+      </div>
+      ${leech ? `<section class="panel p-6" aria-label="Preview">
+        <p class="eyebrow">Preview</p>
+        <p class="mt-3 text-[15px]">${c.front}</p>
+        <hr class="my-4 border-base-300">
+        <div class="rich text-[15px]">${markdown(c.back)}</div>
+      </section>` : ""}
+      <fieldset class="space-y-3">
+        <legend class="text-sm font-semibold">More cues for the same answer <span class="font-normal text-muted">(optional)</span></legend>
+        ${leech ? `<div class="flex items-center gap-2"><input class="input input-sm flex-1" aria-label="Extra cue 1" value="Most of my program got faster but the total barely moved. What limits it?"><button type="button" class="btn btn-ghost btn-sm btn-square" aria-label="Remove extra cue 1">${icon("x")}</button></div>` : ""}
+        <button type="button" class="btn btn-ghost btn-sm">${icon("plus")}Add another cue</button>
+        <p class="text-sm text-muted">Each cue becomes its own card with this back, scheduled on its own. Useful when the same fact comes up from different starting points.</p>
+      </fieldset>
+      <div class="flex items-center gap-3 border-t border-base-300 pt-6">
+        <button type="submit" class="btn btn-primary">${leech ? "Save changes" : "Save card"} <kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">S</kbd></button>
+        <button type="button" class="btn btn-ghost" onclick="setVariant('cards')">Cancel</button>
+        ${leech ? `<button type="button" class="btn btn-ghost ml-auto">${icon("archive")}Archive card</button>` : ""}
+      </div>
+    </form>
+    <aside class="panel p-6 sticky top-8" aria-label="Card details">
+      <p class="eyebrow">Card</p>
+      <dl class="mt-4 space-y-3 text-sm">
+        <div class="flex justify-between gap-4"><dt class="text-muted">Topic</dt><dd>CPU</dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-muted">Made from</dt><dd>${leech ? "Wrong MCQ, 28 Sep" : "Written here"}</dd></div>
+        ${leech ? `<div class="flex justify-between gap-4"><dt class="text-muted">Reviews</dt><dd class="tabular-nums">21</dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-muted">Again</dt><dd class="tabular-nums">9 times</dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-muted">Next review</dt><dd>Today</dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-muted">Chance you remember it now</dt><dd class="tabular-nums">62%</dd></div>` : `<div class="flex justify-between gap-4"><dt class="text-muted">First review</dt><dd>With today's new cards</dd></div>`}
+      </dl>
+      <div class="mt-6">${openQ("A", "cloze or reversed cards too?")}</div>
+    </aside>
+  </div>`;
+}
+
+/* ---------------- Review ---------------- */
+function reviewBar(n, l, r) {
+  return `<div class="flex items-center justify-between gap-6 px-12 py-4 border-b border-base-300 bg-base-100 sticky top-0 z-10">
+    <div class="flex items-center gap-3 text-sm"><span class="text-muted">Cards</span>${icon("chevron-right","size-3.5")}<span class="font-semibold">All topics</span></div>
+    <p class="flex items-center gap-3 text-sm" aria-label="Left today: ${n} new, ${l} learning, ${r} to review. This card is a review.">${counts(n, l, r).replace('<span class="font-semibold">' + r + '</span>', '<span class="font-semibold queue-now">' + r + '</span>')}</p>
+    <div class="flex items-center gap-1"><button class="btn btn-ghost btn-sm font-normal" title="Edit this card (E)">${icon("pencil")}Edit</button><button class="btn btn-ghost btn-sm font-normal">${icon("undo-2")}Undo</button><button class="btn btn-ghost btn-sm font-normal" onclick="go('cards','due today')">${icon("log-out")}Leave</button></div>
+  </div>`;
+}
+const progress = (doneCount, total) => `<div class="mx-auto max-w-prose"><div class="h-1 rounded-full bg-base-300" role="progressbar" aria-label="Session progress" aria-valuenow="${doneCount}" aria-valuemax="${total}"><div class="h-full rounded-full" style="width:${doneCount / total * 100}%; background: var(--chart-ink)"></div></div></div>`;
+function screenReview() {
+  const v = state.variant;
+  if (v === "done") return doneView();
+  const card = v === "leech" ? cards[2] : cards[3];
+  const shown = v !== "front";
+  return `${reviewBar(9, 2, 6)}<div class="px-12 pt-6">${progress(10, 27)}</div>
+    <div class="mx-auto max-w-prose px-6 pt-16 pb-48">
+      <p class="text-sm text-muted">${v === "leech" ? "CPU · From wrong MCQ" : "CPU"}</p>
+      <div class="card-face mt-3 text-xl leading-relaxed" role="heading" aria-level="1">${card.front}</div>
+      ${shown ? `<hr class="my-8 border-base-300"><div class="rich text-lg leading-relaxed" aria-live="polite">${markdown(card.back)}</div>` : ""}
+      ${v === "leech" ? `<div class="panel mt-10 p-5 flex gap-4 items-start" role="note">${icon("flag","size-5 shrink-0 mt-0.5")}<div class="flex-1"><p class="font-semibold">This one keeps slipping: Again 9 times</p><p class="mt-1 text-sm text-muted">It probably needs a better cue. You can rewrite it now or after this session.</p></div><button class="btn btn-outline btn-sm border-field-border shrink-0" onclick="go('topic','edit leech card')">${icon("pencil")}Rewrite now <kbd class="kbd kbd-xs">E</kbd></button></div>` : ""}
+    </div>
+    <div class="fixed bottom-0 left-0 right-0 border-t border-base-300 bg-base-100 py-6">
+      <div class="mx-auto flex max-w-prose items-center justify-center gap-3">
+      ${shown ? `
+        <button class="btn grade grade-again btn-outline" onclick="setVariant('front')"><span>Again <kbd class="kbd kbd-xs">1</kbd></span><span class="when">&lt;10 min</span></button>
+        <button class="btn grade btn-outline border-field-border" onclick="setVariant('front')"><span>Hard <kbd class="kbd kbd-xs">2</kbd></span><span class="when">2 days</span></button>
+        <button class="btn grade btn-primary" onclick="setVariant('front')"><span>Good <kbd class="kbd kbd-xs">3</kbd></span><span class="when">6 days</span></button>
+        <button class="btn grade btn-outline border-field-border" onclick="setVariant('front')"><span>Easy <kbd class="kbd kbd-xs">4</kbd></span><span class="when">15 days</span></button>`
+      : `<button class="btn btn-primary btn-lg min-w-64" onclick="setVariant('answer')">Show answer <kbd class="kbd kbd-xs">Space</kbd></button>`}
+      </div>
+      <p class="mt-3 text-center text-xs text-muted">${shown ? "Space picks Good. Again shows the card again later in this session." : "Try to recall it before you look"}</p>
+    </div>`;
+}
+function doneView() {
+  return `<div class="mx-auto max-w-3xl px-12 pb-24 pt-16">
+    <section class="rise" aria-labelledby="done-h">
+      <p class="text-sm text-muted">Cards · all topics</p>
+      <h1 id="done-h" class="mt-2 text-4xl font-semibold">Done for today</h1>
+      <div class="mt-8 grid grid-cols-3 gap-6">
+        <div class="panel p-5"><p class="text-sm text-muted">Reviewed</p><p class="mt-1 text-3xl font-semibold tabular-nums">43</p><p class="text-sm text-muted">10 new</p></div>
+        <div class="panel p-5"><p class="text-sm text-muted">Remembered</p><p class="mt-1 text-3xl font-semibold tabular-nums">88%</p><p class="text-sm text-muted">Aiming for 90% · 5 times Again</p></div>
+        <div class="panel p-5"><p class="text-sm text-muted">Time</p><p class="mt-1 text-3xl font-semibold tabular-nums">18 min</p><p class="text-sm text-muted">25 s a card</p></div>
+      </div>
+    </section>
+    <section class="mt-10 panel p-6 rise rise-2" aria-labelledby="slip-h">
+      <h2 id="slip-h" class="text-sm font-semibold flex items-center gap-2">${icon("flag")}Worth rewriting</h2>
+      <p class="mt-1 text-sm text-muted">These went to Again more than once today.</p>
+      <ul class="mt-4 divide-y">
+        <li class="flex items-center justify-between gap-4 py-3"><span class="text-[15px]">I've sped up 60% of a program by 4×. How do I work out the overall speedup?</span><button class="btn btn-ghost btn-sm shrink-0" onclick="go('topic','edit leech card')">${icon("pencil")}Rewrite</button></li>
+        <li class="flex items-center justify-between gap-4 py-3"><span class="text-[15px]">Which OSI layer adds port numbers?</span><button class="btn btn-ghost btn-sm shrink-0">${icon("pencil")}Rewrite</button></li>
+      </ul>
+    </section>
+    <div class="mt-10 flex items-center justify-between gap-4">
+      <p class="text-sm text-muted">9 due tomorrow. The busiest day this fortnight is Mon 9 Nov with 31.</p>
+      <button class="btn btn-primary" onclick="go('cards','all done')">Back to Cards</button>
+    </div>
+  </div>`;
+}
+
+/* ---------------- Suggestions ---------------- */
+function screenSuggestions() {
+  const making = state.variant === "make a card";
+  return `<div class="mx-auto max-w-6xl px-12 pb-24">
+    <a href="#cards" class="mt-8 inline-flex items-center gap-1 py-1 text-sm text-muted hover:underline" onclick="event.preventDefault(); go('cards','due today')">${icon("arrow-left")}Cards</a>
+    ${header("Suggestions", "Things you missed in a recall or got wrong in a quiz. Make a card for the ones that matter, dismiss the rest.")}
+    <div class="flex items-center justify-between mb-3"><div class="seg" role="radiogroup" aria-label="Show"><button role="radio" aria-checked="true">All 4</button><button role="radio" aria-checked="false">Recall misses 2</button><button role="radio" aria-checked="false">Quiz mistakes 2</button></div>
+      <span>${openQ("B", "suggest only, or make cards automatically?")}</span></div>
+    <ul class="panel divide-y" aria-label="Suggestions">${suggestions.map((s, i) => `
+      <li class="px-6 py-5 ${making && i === 0 ? "bg-base-100" : ""}">
+        <div class="flex items-start justify-between gap-6">
+          <div class="flex-1"><p class="text-xs text-muted">${s.from} · ${s.note}</p>
+            <p class="mt-1 text-[15px]">${s.miss}</p>${s.answer ? `<p class="text-sm text-muted">→ ${s.answer}</p>` : ""}</div>
+          ${making && i === 0 ? "" : `<div class="flex items-center gap-2 shrink-0"><button class="btn btn-ghost btn-sm" aria-label="Dismiss suggestion ${i + 1}">${icon("x")}Dismiss</button><button class="btn btn-outline btn-sm border-field-border" onclick="setVariant('make a card')">${icon("plus")}Make a card</button></div>`}
+        </div>
+        ${making && i === 0 ? `<form class="mt-5 grid grid-cols-2 gap-6" onsubmit="event.preventDefault(); setVariant('list')">
+          <label class="block"><span class="block text-sm font-semibold">Front</span>
+            <textarea class="textarea mt-1 w-full text-[15px]" rows="3" placeholder="What were you trying to remember when it didn't come?…"></textarea>
+            <span class="mt-1 block text-sm text-muted">You missed this in a recall, so the front is up to you: the cue that should have brought it to mind.</span></label>
+          <label class="block"><span class="block text-sm font-semibold">Back</span>
+            <textarea class="textarea mt-1 w-full text-[15px]" rows="3">${s.miss}</textarea>
+            <span class="mt-1 block text-sm text-muted">Goes in CPU. <button type="button" class="inline-block py-1 underline">Change topic</button></span></label>
+          <div class="col-span-2 flex items-center gap-3"><button class="btn btn-primary" type="submit">Save card</button><button class="btn btn-ghost" type="button" onclick="setVariant('list')">Cancel</button></div>
+        </form>` : ""}
+      </li>`).join("")}</ul>
+  </div>`;
+}
+
+/* ---------------- Markdown-lite for the prototype ---------------- */
+function markdown(md) {
+  return md.replace(/```(\w+)\n([\s\S]*?)```/g, (_, lang, code) => `<pre data-code class="text-sm">${code.replace(/</g, "&lt;")}</pre>`)
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/`([^`]+)`/g, "<code>$1</code>").split(/\n\n/).map(p => p.startsWith("<pre") ? p : `<p>${p}</p>`).join("");
+}
+
+/* ---------------- Render ---------------- */
+const screens = { cards: screenCards, topic: screenTopic, review: screenReview, suggestions: screenSuggestions };
+const screenNames = { cards: "Cards", topic: "Topic cards", review: "Review", suggestions: "Suggestions" };
+function setVariant(v) { state.variant = v; render(); }
+function go(screen, v) { state.screen = screen; state.variant = v || variants[screen][0]; try { history.replaceState(null, "", `#${screen}`); } catch (e) {} render(); window.scrollTo(0, 0); }
+function render() {
+  const el = document.getElementById("app");
+  el.innerHTML = screens[state.screen]();
+  document.querySelector('nav[aria-label="Main"]').hidden = state.screen === "review" && state.variant !== "done";
+  document.getElementById("due-badge").hidden = (state.screen === "cards" && ["all done", "first time"].includes(state.variant)) || (state.screen === "review" && state.variant === "done");
+  document.querySelectorAll(".nav-link").forEach(a => a.dataset.nav === "cards" ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
+  document.getElementById("screens").innerHTML = Object.keys(screens).map(s => `<button class="px-2 py-1 rounded ${s === state.screen ? "bg-neutral-content text-neutral font-semibold" : "hover:underline"}" onclick="go('${s}')">${screenNames[s]}</button>`).join("");
+  document.getElementById("states").innerHTML = variants[state.screen].map(v => `<button class="px-2 py-1 rounded ${v === state.variant ? "bg-neutral-content text-neutral font-semibold" : "hover:underline"}" onclick="setVariant('${v}')">${v}</button>`).join("");
+  if (window.lucide) lucide.createIcons();
+  if (window.renderMathInElement) renderMathInElement(el, { delimiters: [{ left: "$", right: "$", display: false }], throwOnError: false });
+  el.querySelectorAll("pre[data-code]").forEach(b => b.classList.add("bg-surface", "p-4", "rounded-lg", "font-mono", "border", "border-base-300"));
+  const dialog = el.querySelector("dialog[open]");
+  if (dialog) dialog.querySelector("input, select, button")?.focus();
+}
+
+const isDark = () => document.documentElement.dataset.theme === "studyapp-dark";
+function applyTheme(name, save = true) {
+  document.documentElement.dataset.theme = name;
+  document.querySelector('meta[name="theme-color"]').content = name === "studyapp-dark" ? "#18130e" : "#f9f4ee";
+  document.querySelectorAll("[data-theme-choice]").forEach(b => b.setAttribute("aria-checked", b.dataset.themeChoice === name));
+  if (save) { try { localStorage.setItem("studyapp-theme", name); } catch (e) {} render(); }
+}
+document.getElementById("theme-switch").addEventListener("click", e => { const b = e.target.closest("[data-theme-choice]"); if (b) applyTheme(b.dataset.themeChoice); });
+(() => { let saved = null; try { saved = localStorage.getItem("studyapp-theme"); } catch (e) {} applyTheme(saved === "studyapp" ? "studyapp" : "studyapp-dark", false); })();
+
+document.addEventListener("keydown", e => {
+  if (["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) return;
+  if (e.key === "Escape" && document.querySelector("dialog[open]")) setVariant("due today");
+  if (state.screen !== "review") return;
+  if (state.variant === "front" && e.key === " ") { e.preventDefault(); setVariant("answer"); }
+  else if (["answer", "leech"].includes(state.variant) && /^[1-4 ]$/.test(e.key)) { e.preventDefault(); setVariant("front"); }
+  else if (state.variant === "leech" && e.key.toLowerCase() === "e") go("topic", "edit leech card");
+});
+const start = location.hash.slice(1);
+if (screens[start]) state.screen = start, state.variant = variants[start][0];
+render();
+</script>
+</body>
+</html>

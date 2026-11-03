@@ -175,3 +175,65 @@ Differences from the prototype, both for consistency with the rest of the app:
 - Leaving a session with something typed or ticked asks first, since nothing is saved until the check is finished.
 
 Checked in the real app (`e2e/recall_test.py`, run by `e2e/run.sh`): makes a checklist, writes points with maths, adds one from an MCQ, types a dump with the checklist hidden, ticks under the pass mark with the live outcome, and checks the result, the recall list and the history. With `AUDIT` set it also measures every screen in both themes for text contrast, target size and primary buttons. That pass found the score chart's table header at 4.06:1 in the light theme (the same on the Overview chart). Fixed to the muted text colour, and now every screen passes.
+
+---
+
+# Flashcards with FSRS (proposed, waiting for a greenlight)
+
+Clickable prototype: `flashcards.html`. Same theme and components as the other prototypes. The dark bar in the bottom right switches screens and states. Scheduling would use the [fsrs crate](https://docs.rs/crate/fsrs/6.6.2), which gives the interval for each answer button (`next_states`), a desired-retention setting, and fitting the parameters to your own review history (`compute_parameters`).
+
+## Screen inventory
+
+| Screen | States |
+|---|---|
+| Cards | due today, all done, first time, settings |
+| Topic cards | card list, new card, edit a leech card |
+| Review | front, answer, leech warning, done for today |
+| Suggestions | list, make a card |
+
+## How it works
+
+- **Cards live in topics,** like questions, so a module or topic can be reviewed on its own or everything at once.
+- **Review is Anki's loop:** front, Space to show the answer, then Again, Hard, Good or Easy (keys 1 to 4, Space is Good), each showing when the card comes back. Again shows it again later in the same session. E edits the card, and there's Undo.
+- **Counts** at the top read "9 new · 2 learning · 6 to review", with the current card's queue underlined.
+- **Cues, not names.** The editor's front hint says to write the thought you'll actually have, and "More cues for the same answer" makes extra cards that share one back, each scheduled on its own.
+- **Leeches:** after 8 Agains (editable) the card is flagged, the review offers "Rewrite now", and the editor asks why the answer wasn't obvious. Saving clears the flag and keeps the schedule. Cards can be archived.
+- **Suggestions** collect points missed in recalls and questions got wrong or guessed in quizzes. A recall miss leaves the front for you to write (the cue that should have brought it up). A quiz mistake fills in question and answer.
+- **Settings:** how much to remember (desired retention, default 90%), new cards a day (10), most reviews a day (200), the leech threshold, and "Fit the scheduler to you".
+
+## Open questions (dashed badges in the prototype)
+
+- **A.** Card types: just front and back, or also cloze (`{{c1::…}}`) and reversed cards?
+- **B.** Suggestions: offer them for you to accept (as designed), or turn misses into cards automatically?
+
+## Calls made in the design, to confirm or change
+
+- Cards are per topic, not a separate deck system.
+- Keys 1 to 4 and Space follow Anki, so muscle memory carries over.
+- Again re-shows the card within the session. The fsrs crate doesn't document same-day learning steps, so this is the app's own rule.
+- 10 new cards a day, 200 reviews a day, 90% retention, leech at 8 Agains.
+- Editing a card keeps its schedule.
+
+## UI/UX test results
+
+**During the build** (screenshots of all 15 states in both themes against the design rules):
+
+| Finding | Severity | Fix |
+|---|---|---|
+| Leech editor showed raw LaTeX with no way to see the card | 2 | Preview panel with the front and rendered back |
+| Review counts didn't show which queue the current card is from | 2 | Current queue's count underlined, and said in the label |
+| "Saving resets how often it's come up" was unclear about the schedule | 2 | "Saving a change clears this flag. The card keeps its schedule." |
+| Front had a fixed height, leaving a big gap above the answer | 1 | Removed, the answer sits right under the front |
+| Suggestions count was a heavy black chip | 1 | Muted number |
+| 14-day forecast didn't label its busiest day | 1 | "Mon 9 Nov · 31" under the peak |
+| "Remembered 88%" on the done screen had nothing to compare to | 1 | "Aiming for 90%" |
+
+**After the build** (measured, every state, both themes):
+
+| Finding | Fix |
+|---|---|
+| Card editor had two primary buttons (Review CPU and Save card) | Review becomes outline while editing |
+| Archived row faded with opacity, its grey text 3.77:1 in light | No opacity, the front goes muted instead |
+| One-line card fronts 21 px tall, "Change topic" and the retention slider 20 px | Padded to 24 px or more |
+
+Then: every text node passes WCAG 2.2 AA, every target is at least 24 px, one primary per view (none on "all done" and the suggestions list, on purpose). Keyboard: Space shows the answer, 3 grades Good, E opens the rewrite from a leech, and all 10 tab stops on the answer view show a focus ring. The squint test keeps the count and Start review, the Good button, "Done for today" and Save card on top. No console errors, no horizontal scroll at 1440 px.
