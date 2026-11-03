@@ -102,7 +102,7 @@ impl Config {
         Self {
             db: var("STUDY_DB", "study-web.sqlite").into(),
             dist: var("STUDY_DIST", "dist").into(),
-            address: var("STUDY_ADDRESS", "127.0.0.1:8080"),
+            address: var("STUDY_ADDRESS", "127.0.0.1:7392"),
             seed: matches!(var("STUDY_SEED", "").as_str(), "1" | "true" | "yes"),
         }
     }

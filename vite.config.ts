@@ -8,7 +8,7 @@ export default defineConfig({
   plugins: [svelte(), tailwindcss(), svelteTesting()],
   clearScreen: false,
   // In a browser, /api goes to study-web (cargo run -p study-web) so `pnpm dev` hot-reloads too.
-  server: { port: 5173, strictPort: true, proxy: { "/api": "http://127.0.0.1:8080" } },
+  server: { port: 5173, strictPort: true, proxy: { "/api": "http://127.0.0.1:7392" } },
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test-setup.ts"],

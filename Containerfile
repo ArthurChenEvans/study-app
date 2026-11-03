@@ -1,5 +1,5 @@
 # The Study App in a browser, for testing with throwaway databases.
-#   podman compose up --build -d   → http://localhost:8080 with a seeded demo profile
+#   podman compose up --build -d   → http://localhost:7392 with a seeded demo profile
 #   podman compose down -v         → stops it and deletes the database
 # The desktop app is unchanged. This builds crates/study-web and the same Svelte frontend.
 
@@ -37,8 +37,8 @@ COPY --from=server /usr/local/bin/study-web /usr/local/bin/study-web
 COPY --from=frontend /app/dist /srv/study/dist
 ENV STUDY_DB=/data/study.sqlite \
     STUDY_DIST=/srv/study/dist \
-    STUDY_ADDRESS=0.0.0.0:8080 \
+    STUDY_ADDRESS=0.0.0.0:7392 \
     TZ=Europe/Isle_of_Man
 VOLUME /data
-EXPOSE 8080
+EXPOSE 7392
 CMD ["study-web"]

@@ -19,14 +19,15 @@ and card reviews (including a couple of cards flagged to rewrite and a late chec
 ### In a container
 
 ```bash
-podman compose up --build -d   # http://localhost:8080, seeded on the first start
+podman compose up --build -d   # http://localhost:7392, seeded on the first start
 podman compose down            # stop, keep the database
 podman compose down -v         # stop and delete the database, the next up seeds again
 ```
 
 Set `STUDY_SEED: "0"` in `compose.yaml` to start empty. PowerPoint previews need
 `SLIDES: "1"` there, which adds LibreOffice to the image (much bigger). Docker works the same.
-The port is only open to this computer, since there are no logins.
+It's on port 7392, only open to this computer since there are no logins. If that's taken,
+`STUDY_PORT=7400 podman compose up -d` uses another. Outside a container, `STUDY_ADDRESS=127.0.0.1:7400` does the same.
 
 ### Without a container (inside `nix develop`)
 
@@ -36,7 +37,7 @@ export XDG_DATA_HOME=$(mktemp -d)
 cargo run -p study-web -- seed "$XDG_DATA_HOME/com.arthurchenevans.studyapp/study.sqlite"
 pnpm tauri dev
 
-# Or the browser version with hot reload: the server on :8080, Vite on :5173
+# Or the browser version with hot reload: the server on :7392, Vite on :5173
 STUDY_DB=$(mktemp -d)/study.sqlite STUDY_SEED=1 cargo run -p study-web &
 pnpm dev
 ```
