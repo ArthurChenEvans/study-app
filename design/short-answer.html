@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en" data-theme="studyapp-dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#18130e">
+<title>Short Answer Designs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/daisyui@5.0.43/daisyui.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<style>
+  /* studyapp theme, same values as docs/design-rules.md */
+  :root, [data-theme="studyapp"] {
+    color-scheme: light;
+    --color-base-100: oklch(97% 0.010 80);
+    --color-base-200: oklch(94% 0.014 78);
+    --color-base-300: oklch(89% 0.018 75);
+    --color-base-content: oklch(27% 0.025 60);
+    --color-primary: oklch(40% 0.065 50);
+    --color-primary-content: oklch(97% 0.010 80);
+    --color-secondary: oklch(32% 0.02 60);
+    --color-secondary-content: oklch(94% 0.014 78);
+    --color-accent: oklch(78% 0.13 78);
+    --color-accent-content: oklch(27% 0.025 60);
+    --color-neutral: oklch(32% 0.02 60);
+    --color-neutral-content: oklch(94% 0.014 78);
+    --color-info: oklch(44% 0.07 235);
+    --color-info-content: oklch(97% 0.010 80);
+    --color-success: oklch(42% 0.11 145);
+    --color-success-content: oklch(97% 0.010 80);
+    --color-warning: oklch(78% 0.13 78);
+    --color-warning-content: oklch(27% 0.025 60);
+    --color-error: oklch(44% 0.15 30);
+    --color-error-content: oklch(97% 0.010 80);
+    --radius-selector: 0.25rem;
+    --radius-field: 0.375rem;
+    --radius-box: 0.5rem;
+    --size-selector: 0.25rem;
+    --size-field: 0.25rem;
+    --border: 1px;
+    --depth: 0;
+    --noise: 0;
+
+    /* Raised surface for panels, and chart tokens (validated, see design rules) */
+    --surface: oklch(99% 0.006 80);
+    /* Quiz outcomes: blue / orange pair, colour-blind safe; guessed = hatched right */
+    --chart-right: #025884;
+    --chart-wrong: #cc6c13;
+    --right-ink: #004d77;
+    --wrong-ink: #853900;
+    --guessed-tint: #c1dcf0;
+    --guessed-ink: #013658;
+    --guessed-fill: repeating-linear-gradient(135deg, #025884 0 2px, #c1dcf0 2px 6px);
+    --chart-ink: #643d26;
+    --chart-grid: oklch(91% 0.016 76);
+    --muted: oklch(42% 0.022 65);
+    --shadow-panel: 0 1px 2px oklch(27% 0.025 60 / .06), 0 6px 16px oklch(27% 0.025 60 / .05);
+    --shadow-soft: 0 1px 2px oklch(27% 0.025 60 / .08);
+    --field-border: oklch(58% 0.02 65);
+    --on-right: #fff;
+    --on-wrong: #140d08;
+    --diagram-fill: oklch(94% 0.014 78);
+  }
+  /* Dark theme: its own palette, validated against the dark panel surface (see design rules) */
+  [data-theme="studyapp-dark"] {
+    color-scheme: dark;
+    --color-base-100: oklch(19% 0.012 65);
+    --color-base-200: oklch(16% 0.012 65);
+    --color-base-300: oklch(32% 0.016 65);
+    --color-base-content: oklch(93% 0.012 80);
+    --color-primary: oklch(74% 0.10 62);
+    --color-primary-content: oklch(18% 0.012 65);
+    --color-secondary: oklch(88% 0.015 75);
+    --color-secondary-content: oklch(18% 0.012 65);
+    --color-accent: oklch(80% 0.13 80);
+    --color-accent-content: oklch(18% 0.012 65);
+    --color-neutral: oklch(88% 0.015 75);
+    --color-neutral-content: oklch(18% 0.012 65);
+    --color-info: oklch(76% 0.08 235);
+    --color-info-content: oklch(18% 0.012 65);
+    --color-success: oklch(76% 0.13 145);
+    --color-success-content: oklch(18% 0.012 65);
+    --color-warning: oklch(80% 0.13 80);
+    --color-warning-content: oklch(18% 0.012 65);
+    --color-error: oklch(76% 0.13 30);
+    --color-error-content: oklch(18% 0.012 65);
+    --radius-selector: 0.25rem; --radius-field: 0.375rem; --radius-box: 0.5rem;
+    --size-selector: 0.25rem; --size-field: 0.25rem; --border: 1px; --depth: 0; --noise: 0;
+
+    --surface: oklch(23% 0.014 65);
+    --chart-right: #0573aa;
+    --chart-wrong: #d67523;
+    --right-ink: #87c6f2;
+    --wrong-ink: #f9b379;
+    --guessed-tint: #163c54;
+    --guessed-ink: #bbddf6;
+    --guessed-fill: repeating-linear-gradient(135deg, #0573aa 0 2px, #163c54 2px 6px);
+    --chart-ink: oklch(74% 0.10 62);
+    --chart-grid: oklch(30% 0.014 65);
+    --muted: oklch(78% 0.016 75);
+    --field-border: oklch(52% 0.018 70);
+    --on-right: #fff;
+    --on-wrong: #140d08;
+    --diagram-fill: oklch(28% 0.014 65);
+    --shadow-panel: 0 1px 0 oklch(100% 0 0 / .04) inset, 0 1px 2px oklch(0% 0 0 / .4), 0 8px 24px oklch(0% 0 0 / .25);
+    --shadow-soft: 0 1px 2px oklch(0% 0 0 / .4);
+  }
+  body { background: var(--color-base-100); color: var(--color-base-content); font-family: "IBM Plex Sans", ui-sans-serif, sans-serif; }
+  code, pre, .font-mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  h1, h2 { text-wrap: balance; }
+  h1 { letter-spacing: -0.015em; }
+  .input, .select, .textarea, .checkbox, .radio { border-color: var(--field-border); }
+  .input, .select, .textarea { background: var(--surface); }
+  :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+  pre.shiki { padding: 12px 16px; border-radius: var(--radius-box); font-size: 14px; overflow-x: auto; border: 1px solid var(--color-base-300); }
+  .divide-y > * { border-color: var(--color-base-300) !important; }
+  .btn .kbd { background: transparent; border-color: currentColor; color: inherit; opacity: .8; }
+  .btn { transition: transform 120ms ease-out, background-color 150ms ease-out, box-shadow 150ms ease-out; }
+  .btn:active:not(:disabled) { transform: scale(.97); }
+  .btn-primary { box-shadow: 0 1px 2px oklch(27% 0.025 60 / .25), inset 0 1px 0 oklch(100% 0 0 / .12); }
+
+  /* Panels: the one raised surface. Used for groups you read as a unit (charts, summaries) */
+  .panel { background: var(--surface); border: 1px solid var(--color-base-300); border-radius: 12px; box-shadow: var(--shadow-panel); }
+  .eyebrow { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+
+  /* Segmented control */
+  .seg { display: inline-flex; align-items: stretch; height: 2rem; padding: 2px; gap: 2px; border: 1px solid var(--field-border); border-radius: var(--radius-field); background: var(--color-base-200); vertical-align: middle; }
+  .seg > button { padding: 0 12px; font-size: 14px; line-height: 1; border-radius: calc(var(--radius-field) - 2px); color: var(--muted); transition: background-color 150ms ease-out, color 150ms ease-out; }
+  .seg > button:hover:not([aria-checked="true"]) { background: var(--color-base-300); color: var(--color-base-content); }
+  .seg > button[aria-checked="true"] { background: var(--color-neutral); color: var(--color-neutral-content); font-weight: 600; }
+  .seg > button:focus-visible { outline-offset: 1px; }
+  /* Fields: one focus ring */
+  .input:focus, .input:focus-within, .select:focus, .textarea:focus { outline: none !important; border-color: var(--color-primary) !important; box-shadow: 0 0 0 1px var(--color-primary) !important; }
+  label.input input:focus, label.input input:focus-visible { outline: none !important; box-shadow: none !important; }
+  .input-sm, .seg { min-height: 2rem; }
+  .btn:disabled .kbd { opacity: .5; }
+  .toggle:checked { background-color: var(--color-primary); border-color: var(--color-primary); color: var(--color-primary-content); }
+  [role=tab] .count { font-size: 12px; margin-left: 4px; color: var(--muted); font-weight: 400; }
+  .open-q { border: 1px dashed var(--color-info); color: var(--color-info); background: var(--surface); }
+
+  /* Navigation */
+  .nav-link { color: var(--muted); transition: background-color 150ms ease-out, color 150ms ease-out; }
+  .nav-link:hover { background: var(--color-base-300); color: var(--color-base-content); }
+  .nav-link[aria-current="page"] { background: var(--surface); color: var(--color-base-content); font-weight: 600; box-shadow: var(--shadow-soft); }
+
+  /* Charts */
+  .seg-bar { display: flex; gap: 2px; border-radius: 999px; overflow: hidden; }
+  .seg-bar > span { display: block; height: 100%; }
+  .tall-bar { display: flex; gap: 2px; height: 28px; }
+  .tall-bar > span { border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: visible; }
+  .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .text-right-ink { color: var(--right-ink); } .text-wrong-ink { color: var(--wrong-ink); }
+  .is-right { border-color: var(--chart-right) !important; box-shadow: 0 0 0 1px var(--chart-right); }
+  .is-wrong { border-color: var(--chart-wrong) !important; box-shadow: 0 0 0 1px var(--chart-wrong); }
+  .guessed-chip { background: var(--guessed-tint); color: var(--guessed-ink); border-color: var(--guessed-tint); }
+  .hbar { height: 12px; border-radius: 0 4px 4px 0; background: var(--chart-ink); transition: width 400ms ease-out; }
+  .cell { width: 24px; height: 24px; border-radius: 4px; display: grid; place-items: center; font-size: 12px; font-weight: 600; color: #fff; }
+  .chart-tip { position: fixed; pointer-events: none; z-index: 50; background: var(--color-neutral); color: var(--color-neutral-content); font-size: 12px; line-height: 1.4; padding: 8px 10px; border-radius: 6px; box-shadow: 0 4px 12px oklch(27% 0.025 60 / .2); opacity: 0; transition: opacity 120ms ease-out; max-width: 240px; }
+  .chart-tip.show { opacity: 1; }
+  details.table-view summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+
+  /* Quiz progress track */
+  .track { display: flex; gap: 2px; height: 6px; }
+  .track > span { flex: 1; border-radius: 2px; background: var(--color-base-300); }
+
+  /* Motion */
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .rise { animation: rise 260ms ease-out both; }
+  .rise-2 { animation-delay: 60ms; } .rise-3 { animation-delay: 120ms; } .rise-4 { animation-delay: 180ms; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+:root { --strip: 2.5rem; }
+</style>
+<style type="text/tailwindcss">
+  @theme {
+    --color-muted: var(--muted);
+    --color-field-border: var(--field-border);
+    --color-surface: var(--surface);
+    --font-sans: "IBM Plex Sans", ui-sans-serif, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+</style>
+<style>
+  /* Short answer additions. Same tokens as the MVP, free recall and flashcards prototypes. */
+  .badge-src { font-size: 12px; color: var(--muted); border: 1px solid var(--color-base-300); border-radius: 4px; padding: 0 6px; line-height: 20px; white-space: nowrap; }
+  .kw { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; border-radius: 4px; padding: 1px 8px; border: 1px solid var(--color-base-300); }
+  .kw-hit { color: var(--right-ink); border-color: var(--chart-right); }
+  .kw-miss { color: var(--wrong-ink); border-color: var(--chart-wrong); border-style: dashed; }
+  mark.hit { background: transparent; color: inherit; text-decoration: underline; text-decoration-color: var(--chart-right); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+  .answer-box { font-size: 18px; line-height: 1.5; }
+  .verdict-right { color: var(--right-ink); } .verdict-wrong { color: var(--wrong-ink); }
+  .overruled { font-size: 12px; color: var(--muted); border: 1px solid var(--field-border); border-radius: 4px; padding: 0 6px; line-height: 20px; }
+  .rich > * + * { margin-top: .75em; }
+  .rich :not(pre) > code { background: var(--color-base-200); padding: .1em .35em; border-radius: 4px; font-family: "IBM Plex Mono", monospace; font-size: .9em; }
+  .type-badge { font-size: 11px; letter-spacing: .03em; color: var(--muted); border: 1px solid var(--color-base-300); border-radius: 4px; padding: 0 5px; line-height: 18px; white-space: nowrap; }
+</style>
+</head>
+<body class="min-h-screen">
+<div id="proto-strip" class="sticky top-0 z-50 flex min-h-10 flex-wrap items-center gap-2 border-b border-base-300 bg-base-200 px-4 py-1.5 text-xs" aria-label="Prototype state">
+  <span class="mr-2 font-semibold uppercase tracking-wide text-muted">Prototype</span>
+  <span class="text-muted">Screen</span><div id="screens" class="flex gap-1 flex-wrap"></div>
+  <span class="ml-3 text-muted">State</span><div id="states" class="flex gap-1 flex-wrap"></div>
+</div>
+<div class="flex min-h-[calc(100vh-var(--strip))]">
+  <nav class="w-60 shrink-0 bg-base-200 border-r border-base-300 flex flex-col p-3 gap-1 sticky top-[var(--strip)] h-[calc(100vh-var(--strip))]" aria-label="Main">
+    <div class="flex items-center gap-2 px-3 py-4">
+      <span class="size-8 rounded-lg bg-primary text-primary-content grid place-items-center"><i data-lucide="layers" class="size-4"></i></span>
+      <span class="text-base font-semibold">Study App</span>
+    </div>
+    <a href="index.html#overview" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="layout-dashboard" class="size-4"></i>Overview</a>
+    <a href="#editor" data-nav="topics" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="library" class="size-4"></i>Topics</a>
+    <a href="flashcards.html#cards" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="square-stack" class="size-4"></i>Cards</a>
+    <a href="#import" data-nav="recall" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="brain" class="size-4"></i>Recall</a>
+    <a href="index.html#bibliography" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="book-open" class="size-4"></i>Bibliography</a>
+    <a href="index.html#history" data-nav="history" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="history" class="size-4"></i>History</a>
+    <a href="index.html#search" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="search" class="size-4"></i>Search</a>
+    <div class="px-3 mt-4"><a href="#setup" class="btn btn-outline btn-sm w-full justify-start border-field-border"><i data-lucide="play" class="size-4"></i>New quiz</a></div>
+    <div class="mt-auto px-3 pt-6">
+      <div class="seg w-full" role="radiogroup" aria-label="Theme" id="theme-switch">
+        <button type="button" role="radio" class="flex-1 flex items-center justify-center gap-1.5" data-theme-choice="studyapp-dark"><i data-lucide="moon" class="size-3.5"></i>Dark</button>
+        <button type="button" role="radio" class="flex-1 flex items-center justify-center gap-1.5" data-theme-choice="studyapp"><i data-lucide="sun" class="size-3.5"></i>Light</button>
+      </div>
+    </div>
+    <div class="px-3 pt-4 text-xs text-muted leading-relaxed">Short answer design prototype. Screens and states are clickable, data is sample only.</div>
+  </nav>
+  <main id="app" class="flex-1 min-w-0"></main>
+</div>
+
+<script>
+const icon = (name, cls = "size-4") => `<i data-lucide="${name}" class="${cls}" aria-hidden="true"></i>`;
+const kbd = (k) => `<kbd class="kbd kbd-xs">${k}</kbd>`;
+
+const variants = {
+  editor: ["accepted answers", "keywords", "try an answer", "needs an answer", "multiple choice"],
+  quiz: ["typing", "right", "right with a typo", "wrong", "keywords missed", "overruled", "exam"],
+  results: ["review", "overruled"],
+  setup: ["both types", "short answer only"],
+  import: ["short answer tab"],
+  suggestions: ["make a card"],
+};
+const state = { screen: "editor", variant: "accepted answers" };
+
+/* ---------------- Editor ---------------- */
+function screenEditor() {
+  const v = state.variant;
+  const mcq = v === "multiple choice";
+  const keywords = v === "keywords";
+  const tryIt = v === "try an answer";
+  const empty = v === "needs an answer";
+  const answers = empty ? [""] : ["Transport layer", "Layer 4", "Transport"];
+  return `<div class="flex h-[calc(100vh-var(--strip))]">
+    <section class="w-1/2 min-w-0 border-r border-base-300 bg-base-200 flex flex-col" aria-label="Source preview">
+      <div class="flex items-center gap-3 border-b border-base-300 px-6 py-3 text-sm"><span class="font-semibold">Week 2: The OSI model.pdf</span><span class="text-muted">page 14 of 38</span></div>
+      <div class="flex-1 grid place-items-center p-10"><div class="panel w-full max-w-md p-8 text-sm leading-relaxed">
+        <p class="font-semibold">4. Transport layer</p><p class="mt-2 text-muted">Segments data and gives each application its own port number. TCP adds ordering and retransmission, UDP doesn't.</p>
+      </div></div>
+    </section>
+    <section class="w-1/2 overflow-auto" aria-label="Question editor">
+      <div class="flex items-end justify-between px-10 pb-6 pt-10">
+        <div><p class="text-sm text-muted">${keywords ? "TCP/IP" : "OSI model"}</p><h1 class="mt-1 text-2xl font-semibold">New question</h1></div>
+      </div>
+      <form class="max-w-2xl space-y-8 px-10 pb-16" onsubmit="event.preventDefault()">
+        <div class="flex items-center justify-between gap-4">
+          <span class="text-sm font-semibold">Question type</span>
+          <div class="seg" role="radiogroup" aria-label="Question type">
+            <button type="button" role="radio" aria-checked="${mcq}" onclick="setVariant('multiple choice')">Multiple choice</button>
+            <button type="button" role="radio" aria-checked="${!mcq}" onclick="setVariant('accepted answers')">Short answer</button>
+          </div>
+        </div>
+        <div class="space-y-2">
+          <label class="text-sm font-semibold" for="q">Question</label>
+          <textarea id="q" class="textarea w-full font-mono text-sm" rows="3">${keywords ? "What three messages open a TCP connection, in order?" : "Which OSI layer gives each application its own port number?"}</textarea>
+          <p class="text-sm text-muted">Markdown, \`code\`, $LaTeX$ and images. Paste an image into any field, or add one from a file.</p>
+        </div>
+        ${mcq ? `<fieldset class="space-y-3">
+          <div class="flex items-center justify-between"><legend class="text-sm font-semibold">Answers</legend>
+            <div class="seg" role="radiogroup" aria-label="Answer type"><button type="button" role="radio" aria-checked="true">Single</button><button type="button" role="radio" aria-checked="false">Multiple</button></div></div>
+          ${["Network", "Transport", "Session", "Data link"].map((o, i) => `<div class="flex items-center gap-3"><input type="checkbox" class="checkbox checkbox-sm" aria-label="Option ${i + 1} is correct" ${i === 1 ? "checked" : ""}><input class="input input-sm flex-1 ${i === 1 ? "is-right" : ""}" aria-label="Option ${i + 1}" value="${o}"><button type="button" class="btn btn-ghost btn-sm btn-square" aria-label="Remove option ${i + 1}">${icon("x")}</button></div>`).join("")}
+          <p class="text-sm text-muted">Switching type keeps the question, explanation, sources and tags. The options come back if you switch back before saving.</p>
+        </fieldset>` : `
+        <fieldset class="space-y-3">
+          <div class="flex items-center justify-between gap-4"><legend class="text-sm font-semibold">How it's checked</legend>
+            <div class="seg" role="radiogroup" aria-label="How it's checked">
+              <button type="button" role="radio" aria-checked="${!keywords}" onclick="setVariant('accepted answers')">Accepted answers</button>
+              <button type="button" role="radio" aria-checked="${keywords}" onclick="setVariant('keywords')">Keywords</button>
+            </div></div>
+          ${keywords ? `
+            <p class="text-sm text-muted">Right when your answer contains enough of these, in any order. Put other ways of writing a keyword after a comma. Each word you write counts once, so "SYN-ACK" doesn't also count as "SYN" and "ACK".</p>
+            ${[["SYN", ""], ["SYN-ACK", "synack, syn ack"], ["ACK", ""]].map(([k, alt], i) => `<div class="flex items-center gap-3">
+              <input class="input input-sm w-40" aria-label="Keyword ${i + 1}" value="${k}"><input class="input input-sm flex-1" aria-label="Other ways to write keyword ${i + 1}" placeholder="Also accept…" value="${alt}"><button type="button" class="btn btn-ghost btn-sm btn-square" aria-label="Remove keyword ${i + 1}">${icon("x")}</button></div>`).join("")}
+            <div class="flex items-center justify-between gap-3"><button type="button" class="btn btn-ghost btn-sm">${icon("plus")}Add keyword</button>
+              <label class="flex items-center gap-2 text-sm"><span class="text-muted">Right with</span><select class="select select-sm w-36" aria-label="How many keywords are needed"><option>All 3</option><option>At least 2</option><option>At least 1</option></select></label></div>
+          ` : `
+            <p class="text-sm text-muted">Right when your answer matches any of these. Case, extra spaces, punctuation and "the" or "a" at the start don't matter.</p>
+            ${answers.map((a, i) => `<div class="flex items-center gap-3"><input class="input input-sm flex-1 ${empty ? "is-wrong" : ""}" aria-label="Accepted answer ${i + 1}" placeholder="e.g. Transport layer…" value="${a}"><button type="button" class="btn btn-ghost btn-sm btn-square" aria-label="Remove accepted answer ${i + 1}" ${answers.length === 1 ? "disabled" : ""}>${icon("x")}</button></div>`).join("")}
+            <div class="flex items-center justify-between gap-3"><button type="button" class="btn btn-ghost btn-sm">${icon("plus")}Add another accepted answer</button>
+              <label class="flex min-h-6 items-center gap-2 text-sm"><input type="checkbox" class="toggle toggle-sm" checked aria-describedby="typo-help">Allow small typos</label></div>
+            <p id="typo-help" class="text-sm text-muted">One wrong letter in words of 4 to 7 letters, two from 8. Never in numbers or answers of 3 letters or fewer.</p>
+          `}
+        </fieldset>
+        <div class="space-y-2">
+          <label class="text-sm font-semibold" for="model">Model answer <span class="font-normal text-muted">(optional)</span></label>
+          <textarea id="model" class="textarea w-full font-mono text-sm" rows="2" placeholder="${keywords ? "e.g. SYN, then SYN-ACK, then ACK…" : "Shown after you answer. Leave it blank to show the first accepted answer…"}">${keywords ? "SYN from the client, SYN-ACK from the server, then ACK from the client." : "The **transport** layer (layer 4). TCP and UDP ports live here."}</textarea>
+          <p class="text-sm text-muted">What you see after answering, next to what you wrote. ${keywords ? "Keywords only decide right or wrong." : "Leave it blank to show the first accepted answer."}</p>
+        </div>
+        <section class="panel p-5" aria-label="Try an answer">
+          <p class="text-sm font-semibold">Try an answer</p>
+          <p class="mt-1 text-sm text-muted">See how the app would mark something before you save. Nothing is recorded.</p>
+          <input class="input input-sm mt-3 w-full" aria-label="A test answer" placeholder="Type an answer to test…" value="${tryIt ? "the transprot layer" : keywords ? "syn, then synack" : ""}">
+          ${tryIt ? `<p class="mt-3 flex items-center gap-2 text-sm font-semibold verdict-right" aria-live="polite">${icon("circle-check")}Right, with a typo <span class="font-normal text-muted">matches "Transport layer"</span></p>`
+          : keywords ? `<div class="mt-3 flex flex-wrap items-center gap-2 text-sm" aria-live="polite"><span class="font-semibold verdict-wrong flex items-center gap-1">${icon("circle-x")}Wrong</span><span class="text-muted">2 of 3 keywords:</span><span class="kw kw-hit">${icon("check","size-3")}SYN</span><span class="kw kw-hit">${icon("check","size-3")}SYN-ACK</span><span class="kw kw-miss">${icon("x","size-3")}ACK</span></div>` : ""}
+        </section>`}
+        <div class="space-y-2">
+          <label class="text-sm font-semibold" for="exp">Explanation</label>
+          <textarea id="exp" class="textarea w-full font-mono text-sm" rows="2">${keywords ? "The three-way handshake agrees sequence numbers both ways." : "Ports let several apps share one IP address."}</textarea>
+        </div>
+        <fieldset class="space-y-3"><legend class="text-sm font-semibold">Sources <span class="font-normal text-muted">(optional)</span></legend>
+          <button type="button" class="btn btn-ghost btn-sm">${icon("plus")}Cite a source</button></fieldset>
+        ${empty ? `<p role="alert" class="text-sm text-error">Add at least one accepted answer, so the app can check it</p>` : ""}
+        <div class="flex items-center gap-3 border-t border-base-300 pt-6"><button type="submit" class="btn btn-primary">Save question ${kbd("Ctrl")}${kbd("S")}</button></div>
+      </form>
+    </section>
+  </div>`;
+}
+
+/* ---------------- Quiz ---------------- */
+function screenQuiz() {
+  const v = state.variant;
+  const exam = v === "exam";
+  const answered = !["typing", "exam"].includes(v);
+  const keywords = v === "keywords missed";
+  const typed = { typing: "", exam: "The trans", right: "Transport layer", "right with a typo": "the transprot layer", wrong: "Network layer", overruled: "Network layer", "keywords missed": "SYN, then the server sends SYN-ACK" }[v];
+  const right = ["right", "right with a typo", "overruled"].includes(v);
+  const question = keywords ? "What three messages open a TCP connection, in order?" : "Which OSI layer gives each application its own port number?";
+  const track = Array.from({ length: 10 }, (_, i) => i < 4 ? (exam ? "var(--color-neutral)" : ["var(--chart-right)", "var(--chart-wrong)", "var(--chart-right)", "var(--guessed-fill)"][i]) : i === 4 ? "current" : "");
+  return `<div class="flex min-h-[calc(100vh-var(--strip))] flex-col">
+    <div class="sticky top-[var(--strip)] z-10 border-b border-base-300 bg-base-100 px-12 pb-4 pt-5">
+      <div class="flex items-center gap-6"><span class="badge ${exam ? "badge-neutral" : "badge-ghost"}">${exam ? "Exam" : "Study"}</span>
+        <span class="text-sm tabular-nums"><b>5</b> <span class="text-muted">of 10</span></span>
+        <span class="ml-auto"></span><button class="btn btn-ghost btn-sm font-normal">${icon("log-out")}Quit</button></div>
+      <div class="track mt-4" aria-label="Progress, question 5 of 10">${track.map(c => `<span style="${c === "current" ? "background:transparent;box-shadow:inset 0 0 0 2px var(--color-base-content)" : c ? `background:${c}` : ""}"></span>`).join("")}</div>
+    </div>
+    <div class="flex-1 px-12 py-12"><div class="mx-auto max-w-prose">
+      <p class="eyebrow">Short answer</p>
+      <div role="heading" aria-level="1" class="mt-2 text-xl leading-snug">${question}</div>
+      <label class="mt-8 block"><span class="sr-only">Your answer</span>
+        <textarea class="textarea answer-box w-full ${answered ? (right && v !== "overruled" ? "is-right" : v === "overruled" ? "" : "is-wrong") : ""}" rows="2" placeholder="Type your answer…" ${answered ? "readonly" : ""}>${typed}</textarea></label>
+      ${answered ? "" : `<p class="mt-2 text-xs text-muted">${kbd("Enter")} submits, ${kbd("Shift")}${kbd("Enter")} adds a new line</p>`}
+      ${answered ? feedback(v) : ""}
+      <div class="mt-8 flex items-center gap-3">
+        ${answered ? `<button class="btn btn-primary">Next question ${kbd("Enter")}</button>`
+        : `<button class="btn btn-primary" ${v === "typing" ? "disabled" : ""}>Submit ${kbd("Enter")}</button><button class="btn btn-ghost">${icon("flag")}I guessed ${kbd("Ctrl")}${kbd("G")}</button>`}
+        ${exam ? `<span class="ml-auto text-sm text-muted">No going back in exam mode. You can overrule the marking on the results page.</span>` : ""}
+      </div>
+    </div></div>
+  </div>`;
+}
+function feedback(v) {
+  if (v === "keywords missed") return `<div class="panel rise mt-8 p-6" role="status">
+    <p class="flex items-center gap-2 font-semibold verdict-wrong">${icon("circle-x","size-5")}Wrong <span class="font-normal text-muted">needs all 3 keywords, you had 2</span></p>
+    <div class="mt-3 flex flex-wrap gap-2"><span class="kw kw-hit">${icon("check","size-3")}SYN</span><span class="kw kw-hit">${icon("check","size-3")}SYN-ACK</span><span class="kw kw-miss">${icon("x","size-3")}ACK</span></div>
+    <p class="mt-4 text-sm text-muted">Model answer</p><p class="mt-1">SYN from the client, SYN-ACK from the server, then ACK from the client.</p>
+    ${overrule(false)}</div>`;
+  const right = ["right", "right with a typo"].includes(v);
+  const over = v === "overruled";
+  return `<div class="panel rise mt-8 p-6" role="status">
+    <p class="flex items-center gap-2 font-semibold ${right || over ? "verdict-right" : "verdict-wrong"}">${icon(right || over ? "circle-check" : "circle-x","size-5")}${over ? "Counted as right" : right ? (v === "right with a typo" ? "Correct, with a typo" : "Correct") : "Wrong"}
+      ${v === "right with a typo" ? `<span class="font-normal text-muted">you wrote "transprot"</span>` : ""}${over ? `<span class="overruled ml-1">You overruled this</span>` : ""}</p>
+    <p class="mt-4 text-sm text-muted">Model answer</p><div class="rich mt-1"><p>The <strong>transport</strong> layer (layer 4). TCP and UDP ports live here.</p></div>
+    ${!right && !over ? `<p class="mt-3 text-sm text-muted">Also accepted: Layer 4, Transport</p>` : ""}
+    <p class="mt-4 leading-relaxed">Ports let several apps share one IP address.</p>
+    ${over ? `<button class="btn btn-ghost btn-sm mt-4">${icon("undo-2")}Undo, count it as wrong</button>` : overrule(right)}</div>`;
+}
+const overrule = (right) => `<div class="mt-5 flex items-center gap-3 border-t border-base-300 pt-4"><span class="text-sm text-muted">${right ? "Marked right but shouldn't be?" : "Think you had it?"}</span><button class="btn btn-outline btn-sm border-field-border">${icon(right ? "x" : "check")}Count it as ${right ? "wrong" : "right"} ${kbd("O")}</button></div>`;
+
+/* ---------------- Results ---------------- */
+function screenResults() {
+  const over = state.variant === "overruled";
+  const [r, g, w] = over ? [7, 1, 2] : [6, 1, 3];
+  const items = [
+    { topic: "OSI model", q: "Which OSI layer gives each application its own port number?", yours: "Network layer", model: "The **transport** layer (layer 4).", status: over ? "over-right" : "wrong", how: "Didn't match: Transport layer, Layer 4, Transport" },
+    { topic: "TCP/IP", q: "What three messages open a TCP connection, in order?", yours: "SYN, then the server sends SYN-ACK", model: "SYN, SYN-ACK, then ACK.", status: "wrong", how: "2 of 3 keywords, missed ACK" },
+    { topic: "OSI model", q: "Which device works at the network layer?", yours: "a routr", model: "A **router**", status: "typo", how: 'Matched "Router" with a typo' },
+  ];
+  const status = (it) => it.status === "typo" ? `<span class="flex items-center gap-1 text-sm font-semibold text-right-ink">${icon("circle-check")}Right, with a typo</span>`
+    : it.status === "over-right" ? `<span class="flex items-center gap-1 text-sm font-semibold text-right-ink">${icon("circle-check")}Right</span><span class="overruled mt-1 inline-block">You overruled this</span>`
+    : `<span class="flex items-center gap-1 text-sm font-semibold text-wrong-ink">${icon("circle-x")}Wrong</span>`;
+  return `<div class="mx-auto max-w-6xl px-12 pb-24">
+    <header class="pt-12 pb-8"><h1 class="text-3xl font-semibold">Results</h1><p class="mt-2 text-muted">Exam mode · 10 questions · 4 short answer</p></header>
+    <section class="panel p-8"><div class="grid grid-cols-[auto_1fr_auto] items-center gap-12">
+      <div><p class="text-6xl font-semibold leading-none">${r + g} <span class="text-3xl font-normal text-muted">/ 10</span></p><p class="mt-3 text-sm text-muted">${g} of those guessed${over ? " · 1 overruled" : ""}</p></div>
+      <div><div class="seg-bar" style="height:28px">${`<span style="flex:${r};background:var(--chart-right)"></span><span style="flex:${g};background:var(--guessed-fill)"></span><span style="flex:${w};background:var(--chart-wrong)"></span>`}</div>
+        <div class="mt-3 flex items-center gap-4 text-xs text-muted"><span class="flex items-center gap-1.5"><span class="swatch" style="background:var(--chart-right)"></span>Right, sure</span><span class="flex items-center gap-1.5"><span class="swatch" style="background:var(--guessed-fill)"></span>Right, guessed</span><span class="flex items-center gap-1.5"><span class="swatch" style="background:var(--chart-wrong)"></span>Wrong</span></div></div>
+      <div class="text-right"><button class="btn btn-primary">${icon("rotate-ccw")}Retry ${w + g} questions</button><p class="mt-2 text-xs text-muted">Wrong and guessed, same settings</p></div>
+    </div></section>
+    <div class="mt-12 flex items-baseline justify-between"><h2 class="text-lg font-semibold">Review</h2><p class="text-sm text-muted">Wrong and guessed first</p></div>
+    <ul class="panel mt-4 divide-y">${items.map((it, i) => `
+      <li class="flex items-start gap-8 p-6" aria-label="Question ${i + 1}">
+        <div class="max-w-prose flex-1"><p class="eyebrow">${it.topic} · Short answer</p><p class="mt-1 font-semibold">${it.q}</p>
+          <dl class="mt-3 space-y-1 text-sm"><div><dt class="inline text-muted">Your answer:</dt> <dd class="inline">${it.yours}</dd></div>
+            <div><dt class="inline text-muted">Model answer:</dt> <dd class="inline">${markdown(it.model)}</dd></div>
+            <div><dt class="inline text-muted">Checked:</dt> <dd class="inline text-muted">${it.how}</dd></div></dl></div>
+        <div class="w-64 shrink-0">${status(it)}
+          ${it.status === "wrong" ? `<button class="btn btn-outline btn-sm mt-3 w-full border-field-border" onclick="setVariant('overruled')">${icon("check")}Count it as right</button>
+            <label class="mt-3 block"><span class="text-sm text-muted">Why did you get it wrong? <span class="text-xs">(optional)</span></span><select class="select select-sm mt-1 w-full"><option>Pick a reason…</option><option>Misremembered</option><option>Confused it with something similar</option></select></label>`
+          : it.status === "over-right" ? `<button class="btn btn-ghost btn-sm mt-3" onclick="setVariant('review')">${icon("undo-2")}Undo</button>`
+          : `<button class="btn btn-ghost btn-sm mt-3">${icon("x")}Count it as wrong</button>`}
+        </div>
+      </li>`).join("")}</ul>
+  </div>`;
+}
+
+/* ---------------- Setup ---------------- */
+function screenSetup() {
+  const only = state.variant === "short answer only";
+  const rows = [["CPU", 5, 2], ["Memory", 4, 0], ["OSI model", 4, 3], ["TCP/IP", 3, 2]];
+  const n = rows.reduce((s, [, m, sa]) => s + (only ? sa : m + sa), 0);
+  return `<div class="mx-auto max-w-6xl px-12 pb-24">
+    <header class="pt-12 pb-8"><h1 class="text-3xl font-semibold">New quiz</h1><p class="mt-2 text-muted">Pick topics and how you want to be quizzed</p></header>
+    <div class="grid grid-cols-[1fr_320px] items-start gap-12"><div class="space-y-8">
+      <section class="panel overflow-hidden"><div class="border-b border-base-300 px-6 py-3 text-sm font-semibold">Topics</div>
+        <ul class="divide-y">${rows.map(([name, m, sa]) => { const none = only && sa === 0; return `<li><label class="flex items-center gap-4 px-6 py-3 ${none ? "opacity-60" : "cursor-pointer hover:bg-base-100"}"><input type="checkbox" class="checkbox checkbox-sm" ${none ? "disabled" : "checked"}><span class="flex-1 font-semibold">${name}</span><span class="text-xs tabular-nums text-muted">${none ? "no short answer yet" : only ? `${sa} short answer` : `${m} MCQ · ${sa} short answer`}</span></label></li>`; }).join("")}</ul></section>
+      <section class="panel divide-y">
+        <div class="flex items-center justify-between gap-6 px-6 py-4"><div><p class="text-sm font-semibold">Question types</p><p class="mt-1 text-sm text-muted">Mixed together in the order below.</p></div>
+          <div class="seg" role="radiogroup" aria-label="Question types"><button type="button" role="radio" aria-checked="${!only}" onclick="setVariant('both types')">Both</button><button type="button" role="radio" aria-checked="false">MCQ</button><button type="button" role="radio" aria-checked="${only}" onclick="setVariant('short answer only')">Short answer</button></div></div>
+        <div class="flex items-center justify-between gap-6 px-6 py-4"><div><p class="text-sm font-semibold">Mode</p></div><div class="seg" role="radiogroup" aria-label="Mode"><button role="radio" aria-checked="true">Study</button><button role="radio" aria-checked="false">Exam</button></div></div>
+        <div class="flex items-center justify-between gap-6 px-6 py-4 ${only ? "opacity-60" : ""}"><div><p class="text-sm font-semibold">Difficulty</p><p class="mt-1 text-sm text-muted">${only ? "Only changes multiple choice questions." : "Easy says how many answers to pick. Multiple choice only."}</p></div><div class="seg" role="radiogroup" aria-label="Difficulty"><button role="radio" aria-checked="false" ${only ? "disabled" : ""}>Easy</button><button role="radio" aria-checked="true" ${only ? "disabled" : ""}>Hard</button></div></div>
+        <div class="flex items-center justify-between gap-6 px-6 py-4 ${only ? "opacity-60" : ""}"><div><p class="text-sm font-semibold">Option order</p></div><div class="seg" role="radiogroup" aria-label="Option order"><button role="radio" aria-checked="true" ${only ? "disabled" : ""}>Keep</button><button role="radio" aria-checked="false" ${only ? "disabled" : ""}>Shuffle</button></div></div>
+      </section></div>
+      <aside class="panel sticky top-[calc(var(--strip)+2rem)] p-6" aria-label="Quiz summary"><p class="eyebrow">Summary</p><p class="mt-3 text-3xl font-semibold tabular-nums">${n} <span class="text-base font-normal text-muted">questions</span></p>
+        <p class="mt-1 text-sm text-muted">${only ? `${n} short answer` : `16 MCQ · 7 short answer`}</p><button class="btn btn-primary mt-6 w-full">${icon("play")}Start quiz</button></aside>
+    </div></div>`;
+}
+
+/* ---------------- Checklist import ---------------- */
+function screenImport() {
+  const items = [["Which OSI layer gives each application its own port number?", "The transport layer (layer 4)", "OSI model", false], ["What three messages open a TCP connection, in order?", "SYN, SYN-ACK, then ACK", "TCP/IP", true]];
+  return `<div class="mx-auto max-w-6xl px-12 pb-24 opacity-40" aria-hidden="true"><header class="pt-12 pb-8"><p class="text-sm text-muted">Module · 5 points</p><h1 class="text-3xl font-semibold">Networks</h1></header></div>
+  <dialog open class="modal modal-open" aria-labelledby="import-h"><div class="modal-box max-w-3xl">
+    <h3 id="import-h" class="text-lg font-semibold">Add points from questions and cards</h3>
+    <p class="mt-2 text-sm text-muted">Each one becomes a point. A short answer question becomes the question, then its model answer.</p>
+    <div class="mt-6 flex items-center justify-between gap-4"><div class="seg" role="radiogroup" aria-label="Add from">
+      <button type="button" role="radio" aria-checked="false">MCQ <span class="text-xs tabular-nums">7</span></button><button type="button" role="radio" aria-checked="true">Short answer <span class="text-xs tabular-nums">5</span></button><button type="button" role="radio" aria-checked="false">Flashcards <span class="text-xs tabular-nums">5</span></button></div>
+      <input type="search" class="input input-sm w-64" aria-label="Filter" placeholder="Filter…"></div>
+    <ul class="panel mt-4 divide-y" aria-label="Short answer questions">${items.map(([q, a, t, inList]) => `<li><label class="flex cursor-pointer items-start gap-4 px-4 py-3 hover:bg-base-100"><input type="checkbox" class="checkbox checkbox-sm mt-0.5" ${inList ? "checked" : ""}><span class="flex-1"><span class="text-sm">${q}</span><span class="block text-sm text-muted">→ ${a}</span></span><span class="whitespace-nowrap text-right text-xs text-muted">${inList ? "In the checklist" : t}</span></label></li>`).join("")}</ul>
+    <div class="modal-action"><button class="btn btn-ghost">Cancel</button><button class="btn btn-primary">Add 1 point</button></div>
+  </div></dialog>`;
+}
+
+/* ---------------- Suggestions ---------------- */
+function screenSuggestions() {
+  return `<div class="mx-auto max-w-6xl px-12 pb-24">
+    <header class="pt-12 pb-8"><h1 class="text-3xl font-semibold">Suggestions</h1><p class="mt-2 text-muted">Things you missed in a recall or got wrong in a quiz. Make a card for the ones that matter, dismiss the rest.</p></header>
+    <ul class="panel divide-y" aria-label="Suggestions"><li class="px-6 py-5">
+      <p class="text-xs text-muted">Quiz: OSI model · wrong, you wrote "Network layer"</p><p class="mt-1 text-[15px]">Which OSI layer gives each application its own port number?</p><p class="text-sm text-muted">→ The transport layer (layer 4)</p>
+      <form class="mt-5 grid grid-cols-2 gap-6" onsubmit="event.preventDefault()">
+        <div><label class="block text-sm font-semibold" for="sf">Front</label><textarea id="sf" class="textarea mt-1 w-full text-[15px]" rows="3">Which OSI layer gives each application its own port number?</textarea><p class="mt-1 text-sm text-muted">Starts as the question. Rewrite it as the thought you'll actually have.</p></div>
+        <div><label class="block text-sm font-semibold" for="sb">Back</label><textarea id="sb" class="textarea mt-1 w-full text-[15px]" rows="3">The **transport** layer (layer 4). TCP and UDP ports live here.</textarea><p class="mt-1 text-sm text-muted">Starts as the model answer.</p></div>
+        <div class="col-span-2 flex items-center gap-3"><button class="btn btn-primary">Save card</button><button type="button" class="btn btn-ghost">Cancel</button></div>
+      </form></li>
+      <li class="px-6 py-5"><div class="flex items-start justify-between gap-6"><div><p class="text-xs text-muted">Quiz: TCP/IP · right, but guessed</p><p class="mt-1 text-[15px]">What three messages open a TCP connection, in order?</p><p class="text-sm text-muted">→ SYN, SYN-ACK, then ACK</p></div>
+        <div class="flex shrink-0 gap-2"><button class="btn btn-ghost btn-sm" aria-label="Dismiss suggestion 2">${icon("x")}Dismiss</button><button class="btn btn-outline btn-sm border-field-border">${icon("plus")}Make a card</button></div></div></li>
+    </ul></div>`;
+}
+
+function markdown(md) { return md.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/`([^`]+)`/g, "<code>$1</code>"); }
+
+/* ---------------- Render ---------------- */
+const screens = { editor: screenEditor, quiz: screenQuiz, results: screenResults, setup: screenSetup, import: screenImport, suggestions: screenSuggestions };
+const screenNames = { editor: "Editor", quiz: "Quiz", results: "Results", setup: "Quiz setup", import: "Checklist import", suggestions: "Suggestions" };
+const navOf = { editor: "topics", import: "recall", results: "history" };
+function setVariant(v) { state.variant = v; render(); }
+function go(screen, v) { state.screen = screen; state.variant = v || variants[screen][0]; try { history.replaceState(null, "", `#${screen}`); } catch (e) {} render(); window.scrollTo(0, 0); }
+function render() {
+  const el = document.getElementById("app");
+  el.innerHTML = screens[state.screen]();
+  document.querySelector('nav[aria-label="Main"]').hidden = state.screen === "quiz";
+  document.querySelectorAll(".nav-link").forEach(a => a.dataset.nav && a.dataset.nav === navOf[state.screen] ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
+  document.getElementById("screens").innerHTML = Object.keys(screens).map(s => `<button class="px-2 py-1 rounded ${s === state.screen ? "bg-neutral text-neutral-content font-semibold" : "hover:underline"}" onclick="go('${s}')">${screenNames[s]}</button>`).join("");
+  document.getElementById("states").innerHTML = variants[state.screen].map(v => `<button class="px-2 py-1 rounded ${v === state.variant ? "bg-neutral text-neutral-content font-semibold" : "hover:underline"}" onclick="setVariant('${v}')">${v}</button>`).join("");
+  if (window.lucide) lucide.createIcons();
+  if (window.renderMathInElement) renderMathInElement(el, { delimiters: [{ left: "$", right: "$", display: false }], throwOnError: false });
+}
+function applyTheme(name, save = true) {
+  document.documentElement.dataset.theme = name;
+  document.querySelector('meta[name="theme-color"]').content = name === "studyapp-dark" ? "#18130e" : "#f9f4ee";
+  document.querySelectorAll("[data-theme-choice]").forEach(b => b.setAttribute("aria-checked", b.dataset.themeChoice === name));
+  if (save) { try { localStorage.setItem("studyapp-theme", name); } catch (e) {} render(); }
+}
+document.getElementById("theme-switch").addEventListener("click", e => { const b = e.target.closest("[data-theme-choice]"); if (b) applyTheme(b.dataset.themeChoice); });
+(() => { let saved = null; try { saved = localStorage.getItem("studyapp-theme"); } catch (e) {} applyTheme(saved === "studyapp" ? "studyapp" : "studyapp-dark", false); })();
+const start = location.hash.slice(1);
+if (screens[start]) state.screen = start, state.variant = variants[start][0];
+render();
+const strip = document.getElementById("proto-strip");
+new ResizeObserver(() => document.documentElement.style.setProperty("--strip", strip.offsetHeight + "px")).observe(strip);
+</script>
+</body>
+</html>

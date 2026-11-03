@@ -266,3 +266,60 @@ Differences from the prototype:
 
 Checked in the real app (`e2e/flashcards_test.py`, run by `e2e/run.sh`): writes a basic card with an extra cue into a picked topic, a reversed card and a cloze card with two gaps (one from Ctrl+Shift+C, one from the button), checks the preview and the topic list, reviews all 6 with the keyboard (one Again that comes back, one Undo), checks the summary, and turns a recall miss into a card from Suggestions. With `AUDIT` set it measures every screen in both themes. That run found one real bug, fixed: after accepting the last suggestion, the "Card saved" message disappeared with the list. Every screen passes contrast, target size and one-primary checks.
 
+
+---
+
+# Short answer (proposed, waiting for a greenlight)
+
+Clickable prototype: `short-answer.html`. Same theme and components as the other prototypes, built into the existing editor, quiz, results and setup screens rather than new ones.
+
+## Answered (3 Nov 2026)
+
+- **Marking:** the app checks, and you can overrule it.
+- **Where:** in the same topics and quizzes as MCQs.
+- **Feeds:** wrong or guessed short answers become card suggestions, and short answer questions can be added to recall checklists.
+
+## Screen inventory
+
+| Screen | States |
+|---|---|
+| Editor | accepted answers, keywords, try an answer, needs an answer, multiple choice |
+| Quiz | typing, right, right with a typo, wrong, keywords missed, overruled, exam |
+| Results | review, overruled |
+| Quiz setup | both types, short answer only |
+| Checklist import | short answer tab |
+| Suggestions | make a card from a short answer |
+
+## How it works
+
+- **Question type** is a switch at the top of the editor: Multiple choice or Short answer. Switching keeps the question, explanation, sources and tags.
+- **Two ways to check:**
+  - *Accepted answers:* right when what you type matches any of them. Case, extra spaces, punctuation and a leading "the" or "a" don't matter. "Allow small typos" (on by default) accepts one wrong letter in words of 4 to 7 letters and two from 8, never in numbers or answers of 3 letters or fewer.
+  - *Keywords:* right when your answer contains all of them, or at least N. Each keyword can have other spellings after a comma. Each word you write counts once, so "SYN-ACK" doesn't also count as "SYN" and "ACK".
+- **Model answer** (optional, Markdown) is what you see after answering. Left blank, the first accepted answer is shown.
+- **Try an answer** in the editor shows how the app would mark something before saving. Nothing is recorded.
+- **In a quiz** you type the answer: Enter submits, Shift+Enter adds a line, Ctrl+G flags it as guessed (F can't work while you're typing). In study mode the feedback says Correct, Correct with a typo (and the word), or Wrong, with the keywords you hit and missed and the model answer.
+- **Overruling:** "Count it as right" or "Count it as wrong" (O) in study feedback, and on every short answer in Results, including exam mode. An overruled answer is labelled "You overruled this" and can be undone. The score, history, Overview, retry and suggestions all use your decision.
+- **Quiz setup** gets Question types: Both, MCQ or Short answer. Topic rows show "5 MCQ · 2 short answer". Difficulty and option order say they only change multiple choice.
+- **Checklist import:** the Short answer tab becomes "question → model answer" (or the first accepted answer).
+- **Suggestions:** a wrong or guessed short answer shows what you wrote, and making a card starts with the question as the front and the model answer as the back.
+
+## Open questions
+
+1. **Keyword order.** The TCP handshake question says "in order", but keywords are checked in any order. Should there be an "in this order" option per question, or is any order fine?
+2. **Half marks.** "2 of 3 keywords" counts as wrong (or right, if you set "at least 2"), so every answer is right or wrong and the tallies stay simple. Is that OK, or do you want half marks?
+3. **The typo rule** above: right amount of forgiveness, or stricter or looser?
+
+## Calls made in the design, to confirm or change
+
+- Overruling is allowed any time from Results, not just straight after answering.
+- Ctrl+G for "I guessed" on short answers. MCQs keep F.
+- A short answer question needs at least one accepted answer or keyword to save. It can't be "mark it yourself only".
+
+## UI/UX test results
+
+- Every screen and state screenshotted in both themes at 1440 × 900: no console errors, no blocked requests, no horizontal scroll.
+- Measured audit (contrast, 24px targets, one primary per view) passes everywhere. The audit now measures a checkbox through the label that wraps it, since the whole row is what you click. The MCQ "is correct" checkboxes are 20px on their own, as in the real editor today, and pass WCAG 2.5.8's spacing exception (12px clear around them).
+- The first pass found the quiz's current-question marker drawn as a solid bright bar, which the app already replaced with an outline after the bright-bar recheck. Fixed to match. It also found the keyword rule needed spelling out ("SYN-ACK" vs "SYN" and "ACK").
+- Squint test (greyscale, blurred) on the keyword editor, a wrong answer and the results review: the question, your answer, then the verdict read in that order, and the one primary (Next or Save) stands out.
+- Verdicts never rely on colour alone: every one has an icon and a word, and keyword chips have a tick or cross plus solid vs dashed borders.
