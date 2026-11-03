@@ -59,6 +59,8 @@ pub struct TopicRow {
     pub module: Option<ModuleId>,
     pub tags: Vec<String>,
     pub question_count: usize,
+    /// How many of those are short answer (R85).
+    pub short_count: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -95,8 +97,15 @@ impl Store {
     }
 
     fn from_connection(connection: Connection) -> Result<Self> {
-        connection.pragma_update(None, "foreign_keys", true)?;
+        // Migrations run with foreign keys off so a table can be rebuilt without its
+        // children cascading away. Then every link is checked before they go back on.
+        connection.pragma_update(None, "foreign_keys", false)?;
         schema::migrate(&connection)?;
+        let broken: i64 = connection.query_row("SELECT COUNT(*) FROM pragma_foreign_key_check", [], |row| row.get(0))?;
+        if broken > 0 {
+            return Err(StoreError::NotFound("consistent links between tables after upgrading"));
+        }
+        connection.pragma_update(None, "foreign_keys", true)?;
         Ok(Self { connection })
     }
 
@@ -176,7 +185,7 @@ impl Store {
 
     pub fn topics(&self) -> Result<Vec<TopicRow>> {
         let mut statement = self.connection.prepare(
-            "SELECT t.id, t.name, t.module_id, (SELECT COUNT(*) FROM questions q WHERE q.topic_id = t.id) FROM topics t ORDER BY t.name",
+            "SELECT t.id, t.name, t.module_id, (SELECT COUNT(*) FROM questions q WHERE q.topic_id = t.id), (SELECT COUNT(*) FROM questions q WHERE q.topic_id = t.id AND q.kind = 'short') FROM topics t ORDER BY t.name",
         )?;
         let rows = statement.query_map([], |row| {
             Ok(TopicRow {
@@ -185,6 +194,7 @@ impl Store {
                 module: row.get::<_, Option<i64>>(2)?.map(ModuleId),
                 tags: vec![],
                 question_count: row.get::<_, i64>(3)? as usize,
+                short_count: row.get::<_, i64>(4)? as usize,
             })
         })?;
         let mut topics: Vec<TopicRow> = rows.collect::<rusqlite::Result<_>>()?;
@@ -215,12 +225,13 @@ impl Store {
     pub fn save_question(&mut self, question: &Question) -> Result<QuestionId> {
         let transaction = self.connection.transaction()?;
         transaction.execute(
-            "INSERT INTO questions (topic_id, kind, text, explanation) VALUES (?1, ?2, ?3, ?4)",
+            "INSERT INTO questions (topic_id, kind, text, explanation, short) VALUES (?1, ?2, ?3, ?4, ?5)",
             params![
                 question.topic().0,
                 kind_name(question.kind()),
                 question.text(),
-                question.explanation()
+                question.explanation(),
+                question.short().map(serde_json::to_string).transpose()?
             ],
         )?;
         let id = QuestionId(transaction.last_insert_rowid());
@@ -232,8 +243,8 @@ impl Store {
     pub fn update_question(&mut self, id: QuestionId, question: &Question) -> Result<()> {
         let transaction = self.connection.transaction()?;
         let changed = transaction.execute(
-            "UPDATE questions SET topic_id = ?2, kind = ?3, text = ?4, explanation = ?5, edited_at = datetime('now') WHERE id = ?1",
-            params![id.0, question.topic().0, kind_name(question.kind()), question.text(), question.explanation()],
+            "UPDATE questions SET topic_id = ?2, kind = ?3, text = ?4, explanation = ?5, short = ?6, edited_at = datetime('now') WHERE id = ?1",
+            params![id.0, question.topic().0, kind_name(question.kind()), question.text(), question.explanation(), question.short().map(serde_json::to_string).transpose()?],
         )?;
         if changed == 0 {
             return Err(StoreError::NotFound("question"));
@@ -250,15 +261,15 @@ impl Store {
     }
 
     pub fn question(&self, id: QuestionId) -> Result<Question> {
-        let head: Option<(i64, String, String, String)> = self
+        let head: Option<(i64, String, String, String, Option<String>)> = self
             .connection
             .query_row(
-                "SELECT topic_id, kind, text, explanation FROM questions WHERE id = ?1",
+                "SELECT topic_id, kind, text, explanation, short FROM questions WHERE id = ?1",
                 [id.0],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
             )
             .optional()?;
-        let (topic, kind, text, explanation) = head.ok_or(StoreError::NotFound("question"))?;
+        let (topic, kind, text, explanation, short) = head.ok_or(StoreError::NotFound("question"))?;
         let options = self
             .connection
             .prepare("SELECT text, correct FROM options WHERE question_id = ?1 ORDER BY position")?
@@ -279,11 +290,12 @@ impl Store {
             .prepare("SELECT source_id, location FROM citations WHERE question_id = ?1 ORDER BY position")?
             .query_map([id.0], |row| Ok(Citation { source: SourceId(row.get(0)?), location: row.get(1)? }))?
             .collect::<rusqlite::Result<_>>()?;
-        let kind = if kind == "multiple" {
-            AnswerKind::Multiple
-        } else {
-            AnswerKind::Single
+        let kind = match kind.as_str() {
+            "multiple" => AnswerKind::Multiple,
+            "short" => AnswerKind::Short,
+            _ => AnswerKind::Single,
         };
+        let short = short.map(|json| serde_json::from_str(&json)).transpose()?;
         Question::new(QuestionDraft {
             topic: TopicId(topic),
             text,
@@ -292,6 +304,7 @@ impl Store {
             explanation,
             tags,
             citations,
+            short,
         })
         .map_err(|_| StoreError::NotFound("valid question"))
     }
@@ -445,6 +458,18 @@ impl Store {
         Ok(AttemptId(self.connection.last_insert_rowid()))
     }
 
+    /// Replaces a saved attempt, after a short answer on its results is overruled (R84).
+    pub fn update_attempt(&mut self, id: AttemptId, attempt: &Attempt) -> Result<()> {
+        let changed = self.connection.execute(
+            "UPDATE attempts SET status = ?2, attempt = ?3 WHERE id = ?1",
+            params![id.0, serde_json::to_string(&attempt.status())?, serde_json::to_string(attempt)?],
+        )?;
+        if changed == 0 {
+            return Err(StoreError::NotFound("attempt"));
+        }
+        Ok(())
+    }
+
     pub fn save_reasons(&mut self, id: AttemptId, reasons: &Reasons) -> Result<()> {
         let changed = self.connection.execute(
             "UPDATE attempts SET reasons = ?2 WHERE id = ?1",
@@ -534,6 +559,7 @@ fn kind_name(kind: AnswerKind) -> &'static str {
     match kind {
         AnswerKind::Single => "single",
         AnswerKind::Multiple => "multiple",
+        AnswerKind::Short => "short",
     }
 }
 

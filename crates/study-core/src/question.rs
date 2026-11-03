@@ -4,6 +4,8 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+pub use crate::short::{Check, Keyword, ShortAnswer};
+
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct TopicId(pub i64);
 
@@ -20,6 +22,8 @@ pub const MAX_OPTIONS: usize = 5;
 pub enum AnswerKind {
     Single,
     Multiple,
+    /// Typed and checked against accepted answers or keywords (R78).
+    Short,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -45,6 +49,9 @@ pub struct QuestionDraft {
     pub explanation: String,
     pub tags: Vec<String>,
     pub citations: Vec<Citation>,
+    /// Only for `AnswerKind::Short`.
+    #[serde(default)]
+    pub short: Option<ShortAnswer>,
 }
 
 /// A question that has passed every rule. Only constructible through `Question::new`.
@@ -57,6 +64,8 @@ pub struct Question {
     explanation: String,
     tags: Vec<String>,
     citations: Vec<Citation>,
+    #[serde(default)]
+    short: Option<ShortAnswer>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Error)]
@@ -69,10 +78,33 @@ pub enum QuestionError {
     NoCorrectOption,
     #[error("a single-answer question can only have one correct option, this one has {0}")]
     SeveralCorrectInSingle(usize),
+    #[error("add at least one accepted answer, so the app can check it")]
+    NoAcceptedAnswer,
+    #[error("add at least one keyword, so the app can check it")]
+    NoKeyword,
 }
 
 impl Question {
     pub fn new(draft: QuestionDraft) -> Result<Self, QuestionError> {
+        if draft.kind == AnswerKind::Short {
+            // R79: something to check against. Options don't apply.
+            let short = draft.short.ok_or(QuestionError::NoAcceptedAnswer)?.tidied();
+            match &short.check {
+                Check::Accepted { answers, .. } if answers.is_empty() => return Err(QuestionError::NoAcceptedAnswer),
+                Check::Keywords { keywords, .. } if keywords.is_empty() => return Err(QuestionError::NoKeyword),
+                _ => {}
+            }
+            return Ok(Self {
+                topic: draft.topic,
+                text: draft.text,
+                kind: draft.kind,
+                options: vec![],
+                explanation: draft.explanation,
+                tags: draft.tags,
+                citations: draft.citations,
+                short: Some(short),
+            });
+        }
         let count = draft.options.len();
         if count < MIN_OPTIONS {
             return Err(QuestionError::TooFewOptions(count));
@@ -95,6 +127,7 @@ impl Question {
             explanation: draft.explanation,
             tags: draft.tags,
             citations: draft.citations,
+            short: None,
         })
     }
 
@@ -118,6 +151,10 @@ impl Question {
     }
     pub fn citations(&self) -> &[Citation] {
         &self.citations
+    }
+    /// How a short answer question is checked. None for multiple choice.
+    pub fn short(&self) -> Option<&ShortAnswer> {
+        self.short.as_ref()
     }
 
     /// Indices of the correct options, in option order.
@@ -150,7 +187,12 @@ mod tests {
             explanation: "The ALU performs arithmetic and logic operations.".into(),
             tags: vec![],
             citations: vec![],
+            short: None,
         }
+    }
+
+    fn short(check: Check) -> QuestionDraft {
+        QuestionDraft { kind: AnswerKind::Short, options: vec![], short: Some(ShortAnswer { check, model_answer: String::new() }), ..draft(AnswerKind::Short, &[]) }
     }
 
     fn options_with_first_correct(count: usize) -> Vec<(&'static str, bool)> {
@@ -264,6 +306,39 @@ mod tests {
         ];
         assert_eq!(Question::new(with_two).unwrap().citations().len(), 2);
         assert!(Question::new(draft(AnswerKind::Single, &options_with_first_correct(3))).is_ok());
+    }
+
+    // short-answer.feature: A short answer question needs something to check against
+    #[test]
+    fn a_short_answer_needs_an_accepted_answer_or_keyword() {
+        let none = short(Check::Accepted { answers: vec![" ".into()], typos: true });
+        assert_eq!(Question::new(none), Err(QuestionError::NoAcceptedAnswer));
+        assert_eq!(QuestionError::NoAcceptedAnswer.to_string(), "add at least one accepted answer, so the app can check it");
+        let no_keywords = short(Check::Keywords { keywords: vec![], needed: None });
+        assert_eq!(Question::new(no_keywords), Err(QuestionError::NoKeyword));
+        let missing = QuestionDraft { short: None, ..short(Check::Keywords { keywords: vec![], needed: None }) };
+        assert_eq!(Question::new(missing), Err(QuestionError::NoAcceptedAnswer));
+
+        let good = Question::new(short(Check::Accepted { answers: vec![" Transport layer ".into(), "".into()], typos: true })).unwrap();
+        assert_eq!(good.kind(), AnswerKind::Short);
+        assert!(good.options().is_empty() && good.correct_indices().is_empty());
+        assert_eq!(good.short().unwrap().check, Check::Accepted { answers: vec!["Transport layer".into()], typos: true }, "tidied");
+    }
+
+    #[test]
+    fn short_answers_have_no_options_and_mcqs_no_short_answer() {
+        let with_options = QuestionDraft { options: vec![AnswerOption { text: "A".into(), correct: true }], ..short(Check::Accepted { answers: vec!["A".into()], typos: true }) };
+        assert!(Question::new(with_options).unwrap().options().is_empty(), "options are dropped");
+        let mut mcq = draft(AnswerKind::Single, &options_with_first_correct(3));
+        mcq.short = Some(ShortAnswer { check: Check::Accepted { answers: vec!["A".into()], typos: true }, model_answer: String::new() });
+        assert_eq!(Question::new(mcq).unwrap().short(), None);
+    }
+
+    #[test]
+    fn old_saved_questions_read_without_a_short_answer() {
+        let old = r#"{"topic":1,"text":"Q","kind":"Single","options":[{"text":"A","correct":true}],"explanation":"","tags":[],"citations":[]}"#;
+        let question: Question = serde_json::from_str(old).unwrap();
+        assert_eq!(question.short(), None);
     }
 
     #[test]

@@ -110,15 +110,7 @@ fn escape(text: &str) -> String {
         .replace('>', "&gt;")
 }
 
-/// Markdown on one line: code fences dropped and the lines joined, for a checklist point.
-fn one_line(markdown: &str) -> String {
-    markdown
-        .lines()
-        .map(str::trim)
-        .filter(|line| !line.is_empty() && !line.starts_with("```"))
-        .collect::<Vec<_>>()
-        .join(" ")
-}
+use crate::short::one_line;
 
 impl Note {
     /// The note as a recall point (R54): the text and, for basic and reversed cards, the

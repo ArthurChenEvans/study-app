@@ -180,3 +180,19 @@ Default schedule: the first check puts a new checklist on Day, then Week, Fortni
 | R75 | "Fit the scheduler to you" runs the FSRS optimiser on your review history and says if there isn't enough yet |
 | R76 | The done screen shows how many were reviewed, the share remembered against the target, time taken and cards worth rewriting |
 | R77 | Editing a card keeps its schedule. Removing a cue or cloze gap removes its card |
+
+## Short answer (approved 3 Nov 2026)
+
+| ID | Requirement |
+|---|---|
+| R78 | A question is multiple choice or short answer, chosen in the editor. Switching keeps the question, explanation, sources and tags. Short answers live in the same topics, quizzes, results and history as MCQs |
+| R79 | A short answer question is checked by accepted answers or by keywords, and needs at least one to be saved. It has an optional model answer (Markdown), shown after answering. Without one, the first accepted answer is shown |
+| R80 | Accepted answers: right when the answer matches any of them, ignoring case, extra spaces, punctuation and a leading "the", "a" or "an". With "Allow small typos" (on by default) a word of 4 to 7 letters may have one wrong letter and a word of 8 or more two. Never in numbers or in words of 3 letters or fewer |
+| R81 | Keywords: right when the answer contains all of them, or at least a chosen number, in any order. A keyword can have other spellings. Each word of the answer counts once, so "SYN-ACK" doesn't also count as "SYN" and "ACK" |
+| R82 | The editor's "Try an answer" shows how an answer would be marked. Nothing is recorded |
+| R83 | In a quiz the answer is typed. Enter submits, Shift+Enter adds a line, Ctrl+G flags it as guessed. Study mode shows the verdict (correct, correct with a typo, or wrong), the keywords hit and missed, the model answer and the explanation |
+| R84 | A short answer can be overruled: counted as right or as wrong, in study feedback or on the results page, and undone. Results, history, Overview, retry and suggestions all use the overruled outcome, and the answer is labelled as overruled |
+| R85 | Quiz setup can include both question types, only MCQs or only short answers. Topic rows show how many of each. Difficulty and option order only change MCQs |
+| R86 | Short answer questions can be added to recall checklists as "question → model answer" (or the first accepted answer). Wrong or guessed ones are card suggestions that start with the question and the model answer, and show what was written |
+
+Decided with the design: keywords are checked in any order, every answer is right or wrong (no half marks), and the typo rule is as in R80.

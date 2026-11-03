@@ -10,6 +10,7 @@ use thiserror::Error;
 
 use crate::assembly::{Difficulty, Mode, QuizItem, QuizSettings};
 use crate::question::{AnswerKind, Question, QuestionId};
+use crate::short::{Marking, mark};
 
 /// Reasons the app records by itself (R25).
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,6 +35,15 @@ pub struct Asked {
     pub picked: BTreeSet<usize>,
     pub flagged_guessed: bool,
     pub outcome: Option<Outcome>,
+    /// Short answer only: what was written (R83).
+    #[serde(default)]
+    pub typed: Option<String>,
+    /// Short answer only: the app's own verdict, kept even when overruled.
+    #[serde(default)]
+    pub marking: Option<Marking>,
+    /// The outcome is the opposite of the app's verdict (R84).
+    #[serde(default)]
+    pub overruled: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
@@ -56,6 +66,14 @@ pub enum AttemptError {
     NoGoingBack,
     #[error("every question was answered right and none were guessed, so there's nothing to retry")]
     NothingToRetry,
+    #[error("type your answer for this question")]
+    TypeTheAnswer,
+    #[error("pick an option for this question")]
+    PickAnOption,
+    #[error("write an answer before submitting")]
+    NothingWritten,
+    #[error("only short answers that were written and marked can be overruled")]
+    CantOverrule,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -82,6 +100,9 @@ impl Attempt {
                 picked: BTreeSet::new(),
                 flagged_guessed: false,
                 outcome: None,
+                typed: None,
+                marking: None,
+                overruled: false,
             })
             .collect();
         Self {
@@ -133,6 +154,9 @@ impl Attempt {
     pub fn submit(&mut self, picked: &[usize]) -> Result<Option<Outcome>, AttemptError> {
         let mode = self.settings.mode;
         let asked = self.current_mut()?;
+        if asked.snapshot.kind() == AnswerKind::Short {
+            return Err(AttemptError::TypeTheAnswer);
+        }
         if picked.is_empty() {
             return Err(AttemptError::NothingPicked);
         }
@@ -147,6 +171,40 @@ impl Attempt {
         asked.outcome = Some(outcome);
         self.advance();
         Ok((mode == Mode::Study).then_some(outcome))
+    }
+
+    /// Submit a typed answer to a short answer question (R83). Study mode returns the
+    /// outcome and the app's marking straight away, exam mode returns None.
+    pub fn submit_text(&mut self, typed: &str) -> Result<Option<(Outcome, Marking)>, AttemptError> {
+        let mode = self.settings.mode;
+        let asked = self.current_mut()?;
+        let Some(short) = asked.snapshot.short() else {
+            return Err(AttemptError::PickAnOption);
+        };
+        if typed.trim().is_empty() {
+            return Err(AttemptError::NothingWritten);
+        }
+        let marking = mark(&short.check, typed);
+        let outcome = if marking.right { Outcome::Right } else { Outcome::Wrong(None) };
+        asked.typed = Some(typed.trim().to_string());
+        asked.marking = Some(marking.clone());
+        asked.outcome = Some(outcome);
+        self.advance();
+        Ok((mode == Mode::Study).then_some((outcome, marking)))
+    }
+
+    /// Counts an answered short answer as the opposite of the app's verdict, or back (R84).
+    /// Works during the quiz and after it, since results can be overruled too.
+    pub fn overrule(&mut self, index: usize) -> Result<Outcome, AttemptError> {
+        let asked = self.asked.get_mut(index).ok_or(AttemptError::CantOverrule)?;
+        let (Some(_), Some(marking)) = (&asked.typed, &asked.marking) else {
+            return Err(AttemptError::CantOverrule);
+        };
+        asked.overruled = !asked.overruled;
+        let right = marking.right != asked.overruled;
+        let outcome = if right { Outcome::Right } else { Outcome::Wrong(None) };
+        asked.outcome = Some(outcome);
+        Ok(outcome)
     }
 
     /// Per-question timer ran out: counts as wrong and moves on (R22).
@@ -191,6 +249,9 @@ impl Attempt {
                 picked: BTreeSet::new(),
                 flagged_guessed: false,
                 outcome: None,
+                typed: None,
+                marking: None,
+                overruled: false,
             })
             .collect();
         if again.is_empty() {
@@ -236,7 +297,8 @@ pub fn score(question: &Question, picked: &BTreeSet<usize>) -> Outcome {
 mod tests {
     use super::*;
     use crate::assembly::Order;
-    use crate::question::{AnswerOption, QuestionDraft, TopicId};
+    use crate::question::{AnswerOption, Check, QuestionDraft, ShortAnswer, TopicId};
+    use crate::short::Detail;
     use std::time::Duration;
 
     fn question(kind: AnswerKind, correct: &[usize], text: &str) -> Question {
@@ -253,13 +315,29 @@ mod tests {
             explanation: String::new(),
             tags: vec![],
             citations: vec![],
+            short: None,
         })
         .unwrap()
     }
 
     /// Question 1: single, correct = 0. Question 2: multiple, correct = A and C (0, 2). Question 3: single, correct = 1.
+    fn short_question() -> Question {
+        Question::new(QuestionDraft {
+            topic: TopicId(1),
+            text: "Which OSI layer adds port numbers?".into(),
+            kind: AnswerKind::Short,
+            options: vec![],
+            explanation: String::new(),
+            tags: vec![],
+            citations: vec![],
+            short: Some(ShortAnswer { check: Check::Accepted { answers: vec!["Transport layer".into()], typos: true }, model_answer: String::new() }),
+        })
+        .unwrap()
+    }
+
     fn lookup(id: QuestionId) -> Question {
         match id.0 {
+            4 => short_question(),
             1 => question(AnswerKind::Single, &[0], "What does the ALU do?"),
             2 => question(AnswerKind::Multiple, &[0, 2], "Which describe a GPU warp?"),
             _ => question(
@@ -461,5 +539,65 @@ mod tests {
         let mut attempt = Attempt::start(settings(Mode::Study), items(&[1]), lookup);
         attempt.submit(&[0]).unwrap();
         assert_eq!(attempt.retry(1).err(), Some(AttemptError::NothingToRetry));
+    }
+
+    // short-answer.feature: Study mode shows the verdict
+    #[test]
+    fn short_answers_are_typed_and_marked() {
+        let mut attempt = Attempt::start(settings(Mode::Study), items(&[4, 1]), lookup);
+        assert_eq!(attempt.submit(&[0]), Err(AttemptError::TypeTheAnswer));
+        assert_eq!(attempt.submit_text("   "), Err(AttemptError::NothingWritten));
+        let (outcome, marking) = attempt.submit_text("the transprot layer").unwrap().unwrap();
+        assert_eq!(outcome, Outcome::Right);
+        assert_eq!(marking.detail, Detail::Matched { answer: "Transport layer".into(), typo: Some("transprot".into()) });
+        let asked = &attempt.asked()[0];
+        assert_eq!(asked.typed.as_deref(), Some("the transprot layer"));
+        assert_eq!(asked.marking.as_ref(), Some(&marking));
+        assert_eq!(attempt.submit_text("Decode"), Err(AttemptError::PickAnOption), "the next one is multiple choice");
+    }
+
+    #[test]
+    fn exam_mode_keeps_the_verdict_until_the_end() {
+        let mut attempt = Attempt::start(settings(Mode::Exam), items(&[4]), lookup);
+        assert_eq!(attempt.submit_text("network layer").unwrap(), None);
+        assert_eq!(attempt.asked()[0].outcome, Some(Outcome::Wrong(None)));
+        assert_eq!(attempt.status(), Status::Finished);
+    }
+
+    // short-answer.feature: Overrule a verdict
+    #[test]
+    fn a_short_answer_can_be_overruled_and_undone() {
+        let mut attempt = Attempt::start(settings(Mode::Study), items(&[4, 1, 4]), lookup);
+        assert_eq!(attempt.overrule(0), Err(AttemptError::CantOverrule), "not answered yet");
+        attempt.submit_text("network layer").unwrap();
+        assert_eq!(attempt.overrule(0), Ok(Outcome::Right));
+        assert!(attempt.asked()[0].overruled);
+        assert_eq!(attempt.overrule(0), Ok(Outcome::Wrong(None)), "undo");
+        assert!(!attempt.asked()[0].overruled);
+        attempt.overrule(0).unwrap();
+        attempt.submit(&[0]).unwrap();
+        assert_eq!(attempt.overrule(1), Err(AttemptError::CantOverrule), "multiple choice can't be");
+        attempt.question_timed_out().unwrap();
+        assert_eq!(attempt.overrule(2), Err(AttemptError::CantOverrule), "nothing was written");
+        assert_eq!(attempt.overrule(9), Err(AttemptError::CantOverrule));
+        assert_eq!(attempt.status(), Status::Finished);
+
+        let retry = attempt.retry(1).unwrap();
+        assert_eq!(retry.asked().len(), 1, "the overruled one counts as right, so only the timed out one");
+        assert_eq!(retry.asked()[0].typed, None);
+    }
+
+    #[test]
+    fn old_saved_attempts_read_without_typed_answers() {
+        let attempt = Attempt::start(settings(Mode::Study), items(&[1]), lookup);
+        let mut json: serde_json::Value = serde_json::to_value(&attempt).unwrap();
+        for asked in json["asked"].as_array_mut().unwrap() {
+            let asked = asked.as_object_mut().unwrap();
+            asked.remove("typed");
+            asked.remove("marking");
+            asked.remove("overruled");
+        }
+        let read: Attempt = serde_json::from_value(json).unwrap();
+        assert_eq!(read, attempt);
     }
 }

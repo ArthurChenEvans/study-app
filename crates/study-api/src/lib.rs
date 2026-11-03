@@ -14,9 +14,11 @@ use rand::rngs::StdRng;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+pub use study_core::assembly::QuestionTypes;
 use study_core::assembly::{
     Amount, Difficulty, Mode, Order, Pick, PoolEntry, QuizSettings, assemble,
 };
+use study_core::short::{Check, Marking, ShortAnswer, mark};
 use study_core::attempt::{Attempt, AutoReason, Outcome, Status};
 use study_core::bibliography::SourceFields;
 use study_core::image::{ImageId, check_image};
@@ -83,6 +85,9 @@ pub struct QuestionInput {
     pub explanation: String,
     pub tags: Vec<String>,
     pub citations: Vec<CitationInput>,
+    /// Set for a short answer question (R78). Options are then ignored.
+    #[serde(default)]
+    pub short: Option<ShortAnswer>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -97,6 +102,9 @@ pub struct QuizSetupInput {
     pub total_minutes: Option<u64>,
     pub per_question_seconds: Option<u64>,
     pub easy: bool,
+    /// R85: both, only MCQs or only short answers.
+    #[serde(default)]
+    pub types: QuestionTypes,
 }
 
 // ---------- Views ----------
@@ -118,6 +126,8 @@ pub struct QuizView {
     pub text: String,
     pub options: Vec<ShownOption>,
     pub multiple: bool,
+    /// A short answer question: type the answer instead of picking (R83).
+    pub short: bool,
     pub answers_to_pick: Option<usize>,
     pub flagged: bool,
     pub total_seconds: Option<u64>,
@@ -138,11 +148,14 @@ pub enum TrackCell {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Feedback {
+    /// Which asked question this is, for overruling it (R84).
+    pub index: usize,
     pub right: bool,
     pub auto_reason: Option<AutoReason>,
     pub correct: Vec<usize>,
     pub explanation: String,
     pub citations: Vec<Citation>,
+    pub short: Option<ShortFeedback>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -178,6 +191,8 @@ pub struct ReviewItem {
     pub status: ReviewStatus,
     pub auto_reason: Option<AutoReason>,
     pub reason: Option<GivenReason>,
+    /// Short answer only: what was written and how it was marked.
+    pub short: Option<ShortFeedback>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -189,6 +204,34 @@ pub struct ResultsView {
     pub review: Vec<ReviewItem>,
     pub to_prompt: Vec<usize>,
     pub retry_count: usize,
+}
+
+/// What a typed answer was and how it was marked (R83, R84).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ShortFeedback {
+    pub typed: String,
+    /// The app's own verdict. With `overruled` set, the outcome is the opposite.
+    pub marking: Marking,
+    /// The model answer, or the first accepted answer.
+    pub shown_answer: String,
+    pub also_accepted: Vec<String>,
+    pub overruled: bool,
+}
+
+fn short_feedback(asked: &study_core::attempt::Asked) -> Option<ShortFeedback> {
+    let short = asked.snapshot.short()?;
+    Some(ShortFeedback {
+        typed: asked.typed.clone()?,
+        marking: asked.marking.clone()?,
+        shown_answer: short.shown_answer(),
+        also_accepted: short.also_accepted(),
+        overruled: asked.overruled,
+    })
+}
+
+/// R82: how an answer would be marked, for "Try an answer" in the editor. Nothing is saved.
+pub fn try_short_answer(check: &Check, typed: &str) -> Marking {
+    mark(check, typed)
 }
 
 // ---------- The app ----------
@@ -293,6 +336,7 @@ impl App {
                     location: citation.location.clone(),
                 })
                 .collect(),
+            short: question.short().cloned(),
         })
     }
 
@@ -369,6 +413,7 @@ impl App {
             } else {
                 Difficulty::Hard
             },
+            types: setup.types,
         };
         let questions = self.store.questions_in(&settings.topics)?;
         let pool: Vec<PoolEntry> = questions
@@ -404,11 +449,56 @@ impl App {
         let attempt = self.active_mut()?;
         let index = current_index(attempt);
         let feedback_given = attempt.submit(&picked)?.is_some();
-        let feedback = feedback_given.then(|| feedback_for(&attempt.asked()[index]));
+        let feedback = feedback_given.then(|| feedback_for(attempt, index));
         Ok(AnswerResult {
             feedback,
             next: self.next(today)?,
         })
+    }
+
+    /// R83: a typed answer to a short answer question.
+    pub fn answer_text(&mut self, typed: String, today: i64) -> ApiResult<AnswerResult> {
+        let attempt = self.active_mut()?;
+        let index = current_index(attempt);
+        let feedback_given = attempt.submit_text(&typed)?.is_some();
+        let feedback = feedback_given.then(|| feedback_for(attempt, index));
+        Ok(AnswerResult {
+            feedback,
+            next: self.next(today)?,
+        })
+    }
+
+    /// R84: overrule an answer straight after it's marked. `attempt` is set once the quiz
+    /// has finished and been saved (the last question), otherwise it's the running quiz.
+    pub fn overrule_answer(&mut self, attempt: Option<AttemptId>, index: usize) -> ApiResult<Feedback> {
+        match attempt {
+            None => {
+                let active = self.active_mut()?;
+                active.overrule(index)?;
+                Ok(feedback_for(active, index))
+            }
+            Some(id) => {
+                let saved = self.overrule_saved(id, index)?;
+                Ok(feedback_for(&saved, index))
+            }
+        }
+    }
+
+    /// R84: overrule a short answer on the results page.
+    pub fn overrule_result(&mut self, attempt: AttemptId, index: usize) -> ApiResult<ResultsView> {
+        self.overrule_saved(attempt, index)?;
+        self.results(attempt)
+    }
+
+    fn overrule_saved(&mut self, id: AttemptId, index: usize) -> ApiResult<Attempt> {
+        let (mut saved, mut reasons) = self.store.attempt(id)?;
+        let outcome = saved.overrule(index)?;
+        self.store.update_attempt(id, &saved)?;
+        // A reason only belongs on a wrong answer.
+        if outcome == Outcome::Right && reasons.0.remove(&index).is_some() {
+            self.store.save_reasons(id, &reasons)?;
+        }
+        Ok(saved)
     }
 
     pub fn question_timed_out(&mut self, today: i64) -> ApiResult<AnswerResult> {
@@ -416,7 +506,7 @@ impl App {
         let index = current_index(attempt);
         attempt.question_timed_out()?;
         let feedback =
-            (attempt.settings().mode == Mode::Study).then(|| feedback_for(&attempt.asked()[index]));
+            (attempt.settings().mode == Mode::Study).then(|| feedback_for(attempt, index));
         Ok(AnswerResult {
             feedback,
             next: self.next(today)?,
@@ -473,6 +563,7 @@ impl App {
                     status,
                     auto_reason,
                     reason: reasons.0.get(&index).cloned(),
+                    short: short_feedback(asked),
                 }
             })
             .collect();
@@ -557,7 +648,9 @@ fn to_question(input: QuestionInput) -> ApiResult<Question> {
     Ok(Question::new(QuestionDraft {
         topic: input.topic,
         text: input.text,
-        kind: if input.multiple {
+        kind: if input.short.is_some() {
+            AnswerKind::Short
+        } else if input.multiple {
             AnswerKind::Multiple
         } else {
             AnswerKind::Single
@@ -585,6 +678,7 @@ fn to_question(input: QuestionInput) -> ApiResult<Question> {
                 location: citation.location,
             })
             .collect(),
+        short: input.short,
     })?)
 }
 
@@ -632,6 +726,7 @@ fn view_of(attempt: &Attempt) -> Option<QuizView> {
             })
             .collect(),
         multiple: asked.snapshot.kind() == AnswerKind::Multiple,
+        short: asked.snapshot.kind() == AnswerKind::Short,
         answers_to_pick: attempt.answers_to_pick(),
         flagged: asked.flagged_guessed,
         total_seconds: settings.total_timer.map(|timer| timer.as_secs()),
@@ -640,20 +735,25 @@ fn view_of(attempt: &Attempt) -> Option<QuizView> {
     })
 }
 
-fn feedback_for(asked: &study_core::attempt::Asked) -> Feedback {
+fn feedback_for(attempt: &Attempt, index: usize) -> Feedback {
+    let asked = &attempt.asked()[index];
     let (right, auto_reason) = match asked.outcome {
         Some(Outcome::Right) => (true, None),
         Some(Outcome::Wrong(auto)) => (false, auto),
         None => (false, None),
     };
     Feedback {
+        index,
         right,
         auto_reason,
         correct: asked.snapshot.correct_indices(),
         explanation: asked.snapshot.explanation().into(),
         citations: asked.snapshot.citations().to_vec(),
+        short: short_feedback(asked),
     }
 }
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod short_tests;

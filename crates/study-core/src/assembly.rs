@@ -12,7 +12,7 @@ use rand::Rng;
 use rand::seq::SliceRandom;
 use thiserror::Error;
 
-use crate::question::{Question, QuestionId, TopicId};
+use crate::question::{AnswerKind, Question, QuestionId, TopicId};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Amount {
@@ -56,6 +56,8 @@ pub struct QuizSettings {
     pub total_timer: Option<Duration>,
     pub per_question_timer: Option<Duration>,
     pub difficulty: Difficulty,
+    #[serde(default)]
+    pub types: QuestionTypes,
 }
 
 impl QuizSettings {
@@ -72,6 +74,7 @@ impl QuizSettings {
             total_timer: None,
             per_question_timer: None,
             difficulty: Difficulty::default(),
+            types: QuestionTypes::default(),
         }
     }
 }
@@ -91,6 +94,27 @@ pub enum AssemblyError {
     ZeroQuestions,
     #[error("a chosen topic has no questions yet")]
     EmptyTopic(TopicId),
+    #[error("a chosen topic has no questions of that type yet")]
+    NoneOfType(TopicId),
+}
+
+/// Which kinds of question a quiz asks (R85).
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum QuestionTypes {
+    #[default]
+    Both,
+    Mcq,
+    Short,
+}
+
+impl QuestionTypes {
+    pub fn includes(self, kind: AnswerKind) -> bool {
+        match self {
+            Self::Both => true,
+            Self::Mcq => kind != AnswerKind::Short,
+            Self::Short => kind == AnswerKind::Short,
+        }
+    }
 }
 
 /// A question in the pool the quiz draws from.
@@ -126,6 +150,14 @@ pub fn assemble<R: Rng + ?Sized>(
         .collect();
     if let Some(index) = per_topic.iter().position(Vec::is_empty) {
         return Err(AssemblyError::EmptyTopic(settings.topics[index]));
+    }
+    // R85: only the question types asked for.
+    let per_topic: Vec<Vec<&PoolEntry>> = per_topic
+        .into_iter()
+        .map(|entries| entries.into_iter().filter(|entry| settings.types.includes(entry.question.kind())).collect())
+        .collect();
+    if let Some(index) = per_topic.iter().position(Vec::is_empty) {
+        return Err(AssemblyError::NoneOfType(settings.topics[index]));
     }
     let available: usize = per_topic.iter().map(Vec::len).sum();
 
@@ -195,7 +227,7 @@ pub fn assemble<R: Rng + ?Sized>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::question::{AnswerKind, AnswerOption, QuestionDraft};
+    use crate::question::{AnswerOption, QuestionDraft};
     use rand::SeedableRng;
     use rand::rngs::StdRng;
     use std::collections::HashSet;
@@ -220,6 +252,7 @@ mod tests {
             explanation: String::new(),
             tags: vec![],
             citations: vec![],
+            short: None,
         })
         .unwrap()
     }
@@ -491,5 +524,37 @@ mod tests {
             assemble(&pool(&questions), &QuizSettings::for_topics(vec![CPU, EMPTY]), &mut rng()),
             Err(AssemblyError::EmptyTopic(EMPTY))
         );
+    }
+
+    fn short_question(topic: TopicId) -> Question {
+        use crate::question::{Check, ShortAnswer};
+        Question::new(QuestionDraft {
+            kind: AnswerKind::Short,
+            options: vec![],
+            short: Some(ShortAnswer { check: Check::Accepted { answers: vec!["A".into()], typos: true }, model_answer: String::new() }),
+            ..QuestionDraft { topic, text: "Q".into(), kind: AnswerKind::Single, options: vec![], explanation: String::new(), tags: vec![], citations: vec![], short: None }
+        })
+        .unwrap()
+    }
+
+    // short-answer.feature: Choose the question types for a quiz
+    #[test]
+    fn quizzes_can_take_one_type_or_both() {
+        let mut questions = questions();
+        questions.extend((21..=23).map(|id| (QuestionId(id), short_question(CPU))));
+        let ids = |types| {
+            let settings = QuizSettings { types, option_order: Order::Shuffle, ..QuizSettings::for_topics(vec![CPU]) };
+            assemble(&pool(&questions), &settings, &mut rng()).unwrap()
+        };
+        assert_eq!(ids(QuestionTypes::Both).len(), 13);
+        assert_eq!(ids(QuestionTypes::Mcq).len(), 10);
+        let short = ids(QuestionTypes::Short);
+        assert_eq!(short.iter().map(|item| item.question.0).collect::<Vec<_>>(), vec![21, 22, 23]);
+        assert!(short.iter().all(|item| item.option_order.is_empty()), "short answers have no options to order");
+
+        let settings = QuizSettings { types: QuestionTypes::Short, ..QuizSettings::for_topics(vec![CPU, GPU]) };
+        assert_eq!(assemble(&pool(&questions), &settings, &mut rng()), Err(AssemblyError::NoneOfType(GPU)));
+        assert_eq!(AssemblyError::NoneOfType(GPU).to_string(), "a chosen topic has no questions of that type yet");
+        assert_eq!(QuizSettings::for_topics(vec![CPU]).types, QuestionTypes::Both, "both by default");
     }
 }

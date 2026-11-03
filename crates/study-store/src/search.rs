@@ -219,6 +219,7 @@ mod tests {
             explanation: explanation.into(),
             tags: tags.iter().map(|tag| tag.to_string()).collect(),
             citations: vec![],
+            short: None,
         })
         .unwrap()
     }

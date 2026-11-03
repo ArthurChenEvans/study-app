@@ -161,11 +161,35 @@ const MIGRATIONS: &[&str] = &[
     ",
     // 5: recall points added from flashcards (R54)
     "ALTER TABLE recall_points ADD COLUMN note_id INTEGER REFERENCES notes(id) ON DELETE SET NULL;",
+    // 6: short answer questions (R78, R79). SQLite can't change a CHECK, so the table is
+    // rebuilt. Migrations run with foreign keys off, so the options, tags, citations and
+    // recall points that point at questions are kept.
+    "
+    CREATE TABLE questions_new (
+        id          INTEGER PRIMARY KEY,
+        topic_id    INTEGER NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+        kind        TEXT NOT NULL CHECK (kind IN ('single', 'multiple', 'short')),
+        text        TEXT NOT NULL,
+        explanation TEXT NOT NULL,
+        short       TEXT,
+        edited_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    INSERT INTO questions_new (id, topic_id, kind, text, explanation, edited_at)
+        SELECT id, topic_id, kind, text, explanation, edited_at FROM questions;
+    DROP TABLE questions;
+    ALTER TABLE questions_new RENAME TO questions;
+    CREATE INDEX questions_by_topic ON questions(topic_id);
+    ",
 ];
 
 pub const LATEST: i64 = MIGRATIONS.len() as i64;
 
+/// Runs every migration not yet applied. Call with foreign keys off, see migration 6.
 pub fn migrate(connection: &Connection) -> Result<()> {
+    migrate_to(connection, LATEST)
+}
+
+pub(crate) fn migrate_to(connection: &Connection, target: i64) -> Result<()> {
     let found: i64 = connection.pragma_query_value(None, "user_version", |row| row.get(0))?;
     if found > LATEST {
         return Err(StoreError::NewerSchema {
@@ -173,7 +197,7 @@ pub fn migrate(connection: &Connection) -> Result<()> {
             known: LATEST,
         });
     }
-    for (index, sql) in MIGRATIONS.iter().enumerate().skip(found as usize) {
+    for (index, sql) in MIGRATIONS.iter().enumerate().take(target as usize).skip(found as usize) {
         let transaction = connection.unchecked_transaction()?;
         transaction.execute_batch(sql)?;
         transaction.pragma_update(None, "user_version", index as i64 + 1)?;

@@ -63,7 +63,7 @@ async fn commands_take_json_and_give_json() {
     let (_, _, body) = call(&server, "create_topic", json!({ "name": "OSI model", "module": module })).await;
     let topic = json_of(&body);
     let (_, _, body) = call(&server, "topics", json!({})).await;
-    assert_eq!(json_of(&body), json!([{ "id": topic, "name": "OSI model", "module": module, "tags": [], "question_count": 0 }]));
+    assert_eq!(json_of(&body), json!([{ "id": topic, "name": "OSI model", "module": module, "tags": [], "question_count": 0, "short_count": 0 }]));
     let (_, _, body) = call(&server, "today_day", json!({})).await;
     assert_eq!(json_of(&body), json!(TODAY));
     let (_, _, body) = call(&server, "leave_review", json!({})).await;

@@ -5,6 +5,7 @@ use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 
 use study_core::cards::NoteKind;
+use study_core::short::one_line;
 use study_core::question::QuestionId;
 use study_store::cards::NoteId;
 use study_core::recall::Schedule;
@@ -50,7 +51,7 @@ pub enum Item {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Candidate {
     pub item: Item,
-    /// "MCQ", "Basic card", "Reversed card" or "Cloze card".
+    /// "MCQ", "Short answer", "Basic card", "Reversed card" or "Cloze card".
     pub kind: String,
     pub topic_name: String,
     pub text: String,
@@ -268,16 +269,20 @@ impl App {
             .questions_in(&ids)?
             .into_iter()
             .map(|(question_id, question)| {
-                let answer = question
-                    .correct_indices()
-                    .iter()
-                    .map(|&i| question.options()[i].text.trim().to_string())
-                    .collect::<Vec<_>>()
-                    .join(", ");
+                // R86: a short answer becomes "question → model answer".
+                let answer = match question.short() {
+                    Some(short) => one_line(&short.shown_answer()),
+                    None => question
+                        .correct_indices()
+                        .iter()
+                        .map(|&i| question.options()[i].text.trim().to_string())
+                        .collect::<Vec<_>>()
+                        .join(", "),
+                };
                 let item = Item::Question(question_id);
                 Candidate {
                     item,
-                    kind: "MCQ".into(),
+                    kind: if question.short().is_some() { "Short answer" } else { "MCQ" }.into(),
                     topic_name: name_of(question.topic()),
                     text: question.text().trim().into(),
                     answer,
@@ -583,6 +588,7 @@ mod tests {
             explanation: String::new(),
             tags: vec![],
             citations: vec![],
+            short: None,
         };
         let reads = app
             .save_question(question(cpu, "Which stage reads registers?"))

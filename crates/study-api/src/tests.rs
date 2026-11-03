@@ -20,6 +20,7 @@ fn input(topic: TopicId, text: &str, multiple: bool, correct: &[usize]) -> Quest
         explanation: format!("Because of {text}"),
         tags: vec!["hardware".into()],
         citations: vec![],
+        short: None,
     }
 }
 
@@ -34,6 +35,7 @@ fn setup(topics: Vec<TopicId>) -> QuizSetupInput {
         total_minutes: None,
         per_question_seconds: None,
         easy: false,
+        types: QuestionTypes::Both,
     }
 }
 

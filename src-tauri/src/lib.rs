@@ -157,6 +157,25 @@ fn toggle_flag(state: AppState) -> ApiResult<QuizView> {
 fn answer(state: AppState, picked: Vec<usize>) -> ApiResult<AnswerResult> {
     with(state, |app| app.answer(picked, today()))
 }
+/// R83: a typed answer to a short answer question.
+#[tauri::command]
+fn answer_text(state: AppState, typed: String) -> ApiResult<AnswerResult> {
+    with(state, |app| app.answer_text(typed, today()))
+}
+/// R84: overrule a short answer during the quiz (attempt is set once it has finished).
+#[tauri::command]
+fn overrule_answer(state: AppState, attempt: Option<AttemptId>, index: usize) -> ApiResult<study_api::Feedback> {
+    with(state, |app| app.overrule_answer(attempt, index))
+}
+#[tauri::command]
+fn overrule_result(state: AppState, attempt: AttemptId, index: usize) -> ApiResult<ResultsView> {
+    with(state, |app| app.overrule_result(attempt, index))
+}
+/// R82: how an answer would be marked, for "Try an answer". Nothing is saved.
+#[tauri::command]
+fn try_short_answer(check: study_core::short::Check, typed: String) -> study_core::short::Marking {
+    study_api::try_short_answer(&check, &typed)
+}
 #[tauri::command]
 fn question_timed_out(state: AppState) -> ApiResult<AnswerResult> {
     with(state, |app| app.question_timed_out(today()))
@@ -407,6 +426,10 @@ pub fn run() {
             toggle_flag,
             answer,
             question_timed_out,
+            answer_text,
+            overrule_answer,
+            overrule_result,
+            try_short_answer,
             total_timed_out,
             quit_quiz,
             retry,

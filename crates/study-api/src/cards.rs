@@ -740,20 +740,24 @@ impl App {
                     day: row.day,
                     note: if guessed {
                         "Right but guessed".into()
+                    } else if let Some(typed) = &asked.typed {
+                        format!("Wrong, you wrote “{typed}”")
                     } else if picked.is_empty() {
                         "Not answered".into()
                     } else {
                         format!("Wrong, you picked “{}”", picked.join(", "))
                     },
                     text: question.text().trim().into(),
-                    answer: Some(
-                        question
+                    // R86: a short answer's card starts with its model answer.
+                    answer: Some(match question.short() {
+                        Some(short) => short.shown_answer(),
+                        None => question
                             .correct_indices()
                             .iter()
                             .map(|&i| question.options()[i].text.trim().to_string())
                             .collect::<Vec<_>>()
                             .join(", "),
-                    ),
+                    }),
                     topic: topics
                         .iter()
                         .any(|t| t.id == question.topic())
@@ -1016,6 +1020,7 @@ mod tests {
             explanation: String::new(),
             tags: vec![],
             citations: vec![],
+            short: None,
         })
         .unwrap();
         app.start_quiz(QuizSetupInput {
@@ -1028,6 +1033,7 @@ mod tests {
             total_minutes: None,
             per_question_seconds: None,
             easy: false,
+            types: crate::QuestionTypes::Both,
         })
         .unwrap();
         app.answer(vec![1], TODAY).unwrap();

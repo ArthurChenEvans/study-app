@@ -29,6 +29,7 @@ fn question(topic: TopicId, text: &str) -> Question {
         explanation: "A warp runs in SIMT lockstep, with $\\LaTeX$ and `code`.".into(),
         tags: vec!["hardware".into(), "warps".into()],
         citations: vec![],
+        short: None,
     })
     .unwrap()
 }
@@ -276,6 +277,7 @@ fn bibliography_lists_sources_in_apa_with_the_topics_that_use_them() {
                 source,
                 location: "p. 88".into(),
             }],
+            short: None,
         })
         .unwrap();
         store.save_question(&draft_question).unwrap();
@@ -376,6 +378,7 @@ fn cited(topic: TopicId, source: SourceId) -> Question {
         explanation: String::new(),
         tags: vec![],
         citations: vec![study_core::question::Citation { source, location: "p. 4".into() }],
+        short: None,
     })
     .unwrap()
 }
@@ -438,4 +441,108 @@ fn images_survive_reopening_the_database() {
     let (format, bytes) = Store::open(&path).unwrap().image(id).unwrap();
     std::fs::remove_file(&path).unwrap();
     assert_eq!((format, bytes), (ImageFormat::Jpeg, vec![0xFF, 0xD8, 0xFF, 1]));
+}
+
+// ---------- short-answer.feature ----------
+
+fn short_question(topic: TopicId, check: study_core::question::Check) -> Question {
+    Question::new(QuestionDraft {
+        topic,
+        text: "Which OSI layer adds port numbers?".into(),
+        kind: AnswerKind::Short,
+        options: vec![],
+        explanation: "Ports let apps share an address.".into(),
+        tags: vec!["layers".into()],
+        citations: vec![],
+        short: Some(study_core::question::ShortAnswer { check, model_answer: "The **transport** layer".into() }),
+    })
+    .unwrap()
+}
+
+#[test]
+fn short_answer_questions_round_trip_and_can_switch_type() {
+    use study_core::question::{Check, Keyword};
+    let mut store = store();
+    let osi = store.create_topic("OSI model", None).unwrap();
+    let accepted = short_question(osi, Check::Accepted { answers: vec!["Transport layer".into(), "Layer 4".into()], typos: false });
+    let id = store.save_question(&accepted).unwrap();
+    assert_eq!(store.question(id).unwrap(), accepted);
+
+    let keywords = short_question(osi, Check::Keywords { keywords: vec![Keyword { word: "SYN-ACK".into(), also: vec!["synack".into()] }], needed: Some(1) });
+    store.update_question(id, &keywords).unwrap();
+    assert_eq!(store.question(id).unwrap(), keywords);
+
+    let mcq = question(osi, "Now multiple choice");
+    store.update_question(id, &mcq).unwrap();
+    assert_eq!(store.question(id).unwrap(), mcq);
+    store.update_question(id, &accepted).unwrap();
+    assert_eq!(store.question(id).unwrap().options(), &[], "the old options are gone");
+}
+
+// short-answer.feature: Choose the question types for a quiz (topic rows show how many of each)
+#[test]
+fn topics_count_short_answer_questions_separately() {
+    use study_core::question::Check;
+    let mut store = store();
+    let osi = store.create_topic("OSI model", None).unwrap();
+    store.save_question(&question(osi, "Q1")).unwrap();
+    store.save_question(&short_question(osi, Check::Accepted { answers: vec!["A".into()], typos: true })).unwrap();
+    let row = &store.topics().unwrap()[0];
+    assert_eq!((row.question_count, row.short_count), (2, 1));
+}
+
+// short-answer.feature: Overrule a verdict (on the results page, after the quiz is saved)
+#[test]
+fn a_saved_attempt_can_be_updated() {
+    let mut store = store();
+    let gpu = store.create_topic("GPU", None).unwrap();
+    store.save_question(&question(gpu, "Q1")).unwrap();
+    store.save_question(&question(gpu, "Q2")).unwrap();
+    let mut attempt = finished_attempt(&store, gpu);
+    attempt.overrule(0).ok();
+    let id = store.save_attempt(&attempt, 20_760, &Reasons::default()).unwrap();
+    let (saved, reasons) = store.attempt(id).unwrap();
+    assert_eq!(saved, attempt);
+    let mut saved = first_two_asked_differently(saved);
+    store.update_attempt(id, &saved).unwrap();
+    saved = store.attempt(id).unwrap().0.clone();
+    assert_eq!(store.attempt(id).unwrap(), (saved.clone(), reasons));
+    assert_ne!(saved, attempt);
+    assert!(matches!(store.update_attempt(AttemptId(99), &attempt), Err(StoreError::NotFound(_))));
+}
+
+#[test]
+fn migrating_to_short_answers_keeps_questions_and_their_links() {
+    let connection = Connection::open_in_memory().unwrap();
+    schema::migrate_to(&connection, 5).unwrap();
+    connection
+        .execute_batch(
+            "INSERT INTO topics (id, name) VALUES (1, 'CPU');
+             INSERT INTO questions (id, topic_id, kind, text, explanation) VALUES (7, 1, 'single', 'Which stage reads registers?', 'Decode');
+             INSERT INTO options (question_id, position, text, correct) VALUES (7, 0, 'Fetch', 0), (7, 1, 'Decode', 1), (7, 2, 'Execute', 0);
+             INSERT INTO question_tags (question_id, tag) VALUES (7, 'pipeline');
+             INSERT INTO recall_checklists (id, topic_id, subject_name, subject_kind, created, due) VALUES (1, 1, 'CPU', 'Topic', 0, 0);
+             INSERT INTO recall_points (checklist_id, position, text, question_id) VALUES (1, 0, 'Which stage reads registers? → Decode', 7);",
+        )
+        .unwrap();
+    let mut store = Store::from_connection(connection).unwrap();
+    assert_eq!(store.schema_version().unwrap(), schema::LATEST);
+    let question = store.question(QuestionId(7)).unwrap();
+    assert_eq!((question.text(), question.correct_indices(), question.tags()), ("Which stage reads registers?", vec![1], &["pipeline".to_string()][..]));
+    assert_eq!(store.points(study_store_recall_id(1)).unwrap()[0].question, Some(QuestionId(7)), "recall points still point at it");
+    store.delete_question(QuestionId(7)).unwrap();
+    let options: i64 = store.connection.query_row("SELECT COUNT(*) FROM options", [], |row| row.get(0)).unwrap();
+    assert_eq!(options, 0, "foreign keys are on again, so deleting cascades");
+    assert_eq!(store.points(study_store_recall_id(1)).unwrap()[0].question, None);
+}
+
+fn study_store_recall_id(id: i64) -> crate::recall::ChecklistId {
+    crate::recall::ChecklistId(id)
+}
+
+/// A changed copy of an attempt, to check the update is written.
+fn first_two_asked_differently(attempt: Attempt) -> Attempt {
+    let mut json = serde_json::to_value(&attempt).unwrap();
+    json["asked"][0]["flagged_guessed"] = serde_json::Value::Bool(true);
+    serde_json::from_value(json).unwrap()
 }

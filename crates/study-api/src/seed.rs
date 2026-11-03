@@ -18,6 +18,7 @@ use study_store::recall::Subject;
 use crate::cards::{NoteInput, ReviewStep};
 use crate::recall::PointInput;
 use crate::{ApiError, ApiResult, App, CitationInput, Next, OptionInput, QuestionInput, QuizSetupInput};
+use study_core::short::{Check, Keyword, ShortAnswer};
 
 /// How far back the history goes.
 pub const DAYS: i64 = 60;
@@ -28,6 +29,7 @@ pub struct SeedSummary {
     pub modules: usize,
     pub topics: usize,
     pub questions: usize,
+    pub short_answers: usize,
     pub sources: usize,
     pub quizzes: usize,
     pub checklists: usize,
@@ -151,6 +153,16 @@ const MODULES: &[ModuleSeed] = &[
     },
 ];
 
+/// Short answer questions: (topic, question, accepted answers or keywords, model answer, keywords?).
+const SHORT_ANSWERS: &[(&str, &str, &[&str], &str, bool)] = &[
+    ("CPU", "Which pipeline stage reads the register file?", &["Decode", "Instruction decode", "ID"], "**Decode**, so the operands are ready for execute.", false),
+    ("CPU", "What's the name for running more than one instruction per cycle?", &["Superscalar", "Superscalar execution"], "", false),
+    ("Memory", "What caches recent virtual to physical translations?", &["TLB", "Translation lookaside buffer"], "The **TLB** (translation lookaside buffer)", false),
+    ("OSI model", "Which OSI layer gives each application its own port number?", &["Transport layer", "Transport", "Layer 4"], "The **transport** layer (layer 4). TCP and UDP ports live here.", false),
+    ("TCP/IP", "What three messages open a TCP connection, in order?", &["SYN", "SYN-ACK|synack", "ACK"], "SYN from the client, SYN-ACK from the server, then ACK from the client.", true),
+    ("Cryptography", "What makes a table of precomputed password hashes useless?", &["Salt", "A salt", "Salting", "Unique salt"], "A unique **salt** per password", false),
+];
+
 /// Fronts that the simulated you keeps getting wrong, so they end up flagged to rewrite.
 const SLIPPERY: &[&str] = &[
     "I've sped up part of a program. How do I work out the overall speedup?",
@@ -202,6 +214,7 @@ pub fn seed_profile(app: &mut App, today: i64) -> ApiResult<SeedSummary> {
                     explanation: explanation.to_string(),
                     tags: vec![],
                     citations,
+                    short: None,
                 })?;
                 correct.insert(text.to_string(), picks);
                 summary.questions += 1;
@@ -209,6 +222,37 @@ pub fn seed_profile(app: &mut App, today: i64) -> ApiResult<SeedSummary> {
             topic_ids.push((id, topic));
             summary.topics += 1;
         }
+    }
+
+    // Short answer questions, remembering a right answer to type for each.
+    let mut typed_right: HashMap<String, String> = HashMap::new();
+    for (topic, text, answers, model, keywords) in SHORT_ANSWERS {
+        let Subject::Topic(id) = names[topic] else { continue };
+        let check = if *keywords {
+            Check::Keywords {
+                keywords: answers.iter().map(|entry| {
+                    let mut forms = entry.split('|');
+                    Keyword { word: forms.next().unwrap_or_default().into(), also: forms.map(String::from).collect() }
+                }).collect(),
+                needed: None,
+            }
+        } else {
+            Check::Accepted { answers: answers.iter().map(|answer| answer.to_string()).collect(), typos: true }
+        };
+        app.save_question(QuestionInput {
+            topic: id,
+            text: text.to_string(),
+            multiple: false,
+            options: vec![],
+            explanation: String::new(),
+            tags: vec![],
+            citations: vec![],
+            short: Some(ShortAnswer { check, model_answer: model.to_string() }),
+        })?;
+        let right = if *keywords { answers.iter().map(|entry| entry.split('|').next().unwrap_or_default()).collect::<Vec<_>>().join(", ") } else { answers[0].to_string() };
+        typed_right.insert(text.to_string(), right);
+        summary.questions += 1;
+        summary.short_answers += 1;
     }
 
     // Cards: most written at the start, a few more recently, and a couple today, so all
@@ -255,16 +299,19 @@ pub fn seed_profile(app: &mut App, today: i64) -> ApiResult<SeedSummary> {
             summary.reviews += review_day(app, day, &slippery_notes, &mut rng)?;
         }
         if (day - start) % 4 == 1 {
-            quiz(app, day, progress, &topic_ids, &correct, &mut rng)?;
+            quiz(app, day, progress, &topic_ids, &correct, &typed_right, &mut rng)?;
             summary.quizzes += 1;
         }
         for (index, (id, points, due)) in checklists.iter_mut().enumerate() {
-            // The first checklist's last check was skipped, so it shows up as late.
-            if *due != day || (index == 0 && day > today - 8) {
+            if *due != day {
                 continue;
             }
             let share = (0.6 + progress * 0.35 + rng.random_range(-0.1..0.1)).clamp(0.2, 1.0);
             let recalled: Vec<usize> = (0..*points).filter(|_| rng.random_bool(share)).collect();
+            // The first checklist skips the check that would take it past today, so it's late.
+            if index == 0 && (day > today - 8 || app.preview_check(*id, recalled.len(), day)?.next_due >= today - 2) {
+                continue;
+            }
             let dump = (!recalled.is_empty()).then(|| "Wrote down what I remembered before checking.".to_string());
             let result = app.finish_check(*id, dump, recalled, day)?;
             *due = result.next_due.max(day + 1);
@@ -324,7 +371,19 @@ fn review_day(app: &mut App, day: i64, slippery: &HashSet<study_store::cards::No
 }
 
 /// One quiz over two or three topics, getting better as the weeks go on.
-fn quiz(app: &mut App, day: i64, progress: f64, topics: &[(TopicId, &TopicSeed)], correct: &HashMap<String, Vec<usize>>, rng: &mut StdRng) -> ApiResult<()> {
+/// A typed answer with two neighbouring letters of its longest word swapped.
+fn with_typo(answer: &str) -> String {
+    let longest = answer.split_whitespace().max_by_key(|word| word.len()).unwrap_or(answer);
+    if longest.len() < 6 || !longest.chars().all(char::is_alphabetic) {
+        return answer.to_lowercase();
+    }
+    let mut letters: Vec<char> = longest.chars().collect();
+    let middle = letters.len() / 2;
+    letters.swap(middle, middle + 1);
+    answer.replacen(longest, &letters.into_iter().collect::<String>(), 1).to_lowercase()
+}
+
+fn quiz(app: &mut App, day: i64, progress: f64, topics: &[(TopicId, &TopicSeed)], correct: &HashMap<String, Vec<usize>>, typed_right: &HashMap<String, String>, rng: &mut StdRng) -> ApiResult<()> {
     let first = rng.random_range(0..topics.len());
     let chosen: Vec<TopicId> = (0..rng.random_range(2..=3)).map(|offset| topics[(first + offset) % topics.len()].0).collect();
     let exam = rng.random_bool(0.25);
@@ -338,9 +397,23 @@ fn quiz(app: &mut App, day: i64, progress: f64, topics: &[(TopicId, &TopicSeed)]
         total_minutes: None,
         per_question_seconds: None,
         easy: false,
+        types: crate::QuestionTypes::Both,
     })?;
     let skill = 0.55 + progress * 0.3;
     let attempt = loop {
+        if view.short {
+            let typed = if rng.random_bool(skill) {
+                let right = &typed_right[&view.text];
+                if rng.random_bool(0.2) { with_typo(right) } else { right.clone() }
+            } else {
+                ["not sure", "the network one", "something about caching"][rng.random_range(0..3)].to_string()
+            };
+            match app.answer_text(typed, day)?.next {
+                Next::Question(next) => view = next,
+                Next::Finished(attempt) => break attempt,
+            }
+            continue;
+        }
         let right = &correct[&view.text];
         let picked = if rng.random_bool(skill) {
             if rng.random_bool(0.15) {
@@ -356,6 +429,13 @@ fn quiz(app: &mut App, day: i64, progress: f64, topics: &[(TopicId, &TopicSeed)]
             Next::Finished(attempt) => break attempt,
         }
     };
+    // Now and then a wrong short answer is overruled, as if it was close enough.
+    let wrong_short: Vec<usize> = app.results(attempt)?.review.iter().filter(|item| item.short.as_ref().is_some_and(|short| !short.marking.right)).map(|item| item.index).collect();
+    for index in wrong_short {
+        if rng.random_bool(0.15) {
+            app.overrule_result(attempt, index)?;
+        }
+    }
     let reasons = [GivenReason::Misremembered, GivenReason::ConfusedWithSimilar, GivenReason::CarelessSlip, GivenReason::NeverLearned, GivenReason::SecondGuessed];
     for index in app.results(attempt)?.to_prompt {
         if rng.random_bool(0.7) {
@@ -384,7 +464,9 @@ mod tests {
         let (app, summary) = seeded();
         assert_eq!(summary.modules, 3);
         assert_eq!(summary.topics, 5);
-        assert_eq!(summary.questions, 20);
+        assert_eq!(summary.questions, 26);
+        assert_eq!(summary.short_answers, 6);
+        assert_eq!(app.topics().unwrap().iter().map(|topic| topic.short_count).sum::<usize>(), 6);
         assert_eq!(summary.sources, 3);
         assert_eq!(app.sources().unwrap().iter().filter(|source| source.cited_by_questions > 0).count(), 3);
         assert!(summary.quizzes >= 14, "{summary:?}");
@@ -415,6 +497,24 @@ mod tests {
         assert!(rows.iter().all(|row| row.last_score.is_some()));
         assert!(rows.iter().any(|row| row.due_today && row.days_late > 0), "one checklist is late");
         assert!(app.history().unwrap().iter().all(|row| row.day < TODAY));
+    }
+
+    #[test]
+    fn quizzes_include_typed_short_answers_some_overruled() {
+        let (app, _) = seeded();
+        let mut typed = 0;
+        let mut typos = 0;
+        let mut overruled = 0;
+        for row in app.history().unwrap() {
+            for item in app.results(row.id).unwrap().review {
+                if let Some(short) = item.short {
+                    typed += 1;
+                    typos += usize::from(matches!(short.marking.detail, study_core::short::Detail::Matched { typo: Some(_), .. }));
+                    overruled += usize::from(short.overruled);
+                }
+            }
+        }
+        assert!(typed >= 20 && typos >= 1 && overruled >= 1, "typed {typed}, typos {typos}, overruled {overruled}");
     }
 
     #[test]

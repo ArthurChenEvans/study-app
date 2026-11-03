@@ -200,6 +200,7 @@ mod tests {
             explanation: "because".into(),
             tags: vec![],
             citations: vec![],
+            short: None,
         })
         .unwrap()
     }
