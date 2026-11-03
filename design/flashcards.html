@@ -193,6 +193,8 @@
   .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -5px; border-radius: 50%; background: var(--color-primary); border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--color-primary); }
   .slider::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--color-primary); border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--color-primary); }
   .slider:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 4px; border-radius: 4px; }
+  .cloze-gap { padding: 0 .35em; border-radius: 4px; background: var(--color-base-200); border: 1px dashed var(--field-border); color: var(--muted); font-weight: 600; }
+  .cloze-answer { padding: 0 .35em; border-radius: 4px; background: var(--color-base-300); color: var(--color-base-content); font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
   .queue-now { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 2px; }
   .grade { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 7.5rem; padding: 10px 16px; height: auto; }
   .grade .when { font-size: 12px; font-weight: 400; opacity: .85; font-variant-numeric: tabular-nums; }
@@ -257,6 +259,8 @@ const cards = [
   { front: "I've sped up 60% of a program by 4×. How do I work out the overall speedup?", back: "Amdahl's law: $S = \\frac{1}{(1-p) + p/n}$, so $\\frac{1}{0.4 + 0.15} \\approx 1.82\\times$", src: "From wrong MCQ", next: "Today", lapses: 9, state: "Review", leech: true },
   { front: "The compiler keeps caching a memory-mapped register in a CPU register. What stops it?", back: "Declare it `volatile`:\n\n```c\nvolatile uint32_t *status = (uint32_t *)0x40021000;\n```", src: "Written", next: "Thu 5 Nov", lapses: 0, state: "Review" },
   { front: "Which stage reads the registers?", back: "Decode", src: "From wrong MCQ", next: "New", lapses: 0, state: "New" },
+  { front: "Cache hit → data in [...] cycles at L1", back: "", src: "Written", next: "Fri 6 Nov", lapses: 0, state: "Review", type: "Cloze 1 of 3" },
+  { front: "Port I/O uses separate instructions → memory-mapped I/O uses ordinary [...]", back: "", src: "Written", next: "Today", lapses: 0, state: "Review", type: "Reversed" },
   { front: "Why does a direct-mapped cache get conflict misses that a 2-way one avoids?", back: "Two hot addresses that map to the same line keep evicting each other. With 2 ways both fit in the set.", src: "Written", next: "Sat 7 Nov", lapses: 0, state: "Suspended" },
 ];
 const suggestions = [
@@ -269,8 +273,8 @@ const suggestions = [
 /* ---------------- State ---------------- */
 const variants = {
   cards: ["due today", "all done", "first time", "settings"],
-  topic: ["cards", "new card", "edit leech card"],
-  review: ["front", "answer", "leech", "done"],
+  topic: ["cards", "new card", "new reversed card", "new cloze card", "edit leech card"],
+  review: ["front", "answer", "cloze front", "cloze answer", "leech", "done"],
   suggestions: ["list", "make a card"],
 };
 const state = { screen: "cards", variant: "due today" };
@@ -362,10 +366,11 @@ function settingsDialog() {
 function screenTopic() {
   const v = state.variant;
   const list = `<div class="panel overflow-hidden"><table class="table table-fixed" aria-label="Cards in CPU">
-      <colgroup><col class="w-[46%]"><col class="w-[16%]"><col class="w-[14%]"><col class="w-[12%]"><col class="w-[12%]"></colgroup>
-      <thead><tr class="text-muted"><th>Front</th><th>From</th><th>Next</th><th>Again</th><th><span class="sr-only">Actions</span></th></tr></thead>
+      <colgroup><col class="w-[40%]"><col class="w-[12%]"><col class="w-[14%]"><col class="w-[12%]"><col class="w-[11%]"><col class="w-[11%]"></colgroup>
+      <thead><tr class="text-muted"><th>Front</th><th>Type</th><th>From</th><th>Next</th><th>Again</th><th><span class="sr-only">Actions</span></th></tr></thead>
       <tbody>${cards.map((c, i) => `<tr class="hover:bg-base-100">
         <td><button class="py-1 text-left hover:underline line-clamp-2 ${c.state === "Suspended" ? "text-muted" : ""}" onclick="setVariant('${c.leech ? "edit leech card" : "new card"}')">${c.front}</button></td>
+        <td class="text-sm">${c.type ?? "Basic"}</td>
         <td>${c.src === "Written" ? `<span class="text-sm text-muted">Written</span>` : `<span class="badge-src">${c.src}</span>`}</td>
         <td class="text-sm tabular-nums">${c.state === "Suspended" ? `<span class="flex items-center gap-1 text-muted">${icon("archive","size-3.5")}Archived</span>` : c.next}</td>
         <td class="text-sm tabular-nums">${c.leech ? `<span class="flex items-center gap-1 text-wrong-ink font-semibold">${icon("flag","size-3.5")}${c.lapses}×</span>` : c.lapses ? `${c.lapses}×` : `<span class="text-muted">None</span>`}</td>
@@ -375,14 +380,21 @@ function screenTopic() {
     <a href="#cards" class="mt-8 inline-flex items-center gap-1 py-1 text-sm text-muted hover:underline" onclick="event.preventDefault(); go('cards','due today')">${icon("arrow-left")}Cards</a>
     <div class="flex items-end justify-between gap-6 pt-4 pb-6"><div><p class="text-sm text-muted">Computer Architecture · 24 cards · 15 due</p><h1 class="mt-1 text-3xl font-semibold">CPU</h1></div>
       <div class="flex items-center gap-2"><button class="btn btn-ghost" onclick="setVariant('new card')">${icon("plus")}New card</button><button class="btn ${v === "cards" ? "btn-primary" : "btn-outline border-field-border"}" onclick="go('review','front')">${icon("play")}Review CPU</button></div></div>
-    ${v === "cards" ? list : editor(v === "edit leech card")}
+    ${v === "cards" ? list : v === "new cloze card" ? clozeEditor() : editor(v === "edit leech card", v === "new reversed card")}
   </div>`;
 }
 
-function editor(leech) {
+function typePicker(current) {
+  const options = [["Basic", "new card"], ["Basic and reversed", "new reversed card"], ["Cloze", "new cloze card"]];
+  return `<div class="flex items-center justify-between gap-4"><span class="text-sm font-semibold">Card type</span>
+    <div class="seg" role="radiogroup" aria-label="Card type">${options.map(([label, v]) => `<button type="button" role="radio" aria-checked="${label === current}" onclick="setVariant('${v}')">${label}</button>`).join("")}</div></div>`;
+}
+function editor(leech, reversed = false) {
   const c = leech ? cards[2] : { front: "", back: "" };
   return `<div class="grid grid-cols-[1fr_300px] gap-12 items-start">
     <form class="space-y-8" onsubmit="event.preventDefault(); setVariant('cards')">
+      ${leech ? "" : typePicker(reversed ? "Basic and reversed" : "Basic")}
+      ${reversed ? `<p class="text-sm text-muted -mt-4">Makes two cards: front to back, and back to front. Each is scheduled on its own. Best when both directions are worth knowing, like a term and its meaning.</p>` : ""}
       ${leech ? `<div class="panel p-5 flex gap-4 items-start" role="note">${icon("flag","size-5 shrink-0 mt-0.5")}
         <div><p class="font-semibold">You've pressed Again on this card 9 times</p><p class="mt-1 text-sm text-muted">It probably needs a better cue, or splitting into smaller cards. Ask yourself why the answer wasn't obvious, then write that cue as the front. Saving a change clears this flag. The card keeps its schedule.</p></div></div>` : ""}
       <div class="space-y-2">
@@ -401,20 +413,20 @@ function editor(leech) {
         <hr class="my-4 border-base-300">
         <div class="rich text-[15px]">${markdown(c.back)}</div>
       </section>` : ""}
-      <fieldset class="space-y-3">
+      ${reversed ? "" : `<fieldset class="space-y-3">
         <legend class="text-sm font-semibold">More cues for the same answer <span class="font-normal text-muted">(optional)</span></legend>
         ${leech ? `<div class="flex items-center gap-2"><input class="input input-sm flex-1" aria-label="Extra cue 1" value="Most of my program got faster but the total barely moved. What limits it?"><button type="button" class="btn btn-ghost btn-sm btn-square" aria-label="Remove extra cue 1">${icon("x")}</button></div>` : ""}
         <button type="button" class="btn btn-ghost btn-sm">${icon("plus")}Add another cue</button>
         <p class="text-sm text-muted">Each cue becomes its own card with this back, scheduled on its own. Useful when the same fact comes up from different starting points.</p>
-      </fieldset>
+      </fieldset>`}
       <div class="flex items-center gap-3 border-t border-base-300 pt-6">
-        <button type="submit" class="btn btn-primary">${leech ? "Save changes" : "Save card"} <kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">S</kbd></button>
+        <button type="submit" class="btn btn-primary">${leech ? "Save changes" : reversed ? "Save 2 cards" : "Save card"} <kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">S</kbd></button>
         <button type="button" class="btn btn-ghost" onclick="setVariant('cards')">Cancel</button>
         ${leech ? `<button type="button" class="btn btn-ghost ml-auto">${icon("archive")}Archive card</button>` : ""}
       </div>
     </form>
     <aside class="panel p-6 sticky top-8" aria-label="Card details">
-      <p class="eyebrow">Card</p>
+      <p class="eyebrow">${reversed ? "Cards" : "Card"}</p>
       <dl class="mt-4 space-y-3 text-sm">
         <div class="flex justify-between gap-4"><dt class="text-muted">Topic</dt><dd>CPU</dd></div>
         <div class="flex justify-between gap-4"><dt class="text-muted">Made from</dt><dd>${leech ? "Wrong MCQ, 28 Sep" : "Written here"}</dd></div>
@@ -423,7 +435,44 @@ function editor(leech) {
         <div class="flex justify-between gap-4"><dt class="text-muted">Next review</dt><dd>Today</dd></div>
         <div class="flex justify-between gap-4"><dt class="text-muted">Chance you remember it now</dt><dd class="tabular-nums">62%</dd></div>` : `<div class="flex justify-between gap-4"><dt class="text-muted">First review</dt><dd>With today's new cards</dd></div>`}
       </dl>
-      <div class="mt-6">${openQ("A", "cloze or reversed cards too?")}</div>
+    </aside>
+  </div>`;
+}
+
+function clozeEditor() {
+  const text = "A cache hit at L1 takes about {{c1::4}} cycles, L2 about {{c2::12}} and L3 about {{c3::40::tens of cycles}}.";
+  const gaps = [["c1", "4", ""], ["c2", "12", ""], ["c3", "40", "tens of cycles"]];
+  const show = (keep) => text.replace(/\{\{(c\d)::([^}:]+)(?:::([^}]+))?\}\}/g, (_, id, answer, hint) => id === keep ? `<span class="cloze-gap">[${hint ?? "..."}]</span>` : answer);
+  return `<div class="grid grid-cols-[1fr_300px] gap-12 items-start">
+    <form class="space-y-8" onsubmit="event.preventDefault(); setVariant('cards')">
+      ${typePicker("Cloze")}
+      <div class="space-y-2">
+        <div class="flex items-end justify-between"><label class="text-sm font-semibold" for="cloze">Text</label>
+          <button type="button" class="btn btn-ghost btn-sm">${icon("brackets")}Make a gap <kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">Shift</kbd><kbd class="kbd kbd-xs">C</kbd></button></div>
+        <textarea id="cloze" class="textarea w-full font-mono text-sm" rows="4">${text}</textarea>
+        <p class="text-sm text-muted">Select a word and make a gap, or type <code>{{c1::answer}}</code>. Add a hint with <code>{{c1::answer::hint}}</code>. Gaps with the same number are hidden together.</p>
+      </div>
+      <div class="space-y-2">
+        <label class="text-sm font-semibold" for="extra">Extra on the back <span class="font-normal text-muted">(optional)</span></label>
+        <textarea id="extra" class="textarea w-full text-[15px]" rows="2" placeholder="Why it matters, or where it came from…"></textarea>
+      </div>
+      <section class="panel p-6" aria-label="Preview">
+        <div class="flex items-baseline justify-between"><p class="eyebrow">Preview</p><p class="text-sm text-muted">Makes ${gaps.length} cards</p></div>
+        <ol class="mt-4 space-y-4">${gaps.map(([id, answer, hint], i) => `<li class="flex gap-4"><span class="w-8 shrink-0 text-xs tabular-nums text-muted pt-0.5">${id}</span><p class="text-[15px]">${show(id)}</p></li>`).join("")}</ol>
+      </section>
+      <div class="flex items-center gap-3 border-t border-base-300 pt-6">
+        <button type="submit" class="btn btn-primary">Save 3 cards <kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">S</kbd></button>
+        <button type="button" class="btn btn-ghost" onclick="setVariant('cards')">Cancel</button>
+      </div>
+    </form>
+    <aside class="panel p-6 sticky top-8" aria-label="Card details">
+      <p class="eyebrow">Cards</p>
+      <dl class="mt-4 space-y-3 text-sm">
+        <div class="flex justify-between gap-4"><dt class="text-muted">Topic</dt><dd>CPU</dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-muted">Made from</dt><dd>Written here</dd></div>
+        <div class="flex justify-between gap-4"><dt class="text-muted">First review</dt><dd>With today's new cards</dd></div>
+      </dl>
+      <p class="mt-6 text-sm text-muted">Each gap is its own card with its own schedule. Removing a gap later removes its card.</p>
     </aside>
   </div>`;
 }
@@ -440,13 +489,15 @@ const progress = (doneCount, total) => `<div class="mx-auto max-w-prose"><div cl
 function screenReview() {
   const v = state.variant;
   if (v === "done") return doneView();
+  const cloze = v.startsWith("cloze");
   const card = v === "leech" ? cards[2] : cards[3];
-  const shown = v !== "front";
+  const shown = v !== "front" && v !== "cloze front";
   return `${reviewBar(9, 2, 6)}<div class="px-12 pt-6">${progress(10, 27)}</div>
     <div class="mx-auto max-w-prose px-6 pt-16 pb-48">
-      <p class="text-sm text-muted">${v === "leech" ? "CPU · From wrong MCQ" : "CPU"}</p>
-      <div class="card-face mt-3 text-xl leading-relaxed" role="heading" aria-level="1">${card.front}</div>
-      ${shown ? `<hr class="my-8 border-base-300"><div class="rich text-lg leading-relaxed" aria-live="polite">${markdown(card.back)}</div>` : ""}
+      <p class="text-sm text-muted">${v === "leech" ? "CPU · From wrong MCQ" : cloze ? "CPU · Cloze 3 of 3" : "CPU"}</p>
+      ${cloze ? `<div class="mt-3 text-xl leading-relaxed" role="heading" aria-level="1" aria-live="polite">A cache hit at L1 takes about 4 cycles, L2 about 12 and L3 about ${shown ? `<span class="cloze-answer">40</span>` : `<span class="cloze-gap">[tens of cycles]</span>`}.</div>`
+      : `<div class="card-face mt-3 text-xl leading-relaxed" role="heading" aria-level="1">${card.front}</div>
+      ${shown ? `<hr class="my-8 border-base-300"><div class="rich text-lg leading-relaxed" aria-live="polite">${markdown(card.back)}</div>` : ""}`}
       ${v === "leech" ? `<div class="panel mt-10 p-5 flex gap-4 items-start" role="note">${icon("flag","size-5 shrink-0 mt-0.5")}<div class="flex-1"><p class="font-semibold">This one keeps slipping: Again 9 times</p><p class="mt-1 text-sm text-muted">It probably needs a better cue. You can rewrite it now or after this session.</p></div><button class="btn btn-outline btn-sm border-field-border shrink-0" onclick="go('topic','edit leech card')">${icon("pencil")}Rewrite now <kbd class="kbd kbd-xs">E</kbd></button></div>` : ""}
     </div>
     <div class="fixed bottom-0 left-0 right-0 border-t border-base-300 bg-base-100 py-6">
@@ -456,7 +507,7 @@ function screenReview() {
         <button class="btn grade btn-outline border-field-border" onclick="setVariant('front')"><span>Hard <kbd class="kbd kbd-xs">2</kbd></span><span class="when">2 days</span></button>
         <button class="btn grade btn-primary" onclick="setVariant('front')"><span>Good <kbd class="kbd kbd-xs">3</kbd></span><span class="when">6 days</span></button>
         <button class="btn grade btn-outline border-field-border" onclick="setVariant('front')"><span>Easy <kbd class="kbd kbd-xs">4</kbd></span><span class="when">15 days</span></button>`
-      : `<button class="btn btn-primary btn-lg min-w-64" onclick="setVariant('answer')">Show answer <kbd class="kbd kbd-xs">Space</kbd></button>`}
+      : `<button class="btn btn-primary btn-lg min-w-64" onclick="setVariant(state.variant === 'cloze front' ? 'cloze answer' : 'answer')">Show answer <kbd class="kbd kbd-xs">Space</kbd></button>`}
       </div>
       <p class="mt-3 text-center text-xs text-muted">${shown ? "Space picks Good. Again shows the card again later in this session." : "Try to recall it before you look"}</p>
     </div>`;
@@ -494,7 +545,7 @@ function screenSuggestions() {
     <a href="#cards" class="mt-8 inline-flex items-center gap-1 py-1 text-sm text-muted hover:underline" onclick="event.preventDefault(); go('cards','due today')">${icon("arrow-left")}Cards</a>
     ${header("Suggestions", "Things you missed in a recall or got wrong in a quiz. Make a card for the ones that matter, dismiss the rest.")}
     <div class="flex items-center justify-between mb-3"><div class="seg" role="radiogroup" aria-label="Show"><button role="radio" aria-checked="true">All 4</button><button role="radio" aria-checked="false">Recall misses 2</button><button role="radio" aria-checked="false">Quiz mistakes 2</button></div>
-      <span>${openQ("B", "suggest only, or make cards automatically?")}</span></div>
+      <span class="text-sm text-muted">Nothing becomes a card until you say so</span></div>
     <ul class="panel divide-y" aria-label="Suggestions">${suggestions.map((s, i) => `
       <li class="px-6 py-5 ${making && i === 0 ? "bg-base-100" : ""}">
         <div class="flex items-start justify-between gap-6">
@@ -556,7 +607,8 @@ document.addEventListener("keydown", e => {
   if (e.key === "Escape" && document.querySelector("dialog[open]")) setVariant("due today");
   if (state.screen !== "review") return;
   if (state.variant === "front" && e.key === " ") { e.preventDefault(); setVariant("answer"); }
-  else if (["answer", "leech"].includes(state.variant) && /^[1-4 ]$/.test(e.key)) { e.preventDefault(); setVariant("front"); }
+  else if (state.variant === "cloze front" && e.key === " ") { e.preventDefault(); setVariant("cloze answer"); }
+  else if (["answer", "leech", "cloze answer"].includes(state.variant) && /^[1-4 ]$/.test(e.key)) { e.preventDefault(); setVariant("front"); }
   else if (state.variant === "leech" && e.key.toLowerCase() === "e") go("topic", "edit leech card");
 });
 const start = location.hash.slice(1);

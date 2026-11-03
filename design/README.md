@@ -201,10 +201,12 @@ Clickable prototype: `flashcards.html`. Same theme and components as the other p
 - **Suggestions** collect points missed in recalls and questions got wrong or guessed in quizzes. A recall miss leaves the front for you to write (the cue that should have brought it up). A quiz mistake fills in question and answer.
 - **Settings:** how much to remember (desired retention, default 90%), new cards a day (10), most reviews a day (200), the leech threshold, and "Fit the scheduler to you".
 
-## Open questions (dashed badges in the prototype)
+## Answered (3 Nov 2026)
 
-- **A.** Card types: just front and back, or also cloze (`{{c1::…}}`) and reversed cards?
-- **B.** Suggestions: offer them for you to accept (as designed), or turn misses into cards automatically?
+- **A. All three card types.** Basic, Basic and reversed (two cards, one each way, scheduled separately), and Cloze (`{{c1::answer}}` or `{{c1::answer::hint}}`, one card per gap number, made with Ctrl+Shift+C or the "Make a gap" button, with a preview of every card it will make). "More cues for the same answer" stays on Basic only.
+- **B. Suggestions wait for acceptance.** Nothing becomes a card until you make it.
+
+Recheck after adding cloze and reversed: the revealed cloze answer first used the "guessed" blue, which already means something else, so it's now an underlined neutral highlight. "Save card" on a reversed card now says "Save 2 cards". The measured audit and keyboard checks pass again on every state in both themes.
 
 ## Calls made in the design, to confirm or change
 
