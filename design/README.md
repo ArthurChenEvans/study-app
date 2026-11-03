@@ -85,3 +85,83 @@ All chart rules are in `docs/design-rules.md` section 9.
 - Dark is the default, with a Dark / Light switch in the sidebar. The choice is remembered (R34).
 - Every hard-coded colour in the prototype was moved to a theme token, so both themes change together: field borders, the pipeline diagram, label colours inside chart fills, shadows, code highlighting.
 - Dark palette and its contrast checks are in `docs/design-rules.md` section 11. All text is AAA, and the chart pair passes the validator against the dark surface.
+
+---
+
+# Free recall (proposed, waiting for a greenlight)
+
+Clickable prototype: `free-recall.html`, same theme and components as the MVP prototype. The dark bar in the bottom right switches screens and states.
+
+## What was decided (3 Nov 2026)
+
+- A checklist is about a module or a topic, chosen per checklist.
+- Points are written by hand, and can be added from questions. MCQ now, short answer and flashcards once they exist. Unticking an added question removes its point.
+- The dump can be typed in the app or done anywhere else. Only ticking the checklist is required.
+- Schedule is the calendar ladder by default: Day, Week, Fortnight, Month, Monthly ×6, Seasonal ×4, then Yearly, anchored to the day the checklist started, pass mark 70%. Steps, intervals, repeats and the pass mark are all editable.
+
+## Screen inventory
+
+| Screen | States | Proposed requirement |
+|---|---|---|
+| Recall list | two due, nothing due, first time, schedule settings | R52, R57, R58 |
+| Checklist | points, add from questions, new (no points yet), history | R52 to R54, R59 |
+| Recall session | dump typed, dump outside the app, check, result up, result back | R55 to R57 |
+
+## Proposed requirements
+
+| ID | Requirement |
+|---|---|
+| R52 | A checklist is about one module or one topic, picked when it's made |
+| R53 | A checklist has points, written by hand. Each point is Markdown with `$...$` maths, and can be edited, reordered and removed |
+| R54 | Points can be added from questions in the checklist's topics (MCQ now, short answer and flashcards when built) as "question → answer". Unticking an added question removes its point. The question is never changed |
+| R55 | A session starts with the dump: typed in the app (saved with the check) or done outside it. The checklist stays hidden until the dump is finished |
+| R56 | The check shows the dump beside the checklist. Each point is ticked recalled or not. The score, the pass mark and what will happen next update as you tick |
+| R57 | Finishing a check moves the checklist up a step at or over the pass mark, or back under it, and sets the next date from the ladder anchored to the start date. The result lists missed points, and how often each has been missed |
+| R58 | The recall list shows what's due today first, then everything else by next date. The sidebar shows how many are due |
+| R59 | Each checklist has a history: score per check against the pass mark, each check's step change and dump, and the points missed most often |
+| R60 | The schedule (steps, intervals, repeats, pass mark, what happens under it) is editable and can be reset. Changes apply from each checklist's next check |
+| R61 | Keyboard: Ctrl+Enter finishes the dump and the check, Space ticks the focused point |
+
+## Open questions (shown in the prototype as dashed "Open" badges)
+
+- **A.** Under the pass mark, go back **one step** (Monthly 3 → Monthly 2) or back **a whole band** (Seasonal → start of Monthly)? Your notes say "drops it back a tier".
+- **B.** When a check is done late, does the next date count from the **planned** date (keeps checklists staggered) or the day it was **actually done**?
+
+## Small calls made in the design, to confirm or change
+
+- Ticks are yes or no, no "partly". Keeps the 70% meaning simple.
+- The dump has a quiet timer that counts up and never stops you.
+- A new checklist starts at Day the first time you do it, not the day it's made.
+- During a check you can add a point the list was missing.
+- A session hides the sidebar, like a quiz.
+- Missed points are listed on the result. Later, these are what would turn into flashcards.
+
+## UI/UX test results
+
+**During the build** (screenshots of all 13 states in both themes, against the design rules checklist). Found and fixed:
+
+| Finding | Severity | Fix |
+|---|---|---|
+| Step names under the schedule track truncated ("For…", "Mo…") | 3 | Track draws bars only, with one caption: current step and what's next |
+| Already-added questions locked in the import dialog, so imports couldn't be removed | 3 | Ticked and editable, unticking marks the point for removal |
+| Sidebar stayed visible during a session | 2 | Hidden, like the quiz |
+| "Finish check" scrolled out of view on a long checklist | 2 | Score panel is sticky and holds the button |
+| Every point was a bordered input, reading as a form | 2 | Points read as text, click to edit |
+| "Written" badge on every point carried no information | 2 | Only added points get a badge ("From MCQ") |
+| Score chart clipped "100%" and "20 Oct", pass label collided with the line | 2 | Wider margins, pass mark moved to a legend |
+| "Recall about" label beside its field, error shown before trying | 2 | Label above, hint instead of an error |
+| No way to add or remove schedule steps | 2 | Remove per step, "Add a step before Yearly" |
+| "Missed" repeated on every missed row under a "Missed" heading | 1 | Icon only |
+| "1 day late" as a heavy black chip | 1 | Muted text with a clock icon |
+| "$LaTeX$" in help text rendered as maths | 1 | Shown as code |
+| Due badge still said 2 when nothing was due, table not sorted by date | 1 | Badge follows the state, table sorted by next date |
+
+**After the build** (measured, every state, both themes):
+- Text contrast: every text node passes WCAG 2.2 AA once animations finish (4.5:1, or 3:1 for large text). Measured by compositing each text colour over its real background.
+- Targets: every control is at least 24px, or sits inside a larger clickable row or label.
+- One primary button per view and dialog. "Nothing due" has none on purpose.
+- Keyboard: 20 tab stops on the check screen, all with a visible focus ring. Space ticks a point and keeps focus, Ctrl+Enter finishes.
+- Squint and greyscale: the main thing on each screen (Start recall, the live score, the result) still stands out. Recalled vs not reads without colour (filled box and a word).
+- No console errors, no horizontal scroll at 1440 px.
+
+**Nielsen's 10:** status (live score and what happens next, timer, step track, due count), real-world words (checklist, point, recalled, pass mark), control (Leave on every session step, Cancel on dialogs, Reset schedule), consistency (same sidebar, panels, segmented controls and shortcuts as quizzes), error prevention (checklist hidden during the dump, can't start with no points, import button says exactly what will change), recognition (next step and date shown before you commit), efficiency (Ctrl+Enter, Space), minimalism (one primary per view), recovery (hint says what's needed), help (one-line hints under each control).
