@@ -118,6 +118,47 @@ const MIGRATIONS: &[&str] = &[
         value TEXT NOT NULL
     );
     ",
+    // 4: flashcards (R62 to R77). A note makes cards, each with its own FSRS state.
+    // Reviews are a log for the optimiser and the Cards screen.
+    "
+    CREATE TABLE notes (
+        id       INTEGER PRIMARY KEY,
+        topic_id INTEGER NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+        note     TEXT NOT NULL,
+        source   TEXT,
+        created  INTEGER NOT NULL
+    );
+    CREATE TABLE cards (
+        id          INTEGER PRIMARY KEY,
+        note_id     INTEGER NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+        key         TEXT NOT NULL,
+        front       TEXT NOT NULL,
+        back        TEXT NOT NULL,
+        stability   REAL,
+        difficulty  REAL,
+        due         INTEGER NOT NULL,
+        last_review INTEGER,
+        reps        INTEGER NOT NULL DEFAULT 0,
+        lapses      INTEGER NOT NULL DEFAULT 0,
+        archived    INTEGER NOT NULL DEFAULT 0,
+        UNIQUE (note_id, key)
+    );
+    CREATE INDEX cards_by_due ON cards(archived, due);
+    CREATE TABLE card_reviews (
+        id      INTEGER PRIMARY KEY,
+        card_id INTEGER NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+        day     INTEGER NOT NULL,
+        rating  INTEGER NOT NULL,
+        elapsed INTEGER NOT NULL,
+        was_new INTEGER NOT NULL,
+        seconds INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE INDEX card_reviews_by_day ON card_reviews(day);
+    CREATE TABLE card_suggestions_done (
+        key    TEXT PRIMARY KEY,
+        status TEXT NOT NULL CHECK (status IN ('made', 'dismissed'))
+    );
+    ",
 ];
 
 pub const LATEST: i64 = MIGRATIONS.len() as i64;

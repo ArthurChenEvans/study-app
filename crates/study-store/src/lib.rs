@@ -17,6 +17,7 @@ use study_core::question::{
 };
 use study_core::results::{Reasons, Summary, reason_labels, summarise};
 
+pub mod cards;
 pub mod recall;
 mod schema;
 pub mod search;

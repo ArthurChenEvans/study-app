@@ -4,6 +4,7 @@
 //! Security rule: a `QuizView` never says which options are correct. Correct answers
 //! only leave the backend in study-mode feedback after answering, and in results.
 
+pub mod cards;
 pub mod convert;
 pub mod recall;
 
@@ -51,7 +52,9 @@ from_error!(
     study_core::attempt::AttemptError,
     study_core::results::ReasonError,
     study_core::image::ImageError,
-    study_core::recall::RecallError
+    study_core::recall::RecallError,
+    study_core::cards::CardError,
+    study_core::cards::SchedulerError
 );
 
 pub type ApiResult<T> = Result<T, ApiError>;
@@ -193,6 +196,7 @@ pub struct App {
     store: Store,
     rng: StdRng,
     active: Option<Attempt>,
+    card_session: Option<cards::CardSession>,
 }
 
 impl App {
@@ -201,6 +205,7 @@ impl App {
             store,
             rng: StdRng::from_os_rng(),
             active: None,
+            card_session: None,
         }
     }
 
@@ -210,6 +215,7 @@ impl App {
             store,
             rng: StdRng::seed_from_u64(seed),
             active: None,
+            card_session: None,
         }
     }
 

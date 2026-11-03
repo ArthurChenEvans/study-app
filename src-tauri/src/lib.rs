@@ -14,6 +14,9 @@ use study_core::image::ImageId;
 use study_core::progress::Overview;
 use study_core::question::{QuestionId, SourceId, TopicId};
 use study_core::results::GivenReason;
+use study_api::cards::{CardsHome, NoteInput, NoteView, ReviewStep, Suggestion, TopicCards};
+use study_core::cards::{CardSettings, Rating};
+use study_store::cards::{CardId, NoteId};
 use study_api::recall::{Candidate, CheckResult, ChecklistView, PointInput, Preview, RecallHistory, RecallRow};
 use study_core::recall::Schedule;
 use study_store::recall::{ChecklistId, Point, Subject};
@@ -202,6 +205,81 @@ fn search(state: AppState, query: SearchQuery) -> ApiResult<Vec<Hit>> {
 }
 
 
+// ---------- Flashcards (R62 to R77) ----------
+
+#[tauri::command]
+fn cards_home(state: AppState) -> ApiResult<CardsHome> {
+    with(state, |app| app.cards_home(today()))
+}
+#[tauri::command]
+fn cards_due_count(state: AppState) -> ApiResult<usize> {
+    with(state, |app| app.cards_due_count(today()))
+}
+#[tauri::command]
+fn topic_cards(state: AppState, topic: TopicId) -> ApiResult<TopicCards> {
+    with(state, |app| app.topic_cards(topic, today()))
+}
+#[tauri::command]
+fn note_view(state: AppState, id: NoteId) -> ApiResult<NoteView> {
+    with(state, |app| app.note_view(id, today()))
+}
+#[tauri::command]
+fn save_note(state: AppState, id: Option<NoteId>, input: NoteInput) -> ApiResult<NoteId> {
+    with(state, |app| app.save_note(id, input, today()))
+}
+#[tauri::command]
+fn delete_note(state: AppState, id: NoteId) -> ApiResult<()> {
+    with(state, |app| app.delete_note(id))
+}
+#[tauri::command]
+fn archive_card(state: AppState, id: CardId, archived: bool) -> ApiResult<()> {
+    with(state, |app| app.archive_card(id, archived))
+}
+#[tauri::command]
+fn start_review(state: AppState, scope: Option<Subject>) -> ApiResult<ReviewStep> {
+    with(state, |app| app.start_review(scope, today()))
+}
+#[tauri::command]
+fn current_card(state: AppState) -> ApiResult<ReviewStep> {
+    with(state, |app| app.current_card(today()))
+}
+#[tauri::command]
+fn grade_card(state: AppState, rating: Rating, seconds: u32) -> ApiResult<ReviewStep> {
+    with(state, |app| app.grade_card(rating, seconds, today()))
+}
+#[tauri::command]
+fn undo_card(state: AppState) -> ApiResult<ReviewStep> {
+    with(state, |app| app.undo_card(today()))
+}
+#[tauri::command]
+fn leave_review(state: AppState) -> ApiResult<()> {
+    with(state, |app| { app.leave_review(); Ok(()) })
+}
+#[tauri::command]
+fn card_suggestions(state: AppState) -> ApiResult<Vec<Suggestion>> {
+    with(state, |app| app.card_suggestions(today()))
+}
+#[tauri::command]
+fn dismiss_suggestion(state: AppState, key: String) -> ApiResult<()> {
+    with(state, |app| app.dismiss_suggestion(&key))
+}
+#[tauri::command]
+fn card_settings(state: AppState) -> ApiResult<CardSettings> {
+    with(state, |app| app.card_settings())
+}
+#[tauri::command]
+fn set_card_settings(state: AppState, settings: CardSettings) -> ApiResult<()> {
+    with(state, |app| app.set_card_settings(settings))
+}
+#[tauri::command]
+fn reset_card_settings(state: AppState) -> ApiResult<CardSettings> {
+    with(state, |app| app.reset_card_settings())
+}
+#[tauri::command]
+fn fit_scheduler(state: AppState) -> ApiResult<usize> {
+    with(state, |app| app.fit_scheduler())
+}
+
 // ---------- Free recall (R52 to R61) ----------
 
 #[tauri::command]
@@ -273,6 +351,24 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             slides_to_pdf,
+            cards_home,
+            cards_due_count,
+            topic_cards,
+            note_view,
+            save_note,
+            delete_note,
+            archive_card,
+            start_review,
+            current_card,
+            grade_card,
+            undo_card,
+            leave_review,
+            card_suggestions,
+            dismiss_suggestion,
+            card_settings,
+            set_card_settings,
+            reset_card_settings,
+            fit_scheduler,
             recall_list,
             recall_due_count,
             create_checklist,
