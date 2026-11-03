@@ -3,9 +3,6 @@
 //! History is stored as snapshots, separate from the live questions, so deleting or
 //! editing a topic or question never changes past attempts (R28, R30).
 //!
-//! Not implemented because they're open questions in specs/README.md:
-//! deleting a module (Q9), deleting or editing a cited source (Q10, Q11),
-//! resuming an incomplete attempt (Q13).
 
 use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
@@ -20,6 +17,7 @@ use study_core::question::{
 };
 use study_core::results::{Reasons, Summary, reason_labels, summarise};
 
+pub mod recall;
 mod schema;
 pub mod search;
 

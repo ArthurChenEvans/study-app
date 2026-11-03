@@ -80,6 +80,44 @@ const MIGRATIONS: &[&str] = &[
         bytes  BLOB NOT NULL
     );
     ",
+    // 3: free recall checklists (R52 to R60). The subject's name is kept, so a checklist and
+    // its history survive the module or topic being deleted. Checks are snapshots, like attempts.
+    "
+    CREATE TABLE recall_checklists (
+        id           INTEGER PRIMARY KEY,
+        module_id    INTEGER REFERENCES modules(id) ON DELETE SET NULL,
+        topic_id     INTEGER REFERENCES topics(id) ON DELETE SET NULL,
+        subject_name TEXT NOT NULL,
+        subject_kind TEXT NOT NULL CHECK (subject_kind IN ('Module', 'Topic')),
+        created      INTEGER NOT NULL,
+        step         INTEGER,
+        rep          INTEGER,
+        due          INTEGER NOT NULL
+    );
+    CREATE TABLE recall_points (
+        checklist_id INTEGER NOT NULL REFERENCES recall_checklists(id) ON DELETE CASCADE,
+        position     INTEGER NOT NULL,
+        text         TEXT NOT NULL,
+        question_id  INTEGER REFERENCES questions(id) ON DELETE SET NULL,
+        PRIMARY KEY (checklist_id, position)
+    );
+    CREATE TABLE recall_checks (
+        id           INTEGER PRIMARY KEY,
+        checklist_id INTEGER NOT NULL REFERENCES recall_checklists(id) ON DELETE CASCADE,
+        day          INTEGER NOT NULL,
+        dump         TEXT,
+        points       TEXT NOT NULL,
+        score        INTEGER NOT NULL,
+        passed       INTEGER NOT NULL,
+        from_label   TEXT,
+        to_label     TEXT NOT NULL
+    );
+    CREATE INDEX recall_checks_by_checklist ON recall_checks(checklist_id, day);
+    CREATE TABLE settings (
+        key   TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    );
+    ",
 ];
 
 pub const LATEST: i64 = MIGRATIONS.len() as i64;

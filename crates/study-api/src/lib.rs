@@ -5,6 +5,7 @@
 //! only leave the backend in study-mode feedback after answering, and in results.
 
 pub mod convert;
+pub mod recall;
 
 use rand::SeedableRng;
 use rand::rngs::StdRng;
@@ -49,7 +50,8 @@ from_error!(
     study_core::assembly::AssemblyError,
     study_core::attempt::AttemptError,
     study_core::results::ReasonError,
-    study_core::image::ImageError
+    study_core::image::ImageError,
+    study_core::recall::RecallError
 );
 
 pub type ApiResult<T> = Result<T, ApiError>;

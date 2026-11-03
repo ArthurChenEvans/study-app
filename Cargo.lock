@@ -3026,6 +3026,7 @@ dependencies = [
 name = "study-core"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "rand",
  "serde",
  "thiserror 2.0.21",

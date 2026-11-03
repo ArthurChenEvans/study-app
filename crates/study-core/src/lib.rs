@@ -5,4 +5,5 @@ pub mod bibliography;
 pub mod image;
 pub mod progress;
 pub mod question;
+pub mod recall;
 pub mod results;

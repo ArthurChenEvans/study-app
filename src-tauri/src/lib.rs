@@ -14,6 +14,9 @@ use study_core::image::ImageId;
 use study_core::progress::Overview;
 use study_core::question::{QuestionId, SourceId, TopicId};
 use study_core::results::GivenReason;
+use study_api::recall::{Candidate, CheckResult, ChecklistView, PointInput, Preview, RecallHistory, RecallRow};
+use study_core::recall::Schedule;
+use study_store::recall::{ChecklistId, Point, Subject};
 use study_store::search::{Hit, SearchQuery};
 use study_store::{AttemptId, HistoryRow, ModuleId, ModuleRow, SourceRow, Store, TopicRow};
 
@@ -198,6 +201,66 @@ fn search(state: AppState, query: SearchQuery) -> ApiResult<Vec<Hit>> {
     with(state, |app| app.search(query))
 }
 
+
+// ---------- Free recall (R52 to R61) ----------
+
+#[tauri::command]
+fn recall_list(state: AppState) -> ApiResult<Vec<RecallRow>> {
+    with(state, |app| app.recall_list(today()))
+}
+#[tauri::command]
+fn recall_due_count(state: AppState) -> ApiResult<usize> {
+    with(state, |app| app.recall_due_count(today()))
+}
+#[tauri::command]
+fn create_checklist(state: AppState, subject: Subject) -> ApiResult<ChecklistId> {
+    with(state, |app| app.create_checklist(subject, today()))
+}
+#[tauri::command]
+fn delete_checklist(state: AppState, id: ChecklistId) -> ApiResult<()> {
+    with(state, |app| app.delete_checklist(id))
+}
+#[tauri::command]
+fn checklist(state: AppState, id: ChecklistId) -> ApiResult<ChecklistView> {
+    with(state, |app| app.checklist(id, today()))
+}
+#[tauri::command]
+fn save_points(state: AppState, id: ChecklistId, points: Vec<PointInput>) -> ApiResult<Vec<Point>> {
+    with(state, |app| app.save_points(id, points))
+}
+#[tauri::command]
+fn recall_candidates(state: AppState, id: ChecklistId) -> ApiResult<Vec<Candidate>> {
+    with(state, |app| app.recall_candidates(id))
+}
+#[tauri::command]
+fn add_from_questions(state: AppState, id: ChecklistId, add: Vec<QuestionId>, remove: Vec<QuestionId>) -> ApiResult<Vec<Point>> {
+    with(state, |app| app.add_from_questions(id, add, remove))
+}
+#[tauri::command]
+fn preview_check(state: AppState, id: ChecklistId, recalled: usize) -> ApiResult<Preview> {
+    with(state, |app| app.preview_check(id, recalled, today()))
+}
+#[tauri::command]
+fn finish_check(state: AppState, id: ChecklistId, dump: Option<String>, recalled: Vec<usize>) -> ApiResult<CheckResult> {
+    with(state, |app| app.finish_check(id, dump, recalled, today()))
+}
+#[tauri::command]
+fn recall_history(state: AppState, id: ChecklistId) -> ApiResult<RecallHistory> {
+    with(state, |app| app.recall_history(id))
+}
+#[tauri::command]
+fn recall_schedule(state: AppState) -> ApiResult<Schedule> {
+    with(state, |app| app.schedule())
+}
+#[tauri::command]
+fn set_recall_schedule(state: AppState, schedule: Schedule) -> ApiResult<()> {
+    with(state, |app| app.set_schedule(schedule))
+}
+#[tauri::command]
+fn reset_recall_schedule(state: AppState) -> ApiResult<Schedule> {
+    with(state, |app| app.reset_schedule())
+}
+
 pub fn run() {
     tauri::Builder::default()
         .setup(|handle| {
@@ -210,6 +273,20 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             slides_to_pdf,
+            recall_list,
+            recall_due_count,
+            create_checklist,
+            delete_checklist,
+            checklist,
+            save_points,
+            recall_candidates,
+            add_from_questions,
+            preview_check,
+            finish_check,
+            recall_history,
+            recall_schedule,
+            set_recall_schedule,
+            reset_recall_schedule,
             modules,
             create_module,
             delete_module,
