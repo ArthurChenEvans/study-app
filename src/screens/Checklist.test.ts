@@ -111,6 +111,26 @@ describe("Checklist editor", () => {
     expect(mocked.addFromItems).toHaveBeenCalledWith(4, [{ Question: 7 }, { Note: 8 }], [{ Note: 7 }]);
   });
 
+  // short-answer.feature: Short answers feed recall checklists and cards
+  it("has a short answer tab", async () => {
+    mocked.checklist.mockResolvedValue(view([]));
+    mocked.recallCandidates.mockResolvedValue([
+      { item: { Question: 7 }, kind: "Short answer", topic_name: "OSI model", text: "Which layer adds port numbers?", answer: "The **transport** layer", in_checklist: false },
+      { item: { Note: 8 }, kind: "Basic card", topic_name: "Memory", text: "What caches translations?", answer: "The TLB", in_checklist: false },
+    ]);
+    mocked.addFromItems.mockResolvedValue([p("Which layer adds port numbers? → The **transport** layer", 7)]);
+    const u = userEvent.setup();
+    render(Checklist, { id: 4, onBack: vi.fn(), onStart: vi.fn() });
+    await u.click(await screen.findByRole("button", { name: "Add from questions or cards" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("radio", { name: "Short answer 1" })).toHaveAttribute("aria-checked", "true");
+    const list = within(dialog).getByRole("list", { name: "Short answer questions" });
+    expect(list.querySelector("strong")).toHaveTextContent("transport");
+    await u.click(within(list).getByRole("checkbox", { name: /port numbers/ }));
+    await u.click(within(dialog).getByRole("button", { name: "Add 1 point" }));
+    expect(mocked.addFromItems).toHaveBeenCalledWith(4, [{ Question: 7 }], []);
+  });
+
   it("opens on the flashcards tab when a topic only has cards", async () => {
     mocked.checklist.mockResolvedValue(view([]));
     mocked.recallCandidates.mockResolvedValue([{ item: { Note: 8 }, kind: "Basic card", topic_name: "Memory", text: "What caches translations?", answer: "The TLB", in_checklist: false }]);

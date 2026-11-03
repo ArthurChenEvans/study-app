@@ -1,9 +1,9 @@
 <script lang="ts">
-  // questions.feature, sources.feature (R4 to R10, R14, R48, R49)
-  import { BookOpen, ImagePlus, Plus, X } from "@lucide/svelte";
+  // questions.feature, sources.feature, short-answer.feature (R4 to R10, R14, R48, R49, R78 to R82)
+  import { BookOpen, Check, CircleCheck, CircleX, ImagePlus, Plus, X } from "@lucide/svelte";
   import Preview from "../components/Preview.svelte";
   import Rich from "../components/Rich.svelte";
-  import { api, errorMessage, type Id, type QuestionInput, type SourceRow } from "../lib/api";
+  import { api, errorMessage, type Id, type Marking, type QuestionInput, type ShortAnswer, type SourceRow } from "../lib/api";
   import { imageMarkdown } from "../lib/images";
 
   let { topic }: { topic: Id } = $props();
@@ -11,8 +11,15 @@
   const MIN = 3;
   const MAX = 5;
 
-  type Draft = { text: string; multiple: boolean; options: { text: string; correct: boolean }[]; explanation: string; tags: string; citations: { source: string; location: string }[] };
-  const blank = (): Draft => ({ text: "", multiple: false, options: Array.from({ length: 4 }, () => ({ text: "", correct: false })), explanation: "", tags: "", citations: [] });
+  type Draft = {
+    text: string; multiple: boolean; options: { text: string; correct: boolean }[]; explanation: string; tags: string; citations: { source: string; location: string }[];
+    // R78 to R81. Kept while switching type, so the options come back before saving.
+    kind: "mcq" | "short"; checkBy: "Accepted" | "Keywords"; accepted: string[]; typos: boolean; keywords: { word: string; also: string }[]; needed: number | null; model: string;
+  };
+  const blank = (): Draft => ({
+    text: "", multiple: false, options: Array.from({ length: 4 }, () => ({ text: "", correct: false })), explanation: "", tags: "", citations: [],
+    kind: "mcq", checkBy: "Accepted", accepted: [""], typos: true, keywords: [{ word: "", also: "" }], needed: null, model: "",
+  });
 
   let topicName = $state("");
   let questions = $state<[Id, string][]>([]);
@@ -51,15 +58,35 @@
     draft.multiple = multiple;
   }
 
+  function shortAnswer(): ShortAnswer {
+    const check: ShortAnswer["check"] = draft.checkBy === "Accepted"
+      ? { Accepted: { answers: draft.accepted.map((answer) => answer.trim()).filter(Boolean), typos: draft.typos } }
+      : { Keywords: { keywords: draft.keywords.filter((keyword) => keyword.word.trim()).map((keyword) => ({ word: keyword.word.trim(), also: keyword.also.split(",").map((form) => form.trim()).filter(Boolean) })), needed: draft.needed } };
+    return { check, model_answer: draft.model.trim() };
+  }
+
+  // R82: "Try an answer" asks the backend, so it's marked exactly as a quiz would.
+  let tryText = $state("");
+  let tried = $state<Marking | null>(null);
+  $effect(() => {
+    const text = tryText.trim();
+    if (draft.kind !== "short" || !text) { tried = null; return; }
+    const check = shortAnswer().check;
+    api.tryShortAnswer(check, text).then((marking) => { if (tryText.trim() === text) tried = marking; }).catch(() => (tried = null));
+  });
+  const keywordCount = $derived(draft.keywords.filter((keyword) => keyword.word.trim()).length);
+
   function input(): QuestionInput {
+    const short = draft.kind === "short";
     return {
       topic,
       text: draft.text.trim(),
-      multiple: draft.multiple,
-      options: draft.options.filter((option) => option.text.trim() !== "").map((option) => ({ text: option.text.trim(), correct: option.correct })),
+      multiple: short ? false : draft.multiple,
+      options: short ? [] : draft.options.filter((option) => option.text.trim() !== "").map((option) => ({ text: option.text.trim(), correct: option.correct })),
       explanation: draft.explanation.trim(),
       tags: draft.tags.split(",").map((tag) => tag.trim()).filter(Boolean),
       citations: draft.citations.filter((citation) => citation.source !== "").map((citation) => ({ source: Number(citation.source), location: citation.location.trim() })),
+      short: short ? shortAnswer() : null,
     };
   }
 
@@ -72,7 +99,9 @@
       else await api.updateQuestion(editing, input());
       saved = editing === null ? "Question saved" : "Changes saved";
       editing = null;
-      draft = blank();
+      const kind = draft.kind;
+      draft = { ...blank(), kind };
+      tryText = "";
       await load();
     } catch (failure) {
       error = errorMessage(failure);
@@ -91,7 +120,20 @@
       explanation: question.explanation,
       tags: question.tags.join(", "),
       citations: question.citations.map((citation) => ({ source: String(citation.source), location: citation.location })),
+      ...shortFields(question.short),
     };
+    if (question.short) draft.options = blank().options;
+    tryText = "";
+  }
+
+  function shortFields(short: ShortAnswer | null): Pick<Draft, "kind" | "checkBy" | "accepted" | "typos" | "keywords" | "needed" | "model"> {
+    const empty = blank();
+    if (!short) return { kind: "mcq", checkBy: empty.checkBy, accepted: empty.accepted, typos: empty.typos, keywords: empty.keywords, needed: empty.needed, model: empty.model };
+    if ("Accepted" in short.check) {
+      return { kind: "short", checkBy: "Accepted", accepted: [...short.check.Accepted.answers], typos: short.check.Accepted.typos, keywords: empty.keywords, needed: null, model: short.model_answer };
+    }
+    const { keywords, needed } = short.check.Keywords;
+    return { kind: "short", checkBy: "Keywords", accepted: empty.accepted, typos: true, keywords: keywords.map((keyword) => ({ word: keyword.word, also: keyword.also.join(", ") })), needed, model: short.model_answer };
   }
 
   // R7 / questions.feature "Add an image by pasting or picking". Images go into the
@@ -154,7 +196,8 @@
 
   function startNew() {
     editing = null;
-    draft = blank();
+    draft = { ...blank(), kind: draft.kind };
+    tryText = "";
     error = "";
     imageNote = "";
   }
@@ -195,6 +238,13 @@
     {/if}
 
     <form class="max-w-2xl space-y-8 px-10 pb-16" onsubmit={save} onpaste={onPaste} onfocusin={onFocus}>
+      <div class="flex items-center justify-between gap-4">
+        <span class="text-sm font-semibold" id="type-label">Question type</span>
+        <div class="seg" role="radiogroup" aria-labelledby="type-label">
+          <button type="button" role="radio" aria-checked={draft.kind === "mcq"} onclick={() => (draft.kind = "mcq")}>Multiple choice</button>
+          <button type="button" role="radio" aria-checked={draft.kind === "short"} onclick={() => (draft.kind = "short")}>Short answer</button>
+        </div>
+      </div>
       <div class="space-y-2">
         <label class="text-sm font-semibold" for="question-text">Question</label>
         <textarea id="question-text" class="textarea w-full font-mono text-sm" rows="3" data-rich="true" bind:this={questionField} bind:value={draft.text}></textarea>
@@ -207,6 +257,7 @@
         {#if worthPreviewing(draft.text)}<div class="panel p-4" aria-label="Question preview"><Rich text={draft.text} class="max-w-prose" /></div>{/if}
       </div>
 
+      {#if draft.kind === "mcq"}
       <fieldset class="space-y-3">
         <div class="flex items-center justify-between">
           <legend class="text-sm font-semibold">Answers</legend>
@@ -228,6 +279,70 @@
           <span class="text-sm text-muted tabular-nums">{draft.options.length} of {MAX} options. {draft.multiple ? "Tick every correct answer." : "Tick the correct answer."}</span>
         </div>
       </fieldset>
+      {:else}
+        <fieldset class="space-y-3">
+          <div class="flex items-center justify-between gap-4">
+            <legend class="text-sm font-semibold">How it's checked</legend>
+            <div class="seg" role="radiogroup" aria-label="How it's checked">
+              <button type="button" role="radio" aria-checked={draft.checkBy === "Accepted"} onclick={() => (draft.checkBy = "Accepted")}>Accepted answers</button>
+              <button type="button" role="radio" aria-checked={draft.checkBy === "Keywords"} onclick={() => (draft.checkBy = "Keywords")}>Keywords</button>
+            </div>
+          </div>
+          {#if draft.checkBy === "Accepted"}
+            <p class="text-sm text-muted">Right when your answer matches any of these. Case, extra spaces, punctuation and "the" or "a" at the start don't matter.</p>
+            {#each draft.accepted as _, index (index)}
+              <div class="flex items-center gap-3">
+                <input class="input input-sm flex-1" aria-label="Accepted answer {index + 1}" placeholder="e.g. Transport layer…" bind:value={draft.accepted[index]} />
+                <button type="button" class="btn btn-ghost btn-sm btn-square" aria-label="Remove accepted answer {index + 1}" disabled={draft.accepted.length <= 1} onclick={() => draft.accepted.splice(index, 1)}><X class="size-4" /></button>
+              </div>
+            {/each}
+            <div class="flex items-center justify-between gap-3">
+              <button type="button" class="btn btn-ghost btn-sm" onclick={() => draft.accepted.push("")}><Plus class="size-4" />Add another accepted answer</button>
+              <label class="flex min-h-6 items-center gap-2 text-sm"><input type="checkbox" class="toggle toggle-sm" aria-describedby="typo-help" bind:checked={draft.typos} />Allow small typos</label>
+            </div>
+            <p id="typo-help" class="text-sm text-muted">One wrong letter in words of 4 to 7 letters, two from 8. Never in numbers or words of 3 letters or fewer.</p>
+          {:else}
+            <p class="text-sm text-muted">Right when your answer contains enough of these, in any order. Put other ways of writing a keyword after a comma. Each word you write counts once, so "SYN-ACK" doesn't also count as "SYN" and "ACK".</p>
+            {#each draft.keywords as keyword, index (index)}
+              <div class="flex items-center gap-3">
+                <input class="input input-sm w-40" aria-label="Keyword {index + 1}" bind:value={keyword.word} />
+                <input class="input input-sm flex-1" aria-label="Other ways to write keyword {index + 1}" placeholder="Also accept…" bind:value={keyword.also} />
+                <button type="button" class="btn btn-ghost btn-sm btn-square" aria-label="Remove keyword {index + 1}" disabled={draft.keywords.length <= 1} onclick={() => draft.keywords.splice(index, 1)}><X class="size-4" /></button>
+              </div>
+            {/each}
+            <div class="flex items-center justify-between gap-3">
+              <button type="button" class="btn btn-ghost btn-sm" onclick={() => draft.keywords.push({ word: "", also: "" })}><Plus class="size-4" />Add keyword</button>
+              <label class="flex items-center gap-2 text-sm"><span class="text-muted">Right with</span>
+                <select class="select select-sm w-36" aria-label="How many keywords are needed" value={draft.needed === null ? "" : String(draft.needed)} onchange={(event) => (draft.needed = event.currentTarget.value ? Number(event.currentTarget.value) : null)}>
+                  <option value="">All {keywordCount || ""}</option>
+                  {#each Array.from({ length: Math.max(0, keywordCount - 1) }, (_, i) => keywordCount - 1 - i) as count (count)}<option value={String(count)}>At least {count}</option>{/each}
+                </select></label>
+            </div>
+          {/if}
+        </fieldset>
+        <div class="space-y-2">
+          <label class="text-sm font-semibold" for="model-answer">Model answer <span class="font-normal text-muted">(optional)</span></label>
+          <textarea id="model-answer" class="textarea w-full font-mono text-sm" rows="2" data-rich="true" placeholder="Shown after you answer…" bind:value={draft.model}></textarea>
+          <p class="text-sm text-muted">What you see after answering, next to what you wrote. {draft.checkBy === "Accepted" ? "Leave it blank to show the first accepted answer." : "Keywords only decide right or wrong."}</p>
+          {#if worthPreviewing(draft.model)}<div class="panel p-4" aria-label="Model answer preview"><Rich text={draft.model} class="max-w-prose" /></div>{/if}
+        </div>
+        <section class="panel p-5" aria-label="Try an answer">
+          <p class="text-sm font-semibold">Try an answer</p>
+          <p class="mt-1 text-sm text-muted">See how the app would mark something before you save. Nothing is recorded.</p>
+          <input class="input input-sm mt-3 w-full" aria-label="A test answer" placeholder="Type an answer to test…" bind:value={tryText} />
+          {#if tried}
+            <div class="mt-3 flex flex-wrap items-center gap-2 text-sm" aria-live="polite">
+              <span class="flex items-center gap-1 font-semibold {tried.right ? 'text-right-ink' : 'text-wrong-ink'}">{#if tried.right}<CircleCheck class="size-4" />{:else}<CircleX class="size-4" />{/if}{tried.right ? (typeof tried.detail === "object" && "Matched" in tried.detail && tried.detail.Matched.typo ? "Right, with a typo" : "Right") : "Wrong"}</span>
+              {#if typeof tried.detail === "object" && "Matched" in tried.detail}<span class="text-muted">matches "{tried.detail.Matched.answer}"</span>
+              {:else if typeof tried.detail === "object" && "Keywords" in tried.detail}
+                <span class="text-muted">{tried.detail.Keywords.hit.length} of {tried.detail.Keywords.hit.length + tried.detail.Keywords.missed.length} keywords:</span>
+                {#each tried.detail.Keywords.hit as word (word)}<span class="kw kw-hit"><Check class="size-3" />{word}</span>{/each}
+                {#each tried.detail.Keywords.missed as word (word)}<span class="kw kw-miss"><X class="size-3" />{word}</span>{/each}
+              {/if}
+            </div>
+          {/if}
+        </section>
+      {/if}
 
       <div class="space-y-2">
         <label class="text-sm font-semibold" for="question-explanation">Explanation</label>

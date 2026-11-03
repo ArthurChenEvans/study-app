@@ -224,3 +224,11 @@
 .slider::-webkit-slider-runnable-track { height: 6px; border-radius: 999px; background: linear-gradient(to right, var(--color-primary) var(--fill), var(--color-base-300) var(--fill)); }
 .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -5px; border-radius: 50%; background: var(--color-primary); border: 2px solid var(--surface); box-shadow: 0 0 0 1px var(--color-primary); }
 .slider:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 4px; border-radius: 4px; }
+
+/* Short answer (design/short-answer.html): keyword chips and the overruled label.
+   Hit and missed differ by icon and border style too, never colour alone. */
+.kw { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; border-radius: 4px; padding: 1px 8px; border: 1px solid var(--color-base-300); }
+.kw-hit { color: var(--right-ink); border-color: var(--chart-right); }
+.kw-miss { color: var(--wrong-ink); border-color: var(--chart-wrong); border-style: dashed; }
+.overruled { font-size: 12px; font-weight: 400; color: var(--muted); border: 1px solid var(--field-border); border-radius: 4px; padding: 0 6px; line-height: 20px; white-space: nowrap; }
+.answer-box { font-size: 18px; line-height: 1.5; }

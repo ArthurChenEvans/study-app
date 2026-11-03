@@ -4,10 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../lib/api", async (original) => {
   const actual = await original<typeof import("../lib/api")>();
-  return { ...actual, api: { answer: vi.fn(), toggleFlag: vi.fn(), questionTimedOut: vi.fn(), totalTimedOut: vi.fn(), quitQuiz: vi.fn() } };
+  return { ...actual, api: { answer: vi.fn(), answerText: vi.fn(), overruleAnswer: vi.fn(), toggleFlag: vi.fn(), questionTimedOut: vi.fn(), totalTimedOut: vi.fn(), quitQuiz: vi.fn() } };
 });
 
-import { api, type QuizView } from "../lib/api";
+import { api, type Feedback, type QuizView, type ShortFeedback } from "../lib/api";
 import Quiz from "./Quiz.svelte";
 
 const mocked = vi.mocked(api);
@@ -17,7 +17,7 @@ function view(overrides: Partial<QuizView> = {}): QuizView {
     position: 1, total: 3, exam: false, topic: 1,
     text: "Which stage reads the **register file**?",
     options: [{ index: 2, text: "Execute" }, { index: 0, text: "Fetch" }, { index: 1, text: "Decode" }],
-    multiple: false, answers_to_pick: null, flagged: false, total_seconds: null, per_question_seconds: null,
+    multiple: false, short: false, answers_to_pick: null, flagged: false, total_seconds: null, per_question_seconds: null,
     track: ["Current", "Upcoming", "Upcoming"],
     ...overrides,
   };
@@ -39,7 +39,7 @@ describe("Quiz", () => {
   // taking-quiz.feature: Study mode feedback
   it("study mode: submits the original option index and shows feedback", async () => {
     const u = userEvent.setup();
-    mocked.answer.mockResolvedValue({ feedback: { right: false, auto_reason: null, correct: [1], explanation: "Operands are read in decode.", citations: [] }, next: { Question: second } });
+    mocked.answer.mockResolvedValue({ feedback: { index: 0, short: null, right: false, auto_reason: null, correct: [1], explanation: "Operands are read in decode.", citations: [] }, next: { Question: second } });
     render(Quiz, { initial: view(), onFinished: vi.fn() });
     expect(screen.getByRole("button", { name: /Submit/ })).toBeDisabled();
     await u.click(screen.getByRole("button", { name: "2 Fetch" }));
@@ -131,5 +131,105 @@ describe("Quiz", () => {
     render(Quiz, { initial: view({ total_seconds: 3 }), onFinished });
     await vi.advanceTimersByTimeAsync(3_100);
     expect(onFinished).toHaveBeenCalledWith(9);
+  });
+
+  describe("short answer", () => {
+    const shortView = view({ text: "Which layer adds port numbers?", options: [], short: true });
+    const marked = (right: boolean, short: Partial<ShortFeedback> = {}): Feedback => ({
+      index: 0, right, auto_reason: null, correct: [], explanation: "Ports let apps share an address.", citations: [],
+      short: { typed: "network layer", marking: { right, detail: "NoMatch" }, shown_answer: "The **transport** layer", also_accepted: ["Layer 4"], overruled: false, ...short },
+    });
+
+    // short-answer.feature: Study mode shows the verdict
+    it("types the answer, submits with Enter and shows the verdict", async () => {
+      const u = userEvent.setup();
+      mocked.answerText.mockResolvedValue({ feedback: marked(false), next: { Question: second } });
+      render(Quiz, { initial: shortView, onFinished: vi.fn() });
+      expect(screen.getByText("Short answer")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /^\d / })).toBeNull();
+      const box = screen.getByLabelText("Your answer");
+      expect(screen.getByRole("button", { name: /Submit/ })).toBeDisabled();
+      await u.type(box, "network{Shift>}{Enter}{/Shift}layer");
+      expect(box).toHaveValue("network\nlayer");
+      await u.keyboard("{Enter}");
+      expect(mocked.answerText).toHaveBeenCalledWith("network\nlayer");
+      const status = await screen.findByRole("status");
+      expect(status).toHaveTextContent("Wrong");
+      expect(status).toHaveTextContent("Model answer");
+      expect(status.querySelector("strong")).toHaveTextContent("transport");
+      expect(status).toHaveTextContent("Also accepted: Layer 4");
+      expect(status).toHaveTextContent("Ports let apps share an address.");
+      expect(box).toHaveAttribute("readonly");
+      expect(box).toHaveClass("is-wrong");
+    });
+
+    it("shows a typo and the keywords hit and missed", async () => {
+      const u = userEvent.setup();
+      mocked.answerText
+        .mockResolvedValueOnce({ feedback: marked(true, { typed: "the transprot layer", marking: { right: true, detail: { Matched: { answer: "Transport layer", typo: "transprot" } } } }), next: { Question: shortView } })
+        .mockResolvedValueOnce({ feedback: marked(false, { marking: { right: false, detail: { Keywords: { hit: ["SYN", "SYN-ACK"], missed: ["ACK"], needed: 3 } } } }), next: { Finished: 4 } });
+      render(Quiz, { initial: shortView, onFinished: vi.fn() });
+      await u.type(screen.getByLabelText("Your answer"), "the transprot layer{Enter}");
+      const first = await screen.findByRole("status");
+      expect(first).toHaveTextContent("Correct, with a typo");
+      expect(first).toHaveTextContent('you wrote "transprot"');
+      expect(screen.getByRole("status")).not.toHaveTextContent("Also accepted");
+      await u.keyboard("{Enter}");
+      expect(screen.getByLabelText("Your answer")).toHaveValue("");
+      await u.type(screen.getByLabelText("Your answer"), "SYN then SYN-ACK{Enter}");
+      const status = await screen.findByRole("status");
+      expect(status).toHaveTextContent("Wrong");
+      expect(status).toHaveTextContent("needs all 3 keywords, you had 2");
+      expect(screen.getByLabelText("Keywords")).toHaveTextContent(/SYN, found\s*SYN-ACK, found\s*ACK, missed/);
+    });
+
+    // short-answer.feature: Overrule a verdict
+    it("overrules with O and undoes, using the saved attempt once the quiz has finished", async () => {
+      const u = userEvent.setup();
+      const onFinished = vi.fn();
+      mocked.answerText.mockResolvedValue({ feedback: marked(false), next: { Finished: 9 } });
+      mocked.overruleAnswer.mockResolvedValueOnce(marked(true, { overruled: true, marking: { right: false, detail: "NoMatch" } })).mockResolvedValueOnce(marked(false));
+      render(Quiz, { initial: shortView, onFinished });
+      await u.type(screen.getByLabelText("Your answer"), "network layer{Enter}");
+      await screen.findByRole("status");
+      await u.keyboard("o");
+      expect(mocked.overruleAnswer).toHaveBeenCalledWith(9, 0);
+      const status = await screen.findByText("Counted as right");
+      expect(status.closest("[role=status]")).toHaveTextContent("You overruled this");
+      expect(screen.getByLabelText("Your answer")).not.toHaveClass("is-right");
+      await u.click(screen.getByRole("button", { name: /Undo, count it as wrong/ }));
+      expect(await screen.findByRole("button", { name: /Count it as right/ })).toBeInTheDocument();
+      await u.keyboard("{Enter}");
+      expect(onFinished).toHaveBeenCalledWith(9);
+    });
+
+    it("overrules in a running quiz and updates the track", async () => {
+      const u = userEvent.setup();
+      const next = view({ position: 2, short: true, options: [], text: "Next one", track: ["Wrong", "Current", "Upcoming"] });
+      mocked.answerText.mockResolvedValue({ feedback: marked(false), next: { Question: next } });
+      mocked.overruleAnswer.mockResolvedValue(marked(true, { overruled: true, marking: { right: false, detail: "NoMatch" } }));
+      render(Quiz, { initial: shortView, onFinished: vi.fn() });
+      await u.type(screen.getByLabelText("Your answer"), "network layer{Enter}");
+      await u.click(await screen.findByRole("button", { name: /Count it as right/ }));
+      expect(mocked.overruleAnswer).toHaveBeenCalledWith(null, 0);
+      await screen.findByText("Counted as right");
+      await u.keyboard("{Enter}");
+      expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Next one");
+      const cells = screen.getByLabelText(/Progress/).querySelectorAll("span");
+      expect(cells[0].getAttribute("style")).toContain("chart-right");
+    });
+
+    it("flags a guess with Ctrl+G while typing", async () => {
+      const u = userEvent.setup();
+      mocked.toggleFlag.mockResolvedValue({ ...shortView, flagged: true });
+      render(Quiz, { initial: shortView, onFinished: vi.fn() });
+      await u.type(screen.getByLabelText("Your answer"), "maybe");
+      await u.keyboard("{Control>}g{/Control}");
+      expect(mocked.toggleFlag).toHaveBeenCalled();
+      expect(await screen.findByRole("button", { name: /Flagged as guessed/ })).toBeInTheDocument();
+      await u.keyboard("f");
+      expect(mocked.toggleFlag).toHaveBeenCalledTimes(1);
+      expect(screen.getByLabelText("Your answer")).toHaveValue("maybef");
+    });
   });
 });

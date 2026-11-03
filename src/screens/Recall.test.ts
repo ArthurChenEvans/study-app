@@ -38,7 +38,7 @@ beforeEach(() => {
   mocked.recallSchedule.mockResolvedValue(ladder);
   mocked.today.mockResolvedValue(TODAY);
   mocked.modules.mockResolvedValue([{ id: 1, name: "Computer Architecture" }]);
-  mocked.topics.mockResolvedValue([{ id: 2, name: "CPU", module: 1, tags: [], question_count: 3 }]);
+  mocked.topics.mockResolvedValue([{ id: 2, name: "CPU", module: 1, tags: [], question_count: 3, short_count: 0 }]);
 });
 
 describe("Recall list", () => {

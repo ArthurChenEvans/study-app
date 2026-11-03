@@ -27,13 +27,14 @@
   // Keyed "Question:12" or "Note:5", since a question and a card can share an id.
   let picked = $state<Set<string>>(new Set());
   let unpicked = $state<Set<string>>(new Set());
-  let from = $state<"mcq" | "cards">("mcq");
+  let from = $state<"mcq" | "short" | "cards">("mcq");
   const keyOf = (item: RecallItem) => ("Question" in item ? `Question:${item.Question}` : `Note:${item.Note}`);
   const itemOf = (key: string): RecallItem => {
     const [kind, id] = key.split(":");
     return kind === "Question" ? { Question: Number(id) } : { Note: Number(id) };
   };
   const isCard = (candidate: Candidate) => "Note" in candidate.item;
+  const tabOf = (candidate: Candidate) => (isCard(candidate) ? "cards" : candidate.kind === "Short answer" ? "short" : "mcq");
   let deleting = $state(false);
   let openDump = $state<number | null>(null);
 
@@ -84,16 +85,16 @@
 
   async function openImport() {
     candidates = await api.recallCandidates(id);
-    from = candidates.some((candidate) => !isCard(candidate)) || !candidates.length ? "mcq" : "cards";
+    from = (["mcq", "short", "cards"] as const).find((tab) => candidates.some((candidate) => tabOf(candidate) === tab)) ?? "mcq";
     picked = new Set();
     unpicked = new Set();
     filter = "";
     importing = true;
   }
 
-  const inTab = $derived(candidates.filter((c) => isCard(c) === (from === "cards")));
+  const inTab = $derived(candidates.filter((c) => tabOf(c) === from));
   const shown = $derived(inTab.filter((c) => `${c.text} ${c.answer} ${c.topic_name}`.toLowerCase().includes(filter.trim().toLowerCase())));
-  const cardCount = $derived(candidates.filter(isCard).length);
+  const countIn = (tab: "mcq" | "short" | "cards") => candidates.filter((c) => tabOf(c) === tab).length;
   const adds = $derived(picked.size);
   const removes = $derived(unpicked.size);
   const importLabel = $derived(adds && removes ? `Add ${adds}, remove ${removes}` : adds ? `Add ${adds} ${adds === 1 ? "point" : "points"}` : removes ? `Remove ${removes} ${removes === 1 ? "point" : "points"}` : "No changes yet");
@@ -254,20 +255,20 @@
   <dialog open class="modal modal-open" aria-labelledby="import-h">
     <div class="modal-box max-w-3xl">
       <h3 id="import-h" class="text-lg font-semibold">Add points from questions and cards</h3>
-      <p class="mt-2 text-sm text-muted">Each one becomes a point: a question and its answer, a card's front and back, or a cloze card's text with the answers in bold. You can edit the point after, and the question or card stays as it is. Untick one that's already in the checklist to remove its point.</p>
+      <p class="mt-2 text-sm text-muted">Each one becomes a point: a question and its answer (a short answer's model answer), a card's front and back, or a cloze card's text with the answers in bold. You can edit the point after, and the question or card stays as it is. Untick one that's already in the checklist to remove its point.</p>
       <div class="mt-6 flex items-center justify-between gap-4">
         <div class="seg" role="radiogroup" aria-label="Add from">
-          <button type="button" role="radio" aria-checked={from === "mcq"} onclick={() => (from = "mcq")}>MCQ <span class="text-xs tabular-nums">{candidates.length - cardCount}</span></button>
-          <button type="button" role="radio" aria-checked="false" disabled title="Not built yet" class="opacity-60">Short answer</button>
-          <button type="button" role="radio" aria-checked={from === "cards"} onclick={() => (from = "cards")}>Flashcards <span class="text-xs tabular-nums">{cardCount}</span></button>
+          <button type="button" role="radio" aria-checked={from === "mcq"} onclick={() => (from = "mcq")}>MCQ <span class="text-xs tabular-nums">{countIn("mcq")}</span></button>
+          <button type="button" role="radio" aria-checked={from === "short"} onclick={() => (from = "short")}>Short answer <span class="text-xs tabular-nums">{countIn("short")}</span></button>
+          <button type="button" role="radio" aria-checked={from === "cards"} onclick={() => (from = "cards")}>Flashcards <span class="text-xs tabular-nums">{countIn("cards")}</span></button>
         </div>
         <input type="search" class="input input-sm w-64" aria-label="Filter" placeholder="Filter…" bind:value={filter} />
       </div>
-      <p class="mt-2 text-xs text-muted">From {view?.topics.length ? view.topics.join(", ") : "no topics"}. Archived cards aren't listed. Short answer appears here once it's built.</p>
+      <p class="mt-2 text-xs text-muted">From {view?.topics.length ? view.topics.join(", ") : "no topics"}. Archived cards aren't listed.</p>
       {#if inTab.length === 0}
-        <p class="panel mt-4 p-6 text-sm text-muted">{from === "mcq" ? "There are no MCQs in these topics yet." : "There are no flashcards in these topics yet."}</p>
+        <p class="panel mt-4 p-6 text-sm text-muted">{from === "mcq" ? "There are no MCQs in these topics yet." : from === "short" ? "There are no short answer questions in these topics yet." : "There are no flashcards in these topics yet."}</p>
       {:else}
-        <ul class="panel mt-4 max-h-80 divide-y overflow-y-auto" aria-label={from === "mcq" ? "Questions" : "Flashcards"}>
+        <ul class="panel mt-4 max-h-80 divide-y overflow-y-auto" aria-label={from === "mcq" ? "Questions" : from === "short" ? "Short answer questions" : "Flashcards"}>
           {#each shown as candidate (keyOf(candidate.item))}
             {@const key = keyOf(candidate.item)}
             {@const on = candidate.in_checklist ? !unpicked.has(key) : picked.has(key)}

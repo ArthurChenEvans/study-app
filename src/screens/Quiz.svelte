@@ -1,7 +1,7 @@
 <script lang="ts">
-  // taking-quiz.feature (R18 to R23, R29, R32)
+  // taking-quiz.feature, short-answer.feature (R18 to R23, R29, R32, R83, R84)
   import { onDestroy } from "svelte";
-  import { BookOpen, Check, CircleCheck, CircleX, Flag, LogOut, Timer, X } from "@lucide/svelte";
+  import { BookOpen, Check, CircleCheck, CircleX, Flag, LogOut, Timer, Undo2, X } from "@lucide/svelte";
   import { api, errorMessage, type AnswerResult, type Feedback, type Id, type QuizView, type TrackCell } from "../lib/api";
   import Rich from "../components/Rich.svelte";
 
@@ -10,6 +10,7 @@
   // svelte-ignore state_referenced_locally
   let current = $state<QuizView>(initial);
   let picked = $state<number[]>([]);
+  let typed = $state("");
   let feedback = $state<Feedback | null>(null);
   let pendingNext = $state<AnswerResult["next"] | null>(null);
   let busy = $state(false);
@@ -63,6 +64,7 @@
     }
     current = next.Question;
     picked = [];
+    typed = "";
     feedback = null;
     pendingNext = null;
     startQuestionClock(current);
@@ -85,7 +87,14 @@
   }
 
   function submit() {
-    if (picked.length === 0 || feedback || busy) return;
+    if (feedback || busy) return;
+    if (current.short) {
+      if (!typed.trim()) return;
+      const answer = typed;
+      run(() => api.answerText(answer));
+      return;
+    }
+    if (picked.length === 0) return;
     const answer = [...picked].sort((a, b) => a - b);
     run(() => api.answer(answer));
   }
@@ -113,9 +122,59 @@
     if (pendingNext) show(pendingNext);
   }
 
+  // R84: count a short answer the other way. Once the quiz has finished, the last
+  // answer lives in the saved attempt, so that's what gets overruled.
+  async function overrule() {
+    if (!feedback?.short || busy) return;
+    busy = true;
+    error = "";
+    try {
+      const attempt = pendingNext && "Finished" in pendingNext ? pendingNext.Finished : null;
+      const index = feedback.index;
+      feedback = await api.overruleAnswer(attempt, index);
+      if (pendingNext && "Question" in pendingNext) {
+        const cell: TrackCell = feedback.right ? (current.flagged ? "RightGuessed" : "RightSure") : "Wrong";
+        pendingNext.Question.track[index] = current.exam ? "Answered" : cell;
+      }
+    } catch (failure) {
+      error = errorMessage(failure);
+    } finally {
+      busy = false;
+    }
+  }
+
+  function answerKeys(event: KeyboardEvent) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      submit();
+    }
+  }
+
+  const verdict = $derived.by(() => {
+    const short = feedback?.short;
+    if (!feedback || !short) return null;
+    const detail = short.marking.detail;
+    const typo = typeof detail === "object" && "Matched" in detail ? detail.Matched.typo : null;
+    const keywords = typeof detail === "object" && "Keywords" in detail ? detail.Keywords : null;
+    const label = short.overruled ? (feedback.right ? "Counted as right" : "Counted as wrong") : feedback.right ? (typo ? "Correct, with a typo" : "Correct") : "Wrong";
+    const note = short.overruled ? "" : typo ? `you wrote "${typo}"` : keywords && !feedback.right ? `needs ${keywords.needed === keywords.hit.length + keywords.missed.length ? `all ${keywords.needed}` : keywords.needed} keywords, you had ${keywords.hit.length}` : "";
+    return { label, note, keywords };
+  });
+
   function onKey(event: KeyboardEvent) {
+    // R83: Ctrl+G flags a short answer as guessed, even while typing it.
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "g" && current.short) {
+      event.preventDefault();
+      toggleFlag();
+      return;
+    }
     const target = event.target as HTMLElement | null;
-    if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
+    if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) && !(target as HTMLTextAreaElement).readOnly) return;
+    if (event.key.toLowerCase() === "o" && feedback?.short && !event.ctrlKey && !event.metaKey) {
+      event.preventDefault();
+      overrule();
+      return;
+    }
     if (/^[1-5]$/.test(event.key)) {
       const option = current.options[Number(event.key) - 1];
       if (option) pick(option.index);
@@ -123,7 +182,7 @@
       event.preventDefault();
       if (feedback) next();
       else submit();
-    } else if (event.key.toLowerCase() === "f") {
+    } else if (event.key.toLowerCase() === "f" && !current.short) {
       toggleFlag();
     }
   }
@@ -160,9 +219,15 @@
 
   <div class="flex-1 px-12 py-12">
     <div class="mx-auto max-w-prose">
-      {#if current.multiple}<p class="eyebrow">Select all that apply{#if current.answers_to_pick} · <span>Pick {current.answers_to_pick}</span>{/if}</p>{/if}
+      {#if current.short}<p class="eyebrow">Short answer</p>
+      {:else if current.multiple}<p class="eyebrow">Select all that apply{#if current.answers_to_pick} · <span>Pick {current.answers_to_pick}</span>{/if}</p>{/if}
       <div role="heading" aria-level="1" class="mt-2 text-xl leading-snug"><Rich text={current.text} /></div>
 
+      {#if current.short}
+        <!-- svelte-ignore a11y_autofocus -->
+        <textarea class="textarea answer-box mt-8 w-full {feedback && !feedback.short?.overruled ? (feedback.right ? 'is-right' : 'is-wrong') : ''}" rows="2" aria-label="Your answer" placeholder="Type your answer…" readonly={feedback !== null} autofocus bind:value={typed} onkeydown={answerKeys}></textarea>
+        {#if !feedback}<p class="mt-2 text-xs text-muted"><kbd class="kbd kbd-xs">Enter</kbd> submits, <kbd class="kbd kbd-xs">Shift</kbd><kbd class="kbd kbd-xs">Enter</kbd> adds a new line</p>{/if}
+      {:else}
       <div class="mt-8 space-y-3" role={current.multiple ? "group" : "radiogroup"} aria-label="Answers">
         {#each current.options as option, position (option.index)}
           <button
@@ -176,8 +241,38 @@
           </button>
         {/each}
       </div>
+      {/if}
 
-      {#if feedback}
+      {#if feedback?.short && verdict}
+        {@const short = feedback.short}
+        <div class="panel rise mt-8 p-6" role="status">
+          <p class="flex flex-wrap items-center gap-2 font-semibold {feedback.right ? 'text-right-ink' : 'text-wrong-ink'}">
+            {#if feedback.right}<CircleCheck class="size-5" />{:else}<CircleX class="size-5" />{/if}{verdict.label}
+            {#if verdict.note}<span class="font-normal text-muted">{verdict.note}</span>{/if}
+            {#if short.overruled}<span class="overruled">You overruled this</span>{/if}
+            {#if current.flagged}<span class="badge guessed-chip"><Flag class="size-3" />Guessed</span>{/if}
+          </p>
+          {#if verdict.keywords}
+            <div class="mt-3 flex flex-wrap gap-2" aria-label="Keywords">
+              {#each verdict.keywords.hit as word (word)}<span class="kw kw-hit"><Check class="size-3" />{word}<span class="sr-only">, found</span></span>{/each}
+              {#each verdict.keywords.missed as word (word)}<span class="kw kw-miss"><X class="size-3" />{word}<span class="sr-only">, missed</span></span>{/each}
+            </div>
+          {/if}
+          <p class="mt-4 text-sm text-muted">Model answer</p>
+          <Rich class="mt-1" text={short.shown_answer} />
+          {#if !feedback.right && short.also_accepted.length}<p class="mt-3 text-sm text-muted">Also accepted: {short.also_accepted.join(", ")}</p>{/if}
+          {#if feedback.explanation}<Rich class="mt-4 leading-relaxed" text={feedback.explanation} />{/if}
+          {#each feedback.citations as citation, index (index)}<p class="mt-3 flex items-center gap-2 text-sm text-muted"><BookOpen class="size-4" />{citation.location}</p>{/each}
+          {#if short.overruled}
+            <button class="btn btn-ghost btn-sm mt-4" disabled={busy} onclick={overrule}><Undo2 class="size-4" />Undo, count it as {short.marking.right ? "right" : "wrong"} <kbd class="kbd kbd-xs">O</kbd></button>
+          {:else}
+            <div class="mt-5 flex items-center gap-3 border-t border-base-300 pt-4">
+              <span class="text-sm text-muted">{feedback.right ? "Marked right but shouldn't be?" : "Think you had it?"}</span>
+              <button class="btn btn-outline btn-sm border-field-border" disabled={busy} onclick={overrule}>{#if feedback.right}<X class="size-4" />{:else}<Check class="size-4" />{/if}Count it as {feedback.right ? "wrong" : "right"} <kbd class="kbd kbd-xs">O</kbd></button>
+            </div>
+          {/if}
+        </div>
+      {:else if feedback}
         <div class="panel rise mt-8 p-6" role="status">
           <p class="flex items-center gap-2 font-semibold {feedback.right ? 'text-right-ink' : 'text-wrong-ink'}">
             {#if feedback.right}<CircleCheck class="size-5" />Correct{:else}<CircleX class="size-5" />{feedback.auto_reason === "Incomplete" ? "Wrong: incomplete, you missed a correct option" : feedback.auto_reason === "TimedOut" ? "Wrong: time ran out" : "Wrong"}{/if}
@@ -194,14 +289,14 @@
         {#if feedback}
           <button class="btn btn-primary" onclick={next}>Next question <kbd class="kbd kbd-xs">Enter</kbd></button>
         {:else}
-          <button class="btn btn-primary" onclick={submit} disabled={picked.length === 0 || busy}>Submit <kbd class="kbd kbd-xs">Enter</kbd></button>
+          <button class="btn btn-primary" onclick={submit} disabled={(current.short ? !typed.trim() : picked.length === 0) || busy}>Submit <kbd class="kbd kbd-xs">Enter</kbd></button>
           <button
             class="btn {current.flagged ? '' : 'btn-ghost'}"
             style={current.flagged ? "background: var(--guessed-tint); color: var(--guessed-ink); border-color: var(--chart-right)" : ""}
             aria-pressed={current.flagged}
-            onclick={toggleFlag}><Flag class="size-4" />{current.flagged ? "Flagged as guessed" : "I guessed"} <kbd class="kbd kbd-xs">F</kbd></button>
+            onclick={toggleFlag}><Flag class="size-4" />{current.flagged ? "Flagged as guessed" : "I guessed"} {#if current.short}<kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">G</kbd>{:else}<kbd class="kbd kbd-xs">F</kbd>{/if}</button>
         {/if}
-        {#if current.exam}<span class="ml-auto text-sm text-muted">No going back in exam mode</span>{/if}
+        {#if current.exam}<span class="ml-auto text-sm text-muted">No going back in exam mode{current.short ? ". You can overrule the marking on the results page." : ""}</span>{/if}
       </div>
     </div>
   </div>

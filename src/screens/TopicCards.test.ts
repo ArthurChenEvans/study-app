@@ -33,7 +33,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocked.topicCards.mockResolvedValue(structuredClone(data));
   mocked.today.mockResolvedValue(TODAY);
-  mocked.topics.mockResolvedValue([{ id: 1, name: "CPU", module: 7, tags: [], question_count: 3 }, { id: 2, name: "Memory", module: 7, tags: [], question_count: 0 }]);
+  mocked.topics.mockResolvedValue([{ id: 1, name: "CPU", module: 7, tags: [], question_count: 3, short_count: 0 }, { id: 2, name: "Memory", module: 7, tags: [], question_count: 0, short_count: 0 }]);
   mocked.noteView.mockResolvedValue(structuredClone(leechView));
   mocked.saveNote.mockResolvedValue(200);
 });

@@ -22,8 +22,8 @@ const kirk: SourceRow = {
 beforeEach(() => {
   vi.resetAllMocks();
   mocked.topics.mockResolvedValue([
-    { id: 1, name: "GPU", module: null, tags: [], question_count: 5 },
-    { id: 2, name: "CPU", module: null, tags: [], question_count: 5 },
+    { id: 1, name: "GPU", module: null, tags: [], question_count: 5, short_count: 0 },
+    { id: 2, name: "CPU", module: null, tags: [], question_count: 5, short_count: 0 },
   ]);
 });
 

@@ -34,8 +34,8 @@ describe("Topics screen", () => {
   // topics.feature: Create a topic / Topic outside any module
   it("groups topics under their module, with a group for topics with no module", async () => {
     given([
-      { id: 1, name: "CPU", module: 1, tags: ["hardware"], question_count: 24 },
-      { id: 2, name: "Misc", module: null, tags: [], question_count: 4 },
+      { id: 1, name: "CPU", module: 1, tags: ["hardware"], question_count: 24, short_count: 0 },
+      { id: 2, name: "Misc", module: null, tags: [], question_count: 4, short_count: 0 },
     ]);
     render(Topics);
     const architecture = await screen.findByRole("region", { name: "Computer Architecture" });
@@ -62,7 +62,7 @@ describe("Topics screen", () => {
     const dialog = screen.getByRole("dialog", { name: "New topic" });
     await user.type(within(dialog).getByLabelText("Name"), "  GPU  ");
     await user.selectOptions(within(dialog).getByLabelText("Module"), "Computer Architecture");
-    mocked.topics.mockResolvedValue([{ id: 9, name: "GPU", module: 1, tags: [], question_count: 0 }]);
+    mocked.topics.mockResolvedValue([{ id: 9, name: "GPU", module: 1, tags: [], question_count: 0, short_count: 0 }]);
     await user.click(within(dialog).getByRole("button", { name: "Create topic" }));
     expect(mocked.createTopic).toHaveBeenCalledWith("GPU", 1);
     expect(await screen.findByText("GPU")).toBeInTheDocument();
@@ -80,7 +80,7 @@ describe("Topics screen", () => {
 
   // topics.feature: Delete a topic asks for confirmation
   it("asks before deleting, and says history is kept", async () => {
-    given([{ id: 1, name: "CPU", module: 1, tags: [], question_count: 24 }]);
+    given([{ id: 1, name: "CPU", module: 1, tags: [], question_count: 24, short_count: 0 }]);
     const user = userEvent.setup();
     render(Topics);
     await user.click(await screen.findByRole("button", { name: "Delete CPU" }));
@@ -94,13 +94,13 @@ describe("Topics screen", () => {
 
   // R43
   it("deletes a module after asking, keeping its topics", async () => {
-    given([{ id: 1, name: "CPU", module: 1, tags: [], question_count: 3 }]);
+    given([{ id: 1, name: "CPU", module: 1, tags: [], question_count: 3, short_count: 0 }]);
     const u = userEvent.setup();
     render(Topics);
     await u.click(await screen.findByRole("button", { name: "Delete module Computer Architecture" }));
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveTextContent('moved to "No module"');
-    given([{ id: 1, name: "CPU", module: null, tags: [], question_count: 3 }], []);
+    given([{ id: 1, name: "CPU", module: null, tags: [], question_count: 3, short_count: 0 }], []);
     await u.click(within(dialog).getByRole("button", { name: "Delete module" }));
     expect(mocked.deleteModule).toHaveBeenCalledWith(1);
     expect(await screen.findByRole("region", { name: "No module" })).toHaveTextContent("CPU");
@@ -108,7 +108,7 @@ describe("Topics screen", () => {
 
   // R51
   it("edits a topic's tags", async () => {
-    given([{ id: 1, name: "CPU", module: 1, tags: ["hardware"], question_count: 3 }]);
+    given([{ id: 1, name: "CPU", module: 1, tags: ["hardware"], question_count: 3, short_count: 0 }]);
     const u = userEvent.setup();
     render(Topics);
     await u.click(await screen.findByRole("button", { name: "Edit tags for CPU" }));

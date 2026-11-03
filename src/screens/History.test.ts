@@ -19,8 +19,8 @@ beforeEach(() => {
   vi.resetAllMocks();
   mocked.today.mockResolvedValue(TODAY);
   mocked.topics.mockResolvedValue([
-    { id: 1, name: "CPU", module: null, tags: [], question_count: 10 },
-    { id: 2, name: "GPU", module: null, tags: [], question_count: 10 },
+    { id: 1, name: "CPU", module: null, tags: [], question_count: 10, short_count: 0 },
+    { id: 2, name: "GPU", module: null, tags: [], question_count: 10, short_count: 0 },
   ]);
 });
 

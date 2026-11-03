@@ -6,7 +6,7 @@ vi.mock("../lib/api", async (original) => {
   const actual = await original<typeof import("../lib/api")>();
   return {
     ...actual,
-    api: { topics: vi.fn(), questionsIn: vi.fn(), question: vi.fn(), saveQuestion: vi.fn(), updateQuestion: vi.fn(), deleteQuestion: vi.fn(), sources: vi.fn(), addImage: vi.fn(), image: vi.fn() },
+    api: { topics: vi.fn(), questionsIn: vi.fn(), question: vi.fn(), saveQuestion: vi.fn(), updateQuestion: vi.fn(), deleteQuestion: vi.fn(), sources: vi.fn(), addImage: vi.fn(), image: vi.fn(), tryShortAnswer: vi.fn() },
   };
 });
 
@@ -18,7 +18,7 @@ const user = () => userEvent.setup();
 
 beforeEach(() => {
   vi.resetAllMocks();
-  mocked.topics.mockResolvedValue([{ id: 1, name: "CPU", module: null, tags: [], question_count: 1 }]);
+  mocked.topics.mockResolvedValue([{ id: 1, name: "CPU", module: null, tags: [], question_count: 1, short_count: 0 }]);
   mocked.questionsIn.mockResolvedValue([[10, "What does the ALU do?"]]);
   mocked.sources.mockResolvedValue([
     { id: 5, fields: { authors: "Kirk", year: "2022", title: "Parallel", edition: null, description: null, publisher: null, url: null }, apa: "Kirk. (2022). *Parallel*.", used_by: [], cited_by_questions: 0 },
@@ -63,6 +63,7 @@ describe("Question editor", () => {
       explanation: "Operands are read in decode.",
       tags: ["pipeline", "registers"],
       citations: [],
+      short: null,
     });
     expect(screen.getByLabelText("Question")).toHaveValue("");
   });
@@ -109,7 +110,7 @@ describe("Question editor", () => {
     mocked.question.mockResolvedValue({
       topic: 1, text: "What does the ALU do?", multiple: false,
       options: [{ text: "Arithmetic", correct: true }, { text: "Storage", correct: false }, { text: "Fetching", correct: false }],
-      explanation: "It computes.", tags: ["alu"], citations: [],
+      explanation: "It computes.", tags: ["alu"], citations: [], short: null,
     });
     render(Editor, { topic: 1 });
     await u.click(await screen.findByRole("button", { name: "What does the ALU do?" }));
@@ -256,5 +257,96 @@ describe("Question editor", () => {
       text: "Read this:\n\n```c\nint index = 0;\n```",
       explanation: "Line one\nLine two",
     }));
+  });
+
+  // short-answer.feature: Switching type keeps what's shared, A short answer question needs something to check against
+  it("writes a short answer question checked by accepted answers", async () => {
+    const u = user();
+    mocked.saveQuestion.mockRejectedValueOnce({ message: "add at least one accepted answer, so the app can check it" }).mockResolvedValueOnce(12);
+    render(Editor, { topic: 1 });
+    await screen.findByText("What does the ALU do?");
+    await u.type(screen.getByLabelText("Question"), "Which layer adds port numbers?");
+    await fillOption(u, 1, "Network");
+    await u.type(screen.getByLabelText("Explanation"), "Ports let apps share an address.");
+    await u.type(screen.getByLabelText("Tags"), "layers");
+    await u.click(screen.getByRole("radio", { name: "Short answer" }));
+    expect(screen.queryByLabelText("Option 1")).toBeNull();
+    expect(screen.getByLabelText("Question")).toHaveValue("Which layer adds port numbers?");
+    await u.click(screen.getByRole("button", { name: /Save question/ }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("add at least one accepted answer");
+
+    await u.type(screen.getByLabelText("Accepted answer 1"), "Transport layer");
+    await u.click(screen.getByRole("button", { name: /Add another accepted answer/ }));
+    await u.type(screen.getByLabelText("Accepted answer 2"), "Layer 4");
+    await u.click(screen.getByLabelText("Allow small typos"));
+    await u.type(screen.getByLabelText(/Model answer/), "The **transport** layer");
+    await u.click(screen.getByRole("button", { name: /Save question/ }));
+    expect(mocked.saveQuestion).toHaveBeenLastCalledWith({
+      topic: 1, text: "Which layer adds port numbers?", multiple: false, options: [],
+      explanation: "Ports let apps share an address.", tags: ["layers"], citations: [],
+      short: { check: { Accepted: { answers: ["Transport layer", "Layer 4"], typos: false } }, model_answer: "The **transport** layer" },
+    });
+    expect(screen.getByRole("radio", { name: "Short answer" })).toHaveAttribute("aria-checked", "true"); // stays on short answer for the next one
+  });
+
+  it("brings the options back when switching back before saving", async () => {
+    const u = user();
+    render(Editor, { topic: 1 });
+    await fillOption(u, 1, "Network");
+    await u.click(screen.getByRole("radio", { name: "Short answer" }));
+    await u.click(screen.getByRole("radio", { name: "Multiple choice" }));
+    expect(screen.getByLabelText("Option 1")).toHaveValue("Network");
+  });
+
+  // R81
+  it("writes keywords with other spellings and how many are needed", async () => {
+    const u = user();
+    mocked.saveQuestion.mockResolvedValue(13);
+    render(Editor, { topic: 1 });
+    await u.type(screen.getByLabelText("Question"), "What opens a TCP connection?");
+    await u.click(screen.getByRole("radio", { name: "Short answer" }));
+    await u.click(screen.getByRole("radio", { name: "Keywords" }));
+    await u.type(screen.getByLabelText("Keyword 1"), "SYN");
+    await u.click(screen.getByRole("button", { name: /Add keyword/ }));
+    await u.type(screen.getByLabelText("Keyword 2"), "SYN-ACK");
+    await u.type(screen.getByLabelText("Other ways to write keyword 2"), "synack, syn ack");
+    await u.click(screen.getByRole("button", { name: /Add keyword/ }));
+    await u.type(screen.getByLabelText("Keyword 3"), "ACK");
+    await u.selectOptions(screen.getByLabelText("How many keywords are needed"), "At least 2");
+    await u.click(screen.getByRole("button", { name: /Save question/ }));
+    expect(mocked.saveQuestion.mock.calls[0][0].short).toEqual({
+      check: { Keywords: { keywords: [{ word: "SYN", also: [] }, { word: "SYN-ACK", also: ["synack", "syn ack"] }, { word: "ACK", also: [] }], needed: 2 } },
+      model_answer: "",
+    });
+  });
+
+  // short-answer.feature: Try an answer before saving
+  it("tries an answer against what's written so far", async () => {
+    const u = user();
+    mocked.tryShortAnswer.mockResolvedValue({ right: true, detail: { Matched: { answer: "Transport layer", typo: "transprot" } } });
+    render(Editor, { topic: 1 });
+    await u.click(screen.getByRole("radio", { name: "Short answer" }));
+    await u.type(screen.getByLabelText("Accepted answer 1"), "Transport layer");
+    await u.type(screen.getByLabelText("A test answer"), "the transprot layer");
+    const tryIt = screen.getByRole("region", { name: "Try an answer" });
+    expect(await within(tryIt).findByText("Right, with a typo")).toBeInTheDocument();
+    expect(tryIt).toHaveTextContent('matches "Transport layer"');
+    expect(mocked.tryShortAnswer).toHaveBeenLastCalledWith({ Accepted: { answers: ["Transport layer"], typos: true } }, "the transprot layer");
+    expect(mocked.saveQuestion).not.toHaveBeenCalled();
+  });
+
+  it("opens a short answer question for editing", async () => {
+    const u = user();
+    mocked.question.mockResolvedValue({
+      topic: 1, text: "What opens a TCP connection?", multiple: false, options: [], explanation: "", tags: [], citations: [],
+      short: { check: { Keywords: { keywords: [{ word: "SYN-ACK", also: ["synack"] }], needed: null } }, model_answer: "SYN, SYN-ACK, ACK" },
+    });
+    render(Editor, { topic: 1 });
+    await u.click(await screen.findByRole("button", { name: "What does the ALU do?" }));
+    expect(screen.getByRole("radio", { name: "Short answer" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("radio", { name: "Keywords" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByLabelText("Keyword 1")).toHaveValue("SYN-ACK");
+    expect(screen.getByLabelText("Other ways to write keyword 1")).toHaveValue("synack");
+    expect(screen.getByLabelText(/Model answer/)).toHaveValue("SYN, SYN-ACK, ACK");
   });
 });

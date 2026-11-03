@@ -14,7 +14,7 @@ const mocked = vi.mocked(api);
 
 beforeEach(() => {
   vi.resetAllMocks();
-  mocked.topics.mockResolvedValue([{ id: 1, name: "CPU", module: null, tags: [], question_count: 1 }]);
+  mocked.topics.mockResolvedValue([{ id: 1, name: "CPU", module: null, tags: [], question_count: 1, short_count: 0 }]);
   mocked.modules.mockResolvedValue([]);
 });
 

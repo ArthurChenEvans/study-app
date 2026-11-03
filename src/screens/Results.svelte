@@ -1,7 +1,7 @@
 <script lang="ts">
-  // results.feature, retry.feature (R24, R25, R26)
-  import { CircleCheck, CircleX, Flag, RotateCcw } from "@lucide/svelte";
-  import { api, errorMessage, type GivenReason, type Id, type QuizView, type ResultsView, type Tally, type TopicRow } from "../lib/api";
+  // results.feature, retry.feature, short-answer.feature (R24, R25, R26, R84)
+  import { Check, CircleCheck, CircleX, Flag, RotateCcw, Undo2, X } from "@lucide/svelte";
+  import { api, errorMessage, type GivenReason, type Id, type QuizView, type ResultsView, type ShortFeedback, type Tally, type TopicRow } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
   import Rich from "../components/Rich.svelte";
 
@@ -42,6 +42,25 @@
 
   function presetValue(reason: GivenReason | null) {
     return reason && typeof reason === "string" ? reason : "";
+  }
+
+  // R84: count a short answer the other way, or undo that.
+  async function overrule(index: number) {
+    error = "";
+    try {
+      results = await api.overruleResult(attempt, index);
+    } catch (failure) {
+      error = errorMessage(failure);
+    }
+  }
+
+  const typoIn = (short: ShortFeedback) => (typeof short.marking.detail === "object" && "Matched" in short.marking.detail ? short.marking.detail.Matched.typo : null);
+  function howChecked(short: ShortFeedback) {
+    const detail = short.marking.detail;
+    if (detail === "NoMatch") return "Didn't match any accepted answer";
+    if ("Matched" in detail) return `Matched "${detail.Matched.answer}"${detail.Matched.typo ? " with a typo" : ""}`;
+    const { hit, missed } = detail.Keywords;
+    return `${hit.length} of ${hit.length + missed.length} keywords${missed.length ? `, missed ${missed.join(", ")}` : ""}`;
   }
 
   async function retry() {
@@ -105,18 +124,35 @@
       {#each results.review as item (item.index)}
         <li class="flex items-start gap-8 p-6" aria-label="Question {item.index + 1}">
           <div class="max-w-prose flex-1">
-            <p class="eyebrow">{topicName(item.topic)}</p>
+            <p class="eyebrow">{topicName(item.topic)}{item.short || (item.options.length === 0 && item.status === "Unanswered") ? " · Short answer" : ""}</p>
             <Rich class="mt-1 font-semibold" text={item.text} />
             <dl class="mt-3 space-y-1 text-sm">
-              <div><dt class="inline text-muted">Your answer:</dt>{" "}<dd class="inline">{#each item.picked as index, position (index)}{position ? ", " : ""}<Rich inline text={item.options[index]} />{:else}None{/each}</dd></div>
-              <div><dt class="inline text-muted">Correct:</dt>{" "}<dd class="inline">{#each item.correct as index, position (index)}{position ? ", " : ""}<Rich inline text={item.options[index]} />{/each}</dd></div>
+              {#if item.short}
+                <div><dt class="inline text-muted">Your answer:</dt>{" "}<dd class="inline whitespace-pre-line">{item.short.typed}</dd></div>
+                <div><dt class="inline text-muted">Model answer:</dt>{" "}<dd class="inline"><Rich inline text={item.short.shown_answer} /></dd></div>
+                <div><dt class="inline text-muted">Checked:</dt>{" "}<dd class="inline text-muted">{howChecked(item.short)}</dd></div>
+              {:else}
+                <div><dt class="inline text-muted">Your answer:</dt>{" "}<dd class="inline">{#each item.picked as index, position (index)}{position ? ", " : ""}<Rich inline text={item.options[index]} />{:else}None{/each}</dd></div>
+                {#if item.options.length}<div><dt class="inline text-muted">Correct:</dt>{" "}<dd class="inline">{#each item.correct as index, position (index)}{position ? ", " : ""}<Rich inline text={item.options[index]} />{/each}</dd></div>{/if}
+              {/if}
             </dl>
             {#if item.explanation}<Rich class="mt-3 text-sm leading-relaxed" text={item.explanation} />{/if}
           </div>
           <div class="w-64 shrink-0">
-            {#if item.status === "Right"}<span class="flex items-center gap-1 text-sm font-semibold text-right-ink"><CircleCheck class="size-4" />Right</span>
+            {#if item.status === "Right"}<span class="flex items-center gap-1 text-sm font-semibold text-right-ink"><CircleCheck class="size-4" />{item.short && !item.short.overruled && typoIn(item.short) ? "Right, with a typo" : "Right"}</span>
             {:else if item.status === "RightGuessed"}<span class="badge guessed-chip gap-1 font-semibold"><Flag class="size-3" />Right, guessed</span>
             {:else}<span class="flex items-center gap-1 text-sm font-semibold text-wrong-ink"><CircleX class="size-4" />{item.status === "Unanswered" ? "Not answered" : "Wrong"}</span>{/if}
+
+            {#if item.short?.overruled}<span class="overruled mt-1 inline-block">You overruled this</span>{/if}
+            {#if item.short}
+              {#if item.short.overruled}
+                <button class="btn btn-ghost btn-sm mt-3" onclick={() => overrule(item.index)}><Undo2 class="size-4" />Undo, count it as {item.short.marking.right ? "right" : "wrong"}</button>
+              {:else if item.status === "Wrong"}
+                <button class="btn btn-outline btn-sm mt-3 w-full border-field-border" onclick={() => overrule(item.index)}><Check class="size-4" />Count it as right</button>
+              {:else}
+                <button class="btn btn-ghost btn-sm mt-3" onclick={() => overrule(item.index)}><X class="size-4" />Count it as wrong</button>
+              {/if}
+            {/if}
 
             {#if item.auto_reason}
               <p class="mt-3 text-sm">Reason: <b>{item.auto_reason === "Incomplete" ? "Incomplete" : "Timed out"}</b> <span class="text-muted">(recorded automatically)</span></p>

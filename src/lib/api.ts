@@ -5,7 +5,7 @@ import { invoke } from "./transport";
 export type Id = number;
 
 export interface ModuleRow { id: Id; name: string }
-export interface TopicRow { id: Id; name: string; module: Id | null; tags: string[]; question_count: number }
+export interface TopicRow { id: Id; name: string; module: Id | null; tags: string[]; question_count: number; short_count: number }
 
 export interface OptionInput { text: string; correct: boolean }
 export interface CitationInput { source: Id; location: string }
@@ -17,7 +17,17 @@ export interface QuestionInput {
   explanation: string;
   tags: string[];
   citations: CitationInput[];
+  /** Set for a short answer question (R78). Options are then ignored. */
+  short: ShortAnswer | null;
 }
+// ---------- Short answer (R78 to R86) ----------
+export interface Keyword { word: string; also: string[] }
+export type ShortCheck = { Accepted: { answers: string[]; typos: boolean } } | { Keywords: { keywords: Keyword[]; needed: number | null } };
+export interface ShortAnswer { check: ShortCheck; model_answer: string }
+export type MarkingDetail = { Matched: { answer: string; typo: string | null } } | "NoMatch" | { Keywords: { hit: string[]; missed: string[]; needed: number } };
+export interface Marking { right: boolean; detail: MarkingDetail }
+export interface ShortFeedback { typed: string; marking: Marking; shown_answer: string; also_accepted: string[]; overruled: boolean }
+export type QuestionTypes = "Both" | "Mcq" | "Short";
 
 export interface SourceFields {
   authors: string;
@@ -40,6 +50,7 @@ export interface QuizSetupInput {
   total_minutes: number | null;
   per_question_seconds: number | null;
   easy: boolean;
+  types: QuestionTypes;
 }
 
 export type TrackCell = "RightSure" | "RightGuessed" | "Wrong" | "Answered" | "Current" | "Upcoming";
@@ -51,6 +62,7 @@ export interface QuizView {
   text: string;
   options: { index: number; text: string }[];
   multiple: boolean;
+  short: boolean;
   answers_to_pick: number | null;
   flagged: boolean;
   total_seconds: number | null;
@@ -59,7 +71,7 @@ export interface QuizView {
 }
 
 export type AutoReason = "Incomplete" | "TimedOut";
-export interface Feedback { right: boolean; auto_reason: AutoReason | null; correct: number[]; explanation: string; citations: { source: Id; location: string }[] }
+export interface Feedback { index: number; right: boolean; auto_reason: AutoReason | null; correct: number[]; explanation: string; citations: { source: Id; location: string }[]; short: ShortFeedback | null }
 export type Next = { Question: QuizView } | { Finished: Id };
 export interface AnswerResult { feedback: Feedback | null; next: Next }
 
@@ -80,6 +92,7 @@ export interface ReviewItem {
   status: "Right" | "RightGuessed" | "Wrong" | "Unanswered";
   auto_reason: AutoReason | null;
   reason: GivenReason | null;
+  short: ShortFeedback | null;
 }
 export interface ResultsView { attempt: Id; status: Status; exam: boolean; summary: Summary; review: ReviewItem[]; to_prompt: number[]; retry_count: number }
 export interface HistoryRow { id: Id; day: number; status: Status; retry_of: Id | null; topics: Id[]; summary: Summary }
@@ -198,6 +211,11 @@ export const api = {
   toggleFlag: () => invoke<QuizView>("toggle_flag"),
   answer: (picked: number[]) => invoke<AnswerResult>("answer", { picked }),
   questionTimedOut: () => invoke<AnswerResult>("question_timed_out"),
+  answerText: (typed: string) => invoke<AnswerResult>("answer_text", { typed }),
+  /** R84. `attempt` is set once the quiz has finished, for its last question. */
+  overruleAnswer: (attempt: Id | null, index: number) => invoke<Feedback>("overrule_answer", { attempt, index }),
+  overruleResult: (attempt: Id, index: number) => invoke<ResultsView>("overrule_result", { attempt, index }),
+  tryShortAnswer: (check: ShortCheck, typed: string) => invoke<Marking>("try_short_answer", { check, typed }),
   totalTimedOut: () => invoke<Id>("total_timed_out"),
   quitQuiz: () => invoke<Id>("quit_quiz"),
   retry: (attempt: Id) => invoke<QuizView>("retry", { attempt }),

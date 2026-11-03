@@ -11,13 +11,13 @@ import { api } from "../lib/api";
 import Setup from "./Setup.svelte";
 
 const mocked = vi.mocked(api);
-const view = { position: 1, total: 8, exam: false, topic: 1, text: "Q", options: [], multiple: false, answers_to_pick: null, flagged: false, total_seconds: null, per_question_seconds: null, track: [] };
+const view = { position: 1, total: 8, exam: false, topic: 1, text: "Q", options: [], multiple: false, short: false, answers_to_pick: null, flagged: false, total_seconds: null, per_question_seconds: null, track: [] };
 
 beforeEach(() => {
   vi.resetAllMocks();
   mocked.topics.mockResolvedValue([
-    { id: 1, name: "CPU", module: 1, tags: [], question_count: 10 },
-    { id: 2, name: "GPU", module: 1, tags: [], question_count: 10 },
+    { id: 1, name: "CPU", module: 1, tags: [], question_count: 10, short_count: 0 },
+    { id: 2, name: "GPU", module: 1, tags: [], question_count: 10, short_count: 0 },
   ]);
   mocked.modules.mockResolvedValue([{ id: 1, name: "Computer Architecture" }]);
   mocked.startQuiz.mockResolvedValue(view);
@@ -35,7 +35,7 @@ describe("Quiz setup", () => {
     await u.click(screen.getByRole("button", { name: "Start quiz" }));
     expect(mocked.startQuiz).toHaveBeenCalledWith({
       topics: [1, 2], count: null, even: false, shuffle_questions: false, shuffle_options: false,
-      exam: false, total_minutes: null, per_question_seconds: null, easy: false,
+      exam: false, total_minutes: null, per_question_seconds: null, easy: false, types: "Both",
     });
     expect(onStarted).toHaveBeenCalledWith(view);
   });
@@ -58,7 +58,7 @@ describe("Quiz setup", () => {
     await u.click(screen.getByRole("button", { name: "Start quiz" }));
     expect(mocked.startQuiz).toHaveBeenCalledWith({
       topics: [1, 2], count: 8, even: true, shuffle_questions: true, shuffle_options: true,
-      exam: true, total_minutes: 20, per_question_seconds: 45, easy: true,
+      exam: true, total_minutes: 20, per_question_seconds: 45, easy: true, types: "Both",
     });
   });
 
@@ -81,8 +81,8 @@ describe("Quiz setup", () => {
   // R38
   it("greys out topics with no questions", async () => {
     mocked.topics.mockResolvedValue([
-      { id: 1, name: "CPU", module: 1, tags: [], question_count: 10 },
-      { id: 3, name: "Misc", module: null, tags: [], question_count: 0 },
+      { id: 1, name: "CPU", module: 1, tags: [], question_count: 10, short_count: 0 },
+      { id: 3, name: "Misc", module: null, tags: [], question_count: 0, short_count: 0 },
     ]);
     render(Setup, { onStarted: vi.fn() });
     expect(await screen.findByRole("checkbox", { name: /Misc/ })).toBeDisabled();
@@ -100,5 +100,31 @@ describe("Quiz setup", () => {
     await u.type(input, "25");
     expect(screen.getByLabelText("Quiz summary")).toHaveTextContent("20 questions");
     expect(screen.getByText("Only 20 available")).toBeInTheDocument();
+  });
+
+  // short-answer.feature: Choose the question types for a quiz
+  it("picks the question types, leaving out topics with none of that type", async () => {
+    const u = userEvent.setup();
+    mocked.topics.mockResolvedValue([
+      { id: 1, name: "CPU", module: 1, tags: [], question_count: 7, short_count: 2 },
+      { id: 2, name: "GPU", module: 1, tags: [], question_count: 10, short_count: 0 },
+    ]);
+    render(Setup, { preselected: [1, 2], onStarted: vi.fn() });
+    const cpu = await screen.findByRole("checkbox", { name: /CPU/ });
+    expect(cpu.closest("label")).toHaveTextContent("5 MCQ · 2 short answer");
+    expect(screen.getByLabelText("Quiz summary")).toHaveTextContent("17 questions");
+    await u.click(screen.getByRole("radio", { name: "Short answer" }));
+    expect(screen.getByRole("checkbox", { name: /GPU/ })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: /GPU/ }).closest("label")).toHaveTextContent("no short answer yet");
+    expect(screen.getByLabelText("Quiz summary")).toHaveTextContent("2 questions");
+    expect(screen.getByLabelText("Quiz summary")).toHaveTextContent("Short answer only");
+    await u.click(screen.getByRole("button", { name: "Start quiz" }));
+    expect(mocked.startQuiz).toHaveBeenCalledWith(expect.objectContaining({ topics: [1], types: "Short" }));
+  });
+
+  it("only offers question types once there are short answers", async () => {
+    render(Setup, { onStarted: vi.fn() });
+    await screen.findByRole("checkbox", { name: /CPU/ });
+    expect(screen.queryByRole("radiogroup", { name: "Question types" })).toBeNull();
   });
 });

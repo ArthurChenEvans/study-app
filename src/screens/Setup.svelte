@@ -1,7 +1,7 @@
 <script lang="ts">
-  // quiz-setup.feature (R15 to R19, R36 to R38)
+  // quiz-setup.feature, short-answer.feature (R15 to R19, R36 to R38, R85)
   import { CircleAlert, Play } from "@lucide/svelte";
-  import { api, errorMessage, type Id, type ModuleRow, type QuizView, type TopicRow } from "../lib/api";
+  import { api, errorMessage, type Id, type ModuleRow, type QuestionTypes, type QuizView, type TopicRow } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
   import Seg from "../components/Seg.svelte";
 
@@ -23,11 +23,23 @@
   let usePerQuestion = $state(false);
   let perQuestionSeconds = $state(45);
   let easy = $state(false);
+  let types = $state<QuestionTypes>("Both");
 
   let error = $state("");
   let starting = $state(false);
 
-  const available = $derived(topics.filter((topic) => chosen.includes(topic.id)).reduce((sum, topic) => sum + topic.question_count, 0));
+  // R85: how many of the chosen type a topic has. Topics with none are left out.
+  const countOf = (topic: TopicRow) => (types === "Both" ? topic.question_count : types === "Mcq" ? topic.question_count - topic.short_count : topic.short_count);
+  const anyShort = $derived(topics.some((topic) => topic.short_count > 0));
+  const included = $derived(topics.filter((topic) => chosen.includes(topic.id) && countOf(topic) > 0));
+  const available = $derived(included.reduce((sum, topic) => sum + countOf(topic), 0));
+  function countLabel(topic: TopicRow) {
+    const mcq = topic.question_count - topic.short_count;
+    if (types === "Short") return topic.short_count ? `${topic.short_count} short answer` : "no short answer yet";
+    if (types === "Mcq") return mcq ? `${mcq} MCQ` : "no MCQs yet";
+    if (topic.question_count === 0) return "no questions yet";
+    return topic.short_count ? `${mcq} MCQ · ${topic.short_count} short answer` : `${topic.question_count} questions`;
+  }
   // R36: asking for more than exist uses all of them.
   const questionCount = $derived(setNumber ? Math.min(Number(count) || 0, available) : available);
   const overAsked = $derived(setNumber && Number(count) > available && chosen.length > 0);
@@ -43,10 +55,14 @@
       error = "Pick at least one topic to start.";
       return;
     }
+    if (included.length === 0) {
+      error = types === "Short" ? "None of these topics have short answer questions yet." : "None of these topics have multiple choice questions yet.";
+      return;
+    }
     starting = true;
     try {
       const view = await api.startQuiz({
-        topics: topics.map((topic) => topic.id).filter((id) => chosen.includes(id)),
+        topics: included.map((topic) => topic.id),
         count: setNumber ? Number(count) : null,
         even,
         shuffle_questions: shuffleQuestions,
@@ -55,6 +71,7 @@
         total_minutes: useTotal ? Number(totalMinutes) : null,
         per_question_seconds: usePerQuestion ? Number(perQuestionSeconds) : null,
         easy,
+        types,
       });
       onStarted(view);
     } catch (failure) {
@@ -85,11 +102,11 @@
         <h2 class="eyebrow mb-3">Topics</h2>
         <div class="panel divide-y">
           {#each topics as topic (topic.id)}
-            {@const empty = topic.question_count === 0}
+            {@const empty = countOf(topic) === 0}
             <label class="flex items-center gap-4 px-6 py-3 {empty ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-base-100'}">
               <input type="checkbox" class="checkbox checkbox-sm" checked={chosen.includes(topic.id)} disabled={empty} onchange={() => toggle(topic.id)} />
               <span class="flex-1"><span class="text-sm font-semibold">{topic.name}</span> <span class="text-sm text-muted">· {moduleName(topic.module)}</span></span>
-              <span class="text-xs tabular-nums text-muted">{empty ? "no questions yet" : `${topic.question_count} questions`}</span>
+              <span class="text-xs tabular-nums text-muted">{countLabel(topic)}</span>
             </label>
           {:else}
             <p class="px-6 py-4 text-sm text-muted">Create a topic and write some questions first.</p>
@@ -100,6 +117,10 @@
       <section>
         <h2 class="eyebrow mb-3">Settings</h2>
         <div class="panel divide-y">
+          {#if anyShort}
+            {#snippet typesControl()}<Seg label="Question types" bind:value={types} options={[{ value: "Both", label: "Both" }, { value: "Mcq", label: "MCQ" }, { value: "Short", label: "Short answer" }]} />{/snippet}
+            {@render row("Question types", "Mixed together in the order below.", typesControl)}
+          {/if}
           {#snippet modeControl()}<Seg label="Mode" bind:value={exam} options={[{ value: false, label: "Study" }, { value: true, label: "Exam" }]} />{/snippet}
           {@render row("Mode", "Study shows feedback after each question. Exam shows it at the end. You can't go back in either.", modeControl)}
 
@@ -119,7 +140,7 @@
           {@render row("Question order", "", questionOrder)}
 
           {#snippet optionOrder()}<Seg label="Option order" bind:value={shuffleOptions} options={[{ value: false, label: "Keep", name: "Keep options" }, { value: true, label: "Shuffle", name: "Shuffle options" }]} />{/snippet}
-          {@render row("Option order", "", optionOrder)}
+          {@render row("Option order", anyShort ? "Multiple choice only." : "", optionOrder)}
 
           {#snippet totalTimer()}
             <div class="flex items-center gap-2">
@@ -138,7 +159,7 @@
           {@render row("Per-question timer", "Running out counts as wrong and moves on.", perQuestionTimer)}
 
           {#snippet difficulty()}<Seg label="Difficulty" bind:value={easy} options={[{ value: true, label: "Easy" }, { value: false, label: "Hard" }]} />{/snippet}
-          {@render row("Difficulty", "Easy shows how many answers to pick on multiple-answer questions.", difficulty)}
+          {@render row("Difficulty", `Easy shows how many answers to pick on multiple-answer questions.${anyShort ? " Multiple choice only." : ""}`, difficulty)}
         </div>
       </section>
     </div>
@@ -150,6 +171,7 @@
       {:else}
         <p class="mt-3 text-4xl font-semibold leading-none">{questionCount} <span class="text-base font-normal text-muted">questions</span></p>
         <dl class="mt-6 space-y-3 text-sm">
+          {#if anyShort}<div class="flex justify-between"><dt class="text-muted">Types</dt><dd>{types === "Both" ? "MCQ and short answer" : types === "Mcq" ? "MCQ only" : "Short answer only"}</dd></div>{/if}
           <div class="flex justify-between"><dt class="text-muted">Mode</dt><dd>{exam ? "Exam" : "Study"}</dd></div>
           <div class="flex justify-between"><dt class="text-muted">Time limit</dt><dd>{useTotal ? `${totalMinutes} min total` : usePerQuestion ? `${perQuestionSeconds} sec each` : "None"}</dd></div>
           <div class="flex justify-between"><dt class="text-muted">Order</dt><dd>{shuffleQuestions ? "Shuffled" : "As written"}</dd></div>

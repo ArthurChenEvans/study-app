@@ -17,7 +17,7 @@ const quiz: Suggestion = { key: "quiz:12", kind: "Quiz", from: "Quiz: OSI model"
 beforeEach(() => {
   vi.resetAllMocks();
   mocked.cardSuggestions.mockResolvedValue([recall, quiz]);
-  mocked.topics.mockResolvedValue([{ id: 1, name: "CPU", module: 7, tags: [], question_count: 3 }, { id: 2, name: "OSI model", module: null, tags: [], question_count: 5 }]);
+  mocked.topics.mockResolvedValue([{ id: 1, name: "CPU", module: 7, tags: [], question_count: 3, short_count: 0 }, { id: 2, name: "OSI model", module: null, tags: [], question_count: 5, short_count: 0 }]);
   mocked.saveNote.mockResolvedValue(300);
 });
 
