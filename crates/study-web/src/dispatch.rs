@@ -31,6 +31,11 @@ fn base64(args: &Value, what: &str) -> ApiResult<Vec<u8>> {
 
 /// Runs one command. `slides_to_pdf` is handled by the server, since it doesn't need the app.
 pub fn dispatch(app: &mut App, command: &str, args: &Value, today: i64) -> ApiResult<Reply> {
+    dispatch_at(app, command, args, today, crate::clock())
+}
+
+/// The same, with the moment given, for sessions and struggles (and tests).
+pub fn dispatch_at(app: &mut App, command: &str, args: &Value, today: i64, clock: study_api::practice::Clock) -> ApiResult<Reply> {
     let a = args;
     match command {
         "modules" => json(app.modules()),
@@ -110,6 +115,30 @@ pub fn dispatch(app: &mut App, command: &str, args: &Value, today: i64) -> ApiRe
         "set_card_settings" => json(app.set_card_settings(arg(a, "settings")?)),
         "reset_card_settings" => json(app.reset_card_settings()),
         "fit_scheduler" => json(app.fit_scheduler()),
+
+        "projects" => json(app.projects(today)),
+        "create_project" => json(app.create_project(&arg::<String>(a, "name")?, &arg::<String>(a, "kind")?, today)),
+        "delete_project" => json(app.delete_project(arg(a, "id")?)),
+        "project" => json(app.project_view(arg(a, "id")?, today)),
+        "start_project_session" => json(app.start_session(arg(a, "project")?, clock)),
+        "end_project_session" => json(app.end_session(arg(a, "project")?, clock)),
+        "log_struggle" => json(app.log_struggle(arg(a, "project")?, arg(a, "input")?, clock)),
+        "delete_struggle" => json(app.delete_struggle(arg(a, "id")?)),
+        "struggles_to_review" => json(app.struggles_to_review(arg(a, "project")?)),
+        "review_struggle" => json(app.review_struggle(arg(a, "id")?, arg(a, "choice")?, today)),
+        "issues" => json(app.issues()),
+        "known_drill" => json(app.known_drill(&arg::<String>(a, "issue")?)),
+        "drill" => json(app.drill_view(arg(a, "id")?)),
+        "drills_due" => json(app.drills_due(today)),
+        "rate_drill" => json(app.rate_drill(arg(a, "id")?, arg(a, "rating")?, arg(a, "seconds")?, &arg::<String>(a, "note")?, today)),
+        "move_drill" => json(app.move_drill(arg(a, "id")?, arg(a, "day")?, today)),
+        "quiz_schedule" => json(app.quiz_schedule()),
+        "set_quiz_schedule" => json(app.set_quiz_schedule(arg(a, "schedule")?)),
+        "reset_quiz_schedule" => json(app.reset_quiz_schedule()),
+        "topic_quizzes" => json(app.topic_quizzes(today)),
+        "calendar_month" => json(app.calendar_month(arg(a, "from")?, arg(a, "to")?, today)),
+        "calendar_day" => json(app.calendar_day(arg(a, "day")?, today)),
+        "due_today" => json(app.due_today(today)),
 
         _ => Err(ApiError::new(format!("Command {command} not found"))),
     }

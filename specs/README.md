@@ -196,3 +196,22 @@ Default schedule: the first check puts a new checklist on Day, then Week, Fortni
 | R86 | Short answer questions can be added to recall checklists as "question → model answer" (or the first accepted answer). Wrong or guessed ones are card suggestions that start with the question and the model answer, and show what was written |
 
 Decided with the design: keywords are checked in any order, every answer is right or wrong (no half marks), and the typo rule is as in R80.
+
+## Projects, drills, quiz scheduling and the calendar (approved 3 Nov 2026)
+
+| ID | Requirement |
+|---|---|
+| R87 | A project is anything applied (code, Blender, a past paper). It has a name and a kind, and is never scheduled. Projects list their last worked day, struggles, struggles to review and drills due |
+| R88 | Work on a project happens in sessions. A session is started and ended, with a timer. One session at a time per project |
+| R89 | During a session a struggle can be logged (Ctrl+L focuses it): what tripped you up, why it wasn't obvious, couldn't recall / couldn't apply / not sure yet, and an optional topic. It records the day and time. Struggles are listed by day, searchable, and show what became of them |
+| R90 | Ending a session reviews its struggles one at a time. Each can become a card suggestion, a point on a recall checklist, a drill, or nothing. "Finish later" leaves the rest to review, and they can be reviewed later from the project |
+| R91 | A struggle that becomes a drill is given an issue: one used before, or a new one by name. Issues are shared by all projects, matched ignoring case. If the issue already has a drill, the review offers to schedule that drill again or write a different one |
+| R92 | A drill is a small task with an optional topic and hints. Scheduling one asks for the day, with tomorrow picked. A drill can be moved to another day |
+| R93 | Doing a drill shows the task, a timer, the hints if asked for, the struggles that led to it and a note, then Struggled, Shaky or Solid (keys 1 to 3). Solid ticks it off. Struggled or Shaky brings it back the next day. A ticked-off drill only comes back if it's scheduled again from a review |
+| R94 | The Issues tab lists every issue, how often and in which projects it came up, when it was last seen, and the state of its latest drill |
+| R95 | Card suggestions from struggles start with what tripped you up as the front, show why it wasn't obvious, and wait to be accepted like the others |
+| R96 | Each topic has a quiz schedule on its own ladder (the same steps and pass mark as recall by default, edited separately). It starts the first time the topic is quizzed. In a finished quiz each topic is scored on its own questions: at or over the pass mark it moves up a step, under it goes back one, and the next quiz date counts from the quiz day. Retries and quits don't move it. An overrule on the results page redoes the move if that quiz is still the topic's latest |
+| R97 | Topics show each topic's quiz step and next quiz date, with a way to quiz every due topic at once. Results show where each topic moved |
+| R98 | The calendar's month view shows, for each day, what's due (cards, checklists, quizzes, drills) with counts and words. Past days show what was done and struggles logged. Today is outlined. Overdue things count as due today |
+| R99 | A day view lists everything due that day with a start button for each, or for a past day what was done and the struggles logged. Days can be stepped through |
+| R100 | The sidebar shows today's total next to Calendar, quizzes due next to Topics, and drills due next to Projects |

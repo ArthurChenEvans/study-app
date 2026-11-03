@@ -1,14 +1,16 @@
 <script lang="ts">
   // results.feature, retry.feature, short-answer.feature (R24, R25, R26, R84)
-  import { Check, CircleCheck, CircleX, Flag, RotateCcw, Undo2, X } from "@lucide/svelte";
+  import { ArrowDown, ArrowUp, Check, CircleCheck, CircleX, Flag, RotateCcw, Undo2, X } from "@lucide/svelte";
   import { api, errorMessage, type GivenReason, type Id, type QuizView, type ResultsView, type ShortFeedback, type Tally, type TopicRow } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
   import Rich from "../components/Rich.svelte";
+  import { onDay } from "../lib/dates";
 
   let { attempt, onRetry }: { attempt: Id; onRetry: (view: QuizView) => void } = $props();
 
   let results = $state<ResultsView | null>(null);
   let topics = $state<TopicRow[]>([]);
+  let today = $state(0);
   let error = $state("");
   let ownReason = $state<Record<number, string>>({});
 
@@ -28,7 +30,7 @@
   const share = (part: number, whole: number) => (whole === 0 ? 0 : (part / whole) * 100);
 
   async function load() {
-    [results, topics] = await Promise.all([api.results(attempt), api.topics()]);
+    [results, topics, today] = await Promise.all([api.results(attempt), api.topics(), Promise.resolve().then(() => api.today()).catch(() => 0)]);
   }
 
   async function give(index: number, reason: GivenReason) {
@@ -116,6 +118,24 @@
         </ul>
       </div>
     </section>
+
+    {#if results.moves.length}
+      <section class="panel mt-6 p-6" aria-labelledby="schedule-h">
+        <h2 id="schedule-h" class="text-sm font-semibold">Quiz schedule</h2>
+        <ul class="mt-3 divide-y">
+          {#each results.moves as move (move.topic)}
+            <li class="grid grid-cols-[180px_1fr_auto] items-center gap-6 py-3">
+              <span class="font-semibold">{move.name}</span>
+              <span class="flex items-center gap-2 text-sm font-semibold {move.passed ? 'text-right-ink' : 'text-wrong-ink'}">
+                {#if move.passed}<ArrowUp class="size-4" />{:else}<ArrowDown class="size-4" />{/if}{move.score}%, {move.from === null ? `starts on ${move.to}` : move.passed ? (move.from === move.to ? `stays on ${move.to}` : `moves up to ${move.to}`) : move.from === move.to ? `under the pass mark, stays on ${move.to}` : `under the pass mark, back to ${move.to}`}
+              </span>
+              <span class="text-sm text-muted">Next quiz {onDay(move.next_due, today)}</span>
+            </li>
+          {/each}
+        </ul>
+        <p class="mt-3 text-xs text-muted">Each topic is scored on its own questions in this quiz. Retries don't move the schedule.</p>
+      </section>
+    {/if}
 
     {#if error}<p role="alert" class="mt-4 text-sm text-error">{error}</p>{/if}
 

@@ -75,4 +75,19 @@ describe("Suggestions", () => {
     expect(await screen.findByText("No suggestions right now")).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Suggestion dismissed");
   });
+
+  // projects.feature: A recall miss becomes a card suggestion (R95)
+  it("makes a card from a project struggle, starting with what tripped you up", async () => {
+    const u = userEvent.setup();
+    const struggle: Suggestion = { key: "struggle:7", kind: "Struggle", from: "Project: Study app", day: 20_760, note: "Why it wasn't obvious: thinking in Python's negative indexes", text: "Forgot how to slice a string from the end", answer: null, topic: 1 };
+    mocked.cardSuggestions.mockResolvedValue([recall, quiz, struggle]);
+    render(Suggestions, { onBack: vi.fn() });
+    await u.click(await screen.findByRole("radio", { name: "Project struggles 1" }));
+    const item = screen.getAllByRole("listitem")[0];
+    expect(item).toHaveTextContent("Project: Study app · Why it wasn't obvious: thinking in Python's negative indexes");
+    await u.click(within(item).getByRole("button", { name: /Make a card/ }));
+    expect(within(item).getByLabelText("Front")).toHaveValue("Forgot how to slice a string from the end");
+    expect(within(item).getByLabelText("Back")).toHaveValue("");
+    expect(within(item).getByText(/Starts as what tripped you up/)).toBeInTheDocument();
+  });
 });

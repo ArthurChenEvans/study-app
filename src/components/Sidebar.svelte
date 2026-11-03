@@ -1,17 +1,19 @@
 <script lang="ts">
-  import { BookOpen, Brain, SquareStack, History, Layers, LayoutDashboard, Library, Moon, Play, Search, Sun } from "@lucide/svelte";
+  import { BookOpen, Brain, CalendarDays, Hammer, SquareStack, History, Layers, LayoutDashboard, Library, Moon, Play, Search, Sun } from "@lucide/svelte";
   import { DARK, LIGHT, applyTheme, type Theme } from "../lib/theme";
   import type { Screen } from "../lib/router";
 
-  let { current, onNavigate, recallDue = 0, cardsDue = 0 }: { current: Screen; onNavigate: (screen: Screen) => void; recallDue?: number; cardsDue?: number } = $props();
+  let { current, onNavigate, due = {} }: { current: Screen; onNavigate: (screen: Screen) => void; due?: Partial<Record<Screen, number>> } = $props();
 
   let theme = $state<Theme>((document.documentElement.dataset.theme as Theme) ?? DARK);
 
   const links: { screen: Screen; label: string; icon: typeof Library }[] = [
     { screen: "overview", label: "Overview", icon: LayoutDashboard },
+    { screen: "calendar", label: "Calendar", icon: CalendarDays },
     { screen: "topics", label: "Topics", icon: Library },
     { screen: "cards", label: "Cards", icon: SquareStack },
     { screen: "recall", label: "Recall", icon: Brain },
+    { screen: "projects", label: "Projects", icon: Hammer },
     { screen: "bibliography", label: "Bibliography", icon: BookOpen },
     { screen: "history", label: "History", icon: History },
     { screen: "search", label: "Search", icon: Search },
@@ -34,7 +36,7 @@
     <span class="font-semibold">Study App</span>
   </div>
   {#each links as link (link.screen)}
-    {@const due = link.screen === "recall" ? recallDue : link.screen === "cards" ? cardsDue : 0}
+    {@const count = due[link.screen] ?? 0}
     <a
       href="#{link.screen}"
       class="nav-link flex items-center gap-3 rounded-lg px-3 py-2 text-sm"
@@ -42,7 +44,7 @@
       onclick={(event) => go(event, link.screen)}
     >
       <link.icon class="size-4" /><span class="flex-1">{link.label}</span>
-      {#if due > 0}<span class="text-xs tabular-nums" aria-label="{due} due today">{due}</span>{/if}
+      {#if count > 0}<span class="text-xs tabular-nums" aria-label="{count} due today">{count}</span>{/if}
     </a>
   {/each}
   <div class="mt-4 px-3">

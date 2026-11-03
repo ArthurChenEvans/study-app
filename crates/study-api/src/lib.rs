@@ -4,8 +4,10 @@
 //! Security rule: a `QuizView` never says which options are correct. Correct answers
 //! only leave the backend in study-mode feedback after answering, and in results.
 
+pub mod calendar;
 pub mod cards;
 pub mod convert;
+pub mod practice;
 pub mod recall;
 pub mod seed;
 
@@ -204,6 +206,8 @@ pub struct ResultsView {
     pub review: Vec<ReviewItem>,
     pub to_prompt: Vec<usize>,
     pub retry_count: usize,
+    /// Where this quiz moved each topic's quiz schedule (R97). Empty for retries and quits.
+    pub moves: Vec<practice::MoveView>,
 }
 
 /// What a typed answer was and how it was marked (R83, R84).
@@ -494,6 +498,7 @@ impl App {
         let (mut saved, mut reasons) = self.store.attempt(id)?;
         let outcome = saved.overrule(index)?;
         self.store.update_attempt(id, &saved)?;
+        self.redo_quiz_schedules(id, &saved)?;
         // A reason only belongs on a wrong answer.
         if outcome == Outcome::Right && reasons.0.remove(&index).is_some() {
             self.store.save_reasons(id, &reasons)?;
@@ -576,6 +581,7 @@ impl App {
             review,
             to_prompt: reasons.to_prompt(&saved),
             retry_count,
+            moves: self.move_views(attempt)?,
         })
     }
 
@@ -629,9 +635,9 @@ impl App {
             .active
             .take()
             .ok_or_else(|| ApiError::new("no quiz is running"))?;
-        Ok(self
-            .store
-            .save_attempt(&attempt, today, &Reasons::default())?)
+        let id = self.store.save_attempt(&attempt, today, &Reasons::default())?;
+        self.move_quiz_schedules(id, &attempt, today)?;
+        Ok(id)
     }
 }
 
@@ -757,3 +763,5 @@ fn feedback_for(attempt: &Attempt, index: usize) -> Feedback {
 mod tests;
 #[cfg(test)]
 mod short_tests;
+#[cfg(test)]
+mod practice_tests;

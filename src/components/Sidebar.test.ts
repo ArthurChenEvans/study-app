@@ -33,23 +33,34 @@ describe("Sidebar", () => {
 
   // free-recall.feature: Due checklists come first (the sidebar shows how many are due)
   it("shows how many checklists are due", () => {
-    render(Sidebar, { current: "recall", onNavigate: vi.fn(), recallDue: 2 });
+    render(Sidebar, { current: "recall", onNavigate: vi.fn(), due: { recall: 2 } });
     const link = screen.getByRole("link", { name: /Recall/ });
     expect(link).toHaveAttribute("aria-current", "page");
     expect(screen.getByLabelText("2 due today")).toBeInTheDocument();
   });
 
   it("hides the count when nothing is due", () => {
-    render(Sidebar, { current: "overview", onNavigate: vi.fn(), recallDue: 0 });
+    render(Sidebar, { current: "overview", onNavigate: vi.fn(), due: { recall: 0 } });
     expect(screen.queryByLabelText(/due today/)).toBeNull();
   });
 
   // flashcards.feature: See what's due today (the sidebar shows how many cards are due)
   it("shows how many cards are due next to Cards", () => {
-    render(Sidebar, { current: "cards", onNavigate: vi.fn(), recallDue: 1, cardsDue: 27 });
+    render(Sidebar, { current: "cards", onNavigate: vi.fn(), due: { recall: 1, cards: 27 } });
     const link = screen.getByRole("link", { name: /Cards/ });
     expect(link).toHaveAttribute("aria-current", "page");
     expect(link).toHaveTextContent("27");
     expect(screen.getByRole("link", { name: /Recall/ })).toHaveTextContent("1");
+  });
+
+  // calendar.feature (R100): today's total by Calendar, quizzes by Topics, drills by Projects
+  it("shows today's counts by Calendar, Topics and Projects", () => {
+    render(Sidebar, { current: "calendar", onNavigate: vi.fn(), due: { calendar: 17, topics: 2, projects: 1 } });
+    expect(screen.getByRole("link", { name: /Calendar/ })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: /Calendar/ })).toHaveTextContent("17");
+    expect(screen.getByRole("link", { name: /Topics/ })).toHaveTextContent("2");
+    expect(screen.getByRole("link", { name: /Projects/ })).toHaveTextContent("1");
+    const names = screen.getAllByRole("link").map((link) => link.textContent?.replace(/\d+/g, "").trim());
+    expect(names.slice(0, 6)).toEqual(["Overview", "Calendar", "Topics", "Cards", "Recall", "Projects"]);
   });
 });

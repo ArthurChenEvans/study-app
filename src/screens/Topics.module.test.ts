@@ -4,7 +4,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 
 vi.mock("../lib/api", async (original) => {
   const actual = await original<typeof import("../lib/api")>();
-  return { ...actual, api: { topics: vi.fn(), modules: vi.fn(), createModule: vi.fn() } };
+  return { ...actual, api: { topics: vi.fn(), modules: vi.fn(), createModule: vi.fn(), topicQuizzes: vi.fn(), today: vi.fn() } };
 });
 
 import { api } from "../lib/api";
@@ -14,6 +14,8 @@ const mocked = vi.mocked(api);
 
 beforeEach(() => {
   vi.resetAllMocks();
+  vi.mocked(api).topicQuizzes.mockResolvedValue([]);
+  vi.mocked(api).today.mockResolvedValue(20_760);
   mocked.topics.mockResolvedValue([{ id: 1, name: "CPU", module: null, tags: [], question_count: 1, short_count: 0 }]);
   mocked.modules.mockResolvedValue([]);
 });

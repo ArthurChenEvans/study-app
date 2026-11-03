@@ -94,7 +94,8 @@ export interface ReviewItem {
   reason: GivenReason | null;
   short: ShortFeedback | null;
 }
-export interface ResultsView { attempt: Id; status: Status; exam: boolean; summary: Summary; review: ReviewItem[]; to_prompt: number[]; retry_count: number }
+export interface MoveView { topic: Id; name: string; score: number; passed: boolean; from: string | null; to: string; next_due: number }
+export interface ResultsView { attempt: Id; status: Status; exam: boolean; summary: Summary; review: ReviewItem[]; to_prompt: number[]; retry_count: number; moves: MoveView[] }
 export interface HistoryRow { id: Id; day: number; status: Status; retry_of: Id | null; topics: Id[]; summary: Summary }
 
 export interface ScorePoint { day: number; percent: number; retry: boolean }
@@ -175,8 +176,41 @@ export interface Rewrite { note: Id; topic: Id; front: string; agains: number }
 export interface ReviewDone { reviewed: number; new: number; again: number; remembered: number | null; target: number; seconds: number; worth_rewriting: Rewrite[]; due_tomorrow: number; busiest: [number, number] | null }
 export type ReviewStep = { Card: ReviewCard } | { Done: ReviewDone };
 export type CardRating = "Again" | "Hard" | "Good" | "Easy";
-export interface Suggestion { key: string; kind: "Recall" | "Quiz"; from: string; day: number; note: string; text: string; answer: string | null; topic: Id | null }
+export interface Suggestion { key: string; kind: "Recall" | "Quiz" | "Struggle"; from: string; day: number; note: string; text: string; answer: string | null; topic: Id | null }
 export interface CardSettings { desired_retention: number; new_per_day: number; max_reviews: number | null; leech_after: number; parameters: number[] }
+
+// ---------- Projects, drills, quiz schedules and the calendar (R87 to R100) ----------
+export type StruggleKind = "Recall" | "Apply" | "Unsure";
+export type DrillRating = "Struggled" | "Shaky" | "Solid";
+export interface SessionRecord { id: Id; project: Id; day: number; started: number; ended: number | null }
+export interface ProjectRow { id: Id; name: string; kind: string; created: number; last_day: number | null; struggles: number; to_review: number; drills_due: number; session: SessionRecord | null }
+export type OutcomeView = "Card" | "Nothing" | { Checklist: { id: Id; name: string } } | { Drill: { id: Id; due: number | null } };
+export interface StruggleView { id: Id; project: Id; project_name: string; day: number; minute: number; what: string; why: string; kind: StruggleKind; topic: Id | null; topic_name: string | null; issue: string | null; outcome: OutcomeView | null }
+export interface ProjectView { row: ProjectRow; struggles: StruggleView[] }
+export interface DrillRun { drill: Id; day: number; rating: DrillRating; seconds: number; note: string }
+export interface DrillView { id: Id; task: string; hints: string; issue: string | null; topic: Id | null; topic_name: string | null; created: number; due: number | null; last: DrillRun | null; runs: number; from: { day: number; project_name: string; what: string }[] }
+export interface IssueView { id: Id; name: string; seen: number; projects: string[]; last_seen: number | null; drill: DrillView | null }
+export interface StruggleInput { what: string; why: string; kind: StruggleKind; topic: Id | null }
+export type ReviewChoice =
+  | "Card" | "Nothing"
+  | { Checklist: { checklist: Id } }
+  | { NewDrill: { issue: string; task: string; hints: string; topic: Id | null; day: number } }
+  | { DrillAgain: { issue: string; drill: Id; day: number } };
+export interface TopicQuizView { topic: Id; step: string; position: number; steps: number; due: number; due_today: boolean }
+export type When = "Past" | "Today" | "Future";
+export interface CalendarDay { day: number; when: When; cards: number; checklists: number; quizzes: number; drills: number; struggles: number }
+export interface DueToday { cards: number; checklists: number; quizzes: number; drills: number; total: number }
+export interface DayView {
+  day: number; when: When;
+  cards: { due: DueCounts; minutes: number; reviewed: number; again: number; seconds: number };
+  checklists: { id: Id; name: string; step: string | null; points: number }[];
+  checks: { id: Id; name: string; score: number; passed: boolean; to: string }[];
+  quizzes: { topic: Id; name: string; step: string; questions: number }[];
+  attempts: { attempt: Id; topics: string[]; right: number; total: number; moves: string[] }[];
+  drills: DrillView[];
+  drill_runs: { task: string; rating: DrillRating }[];
+  struggles: StruggleView[];
+}
 
 /** Errors from the backend arrive as { message }. */
 export function errorMessage(error: unknown): string {
@@ -262,6 +296,29 @@ export const api = {
   setCardSettings: (settings: CardSettings) => invoke<void>("set_card_settings", { settings }),
   resetCardSettings: () => invoke<CardSettings>("reset_card_settings"),
   fitScheduler: () => invoke<number>("fit_scheduler"),
+  projects: () => invoke<ProjectRow[]>("projects"),
+  createProject: (name: string, kind: string) => invoke<Id>("create_project", { name, kind }),
+  deleteProject: (id: Id) => invoke<void>("delete_project", { id }),
+  project: (id: Id) => invoke<ProjectView>("project", { id }),
+  startProjectSession: (project: Id) => invoke<ProjectView>("start_project_session", { project }),
+  endProjectSession: (project: Id) => invoke<Id>("end_project_session", { project }),
+  logStruggle: (project: Id, input: StruggleInput) => invoke<StruggleView>("log_struggle", { project, input }),
+  deleteStruggle: (id: Id) => invoke<void>("delete_struggle", { id }),
+  strugglesToReview: (project: Id) => invoke<StruggleView[]>("struggles_to_review", { project }),
+  reviewStruggle: (id: Id, choice: ReviewChoice) => invoke<StruggleView>("review_struggle", { id, choice }),
+  issues: () => invoke<IssueView[]>("issues"),
+  knownDrill: (issue: string) => invoke<DrillView | null>("known_drill", { issue }),
+  drill: (id: Id) => invoke<DrillView>("drill", { id }),
+  drillsDue: () => invoke<DrillView[]>("drills_due"),
+  rateDrill: (id: Id, rating: DrillRating, seconds: number, note: string) => invoke<DrillView>("rate_drill", { id, rating, seconds, note }),
+  moveDrill: (id: Id, day: number) => invoke<DrillView>("move_drill", { id, day }),
+  quizSchedule: () => invoke<Schedule>("quiz_schedule"),
+  setQuizSchedule: (schedule: Schedule) => invoke<void>("set_quiz_schedule", { schedule }),
+  resetQuizSchedule: () => invoke<Schedule>("reset_quiz_schedule"),
+  topicQuizzes: () => invoke<TopicQuizView[]>("topic_quizzes"),
+  calendarMonth: (from: number, to: number) => invoke<CalendarDay[]>("calendar_month", { from, to }),
+  calendarDay: (day: number) => invoke<DayView>("calendar_day", { day }),
+  dueToday: () => invoke<DueToday>("due_today"),
   slidesToPdf: async (file: File) => {
     const pdf = await invoke<ArrayBuffer | number[]>("slides_to_pdf", { name: file.name, data: await toBase64(file) });
     return new Uint8Array(pdf);

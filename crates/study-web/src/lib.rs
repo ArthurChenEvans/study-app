@@ -33,6 +33,13 @@ pub fn today() -> i64 {
     (Local::now().date_naive() - epoch).num_days()
 }
 
+/// Now, for sessions and struggles: the day, minutes after midnight and unix seconds.
+pub fn clock() -> study_api::practice::Clock {
+    use chrono::Timelike;
+    let now = Local::now();
+    study_api::practice::Clock { day: today(), minute: now.hour() * 60 + now.minute(), unix: now.timestamp() }
+}
+
 /// The routes, with the frontend served from `dist` (index.html for anything unknown).
 pub fn router(app: App, dist: &Path, today: fn() -> i64) -> Router {
     let shared = Shared { app: Arc::new(Mutex::new(app)), today };

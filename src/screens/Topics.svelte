@@ -1,12 +1,21 @@
 <script lang="ts">
   // topics.feature (R1, R2, R3, R30, R43, R51)
-  import { Folder, FolderOpen, FolderPlus, Library, Pencil, Play, Plus, Tags, Trash2 } from "@lucide/svelte";
-  import { api, errorMessage, type Id, type ModuleRow, type TopicRow } from "../lib/api";
+  // calendar.feature (R96, R97): each topic's quiz step and next quiz, and the schedule.
+  import { CalendarCog, Folder, FolderOpen, FolderPlus, Library, Pencil, Play, Plus, Tags, Trash2 } from "@lucide/svelte";
+  import { api, errorMessage, type Id, type ModuleRow, type Schedule, type TopicQuizView, type TopicRow } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
+  import ScheduleDialog from "../components/ScheduleDialog.svelte";
+  import { dueLabel } from "../lib/dates";
 
-  let { onEdit = () => {}, onQuiz = () => {} }: { onEdit?: (topic: Id) => void; onQuiz?: (topic: Id) => void } = $props();
+  let { onEdit = () => {}, onQuiz = () => {}, onQuizTopics = () => {} }: { onEdit?: (topic: Id) => void; onQuiz?: (topic: Id) => void; onQuizTopics?: (topics: Id[]) => void } = $props();
+
+  let quizzes = $state<TopicQuizView[]>([]);
+  let today = $state(0);
+  let editingSchedule = $state<Schedule | null>(null);
+  const quizOf = (topic: Id) => quizzes.find((quiz) => quiz.topic === topic);
 
   let topics = $state<TopicRow[]>([]);
+  const dueTopics = $derived(topics.filter((topic) => quizOf(topic.id)?.due_today && topic.question_count > 0).map((topic) => topic.id));
   let modules = $state<ModuleRow[]>([]);
   let loaded = $state(false);
 
@@ -65,7 +74,7 @@
   });
 
   async function load() {
-    [topics, modules] = await Promise.all([api.topics(), api.modules()]);
+    [topics, modules, quizzes, today] = await Promise.all([api.topics(), api.modules(), api.topicQuizzes().catch(() => []), api.today().catch(() => 0)]);
     loaded = true;
   }
 
@@ -98,9 +107,11 @@
 </script>
 
 <div class="mx-auto max-w-6xl px-12 pb-24">
-  <PageHeader title="Topics" subtitle={loaded && topics.length ? `${topics.length} topics in ${modules.length} modules` : ""}>
+  <PageHeader title="Topics" subtitle={loaded && topics.length ? `${topics.length} topics in ${modules.length} modules${dueTopics.length ? ` · ${dueTopics.length} ${dueTopics.length === 1 ? "quiz" : "quizzes"} due today` : ""}` : ""}>
+    {#if topics.length}<button class="btn btn-ghost" onclick={async () => (editingSchedule = await api.quizSchedule())}><CalendarCog class="size-4" />Quiz schedule</button>{/if}
     <button class="btn btn-ghost" onclick={() => { moduleError = ""; creatingModule = true; }}><FolderPlus class="size-4" />New module</button>
-    <button class="btn btn-primary" onclick={openCreate}><Plus class="size-4" />New topic</button>
+    <button class="btn {dueTopics.length ? 'btn-ghost' : 'btn-primary'}" onclick={openCreate}><Plus class="size-4" />New topic</button>
+    {#if dueTopics.length}<button class="btn btn-primary" onclick={() => onQuizTopics(dueTopics)}><Play class="size-4" />Quiz the {dueTopics.length === 1 ? "due topic" : `${dueTopics.length} due topics`}</button>{/if}
   </PageHeader>
 
   {#if loaded && topics.length === 0}
@@ -126,8 +137,8 @@
       {:else}
       <div class="panel overflow-hidden">
         <table class="table table-fixed">
-          <colgroup><col class="w-[30%]" /><col class="w-[30%]" /><col class="w-[12%]" /><col class="w-[28%]" /></colgroup>
-          <thead><tr class="text-muted"><th>Topic</th><th>Tags</th><th class="text-right">Questions</th><th></th></tr></thead>
+          <colgroup><col class="w-[24%]" /><col class="w-[22%]" /><col class="w-[10%]" /><col class="w-[18%]" /><col class="w-[26%]" /></colgroup>
+          <thead><tr class="text-muted"><th>Topic</th><th>Tags</th><th class="text-right">Questions</th><th>Next quiz</th><th><span class="sr-only">Actions</span></th></tr></thead>
           <tbody>
             {#each group.topics as topic (topic.id)}
               <tr class="hover:bg-base-100">
@@ -137,6 +148,10 @@
                   <button class="btn btn-ghost btn-xs btn-square" aria-label="Edit tags for {topic.name}" onclick={() => openTags(topic)}><Tags class="size-3.5" /></button>
                 </td>
                 <td class="text-right tabular-nums">{topic.question_count}</td>
+                <td>
+                  {#if quizOf(topic.id)}{@const quiz = quizOf(topic.id)!}<span class="block text-sm {quiz.due_today ? 'font-semibold' : ''}">{dueLabel(quiz.due, today)}</span><span class="block text-xs text-muted">{quiz.step} step</span>
+                  {:else}<span class="text-sm text-muted">{topic.question_count ? "Quiz it to start" : "No questions yet"}</span>{/if}
+                </td>
                 <td class="whitespace-nowrap text-right">
                   <button class="btn btn-ghost btn-sm" onclick={() => onQuiz(topic.id)}><Play class="size-4" />Quiz</button>
                   <button class="btn btn-ghost btn-sm" onclick={() => onEdit(topic.id)}><Pencil class="size-4" />Edit</button>
@@ -238,4 +253,9 @@
       </div>
     </form>
   </dialog>
+{/if}
+
+{#if editingSchedule}
+  <ScheduleDialog title="Quiz schedule" intro="Every topic climbs these steps, starting the first time you quiz it. Each topic in a quiz is scored on its own questions, and the next date counts from the quiz day. Retries don't move it." passWhat="the topic's questions right" applies="Changes apply from each topic's next quiz." schedule={editingSchedule}
+    onSave={async (next) => { await api.setQuizSchedule(next); editingSchedule = null; await load(); }} onReset={() => api.resetQuizSchedule()} onClose={() => (editingSchedule = null)} />
 {/if}

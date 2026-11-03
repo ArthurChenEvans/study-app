@@ -180,6 +180,80 @@ const MIGRATIONS: &[&str] = &[
     ALTER TABLE questions_new RENAME TO questions;
     CREATE INDEX questions_by_topic ON questions(topic_id);
     ",
+    // 7: quiz schedules per topic, projects with sessions and struggles, shared issues and
+    // drills (R87 to R96). Quiz moves point at attempts without a foreign key, like history.
+    "
+    CREATE TABLE topic_schedule (
+        topic_id INTEGER PRIMARY KEY REFERENCES topics(id) ON DELETE CASCADE,
+        step     INTEGER NOT NULL,
+        rep      INTEGER NOT NULL,
+        due      INTEGER NOT NULL
+    );
+    CREATE TABLE quiz_moves (
+        attempt_id INTEGER NOT NULL,
+        topic_id   INTEGER NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+        day        INTEGER NOT NULL,
+        from_step  INTEGER,
+        from_rep   INTEGER,
+        from_due   INTEGER,
+        score      INTEGER NOT NULL,
+        passed     INTEGER NOT NULL,
+        to_step    INTEGER NOT NULL,
+        to_rep     INTEGER NOT NULL,
+        next_due   INTEGER NOT NULL,
+        PRIMARY KEY (attempt_id, topic_id)
+    );
+    CREATE TABLE projects (
+        id      INTEGER PRIMARY KEY,
+        name    TEXT NOT NULL,
+        kind    TEXT NOT NULL DEFAULT '',
+        created INTEGER NOT NULL
+    );
+    CREATE TABLE project_sessions (
+        id         INTEGER PRIMARY KEY,
+        project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        day        INTEGER NOT NULL,
+        started    INTEGER NOT NULL,
+        ended      INTEGER
+    );
+    CREATE TABLE issues (
+        id   INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        key  TEXT NOT NULL UNIQUE
+    );
+    CREATE TABLE drills (
+        id       INTEGER PRIMARY KEY,
+        issue_id INTEGER REFERENCES issues(id) ON DELETE SET NULL,
+        topic_id INTEGER REFERENCES topics(id) ON DELETE SET NULL,
+        task     TEXT NOT NULL,
+        hints    TEXT NOT NULL DEFAULT '',
+        created  INTEGER NOT NULL,
+        due      INTEGER
+    );
+    CREATE TABLE drill_runs (
+        id       INTEGER PRIMARY KEY,
+        drill_id INTEGER NOT NULL REFERENCES drills(id) ON DELETE CASCADE,
+        day      INTEGER NOT NULL,
+        rating   TEXT NOT NULL CHECK (rating IN ('Struggled', 'Shaky', 'Solid')),
+        seconds  INTEGER NOT NULL,
+        note     TEXT NOT NULL DEFAULT ''
+    );
+    CREATE TABLE struggles (
+        id         INTEGER PRIMARY KEY,
+        project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+        session_id INTEGER REFERENCES project_sessions(id) ON DELETE SET NULL,
+        day        INTEGER NOT NULL,
+        minute     INTEGER NOT NULL,
+        what       TEXT NOT NULL,
+        why        TEXT NOT NULL,
+        kind       TEXT NOT NULL CHECK (kind IN ('Recall', 'Apply', 'Unsure')),
+        topic_id   INTEGER REFERENCES topics(id) ON DELETE SET NULL,
+        issue_id   INTEGER REFERENCES issues(id) ON DELETE SET NULL,
+        outcome    TEXT
+    );
+    CREATE INDEX struggles_by_project ON struggles(project_id, day);
+    CREATE INDEX drill_runs_by_day ON drill_runs(day);
+    ",
 ];
 
 pub const LATEST: i64 = MIGRATIONS.len() as i64;

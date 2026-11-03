@@ -1,9 +1,10 @@
 <script lang="ts">
   // free-recall.feature (R52, R58, R60): checklists due today first, then the rest by date.
-  import { Brain, CalendarCog, CircleCheck, Clock, Play, Plus, RotateCcw, X } from "@lucide/svelte";
-  import { api, errorMessage, type ModuleRow, type RecallRow, type Schedule, type TopicRow, type Unit } from "../lib/api";
+  import { Brain, CalendarCog, CircleCheck, Clock, Play, Plus } from "@lucide/svelte";
+  import { api, errorMessage, type ModuleRow, type RecallRow, type Schedule, type TopicRow } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
   import Ladder from "../components/Ladder.svelte";
+  import ScheduleDialog from "../components/ScheduleDialog.svelte";
   import { dueLabel, onDay } from "../lib/dates";
 
   let { onOpen, onStart, onChanged = () => {} }: { onOpen: (id: number) => void; onStart: (id: number) => void; onChanged?: () => void } = $props();
@@ -20,7 +21,6 @@
   let createError = $state("");
 
   let editing = $state<Schedule | null>(null);
-  let scheduleError = $state("");
 
   const due = $derived(rows.filter((row) => row.due_today));
   const later = $derived(rows.filter((row) => !row.due_today));
@@ -57,33 +57,8 @@
   function openSchedule() {
     if (!schedule) return;
     editing = structuredClone($state.snapshot(schedule));
-    scheduleError = "";
   }
 
-  async function saveSchedule(event: SubmitEvent) {
-    event.preventDefault();
-    if (!editing) return;
-    try {
-      await api.setRecallSchedule($state.snapshot(editing));
-      editing = null;
-      await load();
-    } catch (failure) {
-      scheduleError = errorMessage(failure);
-    }
-  }
-
-  async function resetSchedule() {
-    editing = await api.resetRecallSchedule();
-    scheduleError = "";
-  }
-
-  function addStep() {
-    if (!editing) return;
-    const last = editing.steps.length - 1;
-    editing.steps.splice(Math.max(0, last), 0, { name: "New step", every: { count: 1, unit: "Months" }, repeats: 1 });
-  }
-
-  const units: Unit[] = ["Days", "Weeks", "Months", "Years"];
   load();
 </script>
 
@@ -185,41 +160,6 @@
 {/if}
 
 {#if editing}
-  <dialog open class="modal modal-open" aria-labelledby="schedule-h">
-    <form class="modal-box max-w-2xl" onsubmit={saveSchedule}>
-      <h3 id="schedule-h" class="text-lg font-semibold">Recall schedule</h3>
-      <p class="mt-2 text-sm text-muted">Every checklist climbs these steps. Passing moves it up one, and the next date counts from the day you did the check.</p>
-      <table class="table mt-6">
-        <thead><tr class="text-muted"><th>Step</th><th>Every</th><th>Times</th><th><span class="sr-only">Remove</span></th></tr></thead>
-        <tbody>
-          {#each editing.steps as step, index (index)}
-            {@const last = index === editing.steps.length - 1}
-            <tr>
-              <td><input class="input input-sm w-36" aria-label="Step {index + 1} name" bind:value={step.name} /></td>
-              <td><div class="flex gap-2">
-                <input class="input input-sm w-16 tabular-nums" type="number" min="1" aria-label="{step.name} interval" bind:value={step.every.count} />
-                <select class="select select-sm w-28" aria-label="{step.name} unit" bind:value={step.every.unit}>{#each units as unit (unit)}<option value={unit}>{unit.toLowerCase()}</option>{/each}</select>
-              </div></td>
-              <td>{#if last && step.repeats === 0}<span class="text-sm text-muted">From then on</span>{:else}<input class="input input-sm w-16 tabular-nums" type="number" min="1" aria-label="{step.name} times" bind:value={step.repeats} />{/if}</td>
-              <td class="text-right">{#if !last}<button type="button" class="btn btn-ghost btn-sm btn-square" aria-label="Remove {step.name}" onclick={() => editing?.steps.splice(index, 1)}><X class="size-4" /></button>{/if}</td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
-      <button type="button" class="btn btn-ghost btn-sm mt-2" onclick={addStep}><Plus class="size-4" />Add a step before {editing.steps.at(-1)?.name}</button>
-      <div class="mt-6 grid grid-cols-2 gap-6">
-        <label class="block"><span class="block text-sm font-semibold">Pass mark</span>
-          <span class="mt-1 flex items-center gap-2"><input class="input w-24 tabular-nums" type="number" min="1" max="100" aria-label="Pass mark" bind:value={editing.pass_mark} /><span class="text-sm text-muted">% of points recalled</span></span></label>
-        <label class="block"><span class="block text-sm font-semibold">Under the pass mark</span>
-          <select class="select mt-1 w-full" bind:value={editing.under_pass}><option value="BackOneStep">Go back one step</option><option value="Stay">Stay on the same step</option></select></label>
-      </div>
-      <p class="mt-6 text-sm text-muted">Changes apply from each checklist's next check.</p>
-      {#if scheduleError}<p role="alert" class="mt-4 text-sm text-error">{scheduleError}</p>{/if}
-      <div class="modal-action">
-        <button type="button" class="btn btn-ghost mr-auto" onclick={resetSchedule}><RotateCcw class="size-4" />Reset to default</button>
-        <button type="button" class="btn btn-ghost" onclick={() => (editing = null)}>Cancel</button>
-        <button type="submit" class="btn btn-primary">Save schedule</button>
-      </div>
-    </form>
-  </dialog>
+  <ScheduleDialog title="Recall schedule" intro="Every checklist climbs these steps. Passing moves it up one, and the next date counts from the day you did the check." passWhat="points recalled" applies="Changes apply from each checklist's next check." schedule={editing}
+    onSave={async (next) => { await api.setRecallSchedule(next); editing = null; await load(); }} onReset={() => api.resetRecallSchedule()} onClose={() => (editing = null)} />
 {/if}

@@ -8,13 +8,13 @@
 
   let items = $state<Suggestion[] | null>(null);
   let topics = $state<TopicRow[]>([]);
-  let filter = $state<"all" | "Recall" | "Quiz">("all");
+  let filter = $state<"all" | Suggestion["kind"]>("all");
   let making = $state<{ key: string; front: string; back: string; topic: number | null } | null>(null);
   let error = $state("");
   let status = $state("");
 
   const shown = $derived((items ?? []).filter((item) => filter === "all" || item.kind === filter));
-  const count = (kind: "Recall" | "Quiz") => (items ?? []).filter((item) => item.kind === kind).length;
+  const count = (kind: Suggestion["kind"]) => (items ?? []).filter((item) => item.kind === kind).length;
   const topicName = (id: number | null) => topics.find((topic) => topic.id === id)?.name ?? "";
 
   async function load() {
@@ -24,9 +24,10 @@
   function make(item: Suggestion) {
     error = "";
     status = "";
-    making = item.kind === "Quiz"
-      ? { key: item.key, front: item.text, back: item.answer ?? "", topic: item.topic }
-      : { key: item.key, front: "", back: item.text, topic: item.topic };
+    // R73, R95: a quiz mistake or a project struggle starts as the front. A recall miss is the back.
+    making = item.kind === "Recall"
+      ? { key: item.key, front: "", back: item.text, topic: item.topic }
+      : { key: item.key, front: item.text, back: item.answer ?? "", topic: item.topic };
   }
 
   async function save(event: SubmitEvent) {
@@ -71,6 +72,7 @@
           <button type="button" role="radio" aria-checked={filter === "all"} onclick={() => (filter = "all")}>All {items.length}</button>
           <button type="button" role="radio" aria-checked={filter === "Recall"} onclick={() => (filter = "Recall")}>Recall misses {count("Recall")}</button>
           <button type="button" role="radio" aria-checked={filter === "Quiz"} onclick={() => (filter = "Quiz")}>Quiz mistakes {count("Quiz")}</button>
+          {#if count("Struggle")}<button type="button" role="radio" aria-checked={filter === "Struggle"} onclick={() => (filter = "Struggle")}>Project struggles {count("Struggle")}</button>{/if}
         </div>
         <span class="text-sm text-muted">Nothing becomes a card until you say so</span>
       </div>
@@ -95,7 +97,7 @@
                   <label class="block text-sm font-semibold" for="sugg-front">Front</label>
                   <!-- svelte-ignore a11y_autofocus -->
                   <textarea id="sugg-front" class="textarea mt-1 w-full text-[15px]" rows="3" aria-describedby="sugg-front-help" placeholder="What were you trying to remember when it didn't come?…" bind:value={making.front} autofocus={item.kind === "Recall"}></textarea>
-                  <p id="sugg-front-help" class="mt-1 text-sm text-muted">{item.kind === "Recall" ? "You missed this in a recall, so the front is up to you: the cue that should have brought it to mind." : "Starts as the question. Rewrite it as the thought you'll actually have."}</p>
+                  <p id="sugg-front-help" class="mt-1 text-sm text-muted">{item.kind === "Recall" ? "You missed this in a recall, so the front is up to you: the cue that should have brought it to mind." : item.kind === "Struggle" ? "Starts as what tripped you up. Use your 'why' above to write the cue that was missing." : "Starts as the question. Rewrite it as the thought you'll actually have."}</p>
                 </div>
                 <div>
                   <label class="block text-sm font-semibold" for="sugg-back">Back</label>

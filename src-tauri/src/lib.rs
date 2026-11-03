@@ -19,6 +19,10 @@ use study_core::cards::{CardSettings, Rating};
 use study_store::cards::{CardId, NoteId};
 use study_api::recall::{Candidate, CheckResult, ChecklistView, Item, PointInput, Preview, RecallHistory, RecallRow};
 use study_core::recall::Schedule;
+use study_api::calendar::{CalendarDay, DayView, DueToday};
+use study_api::practice::{DrillView, IssueView, ProjectRow, ProjectView, ReviewChoice, StruggleInput, StruggleView, TopicQuizView};
+use study_core::practice::DrillRating;
+use study_store::practice::{DrillId, ProjectId, SessionId, StruggleId};
 use study_store::recall::{ChecklistId, Point, Subject};
 use study_store::search::{Hit, SearchQuery};
 use study_store::{AttemptId, HistoryRow, ModuleId, ModuleRow, SourceRow, Store, TopicRow};
@@ -46,6 +50,13 @@ type AppState<'a> = State<'a, Mutex<App>>;
 fn today() -> i64 {
     let epoch = NaiveDate::from_ymd_opt(1970, 1, 1).expect("valid date");
     (Local::now().date_naive() - epoch).num_days()
+}
+
+/// Now, for sessions and struggles: the day, minutes after midnight and unix seconds.
+fn clock() -> study_api::practice::Clock {
+    use chrono::Timelike;
+    let now = Local::now();
+    study_api::practice::Clock { day: today(), minute: now.hour() * 60 + now.minute(), unix: now.timestamp() }
 }
 
 fn with<T>(state: AppState, action: impl FnOnce(&mut App) -> ApiResult<T>) -> ApiResult<T> {
@@ -358,6 +369,101 @@ fn reset_recall_schedule(state: AppState) -> ApiResult<Schedule> {
     with(state, |app| app.reset_schedule())
 }
 
+// ---------- Projects, drills, quiz schedules and the calendar (R87 to R100) ----------
+
+#[tauri::command]
+fn projects(state: AppState) -> ApiResult<Vec<ProjectRow>> {
+    with(state, |app| app.projects(today()))
+}
+#[tauri::command]
+fn create_project(state: AppState, name: String, kind: String) -> ApiResult<ProjectId> {
+    with(state, |app| app.create_project(&name, &kind, today()))
+}
+#[tauri::command]
+fn delete_project(state: AppState, id: ProjectId) -> ApiResult<()> {
+    with(state, |app| app.delete_project(id))
+}
+#[tauri::command]
+fn project(state: AppState, id: ProjectId) -> ApiResult<ProjectView> {
+    with(state, |app| app.project_view(id, today()))
+}
+#[tauri::command]
+fn start_project_session(state: AppState, project: ProjectId) -> ApiResult<ProjectView> {
+    with(state, |app| app.start_session(project, clock()))
+}
+#[tauri::command]
+fn end_project_session(state: AppState, project: ProjectId) -> ApiResult<SessionId> {
+    with(state, |app| app.end_session(project, clock()))
+}
+#[tauri::command]
+fn log_struggle(state: AppState, project: ProjectId, input: StruggleInput) -> ApiResult<StruggleView> {
+    with(state, |app| app.log_struggle(project, input, clock()))
+}
+#[tauri::command]
+fn delete_struggle(state: AppState, id: StruggleId) -> ApiResult<()> {
+    with(state, |app| app.delete_struggle(id))
+}
+#[tauri::command]
+fn struggles_to_review(state: AppState, project: ProjectId) -> ApiResult<Vec<StruggleView>> {
+    with(state, |app| app.struggles_to_review(project))
+}
+#[tauri::command]
+fn review_struggle(state: AppState, id: StruggleId, choice: ReviewChoice) -> ApiResult<StruggleView> {
+    with(state, |app| app.review_struggle(id, choice, today()))
+}
+#[tauri::command]
+fn issues(state: AppState) -> ApiResult<Vec<IssueView>> {
+    with(state, |app| app.issues())
+}
+#[tauri::command]
+fn known_drill(state: AppState, issue: String) -> ApiResult<Option<DrillView>> {
+    with(state, |app| app.known_drill(&issue))
+}
+#[tauri::command]
+fn drill(state: AppState, id: DrillId) -> ApiResult<DrillView> {
+    with(state, |app| app.drill_view(id))
+}
+#[tauri::command]
+fn drills_due(state: AppState) -> ApiResult<Vec<DrillView>> {
+    with(state, |app| app.drills_due(today()))
+}
+#[tauri::command]
+fn rate_drill(state: AppState, id: DrillId, rating: DrillRating, seconds: u32, note: String) -> ApiResult<DrillView> {
+    with(state, |app| app.rate_drill(id, rating, seconds, &note, today()))
+}
+#[tauri::command]
+fn move_drill(state: AppState, id: DrillId, day: i64) -> ApiResult<DrillView> {
+    with(state, |app| app.move_drill(id, day, today()))
+}
+#[tauri::command]
+fn quiz_schedule(state: AppState) -> ApiResult<Schedule> {
+    with(state, |app| app.quiz_schedule())
+}
+#[tauri::command]
+fn set_quiz_schedule(state: AppState, schedule: Schedule) -> ApiResult<()> {
+    with(state, |app| app.set_quiz_schedule(schedule))
+}
+#[tauri::command]
+fn reset_quiz_schedule(state: AppState) -> ApiResult<Schedule> {
+    with(state, |app| app.reset_quiz_schedule())
+}
+#[tauri::command]
+fn topic_quizzes(state: AppState) -> ApiResult<Vec<TopicQuizView>> {
+    with(state, |app| app.topic_quizzes(today()))
+}
+#[tauri::command]
+fn calendar_month(state: AppState, from: i64, to: i64) -> ApiResult<Vec<CalendarDay>> {
+    with(state, |app| app.calendar_month(from, to, today()))
+}
+#[tauri::command]
+fn calendar_day(state: AppState, day: i64) -> ApiResult<DayView> {
+    with(state, |app| app.calendar_day(day, today()))
+}
+#[tauri::command]
+fn due_today(state: AppState) -> ApiResult<DueToday> {
+    with(state, |app| app.due_today(today()))
+}
+
 pub fn run() {
     tauri::Builder::default()
         .setup(|handle| {
@@ -370,6 +476,29 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             slides_to_pdf,
+            projects,
+            create_project,
+            delete_project,
+            project,
+            start_project_session,
+            end_project_session,
+            log_struggle,
+            delete_struggle,
+            struggles_to_review,
+            review_struggle,
+            issues,
+            known_drill,
+            drill,
+            drills_due,
+            rate_drill,
+            move_drill,
+            quiz_schedule,
+            set_quiz_schedule,
+            reset_quiz_schedule,
+            topic_quizzes,
+            calendar_month,
+            calendar_day,
+            due_today,
             cards_home,
             cards_due_count,
             topic_cards,

@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../lib/api", async (original) => {
   const actual = await original<typeof import("../lib/api")>();
-  return { ...actual, api: { results: vi.fn(), topics: vi.fn(), giveReason: vi.fn(), retry: vi.fn(), overruleResult: vi.fn() } };
+  return { ...actual, api: { results: vi.fn(), topics: vi.fn(), today: vi.fn(), giveReason: vi.fn(), retry: vi.fn(), overruleResult: vi.fn() } };
 });
 
 import { api, type ResultsView, type ReviewItem, type ShortFeedback } from "../lib/api";
@@ -25,6 +25,7 @@ function results(overrides: Partial<ResultsView> = {}): ResultsView {
     ],
     to_prompt: [2],
     retry_count: 3,
+    moves: [],
     ...overrides,
   };
 }
@@ -137,5 +138,29 @@ describe("Results", () => {
       expect(within(overruled).getByRole("button", { name: /Undo, count it as wrong/ })).toBeInTheDocument();
       expect(within(overruled).queryByLabelText("Your own reason")).toBeNull();
     });
+  });
+
+  // calendar.feature: A topic's quiz schedule moves with its score (R97)
+  it("shows where the quiz moved each topic's schedule", async () => {
+    mocked.today.mockResolvedValue(20_760);
+    mocked.results.mockResolvedValue(results({ moves: [
+      { topic: 1, name: "CPU", score: 86, passed: true, from: "Week", to: "Fortnight", next_due: 20_774 },
+      { topic: 2, name: "OSI model", score: 50, passed: false, from: "Week", to: "Day", next_due: 20_761 },
+      { topic: 3, name: "Memory", score: 100, passed: true, from: null, to: "Day", next_due: 20_761 },
+    ] }));
+    render(Results, { attempt: 3, onRetry: vi.fn() });
+    const panel = await screen.findByRole("region", { name: "Quiz schedule" });
+    const items = within(panel).getAllByRole("listitem");
+    expect(items[0]).toHaveTextContent("CPU 86%, moves up to Fortnight Next quiz on Tue 17 Nov");
+    expect(items[1]).toHaveTextContent("50%, under the pass mark, back to Day");
+    expect(items[1]).toHaveTextContent("Next quiz tomorrow");
+    expect(items[2]).toHaveTextContent("100%, starts on Day");
+  });
+
+  it("has no schedule panel for retries", async () => {
+    mocked.results.mockResolvedValue(results());
+    render(Results, { attempt: 3, onRetry: vi.fn() });
+    await screen.findByText("Review");
+    expect(screen.queryByRole("region", { name: "Quiz schedule" })).toBeNull();
   });
 });

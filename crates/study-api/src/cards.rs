@@ -142,6 +142,8 @@ pub enum ReviewStep {
 pub enum SuggestionKind {
     Recall,
     Quiz,
+    /// A project struggle reviewed as "Suggest a card" (R95).
+    Struggle,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -764,6 +766,25 @@ impl App {
                         .then(|| question.topic()),
                 });
             }
+        }
+        // R95: struggles reviewed as "Suggest a card". The front starts as what tripped you up.
+        let projects = self.store.projects()?;
+        for struggle in self.store.all_struggles()? {
+            let key = format!("struggle:{}", struggle.id.0);
+            if struggle.outcome != Some(study_store::practice::StruggleOutcome::Card) || done.contains(&key) {
+                continue;
+            }
+            let project = projects.iter().find(|p| p.id == struggle.project).map(|p| p.name.clone()).unwrap_or_default();
+            suggestions.push(Suggestion {
+                key,
+                kind: SuggestionKind::Struggle,
+                from: format!("Project: {project}"),
+                day: struggle.day,
+                note: format!("Why it wasn't obvious: {}", struggle.why),
+                text: struggle.what.clone(),
+                answer: None,
+                topic: struggle.topic.filter(|topic| topics.iter().any(|t| t.id == *topic)),
+            });
         }
         suggestions.sort_by_key(|s| std::cmp::Reverse(s.day));
         Ok(suggestions)

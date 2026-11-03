@@ -4,6 +4,7 @@ pub mod attempt;
 pub mod bibliography;
 pub mod cards;
 pub mod image;
+pub mod practice;
 pub mod progress;
 pub mod question;
 pub mod recall;
