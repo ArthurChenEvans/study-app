@@ -25,7 +25,7 @@
           fetcherVersion = 3;
           # Changes whenever pnpm-lock.yaml changes. If the build stops with a
           # hash mismatch, copy the "got: sha256-..." value in here.
-          hash = lib.fakeHash;
+          hash = "sha256-P4RgNc8hgVPx62OpxaU8WE9uATnXmi21KHO8KdQaA3M=";
         };
 
         nativeBuildInputs = with pkgs; [
