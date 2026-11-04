@@ -3381,6 +3381,7 @@ dependencies = [
 name = "study-store"
 version = "0.1.0"
 dependencies = [
+ "rand 0.9.5",
  "rusqlite",
  "serde",
  "serde_json",

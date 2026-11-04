@@ -39,6 +39,7 @@ impl Store {
         self.connection.restore(MAIN_DB, path, None::<fn(rusqlite::backup::Progress)>)?;
         self.connection.pragma_update(None, "foreign_keys", false)?;
         schema::migrate(&self.connection)?;
+        crate::ids::catch_up(&self.connection, &self.clock)?;
         self.connection.pragma_update(None, "foreign_keys", true)?;
         Ok(())
     }

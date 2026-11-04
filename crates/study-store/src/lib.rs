@@ -19,6 +19,7 @@ use study_core::results::{Reasons, Summary, reason_labels, summarise};
 
 pub mod backup;
 pub mod cards;
+pub mod ids;
 pub mod practice;
 pub mod recall;
 mod schema;
@@ -90,6 +91,7 @@ pub struct HistoryRow {
 
 pub struct Store {
     connection: Connection,
+    clock: ids::SharedClock,
 }
 
 impl Store {
@@ -102,16 +104,24 @@ impl Store {
     }
 
     fn from_connection(connection: Connection) -> Result<Self> {
+        // The ID and stamp functions come first: migration 8 and every trigger use them.
+        let clock = ids::register(&connection)?;
         // Migrations run with foreign keys off so a table can be rebuilt without its
         // children cascading away. Then every link is checked before they go back on.
         connection.pragma_update(None, "foreign_keys", false)?;
         schema::migrate(&connection)?;
+        ids::catch_up(&connection, &clock)?;
         let broken: i64 = connection.query_row("SELECT COUNT(*) FROM pragma_foreign_key_check", [], |row| row.get(0))?;
         if broken > 0 {
             return Err(StoreError::NotFound("consistent links between tables after upgrading"));
         }
         connection.pragma_update(None, "foreign_keys", true)?;
-        Ok(Self { connection })
+        Ok(Self { connection, clock })
+    }
+
+    /// This computer's ID, which ends every change stamp made here (R110).
+    pub fn device_id(&self) -> String {
+        self.clock.lock().map(|clock| clock.device().to_string()).unwrap_or_default()
     }
 
     pub fn schema_version(&self) -> Result<i64> {

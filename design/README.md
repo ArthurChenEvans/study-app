@@ -570,3 +570,14 @@ Differences from the prototype:
 - **"Open" the backups folder became "Copy path"**, and **"Also copy to" takes a typed full path.** Both avoid adding Tauri plugins (an opener and a folder picker) just for this. The folder picker comes with sync, which needs it anyway.
 - **What a restore undoes is counted, not listed as edits:** card reviews, quizzes, recall checks, drill runs, struggles, and questions, cards and topics added since. Edits to existing things aren't recorded yet, which the ID change for sync adds.
 
+
+## IDs built (4 Nov 2026)
+
+Migration 8, test-first: requirements R109 to R111, scenarios in `specs/features/ids.feature`. Nothing on screen changes.
+
+- **IDs:** every record with its own number also gets a UUIDv7 (`uid`). The numbers stay as the local key, so no screen or command changed.
+- **Change stamps:** a `changed` stamp from a hybrid logical clock (`ids.rs`). A card's FSRS fields and a checklist's step don't count as edits, since sync will replay them from the review and check history.
+- **Deletion markers:** they go in a `deleted` table, for things removed along with others too (a topic's questions, notes and cards).
+- **Stamped per record, not per field:** field-by-field comparison will come from sync's change log, which records which fields changed.
+- **Triggers do all of it,** calling `new_uid()`, `stamp_now()` and `device_id()`, which the app registers on its database connection. Other SQLite tools can still read the file, but they can't add rows to it.
+- **Cost:** opening and upgrading the large test profile took 0.2 seconds (with a "Before update" backup first). The file grew from 5.5 MB to 8.2 MB, and seeding it took about 8% longer.

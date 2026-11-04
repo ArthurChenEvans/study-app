@@ -223,3 +223,6 @@ Decided with the design: keywords are checked in any order, every answer is righ
 | R106 | Backups can also be copied to a second folder (another drive, a USB stick). If that folder can't be reached, the app says so and keeps backing up as normal |
 | R107 | Backup settings live with the backups, not in the database, so restoring a backup never changes them |
 | R108 | The sidebar shows the backup status in one line, and it links to Your data |
+| R109 | Every record (module, topic, question, source, card, review, quiz, checklist, project, drill and the rest) has an ID that's the same on every computer and never reused. Records from before this get one when the app updates |
+| R110 | Every record you can edit has a "last changed" stamp that moves when it, or a part of it (a question's options, a topic's tags, a checklist's points), changes. Stamps from one computer only ever go up, even if its clock is set back. Reviewing a card or doing a check isn't an edit of the card or checklist |
+| R111 | Deleting a record, including the ones deleted along with it, leaves a marker with its ID, so other computers can delete it too |

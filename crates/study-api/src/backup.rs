@@ -133,7 +133,7 @@ type PeriodOf = fn(i64) -> i64;
 pub fn keep(backups: &[BackupInfo], settings: &BackupSettings, today: i64) -> HashSet<String> {
     // A stable sort, so backups from the same minute stay in the order they're given.
     let mut newest_first: Vec<&BackupInfo> = backups.iter().collect();
-    newest_first.sort_by(|a, b| (b.day, b.minute).cmp(&(a.day, a.minute)));
+    newest_first.sort_by_key(|backup| std::cmp::Reverse((backup.day, backup.minute)));
     let mut kept: HashSet<String> = newest_first.iter().filter(|backup| backup.day >= today).map(|backup| backup.name.clone()).collect();
     let periods: [(u32, PeriodOf); 3] = [
         (settings.keep_days, |day| day),

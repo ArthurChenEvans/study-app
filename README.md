@@ -58,6 +58,8 @@ The app backs itself up once a day (once there's something in it), and before a 
 
 "Your data" in the sidebar lists them, backs up by hand, restores, sets how many to keep (7 days, 4 weeks and 12 months to start with) and can copy every backup to a second folder, like a USB stick. Each backup is an ordinary SQLite file, so you can also copy one into place by hand while the app is closed.
 
+Every record has an ID that's the same on every computer, a "last changed" stamp and, once deleted, a marker. The database's triggers fill these in using functions the app provides, so other SQLite tools can read the database but can't add or change rows in it.
+
 ## Install
 
 ### Nix (NixOS)
