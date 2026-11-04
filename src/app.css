@@ -167,6 +167,15 @@
   .feedback-right { background: color-mix(in oklch, var(--chart-right) 8%, var(--surface)); border-color: color-mix(in oklch, var(--chart-right) 50%, transparent); }
   .feedback-wrong { background: color-mix(in oklch, var(--chart-wrong) 7%, var(--surface)); border-color: color-mix(in oklch, var(--chart-wrong) 45%, transparent); }
 
+  /* Results: the one celebration. Bars fill left to right, the score settles once */
+  @keyframes fill-in { from { transform: scaleX(0); } to { transform: none; } }
+  @keyframes settle { 0%, 66% { transform: none; } 83% { transform: scale(1.04); } 100% { transform: none; } }
+  .fill-in > span { transform-origin: left; animation: fill-in 400ms var(--ease-out) 100ms both; }
+  .settle { display: inline-block; transform-origin: left bottom; animation: settle 900ms var(--ease-out) both; }
+  .status-chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; border: 1px solid; border-radius: 4px; padding: 0 6px; line-height: 20px; }
+  .status-pass { color: var(--right-ink); border-color: var(--chart-right); }
+  .status-under { color: var(--wrong-ink); border-color: var(--chart-wrong); }
+
   /* Question editor: answer, correct, remove */
   .option-grid { display: grid; grid-template-columns: minmax(0, 1fr) 64px 32px; gap: 12px; align-items: center; }
   .checkbox-correct { width: 20px; height: 20px; border-radius: 5px; }

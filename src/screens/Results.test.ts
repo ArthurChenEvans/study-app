@@ -7,10 +7,14 @@ vi.mock("../lib/api", async (original) => {
   return { ...actual, api: { results: vi.fn(), topics: vi.fn(), today: vi.fn(), giveReason: vi.fn(), retry: vi.fn(), overruleResult: vi.fn() } };
 });
 
+vi.mock("../lib/sound", () => ({ play: vi.fn() }));
+
+import * as soundModule from "../lib/sound";
 import { api, type ResultsView, type ReviewItem, type ShortFeedback } from "../lib/api";
 import Results from "./Results.svelte";
 
 const mocked = vi.mocked(api);
+const sound = vi.mocked(soundModule);
 const tally = (right_sure: number, right_guessed: number, wrong: number) => ({ right_sure, right_guessed, wrong, wrong_flagged: 0, unanswered: 0 });
 
 function results(overrides: Partial<ResultsView> = {}): ResultsView {
@@ -84,7 +88,7 @@ describe("Results", () => {
     mocked.results.mockResolvedValue(results());
     mocked.retry.mockResolvedValue(view);
     render(Results, { attempt: 3, onRetry });
-    await u.click(await screen.findByRole("button", { name: "Retry 3 questions" }));
+    await u.click(await screen.findByRole("button", { name: "Retry the 3 wrong and guessed" }));
     expect(mocked.retry).toHaveBeenCalledWith(3);
     expect(onRetry).toHaveBeenCalledWith(view);
   });
@@ -151,10 +155,22 @@ describe("Results", () => {
     render(Results, { attempt: 3, onRetry: vi.fn() });
     const panel = await screen.findByRole("region", { name: "Quiz schedule" });
     const items = within(panel).getAllByRole("listitem");
-    expect(items[0]).toHaveTextContent("CPU 86%, moves up to Fortnight Next quiz on Tue 17 Nov");
-    expect(items[1]).toHaveTextContent("50%, under the pass mark, back to Day");
+    expect(items[0]).toHaveTextContent("CPU Passed 86% Moves up to Fortnight Next quiz on Tue 17 Nov");
+    expect(items[1]).toHaveTextContent("Under pass mark 50% Back to Day");
     expect(items[1]).toHaveTextContent("Next quiz tomorrow");
-    expect(items[2]).toHaveTextContent("100%, starts on Day");
+    expect(items[2]).toHaveTextContent("Passed 100% Starts on Day");
+  });
+
+  it("plays the finish cue and says Quiz finished only straight after a quiz", async () => {
+    mocked.results.mockResolvedValue(results());
+    const { unmount } = render(Results, { attempt: 3, onRetry: vi.fn(), fresh: true });
+    expect(await screen.findByRole("heading", { name: "Quiz finished" })).toBeInTheDocument();
+    expect(sound.play).toHaveBeenCalledWith("finished");
+    unmount();
+    sound.play.mockClear();
+    render(Results, { attempt: 3, onRetry: vi.fn() });
+    expect(await screen.findByRole("heading", { name: "Results" })).toBeInTheDocument();
+    expect(sound.play).not.toHaveBeenCalled();
   });
 
   it("has no schedule panel for retries", async () => {

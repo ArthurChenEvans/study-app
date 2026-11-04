@@ -2,8 +2,8 @@
   // Score per quiz (R33, design rules section 9): one 2px line, area wash, filled dots with a
   // surface ring, hollow dots for retries, only the latest point labelled. Hover, arrow keys
   // and a table view make every value reachable without the graphic.
-  type Point = { label: string; percent: number; retry: boolean; detail: string };
-  let { points, width: fixedWidth, height = 220, detailLabel = "Quiz" }: { points: Point[]; width?: number; height?: number; detailLabel?: string } = $props();
+  type Point = { label: string; percent: number; retry: boolean; detail: string; hollow?: boolean };
+  let { points, width: fixedWidth, height = 220, detailLabel = "Quiz", title = "Score per quiz" }: { points: Point[]; width?: number; height?: number; detailLabel?: string; title?: string } = $props();
 
   let measured = $state(0);
   const width = $derived(fixedWidth ?? (measured || 640));
@@ -16,7 +16,7 @@
   const area = $derived(points.length ? `${line}L${x(points.length - 1)},${height - margin.bottom}L${x(0)},${height - margin.bottom}Z` : "");
   const labelEvery = $derived(Math.max(1, Math.ceil(points.length / Math.max(1, Math.floor(width / 90)))));
   const describe = (point: Point) => `${point.label}: ${point.percent}%${point.retry ? " (retry)" : ""} · ${point.detail}`;
-  const summary = $derived(points.length ? `Score per quiz, from ${points[0].percent}% to ${points.at(-1)!.percent}%` : "No scores yet");
+  const summary = $derived(points.length ? `${title}, from ${points[0].percent}% to ${points.at(-1)!.percent}%` : "No scores yet");
 
   function onKey(event: KeyboardEvent) {
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
@@ -69,16 +69,17 @@
         <circle
           data-testid="score-point"
           data-retry={String(point.retry)}
+          data-hollow={String(point.hollow ?? point.retry)}
           cx={x(index)}
           cy={y(point.percent)}
           r={selected === index ? 6 : 4.5}
-          fill={point.retry ? "var(--surface)" : "var(--chart-ink)"}
-          stroke={point.retry ? "var(--chart-ink)" : "var(--surface)"}
+          fill={(point.hollow ?? point.retry) ? "var(--surface)" : "var(--chart-ink)"}
+          stroke={(point.hollow ?? point.retry) ? "var(--chart-ink)" : "var(--surface)"}
           stroke-width="2"
         />
       {/each}
       {#if points.length}
-        <text x={x(points.length - 1) - 8} y={y(points.at(-1)!.percent) - 12} text-anchor="end" font-size="12" font-weight="600" fill="var(--color-base-content)">{points.at(-1)!.percent}%</text>
+        <text x={x(points.length - 1) - 8} y={y(points.at(-1)!.percent) - 12} text-anchor="end" font-size="12" font-weight="600" fill="var(--color-base-content)">{points.at(-1)!.percent}%{points.at(-1)!.hollow ? " so far" : ""}</text>
       {/if}
     </svg>
     {#if selected !== null}

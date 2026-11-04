@@ -4,9 +4,12 @@
   import { api, errorMessage, type GivenReason, type Id, type QuizView, type ResultsView, type ShortFeedback, type Tally, type TopicRow } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
   import Rich from "../components/Rich.svelte";
+  import CountUp from "../components/CountUp.svelte";
   import { onDay } from "../lib/dates";
+  import { play } from "../lib/sound";
 
-  let { attempt, onRetry }: { attempt: Id; onRetry: (view: QuizView) => void } = $props();
+  // `fresh` is true when you've just finished the quiz, false when reopening it from History.
+  let { attempt, onRetry, fresh = false }: { attempt: Id; onRetry: (view: QuizView) => void; fresh?: boolean } = $props();
 
   let results = $state<ResultsView | null>(null);
   let topics = $state<TopicRow[]>([]);
@@ -31,6 +34,7 @@
 
   async function load() {
     [results, topics, today] = await Promise.all([api.results(attempt), api.topics(), Promise.resolve().then(() => api.today()).catch(() => 0)]);
+    if (fresh) play("finished");
   }
 
   async function give(index: number, reason: GivenReason) {
@@ -72,9 +76,9 @@
   load();
 </script>
 
-{#snippet bar(tally: Tally, height: number)}
+{#snippet bar(tally: Tally, height: number, grow = false)}
   {@const whole = total(tally)}
-  <div class="seg-bar" style="height: {height}px" role="img" aria-label="{tally.right_sure} right and sure, {tally.right_guessed} guessed, {tally.wrong + tally.unanswered} wrong or unanswered">
+  <div class="seg-bar {grow ? 'fill-in' : ''}" style="height: {height}px" role="img" aria-label="{tally.right_sure} right and sure, {tally.right_guessed} guessed, {tally.wrong + tally.unanswered} wrong or unanswered">
     {#if tally.right_sure}<span style="width: {share(tally.right_sure, whole)}%; background: var(--chart-right)"></span>{/if}
     {#if tally.right_guessed}<span style="width: {share(tally.right_guessed, whole)}%; background: var(--guessed-fill)"></span>{/if}
     {#if tally.wrong + tally.unanswered}<span style="width: {share(tally.wrong + tally.unanswered, whole)}%; background: var(--chart-wrong)"></span>{/if}
@@ -84,16 +88,16 @@
 {#if results}
   {@const overall = results.summary.overall}
   <div class="mx-auto max-w-6xl px-12 pb-24">
-    <PageHeader title="Results" subtitle="{results.exam ? 'Exam' : 'Study'} mode · {total(overall)} questions{results.status === 'Incomplete' ? ' · Quit early' : ''}" />
+    <PageHeader title={fresh ? "Quiz finished" : "Results"} subtitle="{results.exam ? 'Exam' : 'Study'} mode · {total(overall)} questions{results.status === 'Incomplete' ? ' · Quit early' : ''}" />
 
     <section class="panel rise p-8">
       <div class="grid grid-cols-[auto_1fr_auto] items-center gap-12">
         <div>
-          <p class="text-6xl font-semibold leading-none"><span>{right(overall)}</span> <span class="text-3xl font-normal text-muted">/ {total(overall)}</span></p>
+          <p class="text-6xl font-semibold leading-none"><CountUp value={right(overall)} /> <span class="text-3xl font-normal text-muted">/ {total(overall)}</span></p>
           <p class="mt-3 text-sm text-muted">{overall.right_guessed} of those guessed</p>
         </div>
         <div>
-          {@render bar(overall, 28)}
+          {@render bar(overall, 28, true)}
           <div class="mt-3 flex items-center gap-4 text-xs text-muted">
             <span class="flex items-center gap-1.5"><span class="swatch" style="background: var(--chart-right)"></span>Right, sure</span>
             <span class="flex items-center gap-1.5"><span class="swatch" style="background: var(--guessed-fill)"></span>Right, guessed</span>
@@ -102,8 +106,8 @@
         </div>
         <div class="text-right">
           {#if results.retry_count > 0}
-            <button class="btn btn-primary" onclick={retry}><RotateCcw class="size-4" />Retry {results.retry_count} questions</button>
-            <p class="mt-2 text-xs text-muted">Wrong and guessed, same settings</p>
+            <button class="btn btn-primary" onclick={retry}><RotateCcw class="size-4" />Retry the {results.retry_count} wrong and guessed</button>
+            <p class="mt-2 text-xs text-muted">Same settings. Retries don't move the schedule.</p>
           {:else}
             <p class="max-w-48 text-sm text-muted">Nothing to retry. Every answer was right and none were guesses.</p>
           {/if}
@@ -126,8 +130,10 @@
           {#each results.moves as move (move.topic)}
             <li class="grid grid-cols-[180px_1fr_auto] items-center gap-6 py-3">
               <span class="font-semibold">{move.name}</span>
-              <span class="flex items-center gap-2 text-sm font-semibold {move.passed ? 'text-right-ink' : 'text-wrong-ink'}">
-                {#if move.passed}<ArrowUp class="size-4" />{:else}<ArrowDown class="size-4" />{/if}{move.score}%, {move.from === null ? `starts on ${move.to}` : move.passed ? (move.from === move.to ? `stays on ${move.to}` : `moves up to ${move.to}`) : move.from === move.to ? `under the pass mark, stays on ${move.to}` : `under the pass mark, back to ${move.to}`}
+              <span class="flex flex-wrap items-center gap-2 text-sm">
+                <span class="status-chip {move.passed ? 'status-pass' : 'status-under'}">{#if move.passed}<ArrowUp class="size-3.5" />Passed{:else}<ArrowDown class="size-3.5" />Under pass mark{/if}</span>
+                <span class="tabular-nums">{move.score}%</span>
+                <span class="text-muted">{move.from === null ? `Starts on ${move.to}` : move.passed ? (move.from === move.to ? `Stays on ${move.to}` : `Moves up to ${move.to}`) : move.from === move.to ? `Stays on ${move.to}` : `Back to ${move.to}`}</span>
               </span>
               <span class="text-sm text-muted">Next quiz {onDay(move.next_due, today)}</span>
             </li>

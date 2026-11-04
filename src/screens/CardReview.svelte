@@ -110,7 +110,7 @@
   </div>
   <div class="px-12 pt-6"><div class="mx-auto max-w-prose"><div class="h-1 rounded-full bg-base-300" role="progressbar" aria-label="Session progress" aria-valuenow={card.done} aria-valuemin={0} aria-valuemax={card.total}><div class="h-full rounded-full" style="width: {card.total ? (card.done / card.total) * 100 : 0}%; background: var(--chart-ink)"></div></div></div></div>
 
-  <div class="mx-auto max-w-prose px-6 pb-48 pt-16">
+  <div class="mx-auto max-w-prose px-6 pb-24 pt-16">
     <p class="text-sm text-muted">{card.topic_name}{card.source ? ` · ${card.source}` : cloze ? ` · ${card.kind}` : ""}</p>
     {#if cloze}
       <div class="mt-3 text-xl leading-relaxed" role="heading" aria-level="1" aria-live="polite"><Rich text={shown ? card.back : card.front} /></div>
@@ -118,17 +118,10 @@
       <div class="mt-3 text-xl leading-relaxed" role="heading" aria-level="1"><Rich text={card.front} /></div>
       {#if shown}<hr class="my-8 border-base-300" /><div class="text-lg leading-relaxed" aria-live="polite"><Rich text={card.back} /></div>{/if}
     {/if}
-    {#if card.leech}
-      <div class="panel mt-10 flex items-start gap-4 p-5" role="note"><Flag class="mt-0.5 size-5 shrink-0" />
-        <div class="flex-1"><p class="font-semibold">This one keeps slipping: Again {card.lapses} times</p><p class="mt-1 text-sm text-muted">It probably needs a better cue. You can rewrite it now or after this session.</p></div>
-        <button class="btn btn-outline btn-sm shrink-0 border-field-border" onclick={edit}><Pencil class="size-4" />Rewrite now <kbd class="kbd kbd-xs">E</kbd></button>
-      </div>
-    {/if}
     {#if error}<p role="alert" class="mt-6 text-sm text-error">{error}</p>{/if}
-  </div>
 
-  <div class="fixed bottom-0 left-0 right-0 border-t border-base-300 bg-base-100 py-6">
-    <div class="mx-auto flex max-w-prose items-center justify-center gap-3">
+    <!-- The grades sit right under the card, so your eyes don't travel to the bottom of the screen. -->
+    <div class="mt-12 flex flex-wrap items-center justify-center gap-3">
       {#if shown}
         {#each ratings as rating, index (rating)}
           <button class="btn grade {rating === 'Good' ? 'btn-primary' : rating === 'Again' ? 'grade-again btn-outline' : 'btn-outline border-field-border'}" disabled={busy} onclick={() => grade(rating)}>
@@ -139,7 +132,15 @@
         <button class="btn btn-primary btn-lg min-w-64" onclick={() => (shown = true)}>Show answer <kbd class="kbd kbd-xs">Space</kbd></button>
       {/if}
     </div>
-    <p class="mt-3 text-center text-xs text-muted">{shown ? "Space picks Good. Again shows the card again later in this session." : "Try to recall it before you look"}</p>
+    <p class="mt-3 text-center text-xs text-muted">{shown ? "Space picks Good. Again shows the card again later in this session." : "Say it in your head first, then check."}</p>
+
+    <!-- Only after you've tried it: seeing this first would tempt you to edit instead of recall. -->
+    {#if shown && card.leech}
+      <div class="mt-10 flex items-center gap-3 border-t border-base-300 pt-4 text-sm" role="note"><Flag class="size-4 shrink-0" />
+        <p class="flex-1">This card has been tricky: Again {card.lapses} times. <span class="text-muted">A better cue usually helps.</span></p>
+        <button class="btn btn-ghost btn-sm shrink-0" onclick={edit}><Pencil class="size-4" />Rewrite it <kbd class="kbd kbd-xs">E</kbd></button>
+      </div>
+    {/if}
   </div>
 {:else if done}
   <div class="mx-auto max-w-3xl px-12 pb-24 pt-16">
