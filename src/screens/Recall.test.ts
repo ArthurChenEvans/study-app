@@ -90,7 +90,10 @@ describe("Recall list", () => {
     await u.click(await screen.findByRole("button", { name: "Create your first checklist" }));
     await u.click(screen.getByRole("button", { name: "Create checklist" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Pick a module or topic to recall.");
-    await u.selectOptions(screen.getByRole("combobox", { name: /Recall about/ }), "Computer Architecture");
+    expect(screen.getByRole("radio", { name: /^Computer Architecture/ })).toHaveAccessibleName(/^Computer Architecture\s*1 topic$/);
+    await u.type(screen.getByRole("searchbox", { name: "Find a module or topic" }), "comp");
+    expect(screen.queryByRole("radio", { name: /^CPU/ })).toBeNull();
+    await u.click(screen.getByRole("radio", { name: /^Computer Architecture/ }));
     await u.click(screen.getByRole("button", { name: "Create checklist" }));
     expect(mocked.createChecklist).toHaveBeenCalledWith({ Module: 1 });
     expect(onOpen).toHaveBeenCalledWith(9);
@@ -109,6 +112,8 @@ describe("Recall list", () => {
     const monthly = screen.getByRole("spinbutton", { name: "Monthly times" });
     await u.clear(monthly);
     await u.type(monthly, "3");
+    expect(screen.getByRole("row", { name: /^Monthly/ })).toHaveTextContent("3 months");
+    expect(screen.getByRole("row", { name: /^Yearly/ })).toHaveTextContent("Then every year");
     await u.click(screen.getByRole("button", { name: "Save schedule" }));
     const saved = mocked.setRecallSchedule.mock.calls[0][0];
     expect(saved.pass_mark).toBe(80);

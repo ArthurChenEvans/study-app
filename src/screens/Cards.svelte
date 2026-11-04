@@ -183,15 +183,22 @@
           <label class="block text-sm font-semibold" for="retention">How much to remember</label>
           <div class="mt-2 flex items-center gap-4">
             <input id="retention" type="range" min="0.7" max="0.99" step="0.01" class="slider flex-1" style="--fill: {((editing.desired_retention - 0.7) / 0.29) * 100}%" bind:value={editing.desired_retention} />
-            <span class="w-12 text-right font-semibold tabular-nums">{Math.round(editing.desired_retention * 100)}%</span>
+            <span class="w-14 text-right text-xl font-semibold tabular-nums">{Math.round(editing.desired_retention * 100)}%</span>
           </div>
-          <p class="mt-1 text-sm text-muted">The chance you still remember a card when it comes back. Higher means more reviews a day. 90% is the usual choice.</p>
+          <!-- A scale under the slider, so the value reads without dragging. 90% sits at 20/29 of the track. -->
+          <div class="relative mr-18 h-5 text-xs text-muted" aria-hidden="true">
+            <span class="absolute left-0">70%</span><span class="absolute -translate-x-1/2 text-base-content" style="left: {(20 / 29) * 100}%">90%, usual</span><span class="absolute right-0">99%</span>
+          </div>
+          <p class="mt-1 text-sm text-muted">The chance you still remember a card when it comes back. Higher means more reviews a day.</p>
         </div>
         <div class="grid grid-cols-2 gap-6">
           <label class="block"><span class="block text-sm font-semibold">New cards a day</span><input class="input mt-1 w-24 tabular-nums" type="number" min="0" bind:value={editing.new_per_day} /></label>
           <div>
-            <label class="block"><span class="block text-sm font-semibold">Most reviews a day</span><input class="input mt-1 w-24 tabular-nums" type="number" min="0" aria-label="Most reviews a day" bind:value={editing.max_reviews} disabled={noLimit} /></label>
-            <label class="mt-2 flex items-center gap-2 text-sm"><input type="checkbox" class="checkbox checkbox-sm" bind:checked={noLimit} />No limit</label>
+            <span class="block text-sm font-semibold" id="max-reviews-h">Most reviews a day</span>
+            <div class="mt-1 flex items-center gap-4">
+              <input class="input w-24 tabular-nums" type="number" min="0" aria-label="Most reviews a day" bind:value={editing.max_reviews} disabled={noLimit} />
+              <label class="flex items-center gap-2 text-sm"><input type="checkbox" role="switch" class="toggle toggle-sm" bind:checked={noLimit} />No limit</label>
+            </div>
           </div>
         </div>
         <label class="block"><span class="block text-sm font-semibold">Ask me to rewrite a card after</span>

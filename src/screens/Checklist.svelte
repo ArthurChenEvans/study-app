@@ -90,11 +90,30 @@
     picked = new Set();
     unpicked = new Set();
     filter = "";
+    topicFilter = "all";
     importing = true;
   }
 
+  let topicFilter = $state("all");
   const inTab = $derived(candidates.filter((c) => tabOf(c) === from));
-  const shown = $derived(inTab.filter((c) => `${c.text} ${c.answer} ${c.topic_name}`.toLowerCase().includes(filter.trim().toLowerCase())));
+  const tabTopics = $derived([...new Set(inTab.map((c) => c.topic_name))].sort());
+  const shown = $derived(inTab.filter((c) => (topicFilter === "all" || c.topic_name === topicFilter) && `${c.text} ${c.answer} ${c.topic_name}`.toLowerCase().includes(filter.trim().toLowerCase())));
+  // Grouped under topic headers, so the topic isn't repeated on every row.
+  const groups = $derived([...new Set(shown.map((c) => c.topic_name))].map((name) => ({ name, items: shown.filter((c) => c.topic_name === name) })));
+  const isOn = (candidate: Candidate) => (candidate.in_checklist ? !unpicked.has(keyOf(candidate.item)) : picked.has(keyOf(candidate.item)));
+  const allOn = $derived(shown.length > 0 && shown.every(isOn));
+  /** Select all only ever adds. Unticking it takes back what you picked, never removes existing points. */
+  function toggleAll() {
+    const add = new Set(picked);
+    const keep = new Set(unpicked);
+    for (const candidate of shown) {
+      const key = keyOf(candidate.item);
+      if (candidate.in_checklist) { if (!allOn) keep.delete(key); }
+      else if (allOn) add.delete(key); else add.add(key);
+    }
+    picked = add;
+    unpicked = keep;
+  }
   const countIn = (tab: "mcq" | "short" | "cards") => candidates.filter((c) => tabOf(c) === tab).length;
   const adds = $derived(picked.size);
   const removes = $derived(unpicked.size);
@@ -258,34 +277,52 @@
   <dialog open class="modal modal-open" aria-labelledby="import-h">
     <div class="modal-box max-w-3xl">
       <h3 id="import-h" class="text-lg font-semibold">Add points from questions and cards</h3>
-      <p class="mt-2 text-sm text-muted">Each one becomes a point: a question and its answer (a short answer's model answer), a card's front and back, or a cloze card's text with the answers in bold. You can edit the point after, and the question or card stays as it is. Untick one that's already in the checklist to remove its point.</p>
-      <div class="mt-6 flex items-center justify-between gap-4">
+      <p class="mt-2 text-sm text-muted">Each one becomes a point you can edit after. The question or card itself doesn't change. Untick one that's in the checklist to remove its point.</p>
+      <details class="mt-1 text-sm text-muted"><summary class="cursor-pointer">How points are made</summary><p class="mt-1">A question and its answer (a short answer's model answer), a card's front and back, or a cloze card's text with the answers in bold.</p></details>
+      <div class="mt-5 flex flex-wrap items-center gap-3">
         <div class="seg" role="radiogroup" aria-label="Add from">
-          <button type="button" role="radio" aria-checked={from === "mcq"} onclick={() => (from = "mcq")}>MCQ <span class="text-xs tabular-nums">{countIn("mcq")}</span></button>
-          <button type="button" role="radio" aria-checked={from === "short"} onclick={() => (from = "short")}>Short answer <span class="text-xs tabular-nums">{countIn("short")}</span></button>
-          <button type="button" role="radio" aria-checked={from === "cards"} onclick={() => (from = "cards")}>Flashcards <span class="text-xs tabular-nums">{countIn("cards")}</span></button>
+          <button type="button" role="radio" aria-checked={from === "mcq"} onclick={() => { from = "mcq"; topicFilter = "all"; }}>MCQ <span class="text-xs tabular-nums">{countIn("mcq")}</span></button>
+          <button type="button" role="radio" aria-checked={from === "short"} onclick={() => { from = "short"; topicFilter = "all"; }}>Short answer <span class="text-xs tabular-nums">{countIn("short")}</span></button>
+          <button type="button" role="radio" aria-checked={from === "cards"} onclick={() => { from = "cards"; topicFilter = "all"; }}>Flashcards <span class="text-xs tabular-nums">{countIn("cards")}</span></button>
         </div>
-        <input type="search" class="input input-sm w-64" aria-label="Filter" placeholder="Filter…" bind:value={filter} />
+        {#if tabTopics.length > 1}
+          <select class="select select-sm w-56" aria-label="Topic" bind:value={topicFilter}>
+            <option value="all">All {tabTopics.length} topics</option>
+            {#each tabTopics as name (name)}<option value={name}>{name}</option>{/each}
+          </select>
+        {/if}
+        <span class="flex-1"></span>
+        <input type="search" class="input input-sm w-56" aria-label="Filter" placeholder="Filter…" bind:value={filter} />
       </div>
-      <p class="mt-2 text-xs text-muted">From {view?.topics.length ? view.topics.join(", ") : "no topics"}. Archived cards aren't listed.</p>
       {#if inTab.length === 0}
         <p class="panel mt-4 p-6 text-sm text-muted">{from === "mcq" ? "There are no MCQs in these topics yet." : from === "short" ? "There are no short answer questions in these topics yet." : "There are no flashcards in these topics yet."}</p>
       {:else}
-        <ul class="panel mt-4 max-h-80 divide-y overflow-y-auto" aria-label={from === "mcq" ? "Questions" : from === "short" ? "Short answer questions" : "Flashcards"}>
-          {#each shown as candidate (keyOf(candidate.item))}
-            {@const key = keyOf(candidate.item)}
-            {@const on = candidate.in_checklist ? !unpicked.has(key) : picked.has(key)}
-            <li>
-              <label class="flex cursor-pointer items-start gap-4 px-4 py-3 hover:bg-base-100">
-                <input type="checkbox" class="checkbox checkbox-sm mt-0.5" checked={on} onchange={() => togglePick(candidate)} />
-                <span class="flex-1"><span class="text-sm"><Rich inline text={candidate.text} /></span>{#if candidate.answer}<span class="block text-sm text-muted">→ <Rich inline text={candidate.answer} /></span>{/if}</span>
-                <span class="whitespace-nowrap text-right text-xs {candidate.in_checklist && !on ? 'font-semibold text-wrong-ink' : 'text-muted'}">{candidate.in_checklist ? (on ? "In the checklist" : "Will be removed") : candidate.topic_name}{#if isCard(candidate) && !candidate.in_checklist}<span class="block">{candidate.kind}</span>{/if}</span>
-              </label>
-            </li>
-          {/each}
-        </ul>
+        <div class="panel mt-4 overflow-hidden">
+          <label class="flex cursor-pointer items-center gap-4 border-b border-base-300 px-4 py-2.5">
+            <input type="checkbox" class="checkbox checkbox-sm" checked={allOn} disabled={shown.length === 0} onchange={toggleAll} />
+            <span class="text-sm font-semibold">Select all {shown.length} shown</span>
+          </label>
+          <ul class="max-h-[50vh] overflow-y-auto" aria-label={from === "mcq" ? "Questions" : from === "short" ? "Short answer questions" : "Flashcards"}>
+            {#each groups as group (group.name)}
+              <li class="sticky top-0 z-10 border-b border-base-300 bg-base-200 px-4 py-1.5 text-xs font-semibold text-muted" aria-hidden="true">{group.name}</li>
+              {#each group.items as candidate (keyOf(candidate.item))}
+                {@const on = isOn(candidate)}
+                <li class="border-b border-base-300 last:border-b-0">
+                  <label class="flex cursor-pointer items-start gap-4 px-4 py-3 hover:bg-base-100">
+                    <input type="checkbox" class="checkbox checkbox-sm mt-0.5" checked={on} onchange={() => togglePick(candidate)} />
+                    <span class="flex-1"><span class="text-sm"><Rich inline text={candidate.text} /></span>{#if candidate.answer}<span class="block text-sm text-muted">→ <Rich inline text={candidate.answer} /></span>{/if}<span class="sr-only">, {candidate.topic_name}</span></span>
+                    {#if candidate.in_checklist || isCard(candidate)}<span class="whitespace-nowrap text-right text-xs {candidate.in_checklist && !on ? 'font-semibold text-wrong-ink' : 'text-muted'}">{candidate.in_checklist ? (on ? "In the checklist" : "Will be removed") : candidate.kind}</span>{/if}
+                  </label>
+                </li>
+              {/each}
+            {/each}
+            {#if shown.length === 0}<li class="px-4 py-4 text-sm text-muted">Nothing matches.</li>{/if}
+          </ul>
+        </div>
       {/if}
-      <div class="modal-action">
+      <p class="mt-2 text-xs text-muted">From {view?.topics.length ?? 0} {view?.topics.length === 1 ? "topic" : "topics"}. Archived cards aren't listed.</p>
+      <div class="modal-action items-center">
+        <span class="mr-auto text-sm text-muted" aria-live="polite">{adds} to add · {removes} to remove</span>
         <button class="btn btn-ghost" onclick={() => (importing = false)}>Cancel</button>
         <button class="btn btn-primary" disabled={!adds && !removes} onclick={applyImport}>{importLabel}</button>
       </div>

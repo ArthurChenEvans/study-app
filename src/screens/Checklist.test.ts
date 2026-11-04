@@ -82,6 +82,27 @@ describe("Checklist editor", () => {
     expect(await screen.findByRole("status")).toHaveTextContent("Added 1, removed 1");
   });
 
+  it("groups by topic, filters to one, and selects all shown without removing anything", async () => {
+    mocked.checklist.mockResolvedValue(view([p("Which stage reads registers? → Decode", 10)]));
+    mocked.recallCandidates.mockResolvedValue([
+      { item: { Question: 10 }, kind: "MCQ", topic_name: "CPU", text: "Which stage reads registers?", answer: "Decode", in_checklist: true },
+      { item: { Question: 12 }, kind: "MCQ", topic_name: "CPU", text: "What does a branch predictor guess?", answer: "Taken or not", in_checklist: false },
+      { item: { Question: 11 }, kind: "MCQ", topic_name: "Memory", text: "What does the TLB cache?", answer: "Page translations", in_checklist: false },
+    ]);
+    const u = userEvent.setup();
+    render(Checklist, { id: 4, onBack: vi.fn(), onStart: vi.fn() });
+    await u.click(await screen.findByRole("button", { name: "Add from questions or cards" }));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Memory", { selector: "li" })).toBeInTheDocument();
+    await u.selectOptions(within(dialog).getByLabelText("Topic"), "CPU");
+    expect(within(dialog).queryByRole("checkbox", { name: /TLB/ })).toBeNull();
+    await u.click(within(dialog).getByRole("checkbox", { name: "Select all 2 shown" }));
+    expect(within(dialog).getByText("1 to add · 0 to remove")).toBeInTheDocument();
+    await u.click(within(dialog).getByRole("checkbox", { name: "Select all 2 shown" }));
+    expect(within(dialog).getByText("0 to add · 0 to remove")).toBeInTheDocument();
+    expect(within(dialog).getByRole("checkbox", { name: /reads registers/ })).toBeChecked();
+  });
+
   // free-recall.feature: Add points from flashcards
   it("adds flashcards from their own tab, alongside questions", async () => {
     mocked.checklist.mockResolvedValue(view([p("Thrashing → Paging more than running", null, 7)]));

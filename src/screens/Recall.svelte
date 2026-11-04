@@ -18,6 +18,14 @@
   let modules = $state<ModuleRow[]>([]);
   let topics = $state<TopicRow[]>([]);
   let subject = $state("");
+  let find = $state("");
+  // A find box over a grouped list, not a dropdown of every module and topic.
+  const matches = (name: string) => name.toLowerCase().includes(find.trim().toLowerCase());
+  const moduleOptions = $derived(modules.filter((module) => matches(module.name)));
+  const topicOptions = $derived(topics.filter((topic) => matches(topic.name)));
+  const hasChecklist = (name: string, module: boolean) => rows.some((row) => row.module === module && row.subject_name === name);
+  const topicCount = (module: number) => { const count = topics.filter((topic) => topic.module === module).length; return `${count} ${count === 1 ? "topic" : "topics"}`; };
+  const moduleName = (id: number | null) => modules.find((module) => module.id === id)?.name ?? "No module";
   let createError = $state("");
 
   let editing = $state<Schedule | null>(null);
@@ -33,6 +41,7 @@
   async function openCreate() {
     [modules, topics] = await Promise.all([api.modules(), api.topics()]);
     subject = "";
+    find = "";
     createError = "";
     creating = true;
   }
@@ -140,16 +149,29 @@
   <dialog open class="modal modal-open" aria-labelledby="new-checklist-h">
     <form class="modal-box max-w-md" onsubmit={create}>
       <h3 id="new-checklist-h" class="text-lg font-semibold">New checklist</h3>
-      <label class="mt-6 block">
-        <span class="block text-sm font-semibold">Recall about</span>
+      <p class="mt-1 text-sm text-muted">Recall about a module (all its topics) or one topic.</p>
+      <fieldset class="mt-5">
+        <legend class="sr-only">Recall about</legend>
         <!-- svelte-ignore a11y_autofocus -->
-        <select class="select mt-1 w-full" bind:value={subject} autofocus>
-          <option value="">Pick a module or topic…</option>
-          {#if modules.length}<optgroup label="Modules">{#each modules as module (module.id)}<option value="module:{module.id}">{module.name}</option>{/each}</optgroup>{/if}
-          {#if topics.length}<optgroup label="Topics">{#each topics as topic (topic.id)}<option value="topic:{topic.id}">{topic.name}</option>{/each}</optgroup>{/if}
-        </select>
-        <span class="mt-1 block text-sm text-muted">A module covers all its topics. Pick a topic for something narrower.</span>
-      </label>
+        <input type="search" class="input w-full" aria-label="Find a module or topic" placeholder="Find a module or topic…" bind:value={find} autofocus />
+        <div class="mt-2 max-h-80 overflow-y-auto rounded-lg border border-base-300 bg-base-100 py-1" role="presentation">
+          {#each [["Modules", moduleOptions, "module"], ["Topics", topicOptions, "topic"]] as const as [group, options, kind] (group)}
+            {#if options.length}
+              <p class="eyebrow px-4 pb-1 pt-3" aria-hidden="true">{group}</p>
+              {#each options as option (option.id)}
+                {@const value = `${kind}:${option.id}`}
+                <label class="flex cursor-pointer items-center gap-3 px-4 py-2 hover:bg-base-200 {subject === value ? 'bg-base-200 shadow-[inset_3px_0_0_var(--color-primary)]' : ''}">
+                  <input type="radio" name="recall-about" class="radio radio-sm" checked={subject === value} onchange={() => (subject = value)} />
+                  <span class="flex-1"><span class="block">{option.name}</span><span class="block text-xs text-muted">{kind === "module" ? topicCount(option.id) : moduleName((option as TopicRow).module)}</span></span>
+                  {#if hasChecklist(option.name, kind === "module")}<span class="text-xs text-muted">Has a checklist</span>{/if}
+                </label>
+              {/each}
+            {/if}
+          {/each}
+          {#if !moduleOptions.length && !topicOptions.length}<p class="px-4 py-3 text-sm text-muted">Nothing matches "{find.trim()}".</p>{/if}
+        </div>
+        <p class="mt-2 text-xs text-muted">{modules.length} {modules.length === 1 ? "module" : "modules"} and {topics.length} {topics.length === 1 ? "topic" : "topics"}. Type to narrow it down.</p>
+      </fieldset>
       {#if createError}<p role="alert" class="mt-4 text-sm text-error">{createError}</p>{/if}
       <div class="modal-action">
         <button type="button" class="btn btn-ghost" onclick={() => (creating = false)}>Cancel</button>

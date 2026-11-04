@@ -330,3 +330,9 @@
 /* New quiz's Start button before a topic is picked: still readable and focusable, says why
    below. Outside @layer base so it wins over DaisyUI's disabled look. */
 .btn.btn-soft-off[aria-disabled="true"], .btn.btn-soft-off[aria-disabled="true"]:hover { pointer-events: auto; background-color: var(--color-base-300); color: var(--color-base-content); cursor: not-allowed; }
+
+/* Dialogs: a darker backdrop, so the dialog stands apart from the busy page behind it */
+.modal.modal-open, .modal[open] { background-color: oklch(10% 0.01 65 / 0.78); }
+.modal-box { border: 1px solid var(--color-base-300); }
+/* Schedule step names read as names until you point at or focus them */
+.step-name:not(:hover):not(:focus) { border-color: transparent; background: transparent; }
