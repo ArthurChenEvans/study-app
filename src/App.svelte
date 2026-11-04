@@ -30,7 +30,7 @@
     | { screen: "editor"; topic: Id }
     | { screen: "setup-for"; topics: Id[] }
     | { screen: "quiz"; view: QuizView; run: number }
-    | { screen: "results"; attempt: Id }
+    | { screen: "results"; attempt: Id; fresh?: boolean }
     | { screen: "checklist"; id: Id }
     | { screen: "recall-session"; id: Id; run: number }
     | { screen: "topic-cards"; topic: Id; note: Id | "new" | null; notice?: string }
@@ -112,9 +112,9 @@
     {:else if route.screen === "setup" || route.screen === "setup-for"}
       <Setup preselected={route.screen === "setup-for" ? route.topics : []} onStarted={startQuiz} />
     {:else if route.screen === "quiz"}
-      {#key route.run}<Quiz initial={route.view} onFinished={(attempt) => go({ screen: "results", attempt })} />{/key}
+      {#key route.run}<Quiz initial={route.view} onFinished={(attempt) => go({ screen: "results", attempt, fresh: true })} />{/key}
     {:else if route.screen === "results"}
-      {#key route.attempt}<Results attempt={route.attempt} onRetry={startQuiz} />{/key}
+      {#key route.attempt}<Results attempt={route.attempt} fresh={route.fresh} onRetry={startQuiz} />{/key}
     {:else if route.screen === "recall"}
       <Recall onOpen={(id) => go({ screen: "checklist", id })} onStart={startRecall} onChanged={refreshDue} />
     {:else if route.screen === "checklist"}

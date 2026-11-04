@@ -44,6 +44,7 @@ describe("Recall session", () => {
     render(RecallSession, handlers);
     const box = await screen.findByLabelText("Your recall");
     expect(screen.queryByText("Pipeline stages")).toBeNull();
+    expect(screen.queryByRole("timer")).toBeNull();
     await u.type(box, "Fetch decode execute, caches");
     expect(screen.getByText("4 words")).toBeInTheDocument();
     await u.keyboard("{Control>}{Enter}{/Control}");
@@ -64,7 +65,7 @@ describe("Recall session", () => {
     expect(mocked.finishCheck).toHaveBeenCalledWith(4, "Fetch decode execute, caches", [0, 1]);
     expect(await screen.findByRole("heading", { name: /67%/ })).toBeInTheDocument();
     expect(screen.getByText("Back a step")).toBeInTheDocument();
-    expect(screen.getByText("Last check 79% · pass mark 70%")).toBeInTheDocument();
+    expect(screen.getByText(/Last check 79% · pass mark 70%/)).toHaveTextContent(/Recalled in 0:\d\d/);
     expect(screen.getByRole("list", { name: "Missed points" })).toHaveTextContent("Missed 3 of 4 checks");
     await u.click(screen.getByRole("button", { name: "Next: OSI model" }));
     expect(handlers.onNext).toHaveBeenCalledWith(5);

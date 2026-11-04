@@ -90,7 +90,8 @@ describe("Topics screen", () => {
     given([{ id: 1, name: "CPU", module: 1, tags: [], question_count: 24, short_count: 0 }]);
     const user = userEvent.setup();
     render(Topics);
-    await user.click(await screen.findByRole("button", { name: "Delete CPU" }));
+    await user.click(await screen.findByRole("button", { name: "More for CPU" }));
+    await user.click(screen.getByRole("menuitem", { name: "Delete topic…" }));
     const dialog = screen.getByRole("dialog", { name: 'Delete "CPU"?' });
     expect(dialog).toHaveTextContent("history isn't affected");
     expect(mocked.deleteTopic).not.toHaveBeenCalled();
@@ -104,7 +105,8 @@ describe("Topics screen", () => {
     given([{ id: 1, name: "CPU", module: 1, tags: [], question_count: 3, short_count: 0 }]);
     const u = userEvent.setup();
     render(Topics);
-    await u.click(await screen.findByRole("button", { name: "Delete module Computer Architecture" }));
+    await u.click(await screen.findByRole("button", { name: "Computer Architecture module actions" }));
+    await u.click(screen.getByRole("menuitem", { name: "Delete module…" }));
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveTextContent('moved to "No module"');
     given([{ id: 1, name: "CPU", module: null, tags: [], question_count: 3, short_count: 0 }], []);
@@ -118,13 +120,33 @@ describe("Topics screen", () => {
     given([{ id: 1, name: "CPU", module: 1, tags: ["hardware"], question_count: 3, short_count: 0 }]);
     const u = userEvent.setup();
     render(Topics);
-    await u.click(await screen.findByRole("button", { name: "Edit tags for CPU" }));
+    await u.click(await screen.findByRole("button", { name: "More for CPU" }));
+    await u.click(screen.getByRole("menuitem", { name: "Edit tags" }));
     const input = screen.getByLabelText("Tags");
     expect(input).toHaveValue("hardware");
     await u.clear(input);
     await u.type(input, "hardware, pipeline ,  ,exam");
     await u.click(screen.getByRole("button", { name: "Save tags" }));
     expect(mocked.setTopicTags).toHaveBeenCalledWith(1, ["hardware", "pipeline", "exam"]);
+  });
+
+  // UI polish: row actions stay out of the way, delete is never the first thing you see
+  it("keeps Delete in the row menu and opens a topic from its name", async () => {
+    given([{ id: 1, name: "CPU", module: 1, tags: [], question_count: 3, short_count: 0 }]);
+    const u = userEvent.setup();
+    const onEdit = vi.fn();
+    render(Topics, { onEdit });
+    await u.click(await screen.findByRole("button", { name: "CPU" }));
+    expect(onEdit).toHaveBeenCalledWith(1);
+    expect(screen.queryByRole("button", { name: /^Delete/ })).toBeNull();
+    const more = screen.getByRole("button", { name: "More for CPU" });
+    expect(more).toHaveAttribute("aria-expanded", "false");
+    await u.click(more);
+    expect(more).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("menuitem", { name: "Delete topic…" })).toBeInTheDocument();
+    await u.keyboard("{Escape}");
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(more).toHaveFocus();
   });
 
   // calendar.feature: A topic's quiz schedule moves with its score (R97)
@@ -145,8 +167,8 @@ describe("Topics screen", () => {
     render(Topics, { onQuizTopics });
     const row = (name: string) => screen.getByRole("cell", { name }).closest("tr")!;
     await screen.findByText("Fortnight step");
-    expect(row("CPU")).toHaveTextContent("TodayWeek step");
-    expect(row("OSI model")).toHaveTextContent("Today", { normalizeWhitespace: true });
+    expect(row("CPU")).toHaveTextContent("Due todayWeek step");
+    expect(row("OSI model")).toHaveTextContent("Due today", { normalizeWhitespace: true });
     expect(row("Memory")).toHaveTextContent("Mon 9 Nov");
     expect(row("TCP/IP")).toHaveTextContent("Quiz it to start");
     expect(screen.getByText(/2 quizzes due today/)).toBeInTheDocument();

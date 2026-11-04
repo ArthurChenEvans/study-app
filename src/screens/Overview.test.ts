@@ -95,4 +95,14 @@ describe("Overview", () => {
     const reasons = await screen.findByRole("list", { name: "Why you got things wrong" });
     expect(within(reasons).getAllByRole("listitem").map((item) => item.textContent?.replace(/\s+/g, " ").trim())).toEqual(["Blank 3", "Misremembered 1"]);
   });
+  it("switches to one point per week once there are many quizzes", async () => {
+    const scores = Array.from({ length: 45 }, (_, n) => ({ day: TODAY - 44 + n, percent: 70, retry: false }));
+    mocked.overview.mockResolvedValue({ Progress: progress({ scores }) });
+    render(Overview, { onNavigate: vi.fn() });
+    expect(await screen.findByRole("heading", { name: "Weekly average score" })).toBeInTheDocument();
+    expect(screen.getByText(/45 quizzes since/)).toBeInTheDocument();
+    const points = screen.getAllByTestId("score-point");
+    expect(points.length).toBeLessThan(10);
+    expect(points.at(-1)).toHaveAttribute("data-hollow", "true");
+  });
 });

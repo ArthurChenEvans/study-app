@@ -20,6 +20,23 @@
   const blank = (kind: NoteKind = "Basic"): Note => ({ topic, kind, front: "", back: "", cues: [], text: "", extra: "" });
   const leech = $derived(editing?.view?.cards.find((card) => card.leech) ?? null);
 
+  // The list: filter by what needs you, or type to find a card.
+  // New and To review are separate: a topic's "due" count includes today's new cards.
+  type Show = "all" | "new" | "due" | "tricky" | "archived";
+  let show = $state<Show>("all");
+  let query = $state("");
+  const isDue = (card: TopicCards["cards"][number]) => !card.archived && !card.is_new && card.due <= today;
+  const counts = $derived({
+    all: data?.cards.length ?? 0,
+    new: data?.cards.filter((card) => card.is_new && !card.archived).length ?? 0,
+    due: data?.cards.filter(isDue).length ?? 0,
+    tricky: data?.cards.filter((card) => card.leech && !card.archived).length ?? 0,
+    archived: data?.cards.filter((card) => card.archived).length ?? 0,
+  });
+  const listed = $derived((data?.cards ?? []).filter((card) =>
+    (show === "all" || (show === "new" && card.is_new && !card.archived) || (show === "due" && isDue(card)) || (show === "tricky" && card.leech && !card.archived) || (show === "archived" && card.archived))
+    && card.front.toLowerCase().includes(query.trim().toLowerCase())));
+
   async function load() {
     [data, today, topics] = await Promise.all([api.topicCards(topic), api.today(), api.topics()]);
   }
@@ -108,7 +125,7 @@
       <div><p class="text-sm text-muted">{data.module ?? "No module"} · {data.cards.length} {data.cards.length === 1 ? "card" : "cards"} · {data.due} due</p><h1 class="mt-1 text-3xl font-semibold">{data.name}</h1></div>
       <div class="flex items-center gap-2">
         {#if !editing}<button class="btn btn-ghost" onclick={() => open(null)}><Plus class="size-4" />New card</button>{/if}
-        <button class="btn {editing || !data.due ? 'btn-outline border-field-border' : 'btn-primary'}" disabled={!data.due} onclick={() => onReview({ Topic: topic })}><Play class="size-4" />Review {data.name}</button>
+        <button class="btn {editing || !data.due ? 'btn-outline border-field-border' : 'btn-primary'}" disabled={!data.due} onclick={() => onReview({ Topic: topic })}><Play class="size-4" />{data.due && !editing ? `Review the ${data.due} due` : `Review ${data.name}`}</button>
       </div>
     </div>
     {#if status && !editing}<p role="status" class="mb-4 text-sm text-muted">{status}</p>{/if}
@@ -117,32 +134,42 @@
       {#if data.cards.length === 0}
         <div class="panel max-w-lg p-8"><p class="font-semibold">No cards in {data.name} yet</p><p class="mt-1 text-sm text-muted">Write a card for something you keep forgetting.</p><button class="btn btn-primary mt-4" onclick={() => open(null)}><Plus class="size-4" />New card</button></div>
       {:else}
+        <div class="mb-4 flex flex-wrap items-center gap-3">
+          <div class="seg" role="radiogroup" aria-label="Show">
+            {#each [["all", "All"], ["new", "New"], ["due", "To review"], ["tricky", "Tricky"], ["archived", "Archived"]] as [key, label] (key)}
+              <button type="button" role="radio" aria-checked={show === key} onclick={() => (show = key as Show)}>{label} <span class="tabular-nums">{counts[key as Show]}</span></button>
+            {/each}
+          </div>
+          <span class="flex-1"></span>
+          <input type="search" class="input input-sm w-72" aria-label="Filter cards" placeholder="Filter cards…" bind:value={query} />
+        </div>
         <div class="panel overflow-hidden">
           <table class="table table-fixed" aria-label="Cards in {data.name}">
             <colgroup><col class="w-[40%]" /><col class="w-[12%]" /><col class="w-[16%]" /><col class="w-[12%]" /><col class="w-[10%]" /><col class="w-[10%]" /></colgroup>
             <thead><tr class="text-muted"><th>Front</th><th>Type</th><th>From</th><th>Next</th><th>Again</th><th><span class="sr-only">Archive</span></th></tr></thead>
             <tbody>
-              {#each data.cards as card (card.id)}
+              {#each listed as card (card.id)}
                 <tr class="hover:bg-base-100">
                   <td><button class="line-clamp-2 py-1 text-left hover:underline {card.archived ? 'text-muted' : ''}" onclick={() => open(card.note)}><Rich inline text={card.front} /></button></td>
                   <td class="text-sm">{card.kind}</td>
                   <td>{#if card.source && card.source !== "Written"}<span class="badge-src">{card.source}</span>{:else}<span class="text-sm text-muted">Written</span>{/if}</td>
-                  <td class="text-sm tabular-nums">{#if card.archived}<span class="flex items-center gap-1 text-muted"><Archive class="size-3.5" />Archived</span>{:else if card.is_new}New{:else}{dueLabel(card.due, today)}{/if}</td>
+                  <td class="text-sm tabular-nums">{#if card.archived}<span class="flex items-center gap-1 text-muted"><Archive class="size-3.5" />Archived</span>{:else if card.is_new}<span class="text-muted">New</span>{:else if isDue(card)}<span class="flex items-center gap-1.5 font-semibold"><span class="due-dot" aria-hidden="true"></span>Due today</span>{:else}{dueLabel(card.due, today)}{/if}</td>
                   <td class="text-sm tabular-nums">{#if card.leech}<span class="flex items-center gap-1 font-semibold text-wrong-ink"><Flag class="size-3.5" />{card.lapses}×</span>{:else if card.lapses}{card.lapses}×{:else}<span class="text-muted">None</span>{/if}</td>
-                  <td class="text-right"><button class="btn btn-ghost btn-sm btn-square" aria-label="{card.archived ? 'Bring back' : 'Archive'} card" title={card.archived ? "Bring back" : "Archive"} onclick={() => toggleArchive(card.id, !card.archived)}>{#if card.archived}<ArchiveRestore class="size-4" />{:else}<Archive class="size-4" />{/if}</button></td>
+                  <td class="text-right"><button class="row-actions btn btn-ghost btn-sm btn-square" aria-label="{card.archived ? 'Bring back' : 'Archive'} card" title={card.archived ? "Bring back" : "Archive"} onclick={() => toggleArchive(card.id, !card.archived)}>{#if card.archived}<ArchiveRestore class="size-4" />{:else}<Archive class="size-4" />{/if}</button></td>
                 </tr>
               {/each}
             </tbody>
           </table>
+          {#if listed.length === 0}<p class="px-6 py-6 text-sm text-muted">No cards match.</p>{/if}
         </div>
       {/if}
     {:else}
       {@const note = editing.note}
-      <div class="grid grid-cols-[1fr_300px] items-start gap-12">
+      <div class="grid grid-cols-[1fr_320px] items-start gap-10">
         <form class="space-y-8" onsubmit={save}>
           {#if leech}
-            <div class="panel flex items-start gap-4 p-5" role="note"><Flag class="mt-0.5 size-5 shrink-0" />
-              <div><p class="font-semibold">You've pressed Again on this card {leech.lapses} times</p><p class="mt-1 text-sm text-muted">It probably needs a better cue, or splitting into smaller cards. Ask yourself why the answer wasn't obvious, then write that cue as the front. Saving a change clears this flag. The card keeps its schedule.</p></div></div>
+            <div class="panel flex items-start gap-3 px-4 py-3" role="note"><Flag class="mt-0.5 size-4 shrink-0" />
+              <p><span class="font-semibold">Again {leech.lapses} times.</span> <span class="text-muted">Ask why the answer wasn't obvious, and write that cue as the front. Saving clears this flag and keeps the schedule.</span></p></div>
           {/if}
           <div class="flex items-center justify-between gap-4"><span class="text-sm font-semibold">Card type</span>
             <div class="seg" role="radiogroup" aria-label="Card type">
@@ -163,53 +190,55 @@
               <label class="text-sm font-semibold" for="cloze-extra">Extra on the back <span class="font-normal text-muted">(optional)</span></label>
               <textarea id="cloze-extra" class="textarea w-full text-[15px]" rows="2" placeholder="Why it matters, or where it came from…" bind:value={note.extra}></textarea>
             </div>
-            {@const numbers = clozeNumbers(note.text)}
-            <section class="panel p-6" aria-label="Preview">
-              <div class="flex items-baseline justify-between"><p class="eyebrow">Preview</p><p class="text-sm text-muted">{numbers.length ? `Makes ${numbers.length} ${numbers.length === 1 ? "card" : "cards"}` : "No gaps yet"}</p></div>
-              {#if numbers.length}
-                <ol class="mt-4 space-y-4">{#each numbers as number (number)}<li class="flex gap-4"><span class="w-8 shrink-0 pt-0.5 text-xs tabular-nums text-muted">c{number}</span><div class="text-[15px]"><Rich inline text={clozeFront(note.text, number)} /></div></li>{/each}</ol>
-              {/if}
-            </section>
           {:else}
             {#if note.kind === "Reversed"}<p class="-mt-4 text-sm text-muted">Makes two cards: front to back, and back to front. Each is scheduled on its own. Best when both directions are worth knowing, like a term and its meaning.</p>{/if}
             <div class="space-y-2">
               <label class="text-sm font-semibold" for="card-front">Front</label>
               <textarea id="card-front" class="textarea w-full text-[15px]" rows="3" placeholder="e.g. I want X to happen, what handles it?…" bind:value={note.front}></textarea>
-              <p class="text-sm text-muted">Write the cue as the thought you'll actually have when you need this, not as "what is the name of".</p>
+              <p class="text-sm text-muted">Write it as the thought you'll have when you need this, not "what is the name of".</p>
             </div>
             <div class="space-y-2">
               <label class="text-sm font-semibold" for="card-back">Back</label>
               <textarea id="card-back" class="textarea w-full font-mono text-sm" rows="4" bind:value={note.back}></textarea>
-              <p class="text-sm text-muted">Markdown, <code>code</code>, maths in <code>$…$</code> and images, same as questions.</p>
+              <p class="text-sm text-muted">Markdown, <code>code</code>, maths in <code>$…$</code> and images.</p>
             </div>
-            {#if note.front.trim() || note.back.trim()}
-              <section class="panel p-6" aria-label="Preview">
-                <p class="eyebrow">Preview</p>
-                <div class="mt-3 text-[15px]"><Rich text={note.front} /></div>
-                <hr class="my-4 border-base-300" />
-                <div class="text-[15px]"><Rich text={note.back} /></div>
-              </section>
-            {/if}
             {#if note.kind === "Basic"}
               <fieldset class="space-y-3">
-                <legend class="text-sm font-semibold">More cues for the same answer <span class="font-normal text-muted">(optional)</span></legend>
+                {#if note.cues.length}<legend class="text-sm font-semibold">More cues for the same answer <span class="font-normal text-muted">(optional)</span></legend>{/if}
                 {#each note.cues as _, index (index)}
                   <div class="flex items-center gap-2"><input class="input input-sm flex-1" aria-label="Extra cue {index + 1}" bind:value={note.cues[index]} /><button type="button" class="btn btn-ghost btn-sm btn-square" aria-label="Remove extra cue {index + 1}" onclick={() => note.cues.splice(index, 1)}><X class="size-4" /></button></div>
                 {/each}
-                <button type="button" class="btn btn-ghost btn-sm" onclick={() => note.cues.push("")}><Plus class="size-4" />Add another cue</button>
-                <p class="text-sm text-muted">Each cue becomes its own card with this back, scheduled on its own. Useful when the same fact comes up from different starting points.</p>
+                <div class="flex flex-wrap items-center gap-3"><button type="button" class="btn btn-ghost btn-sm -ml-3" onclick={() => note.cues.push("")}><Plus class="size-4" />Add another cue for the same answer</button><span class="text-sm text-muted">Each cue becomes its own card.</span></div>
               </fieldset>
             {/if}
           {/if}
 
           {#if error}<p role="alert" class="text-sm text-error">{error}</p>{/if}
-          <div class="flex items-center gap-3 border-t border-base-300 pt-6">
+          <!-- The save bar stays in reach however long the card gets. -->
+          <div class="sticky bottom-0 z-10 flex items-center gap-3 border-t border-base-300 bg-base-100 py-4">
             <button type="submit" class="btn btn-primary">{editing.id === null ? `Save ${count(note)}` : "Save changes"} <kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">S</kbd></button>
             <button type="button" class="btn btn-ghost" onclick={() => (editing = null)}>Cancel</button>
-            {#if editing.id !== null}<button type="button" class="btn btn-ghost ml-auto" onclick={() => (deleting = true)}><Trash2 class="size-4" />Delete</button>{/if}
+            {#if editing.id !== null}<button type="button" class="btn btn-ghost ml-auto" onclick={() => (deleting = true)}><Trash2 class="size-4" />Delete…</button>{/if}
           </div>
         </form>
-        <aside class="panel sticky top-8 p-6" aria-label="Card details">
+        <div class="sticky top-8 space-y-4">
+        {#if note.kind === "Cloze"}
+          {@const numbers = clozeNumbers(note.text)}
+          <section class="panel p-6" aria-label="Preview">
+            <div class="flex items-baseline justify-between"><p class="eyebrow">Preview</p><p class="text-sm text-muted">{numbers.length ? `Makes ${numbers.length} ${numbers.length === 1 ? "card" : "cards"}` : "No gaps yet"}</p></div>
+            {#if numbers.length}
+              <ol class="mt-4 space-y-4">{#each numbers as number (number)}<li class="flex gap-4"><span class="w-8 shrink-0 pt-0.5 text-xs tabular-nums text-muted">c{number}</span><div class="text-[15px]"><Rich inline text={clozeFront(note.text, number)} /></div></li>{/each}</ol>
+            {/if}
+          </section>
+        {:else if note.front.trim() || note.back.trim()}
+          <section class="panel p-6" aria-label="Preview">
+            <p class="eyebrow">Preview</p>
+            <div class="mt-3 text-[15px]"><Rich text={note.front} /></div>
+            <hr class="my-4 border-base-300" />
+            <div class="text-[15px]"><Rich text={note.back} /></div>
+          </section>
+        {/if}
+        <aside class="panel p-6" aria-label="Card details">
           <p class="eyebrow">{editing.view && editing.view.cards.length > 1 ? "Cards" : "Card"}</p>
           <dl class="mt-4 space-y-3 text-sm">
             {#if editing.id === null}
@@ -232,6 +261,7 @@
             {/if}
           </dl>
         </aside>
+        </div>
       </div>
     {/if}
   {/if}

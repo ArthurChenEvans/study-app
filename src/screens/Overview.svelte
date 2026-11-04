@@ -7,6 +7,7 @@
   import PageHeader from "../components/PageHeader.svelte";
   import ScoreChart from "../components/ScoreChart.svelte";
   import SegBar from "../components/SegBar.svelte";
+  import { WEEKLY_AFTER, weekly } from "../lib/weekly";
 
   let { onNavigate }: { onNavigate: (screen: Screen) => void } = $props();
 
@@ -19,7 +20,11 @@
   const total = (tally: Tally) => right(tally) + tally.wrong + tally.unanswered;
   const name = (id: number) => topics.find((topic) => topic.id === id)?.name ?? "Deleted topic";
   const maxReason = $derived(Math.max(1, ...(progress?.reasons.map(([, count]) => count) ?? [1])));
-  const points = $derived(progress?.scores.map((score) => ({ label: dayLabel(score.day, today), percent: score.percent, retry: score.retry, detail: score.retry ? "Retry" : "Quiz" })) ?? []);
+  const scores = $derived(progress?.scores ?? []);
+  const byWeek = $derived(scores.length > WEEKLY_AFTER);
+  const weeks = $derived(byWeek ? weekly(scores, today) : []);
+  const weekPoints = $derived(weeks.map((week) => ({ label: dayLabel(week.start, today), percent: week.percent, retry: false, hollow: week.partial, detail: `${week.partial ? "This week so far, " : "Week of "}${week.quizzes} ${week.quizzes === 1 ? "quiz" : "quizzes"}` })));
+  const quizPoints = $derived(progress?.scores.map((score) => ({ label: dayLabel(score.day, today), percent: score.percent, retry: score.retry, detail: score.retry ? "Retry" : "Quiz" })) ?? []);
 
   const steps: { icon: typeof Library; title: string; text: string; screen: Screen; action: string }[] = [
     { icon: Library, title: "Create a topic", text: "A topic holds questions on one subject, like CPU.", screen: "topics", action: "Create topic" },
@@ -83,10 +88,14 @@
 
     <section class="panel rise rise-2 mt-6 p-6">
       <div class="flex items-baseline justify-between">
-        <div><h2 class="font-semibold">Score per quiz</h2><p class="text-sm text-muted">% right. Hollow points are retries.</p></div>
+        {#if byWeek}
+          <div><h2 class="font-semibold">Weekly average score</h2><p class="text-sm text-muted">{scores.length} quizzes since {dayLabel(scores[0].day, today)}, one point per week. Hollow is this week so far.</p></div>
+        {:else}
+          <div><h2 class="font-semibold">Score per quiz</h2><p class="text-sm text-muted">% right. Hollow points are retries.</p></div>
+        {/if}
         <button class="btn btn-ghost btn-sm" onclick={() => onNavigate("history")}>History <ArrowRight class="size-4" /></button>
       </div>
-      <div class="mt-4"><ScoreChart {points} /></div>
+      <div class="mt-4">{#if byWeek}<ScoreChart points={weekPoints} title="Weekly average score" detailLabel="Quizzes" />{:else}<ScoreChart points={quizPoints} />{/if}</div>
     </section>
 
     <section class="mt-6 grid grid-cols-2 gap-6">

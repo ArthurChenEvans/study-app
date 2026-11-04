@@ -48,7 +48,7 @@ describe("Topic cards", () => {
     render(TopicCards, handlers);
     const table = await screen.findByRole("table", { name: "Cards in CPU" });
     const rows = within(table).getAllByRole("row").slice(1);
-    expect(rows[0]).toHaveTextContent("Today");
+    expect(rows[0]).toHaveTextContent("Due today");
     expect(rows[1]).toHaveTextContent("From quiz mistake");
     expect(rows[1]).toHaveTextContent("Thu 5 Nov");
     expect(rows[1]).toHaveTextContent("9×");
@@ -58,8 +58,30 @@ describe("Topic cards", () => {
     expect(mocked.archiveCard).toHaveBeenCalledWith(10, true);
     await u.click(within(rows[2]).getByRole("button", { name: "Bring back card" }));
     expect(mocked.archiveCard).toHaveBeenCalledWith(12, false);
-    await u.click(screen.getByRole("button", { name: /Review CPU/ }));
+    await u.click(screen.getByRole("button", { name: /Review the 3 due/ }));
     expect(handlers.onReview).toHaveBeenCalledWith({ Topic: 1 });
+  });
+
+  it("filters to what needs you, or by typing", async () => {
+    const u = userEvent.setup();
+    render(TopicCards, props());
+    const table = await screen.findByRole("table", { name: "Cards in CPU" });
+    const rows = () => within(table).getAllByRole("row").slice(1);
+    expect(rows()[0]).toHaveTextContent("Due today");
+    await u.click(screen.getByRole("radio", { name: "To review 1" }));
+    expect(rows()).toHaveLength(1);
+    await u.click(screen.getByRole("radio", { name: "New 0" }));
+    expect(screen.getByText("No cards match.")).toBeInTheDocument();
+    await u.click(screen.getByRole("radio", { name: "Tricky 1" }));
+    expect(rows()[0]).toHaveTextContent("Speedup");
+    await u.click(screen.getByRole("radio", { name: "Archived 1" }));
+    expect(rows()[0]).toHaveTextContent("Old card");
+    await u.click(screen.getByRole("radio", { name: "All 3" }));
+    await u.type(screen.getByRole("searchbox", { name: "Filter cards" }), "design");
+    expect(rows()).toHaveLength(1);
+    await u.clear(screen.getByRole("searchbox", { name: "Filter cards" }));
+    await u.type(screen.getByRole("searchbox", { name: "Filter cards" }), "nothing like it");
+    expect(screen.getByText("No cards match.")).toBeInTheDocument();
   });
 
   it("shows a notice it was opened with", async () => {
@@ -130,7 +152,7 @@ describe("Topic cards", () => {
   it("opens a leech note with the rewrite prompt and details, and deletes it", async () => {
     const u = userEvent.setup();
     render(TopicCards, props({ editNote: 101 }));
-    expect(await screen.findByText("You've pressed Again on this card 9 times")).toBeInTheDocument();
+    expect(await screen.findByRole("note")).toHaveTextContent("Again 9 times.");
     const aside = screen.getByRole("complementary", { name: "Card details" });
     expect(aside).toHaveTextContent("Quiz mistake");
     expect(aside).toHaveTextContent("21 · 9");

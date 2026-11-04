@@ -1,7 +1,8 @@
 <script lang="ts">
   // search.feature (R31, R50)
-  import { ArrowDown, ArrowUp, ArrowUpDown, Search as SearchIcon, X } from "@lucide/svelte";
-  import { api, type Id, type ModuleRow, type SearchHit, type SearchQuery } from "../lib/api";
+  import { ArrowDown, ArrowUp, Search as SearchIcon, X } from "@lucide/svelte";
+  import { api, type Id, type Matched, type ModuleRow, type SearchHit, type SearchQuery } from "../lib/api";
+  import Highlight from "../components/Highlight.svelte";
   import PageHeader from "../components/PageHeader.svelte";
   import { dayFromUtc, dayLabel } from "../lib/dates";
 
@@ -34,12 +35,33 @@
 
   api.modules().then((rows) => (modules = rows));
 
+  const sorts: { value: SearchQuery["sort"]; label: string }[] = [
+    { value: "Question", label: "Question A–Z" },
+    { value: "Topic", label: "Topic" },
+    { value: "Edited", label: "Last edited" },
+  ];
+
   function sortBy(column: SearchQuery["sort"]) {
-    if (sort === column) descending = !descending;
-    else {
-      sort = column;
-      descending = column === "Edited";
+    sort = column;
+    descending = column === "Edited";
+  }
+
+  const matchLabel = (matched: Matched) => ("Option" in matched ? ["Option", matched.Option] : "Explanation" in matched ? ["Explanation", matched.Explanation] : ["Tag", matched.Tag]);
+
+  // From the search box, Down goes to the first result; Up and Down move between them.
+  let resultList = $state<HTMLOListElement>();
+  function moveFocus(event: KeyboardEvent, from: number | null) {
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    const buttons = [...(resultList?.querySelectorAll<HTMLButtonElement>("button[data-result]") ?? [])];
+    if (!buttons.length) return;
+    event.preventDefault();
+    if (from === null) {
+      if (event.key === "ArrowDown") buttons[0].focus();
+      return;
     }
+    const next = from + (event.key === "ArrowDown" ? 1 : -1);
+    if (next < 0) document.querySelector<HTMLInputElement>('input[type="search"]')?.focus();
+    else buttons[Math.min(next, buttons.length - 1)].focus();
   }
 
   function clear() {
@@ -56,21 +78,13 @@
   }
 </script>
 
-{#snippet header(label: string, column: SearchQuery["sort"])}
-  <th>
-    <button class="flex items-center gap-1" aria-label="Sort by {label.toLowerCase()}" onclick={() => sortBy(column)}>
-      {label}
-      {#if sort !== column}<ArrowUpDown class="size-3" />{:else if descending}<ArrowDown class="size-3" />{:else}<ArrowUp class="size-3" />{/if}
-    </button>
-  </th>
-{/snippet}
 
 <div class="mx-auto max-w-6xl px-12 pb-24">
   <PageHeader title="Search" />
   <label class="input input-lg flex w-full items-center gap-3">
     <SearchIcon class="size-5" />
     <!-- svelte-ignore a11y_autofocus -->
-    <input type="search" class="grow" aria-label="Search" placeholder="Questions, options, explanations, tags, sources…" bind:value={text} autofocus />
+    <input type="search" class="grow" aria-label="Search" placeholder="Questions, options, explanations, tags, sources…" bind:value={text} autofocus onkeydown={(event) => moveFocus(event, null)} />
   </label>
 
   <div class="mt-6 flex items-center gap-1 border-b border-base-300" role="tablist" aria-label="Categories">
@@ -100,21 +114,34 @@
   {/if}
 
   {#if questions.length}
-    <div class="panel mt-6 overflow-hidden">
-      <table class="table" aria-label="Questions">
-        <thead><tr class="text-muted">{@render header("Question", "Question")}{@render header("Topic", "Topic")}<th>Tags</th>{@render header("Edited", "Edited")}</tr></thead>
-        <tbody>
-          {#each questions as question (question.id)}
-            <tr class="hover:bg-base-100">
-              <td class="max-w-md"><button class="text-left hover:underline" onclick={() => onOpenTopic(question.topic)}>{question.text}</button></td>
-              <td>{question.topic_name}</td>
-              <td>{#each question.tags as name (name)}<span class="badge badge-ghost badge-sm mr-1">{name}</span>{/each}</td>
-              <td class="text-sm text-muted">{today ? dayLabel(dayFromUtc(question.edited), today) : ""}</td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
+    <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
+      <p class="text-sm text-muted" aria-live="polite">{questions.length} {questions.length === 1 ? "question matches" : "questions match"}{text.trim() ? ` "${text.trim()}"` : ""}</p>
+      <div class="flex items-center gap-2 text-sm">
+        <span class="text-muted" id="sort-label">Sort</span>
+        <div class="seg" role="radiogroup" aria-labelledby="sort-label">
+          {#each sorts as option (option.value)}<button type="button" role="radio" aria-checked={sort === option.value} onclick={() => sortBy(option.value)}>{option.label}</button>{/each}
+        </div>
+        <button class="btn btn-ghost btn-sm btn-square" aria-label={descending ? "Descending, switch to ascending" : "Ascending, switch to descending"} onclick={() => (descending = !descending)}>
+          {#if descending}<ArrowDown class="size-4" />{:else}<ArrowUp class="size-4" />{/if}
+        </button>
+      </div>
     </div>
+    <ol bind:this={resultList} class="panel mt-3 divide-y" aria-label="Questions">
+      {#each questions as question, index (question.id)}
+        <li class="search-result">
+          <button class="w-full px-6 py-3 text-left" data-result onclick={() => onOpenTopic(question.topic)} onkeydown={(event) => moveFocus(event, index)} aria-describedby="where-{question.id}">
+            <span class="block text-[15px]"><Highlight text={question.text} term={text} /></span>
+            {#if question.matched}{@const [kind, value] = matchLabel(question.matched)}<span class="mt-1 block text-sm text-muted"><span class="font-semibold">{kind}:</span> <Highlight text={value} term={text} /></span>{/if}
+          </button>
+          <span id="where-{question.id}" class="search-meta">
+            {question.topic_name}
+            {#each question.tags as name (name)}<span class="badge badge-ghost badge-sm">{name}</span>{/each}
+            {#if sort === "Edited" && today}<span>· {dayLabel(dayFromUtc(question.edited), today)}</span>{/if}
+          </span>
+        </li>
+      {/each}
+    </ol>
+    <p class="mt-2 text-xs text-muted"><kbd class="kbd kbd-xs">↑</kbd> <kbd class="kbd kbd-xs">↓</kbd> to move, <kbd class="kbd kbd-xs">Enter</kbd> to open</p>
   {/if}
 
   {#if others.length}

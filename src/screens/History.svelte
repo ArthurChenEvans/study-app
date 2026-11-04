@@ -55,11 +55,12 @@
 
     <div class="panel mt-8 overflow-hidden">
       <table class="table">
-        <thead><tr class="text-muted"><th>Date</th><th>Topics</th><th class="w-56">Result</th><th class="text-right">Score</th><th></th><th></th></tr></thead>
+        <thead><tr class="text-muted"><th>Date</th><th>Topics</th><th class="w-56">Result</th><th class="text-right">Score</th><th><span class="sr-only">Status</span></th></tr></thead>
         <tbody>
           {#each rows as row (row.id)}
-            <tr class="hover:bg-base-100" aria-label="Quiz {row.id}">
-              <td class="tabular-nums">{dayLabel(row.day, today)}</td>
+            <!-- The whole row opens the results: one button, stretched over the row. -->
+            <tr class="link-row hover:bg-base-100" aria-label="Quiz {row.id}">
+              <td class="tabular-nums"><button class="row-link" onclick={() => onView(row.id)}><span class="sr-only">View results from</span>{" "}{dayLabel(row.day, today)}</button></td>
               <td>{names(row.topics)}</td>
               <td><SegBar tally={row.summary.overall} height={6} /></td>
               <td class="text-right font-semibold tabular-nums">{right(row.summary.overall)} / {total(row.summary.overall)}</td>
@@ -67,7 +68,6 @@
                 {#if row.retry_of !== null}<span class="badge badge-ghost badge-sm gap-1"><RotateCcw class="size-3" />Retry</span>
                 {:else if row.status === "Incomplete"}<span class="badge badge-ghost badge-sm gap-1"><CirclePause class="size-3" />Incomplete</span>{/if}
               </td>
-              <td class="text-right"><button class="btn btn-ghost btn-sm" onclick={() => onView(row.id)}>View</button></td>
             </tr>
           {/each}
         </tbody>

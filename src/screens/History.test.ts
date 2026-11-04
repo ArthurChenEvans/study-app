@@ -60,7 +60,7 @@ describe("History", () => {
     const onView = vi.fn();
     mocked.history.mockResolvedValue([row(7, TODAY, tally(1, 0, 0))]);
     render(History, { onView });
-    await userEvent.click(await screen.findByRole("button", { name: "View" }));
+    await userEvent.click(await screen.findByRole("button", { name: /^View results from / }));
     expect(onView).toHaveBeenCalledWith(7);
   });
 });

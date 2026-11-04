@@ -4,6 +4,7 @@
   import { BookOpen, Check, CircleCheck, CircleX, Flag, LogOut, Timer, Undo2, X } from "@lucide/svelte";
   import { api, errorMessage, type AnswerResult, type Feedback, type Id, type QuizView, type TrackCell } from "../lib/api";
   import Rich from "../components/Rich.svelte";
+  import { play } from "../lib/sound";
 
   let { initial, onFinished }: { initial: QuizView; onFinished: (attempt: Id) => void } = $props();
 
@@ -77,6 +78,7 @@
       const result = await action();
       if (result.feedback) {
         feedback = result.feedback;
+        play(result.feedback.right ? "right" : "wrong");
         pendingNext = result.next;
       } else show(result.next);
     } catch (failure) {
@@ -189,9 +191,9 @@
 
   function optionState(index: number) {
     if (!feedback) return picked.includes(index) ? "border-primary ring-1 ring-primary" : "border-base-300 hover:border-field-border";
-    if (feedback.correct.includes(index)) return "is-right";
-    if (picked.includes(index)) return "is-wrong";
-    return "border-base-300 opacity-60";
+    if (feedback.correct.includes(index)) return "is-right row-right";
+    if (picked.includes(index)) return "is-wrong row-wrong";
+    return "border-base-300 text-muted";
   }
 </script>
 
@@ -212,13 +214,14 @@
       </span>
       <button class="btn btn-ghost btn-sm font-normal" onclick={quit} disabled={busy}><LogOut class="size-4" />Quit</button>
     </div>
-    <div class="track mt-4" aria-label="Progress, question {current.position} of {current.total}">
+    <div class="track mt-4" role="progressbar" aria-valuemin={1} aria-valuemax={current.total} aria-valuenow={current.position} aria-label="Progress" aria-valuetext="Question {current.position} of {current.total}">
       {#each current.track as cell, index (index)}<span style={trackColour[cell]}></span>{/each}
     </div>
   </div>
 
   <div class="flex-1 px-12 py-12">
     <div class="mx-auto max-w-prose">
+      {#key current.position}<div class="rise">
       {#if current.short}<p class="eyebrow">Short answer</p>
       {:else if current.multiple}<p class="eyebrow">Select all that apply{#if current.answers_to_pick} · <span>Pick {current.answers_to_pick}</span>{/if}</p>{/if}
       <div role="heading" aria-level="1" class="mt-2 text-xl leading-snug"><Rich text={current.text} /></div>
@@ -235,7 +238,10 @@
             aria-pressed={picked.includes(option.index)}
             onclick={() => pick(option.index)}
           >
-            <kbd class="kbd kbd-sm tabular-nums">{position + 1}</kbd> <Rich inline text={option.text} class="flex-1" />
+            {#if feedback?.correct.includes(option.index)}<span class="answer-mark answer-mark-right pop"><Check class="size-4" aria-hidden="true" /><span class="sr-only">{position + 1}</span></span>
+            {:else if feedback && picked.includes(option.index)}<span class="answer-mark answer-mark-wrong pop"><X class="size-4" aria-hidden="true" /><span class="sr-only">{position + 1}</span></span>
+            {:else}<kbd class="kbd kbd-sm tabular-nums">{position + 1}</kbd>{/if}
+            <Rich inline text={option.text} class="flex-1" />
             {#if feedback?.correct.includes(option.index)}<span class="flex items-center gap-1 text-sm font-semibold text-right-ink"><Check class="size-4" />Correct</span>
             {:else if feedback && picked.includes(option.index)}<span class="flex items-center gap-1 text-sm font-semibold text-wrong-ink"><X class="size-4" />Your pick</span>{/if}
           </button>
@@ -245,8 +251,8 @@
 
       {#if feedback?.short && verdict}
         {@const short = feedback.short}
-        <div class="panel rise mt-8 p-6" role="status">
-          <p class="flex flex-wrap items-center gap-2 font-semibold {feedback.right ? 'text-right-ink' : 'text-wrong-ink'}">
+        <div class="panel rise mt-8 p-6 {feedback.right ? 'feedback-right' : 'feedback-wrong'}" role="status">
+          <p class="flex flex-wrap items-center gap-2 text-lg font-semibold {feedback.right ? 'text-right-ink' : 'text-wrong-ink'}">
             {#if feedback.right}<CircleCheck class="size-5" />{:else}<CircleX class="size-5" />{/if}{verdict.label}
             {#if verdict.note}<span class="font-normal text-muted">{verdict.note}</span>{/if}
             {#if short.overruled}<span class="overruled">You overruled this</span>{/if}
@@ -273,8 +279,8 @@
           {/if}
         </div>
       {:else if feedback}
-        <div class="panel rise mt-8 p-6" role="status">
-          <p class="flex items-center gap-2 font-semibold {feedback.right ? 'text-right-ink' : 'text-wrong-ink'}">
+        <div class="panel rise mt-8 p-6 {feedback.right ? 'feedback-right' : 'feedback-wrong'}" role="status">
+          <p class="flex items-center gap-2 text-lg font-semibold {feedback.right ? 'text-right-ink' : 'text-wrong-ink'}">
             {#if feedback.right}<CircleCheck class="size-5" />Correct{:else}<CircleX class="size-5" />{feedback.auto_reason === "Incomplete" ? "Wrong: incomplete, you missed a correct option" : feedback.auto_reason === "TimedOut" ? "Wrong: time ran out" : "Wrong"}{/if}
             {#if current.flagged}<span class="badge guessed-chip ml-2"><Flag class="size-3" />Guessed</span>{/if}
           </p>
@@ -282,6 +288,8 @@
           {#each feedback.citations as citation, index (index)}<p class="mt-3 flex items-center gap-2 text-sm text-muted"><BookOpen class="size-4" />{citation.location}</p>{/each}
         </div>
       {/if}
+
+      </div>{/key}
 
       {#if error}<p role="alert" class="mt-6 text-sm text-error">{error}</p>{/if}
 

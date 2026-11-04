@@ -83,12 +83,15 @@ describe("Card review", () => {
   });
 
   // flashcards.feature: A card that keeps slipping asks to be rewritten
-  it("offers to rewrite a leech and leaves the session to edit", async () => {
+  it("offers to rewrite a leech only after the answer is shown, and leaves to edit", async () => {
     mocked.startReview.mockResolvedValueOnce({ Card: { ...card, leech: true, lapses: 9 } });
     mocked.noteView.mockResolvedValue({ id: 100, source: null, note: { topic: 3, kind: "Basic", front: "", back: "", cues: [], text: "", extra: "" }, cards: [] });
     const u = userEvent.setup();
     const handlers = props();
     render(CardReview, handlers);
+    await screen.findByRole("button", { name: /Show answer/ });
+    expect(screen.queryByRole("note")).toBeNull();
+    await u.keyboard(" ");
     const note = await screen.findByRole("note");
     expect(note).toHaveTextContent("Again 9 times");
     await u.keyboard("e");

@@ -69,7 +69,7 @@ describe("Session review", () => {
 
     expect(await screen.findByText("Something else")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Finish review/ })).toBeDisabled();
-    await u.click(screen.getByRole("radio", { name: /Nothing, just keep it logged/ }));
+    await u.click(screen.getByRole("radio", { name: /^Nothing/ }));
     await u.click(screen.getByRole("button", { name: /Finish review/ }));
     expect(mocked.reviewStruggle).toHaveBeenLastCalledWith(3, "Nothing");
 
@@ -133,7 +133,9 @@ describe("Drills", () => {
     render(DrillSession, { ids: [5, 6], onLeave });
     expect(await screen.findByRole("heading", { name: drill.task })).toBeInTheDocument();
     expect(screen.getByText(/Off-by-one in loops · Rust · from Study app/)).toBeInTheDocument();
-    expect(screen.getByText('Mon 2 Nov, Study app: "Loop ran once too often"'.replace("Mon 2 Nov", "Yesterday"))).toBeInTheDocument();
+    expect(screen.getByText('"Loop ran once too often"')).toBeInTheDocument();
+    expect(screen.getByText("Yesterday, Study app")).toBeInTheDocument();
+    expect(screen.queryByRole("timer")).toBeNull();
     await u.click(screen.getByText("Show the hints"));
     expect(screen.getByText("Use 0..len")).toBeVisible();
     await u.type(screen.getByLabelText(/Note/), "second-guessed the bound");
@@ -141,6 +143,7 @@ describe("Drills", () => {
     await u.keyboard("2");
     expect(mocked.rateDrill).toHaveBeenCalledWith(5, "Shaky", expect.any(Number), "second-guessed the bound");
     expect(await screen.findByRole("heading", { name: "Again tomorrow" })).toBeInTheDocument();
+    expect(screen.getByText(/^Took \d+:\d\d$/)).toBeInTheDocument();
     expect(screen.getByText("second-guessed the bound")).toBeInTheDocument();
     await u.keyboard("{Enter}");
     expect(await screen.findByRole("heading", { name: "Mirror a mug with a clean seam" })).toBeInTheDocument();
@@ -159,9 +162,37 @@ describe("Drills", () => {
     await u.click(await screen.findByRole("button", { name: /Struggled/ }));
     await u.click(await screen.findByRole("button", { name: /Move it to another day/ }));
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByLabelText("Do it on")).toHaveValue("2026-11-05");
+    // Tomorrow is where it is now, so the next quick pick is chosen.
+    expect(within(dialog).getByRole("radio", { name: /Tomorrow, Wed 4 Nov/ })).not.toBeChecked();
+    expect(within(dialog).getByText("where it is now")).toBeInTheDocument();
+    expect(within(dialog).getByRole("radio", { name: /Saturday, 7 Nov/ })).toBeChecked();
+    await u.click(within(dialog).getByRole("radio", { name: /Another day/ }));
+    expect(within(dialog).getByLabelText("Pick a day")).toHaveValue("2026-11-05");
     await u.click(within(dialog).getByRole("button", { name: /Move to Thu 5 Nov/ }));
     expect(mocked.moveDrill).toHaveBeenCalledWith(5, TODAY + 2);
     expect(await screen.findByRole("heading", { name: "Again on Fri 6 Nov" })).toBeInTheDocument();
+  });
+  it("groups the same struggle logged several times", async () => {
+    mocked.drill.mockResolvedValue({ ...drill, due: TODAY, from: [
+      { day: TODAY - 1, project_name: "Networks past paper", what: "Counted one extra host" },
+      { day: TODAY - 9, project_name: "Networks past paper", what: "Counted one extra host" },
+      { day: TODAY - 20, project_name: "Study app", what: "Loop ran once too often" },
+    ] });
+    render(DrillSession, { ids: [5] });
+    expect(await screen.findByText("2 times in Networks past paper, last yesterday")).toBeInTheDocument();
+    expect(screen.getAllByText('"Counted one extra host"')).toHaveLength(1);
+  });
+
+  it("picks a choice with the number keys, but not while typing", async () => {
+    const u = userEvent.setup();
+    mocked.strugglesToReview.mockResolvedValue([struggle(1, { kind: "Unsure" })]);
+    render(SessionReview, { project: 1 });
+    await screen.findByText("Struggle 1", { selector: "p.text-lg" });
+    await u.keyboard("2");
+    expect(screen.getByRole("radio", { name: /Add to a recall checklist/ })).toBeChecked();
+    await u.keyboard("3");
+    await u.type(screen.getByLabelText("Issue"), "4");
+    expect(screen.getByRole("radio", { name: /Schedule a drill/ })).toBeChecked();
+    expect(screen.getByLabelText("Issue")).toHaveValue("4");
   });
 });

@@ -1,6 +1,7 @@
 <script lang="ts">
   // sources.feature (R13, R44 to R46)
-  import { BookOpen, Pencil, Plus, Trash2 } from "@lucide/svelte";
+  import { BookOpen, Plus } from "@lucide/svelte";
+  import RowMenu from "../components/RowMenu.svelte";
   import { api, errorMessage, type SourceFields, type SourceRow, type TopicRow } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
   import Rich from "../components/Rich.svelte";
@@ -43,7 +44,6 @@
     { key: "url", label: "URL", wide: true },
   ];
 
-  const maxCited = $derived(Math.max(1, ...sources.map((source) => source.cited_by_questions)));
   const topicName = (id: number) => topics.find((topic) => topic.id === id)?.name ?? "Deleted topic";
 
   async function load() {
@@ -101,13 +101,11 @@
         <li class="flex gap-10 p-6" aria-label={source.fields.authors}>
           <p class="max-w-prose flex-1 pl-8 -indent-8 leading-relaxed"><Rich inline text={source.apa} /></p>
           <div class="w-64 shrink-0 text-sm">
-            <p class="flex items-baseline justify-between"><span class="text-muted">Cited by</span>{" "}<span class="font-semibold tabular-nums">{source.cited_by_questions} questions</span></p>
-            <div class="mt-2 h-1.5 rounded-full bg-base-200"><div class="h-full rounded-full" style="width: {(source.cited_by_questions / maxCited) * 100}%; background: var(--chart-ink)"></div></div>
+            <p><span class="text-muted">Cited by</span> <span class="font-semibold tabular-nums">{source.cited_by_questions} {source.cited_by_questions === 1 ? "question" : "questions"}</span></p>
             <p class="mt-3 flex flex-wrap gap-1">{#each source.used_by as id (id)}<span class="badge badge-ghost badge-sm">{topicName(id)}</span>{:else}<span class="text-muted">Not cited yet</span>{/each}</p>
           </div>
-          <div class="flex shrink-0 items-start gap-1">
-            <button class="btn btn-ghost btn-sm btn-square" aria-label="Edit source" title="Edit" onclick={() => edit(source)}><Pencil class="size-4" /></button>
-            <button class="btn btn-ghost btn-sm btn-square" aria-label="Delete source" title="Delete" onclick={() => (deleting = source)}><Trash2 class="size-4" /></button>
+          <div class="shrink-0">
+            <RowMenu small label="Source actions" items={[{ label: "Edit source", onSelect: () => edit(source) }, { label: "Delete source…", danger: true, onSelect: () => (deleting = source) }]} />
           </div>
         </li>
       {/each}

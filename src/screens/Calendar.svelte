@@ -3,8 +3,9 @@
   import { ArrowLeft, Brain, CalendarArrowUp, ChevronLeft, ChevronRight, Dumbbell, ListChecks, Play, SquareStack, TriangleAlert } from "@lucide/svelte";
   import { untrack } from "svelte";
   import { api, errorMessage, type CalendarDay, type DayView, type DrillView, type Id, type StruggleView } from "../lib/api";
+  import MoveDrillDialog from "../components/MoveDrillDialog.svelte";
   import PageHeader from "../components/PageHeader.svelte";
-  import { dateOf, dayFromIso, dueLabel, fullLabel, isoOf, monthGrid, monthLabel, onDay } from "../lib/dates";
+  import { dateOf, dueLabel, fullLabel, monthGrid, monthLabel, onDay } from "../lib/dates";
 
   let {
     initialDay = null, onOpenDay = () => {},
@@ -23,11 +24,25 @@
   let selected = $state<number | null>(null);
   let day = $state<DayView | null>(null);
   let moving = $state<DrillView | null>(null);
-  let moveTo = $state("");
   let error = $state("");
 
   const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  /** A cell shows at most this many kinds, then "+N more", so busy days stay readable. */
+  const MAX_LINES = 3;
   const grid = $derived(year ? monthGrid(year, month) : []);
+  const weeks = $derived(Array.from({ length: Math.ceil(grid.length / 7) }, (_, index) => grid.slice(index * 7, index * 7 + 7)));
+  let gridEl = $state<HTMLDivElement>();
+
+  // Arrow keys move a day or a week, as in any date grid.
+  function gridKeys(event: KeyboardEvent, value: number) {
+    const by = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[event.key];
+    if (by === undefined) return;
+    const target = gridEl?.querySelector<HTMLButtonElement>(`[data-day="${value + by}"]`);
+    if (!target) return;
+    event.preventDefault();
+    target.focus();
+  }
   const counts = (entry: CalendarDay) => [
     { key: "cards", icon: SquareStack, count: entry.cards, one: "card", many: "cards" },
     { key: "checklists", icon: Brain, count: entry.checklists, one: "checklist", many: "checklists" },
@@ -82,11 +97,10 @@
     await loadMonth();
   }
 
-  async function moveDrill(event: SubmitEvent) {
-    event.preventDefault();
+  async function moveDrill(to: number) {
     if (!moving || selected === null) return;
     try {
-      await api.moveDrill(moving.id, dayFromIso(moveTo));
+      await api.moveDrill(moving.id, to);
       moving = null;
       await open(selected);
     } catch (failure) {
@@ -119,17 +133,28 @@
     </PageHeader>
     <p class="mb-3 text-right text-xs text-muted">Future cards are a forecast and move as you review</p>
     <div class="panel overflow-hidden">
-      <div class="grid grid-cols-7 border-b border-base-300 text-xs font-semibold text-muted" aria-hidden="true">{#each WEEKDAYS as name (name)}<div class="px-2 py-2">{name}</div>{/each}</div>
-      <div class="grid grid-cols-7" role="grid" aria-label={monthLabel(year, month)}>
-        {#each grid as value (value)}
-          {@const entry = days.find((d) => d.day === value)}
-          {@const date = dateOf(value)}
-          <button class="cal-day {date.month !== month ? 'other' : ''}" aria-current={value === today ? "date" : undefined}
-            aria-label="{longDate(value)}{entry && counts(entry).length ? `: ${counts(entry).map((c) => `${c.count} ${c.count === 1 ? c.one : c.many}`).join(", ")}${entry.when === 'Past' ? ' done' : ' due'}` : ''}"
-            onclick={() => open(value)}>
-            <span class="num">{date.date}</span>
-            {#if entry}{#each counts(entry) as item (item.key)}<span class="cal-row"><item.icon class="size-3.5" /><b>{item.count}</b> {item.count === 1 ? item.one : item.many}</span>{/each}{/if}
-          </button>
+      <div bind:this={gridEl} role="grid" aria-label={monthLabel(year, month)}>
+        <div role="row" class="grid grid-cols-7 border-b border-base-300 text-xs font-semibold text-muted">
+          {#each WEEKDAYS as name, index (name)}<div role="columnheader" class="px-2 py-2"><abbr title={WEEKDAY_NAMES[index]} class="no-underline" aria-label={WEEKDAY_NAMES[index]}>{name}</abbr></div>{/each}
+        </div>
+        {#each weeks as week (week[0])}
+          <div role="row" class="grid grid-cols-7">
+            {#each week as value (value)}
+              {@const entry = days.find((d) => d.day === value)}
+              {@const date = dateOf(value)}
+              {@const items = entry ? counts(entry) : []}
+              {@const shown = items.length > MAX_LINES ? items.slice(0, MAX_LINES - 1) : items}
+              <div role="gridcell" class="cal-cell">
+                <button class="cal-day {date.month !== month ? 'other' : ''} {value < today ? 'past' : ''}" data-day={value} tabindex={value === (selected ?? today) ? 0 : -1} aria-current={value === today ? "date" : undefined}
+                  aria-label="{longDate(value)}{items.length ? `: ${items.map((c) => `${c.count} ${c.count === 1 ? c.one : c.many}`).join(", ")}${entry?.when === 'Past' ? ' done' : ' due'}` : ''}"
+                  onclick={() => open(value)} onkeydown={(event) => gridKeys(event, value)}>
+                  <span class="flex items-center gap-2"><span class="num">{date.date}</span>{#if value === today}<span class="cal-today">Today</span>{/if}</span>
+                  {#each shown as item (item.key)}<span class="cal-row"><item.icon class="size-3.5" /><b>{item.count}</b> {item.count === 1 ? item.one : item.many}</span>{/each}
+                  {#if shown.length < items.length}<span class="cal-row">+{items.length - shown.length} more</span>{/if}
+                </button>
+              </div>
+            {/each}
+          </div>
         {/each}
       </div>
     </div>
@@ -160,7 +185,7 @@
             {#each day.drills as drill (drill.id)}
               <li class="flex items-center justify-between gap-4 py-3"><div><p class="text-[15px]">{drill.task}</p><p class="text-sm text-muted">{drill.issue ? `Issue: ${drill.issue}` : "No issue"}{drill.from[0] ? ` · from ${drill.from[0].project_name}` : ""}{drill.last && drill.last.rating !== "Solid" ? ` · again, it was ${drill.last.rating}` : ""}{drill.due !== null && drill.due < day.day ? ` · was due ${dueLabel(drill.due, drill.due)}` : ""}</p></div>
                 <div class="flex shrink-0 gap-2">
-                  <button class="btn btn-ghost btn-sm" onclick={() => { moving = drill; moveTo = isoOf(Math.max(today + 1, day!.day + 1)); }}><CalendarArrowUp class="size-4" />Move</button>
+                  <button class="btn btn-ghost btn-sm" onclick={() => { error = ""; moving = drill; }}><CalendarArrowUp class="size-4" />Move</button>
                   {#if day.when === "Today"}<button class="btn btn-outline btn-sm border-field-border" onclick={() => onDrills([drill.id])}><Play class="size-4" />Do drill</button>{/if}
                 </div></li>
             {/each}
@@ -213,16 +238,6 @@
   </div>
 {/if}
 
-{#if moving}
-  <dialog open class="modal modal-open" aria-labelledby="move-h">
-    <form class="modal-box max-w-md" onsubmit={moveDrill}>
-      <h3 id="move-h" class="text-lg font-semibold">Move this drill</h3>
-      <p class="mt-2 text-sm text-muted">{moving.task}</p>
-      <label class="mt-5 block"><span class="text-sm font-semibold">Do it on</span><input type="date" class="input mt-1 w-full" min={isoOf(today)} bind:value={moveTo} /></label>
-      <div class="modal-action">
-        <button type="button" class="btn btn-ghost" onclick={() => (moving = null)}>Cancel</button>
-        <button type="submit" class="btn btn-primary">Move to {moveTo ? dueLabel(dayFromIso(moveTo), today) : "that day"}</button>
-      </div>
-    </form>
-  </dialog>
+{#if moving && selected !== null}
+  <MoveDrillDialog task={moving.task} {today} current={moving.due} {error} onMove={moveDrill} onCancel={() => (moving = null)} />
 {/if}
