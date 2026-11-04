@@ -575,6 +575,52 @@ const MIGRATIONS: &[&str] = &[
         INSERT OR REPLACE INTO deleted (uid, kind, at) VALUES ('card_suggestions_done:' || OLD.key, 'card_suggestions_done', stamp_now());
     END;
     ",
+    // 9: sync through a folder (R119 to R128). The state of each record as last synced, with
+    // who changed each field and when, the changes this computer has made, how far each
+    // computer's changes have been read, and the things to check.
+    "
+    CREATE TABLE sync_shadow (
+        kind   TEXT NOT NULL,
+        uid    TEXT NOT NULL,
+        body   TEXT,
+        clocks TEXT NOT NULL,
+        state  INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (kind, uid)
+    ) WITHOUT ROWID;
+    CREATE TABLE sync_lines (
+        device TEXT NOT NULL,
+        seq    INTEGER NOT NULL,
+        seen   TEXT NOT NULL,
+        PRIMARY KEY (device, seq)
+    ) WITHOUT ROWID;
+    CREATE TABLE sync_outbox (
+        seq  INTEGER PRIMARY KEY,
+        line TEXT NOT NULL
+    );
+    CREATE TABLE sync_peers (
+        device TEXT PRIMARY KEY,
+        seq    INTEGER NOT NULL DEFAULT 0,
+        file   TEXT,
+        offset INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE TABLE sync_conflicts (
+        n        INTEGER PRIMARY KEY,
+        kind     TEXT NOT NULL,
+        uid      TEXT NOT NULL,
+        field    TEXT NOT NULL,
+        kept     TEXT,
+        other    TEXT,
+        kept_by  TEXT NOT NULL,
+        kept_at  TEXT NOT NULL,
+        other_by TEXT NOT NULL,
+        other_at TEXT NOT NULL,
+        UNIQUE (kind, uid, field)
+    );
+    CREATE TABLE sync_meta (
+        key   TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+    );
+    ",
 ];
 
 pub const LATEST: i64 = MIGRATIONS.len() as i64;

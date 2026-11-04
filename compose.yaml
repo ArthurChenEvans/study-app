@@ -19,6 +19,9 @@ services:
       STUDY_SEED: "${STUDY_SEED:-1}"
     volumes:
       - study-data:/data
+      # To sync with the desktop app, mount the same folder it syncs through, then set up
+      # sync in Your data with the folder /sync:
+      # - ${HOME}/Sync/StudyApp:/sync
 
 volumes:
   study-data:

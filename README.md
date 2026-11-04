@@ -66,6 +66,14 @@ Every record has an ID that's the same on every computer, a "last changed" stamp
 
 Importing shows what's new, what's here already and what's changed in both places before anything changes, then makes a backup and adds it all at once. Records are matched by ID, so importing a newer version of a shared file updates it instead of copying it. History is only ever added, and nothing here is deleted.
 
+## Sync
+
+"Your data" can keep computers (and the browser version) in step through any folder another app keeps the same on each one: Syncthing (free, no account), Nextcloud, a network drive, or a USB stick you carry. Pick the folder, name the computer, then pick the same folder on the other one. There's no server and nothing to pay for.
+
+The database never goes in the folder, since syncing a live SQLite file corrupts it. Each computer appends its changes to its own files (`devices/<id>.json` and `changes/<id>/<month>.jsonl`), so no file ever has two writers. The app reads the others' files when it starts, every 30 seconds while it's open, and on "Sync now". Edits are merged field by field. When the same field changed on two computers before they saw each other's change, the newer one is used and the pair is listed under "things to check", where the other version can be put back. A delete loses to a change made elsewhere before that computer saw it, so nothing is lost by accident. Restoring a backup pauses sync.
+
+The browser version joins by mounting the same folder in `compose.yaml` (see the comment there) and typing its path in the set-up dialog.
+
 ## Install
 
 ### Nix (NixOS)

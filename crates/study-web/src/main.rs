@@ -40,6 +40,9 @@ async fn main() -> Result<(), String> {
     study_api::backup::before_update(&config.db, &config.backups, study_web::clock()).map_err(|error| error.message)?;
     let mut app = open(&config.db)?;
     app.set_backups(&config.backups);
+    // Sync settings live beside the backups, and this version is "Browser" until named.
+    app.set_sync_home(config.backups.parent().filter(|parent| !parent.as_os_str().is_empty()).unwrap_or(std::path::Path::new(".")));
+    app.set_sync_default_name("Browser");
     if config.seed {
         if app.topics().map_err(|error| error.message)?.is_empty() {
             seed(&mut app, config.large)?;

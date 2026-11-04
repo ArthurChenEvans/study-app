@@ -335,6 +335,15 @@ export const api = {
   importPreview: async (file: Blob, name: string) => invoke<ImportPreview>("import_preview", { name, data: await toBase64(file) }),
   importApply: (choice: ImportChoice) => invoke<ImportResult>("import_apply", { choice }),
   cancelImport: () => invoke<void>("cancel_import"),
+  // Sync (R119 to R128)
+  syncStatus: () => invoke<SyncStatus>("sync_status"),
+  syncNow: (auto: boolean) => invoke<SyncResult>("sync_now", { auto }),
+  syncSetup: (setup: SyncSetup) => invoke<SyncResult>("sync_setup", { setup }),
+  syncRename: (name: string) => invoke<SyncStatus>("sync_rename", { name }),
+  syncOff: () => invoke<SyncStatus>("sync_off"),
+  syncResume: () => invoke<SyncResult>("sync_resume"),
+  syncToCheck: () => invoke<ToCheck[]>("sync_to_check"),
+  syncSettle: (n: number, useOther: boolean) => invoke<ToCheck[]>("sync_settle", { n, other: useOther }),
   slidesToPdf: async (file: File) => {
     const pdf = await invoke<ArrayBuffer | number[]>("slides_to_pdf", { name: file.name, data: await toBase64(file) });
     return new Uint8Array(pdf);
@@ -352,7 +361,7 @@ function toBase64(file: Blob): Promise<string> {
 }
 
 // ---------- Backups (R101 to R108) ----------
-export type BackupReason = "Daily" | "ByHand" | "BeforeRestore" | "BeforeUpdate" | "BeforeImport";
+export type BackupReason = "Daily" | "ByHand" | "BeforeRestore" | "BeforeUpdate" | "BeforeImport" | "BeforeSync";
 export interface BackupInfo { name: string; day: number; minute: number; reason: BackupReason; bytes: number }
 export interface BackupSettings { keep_days: number; keep_weeks: number; keep_months: number; copy_to: string | null }
 export interface BackupStatus { latest: BackupInfo | null; count: number; bytes: number; folder: string; settings: BackupSettings; copy_problem: string | null; has_data: boolean }
@@ -370,3 +379,10 @@ export type ClashRule = "KeepMine" | "TakeTheirs" | "Newer" | "EachOne";
 export interface ImportPreview { file_name: string; everything: boolean; history: boolean; exported: number; from_here: boolean; rows: PreviewRow[]; clashes: Clash[]; suggested: ClashRule }
 export interface ImportChoice { rule: ClashRule; theirs: string[] }
 export interface ImportResult { added: Count[]; replaced: number; backup: BackupInfo | null }
+
+// ---------- Sync (R119 to R128) ----------
+export interface SyncSetup { folder: string; name: string }
+export interface SyncDevice { id: string; name: string; this_one: boolean; last_seen: number | null; waiting: number; newer_app: boolean }
+export interface SyncStatus { on: boolean; paused: string | null; folder: string | null; device: string; name: string; devices: SyncDevice[]; last_synced: number | null; problem: string | null; waiting: number; held: number; to_check: number }
+export interface SyncResult { sent: number; received: number; deferred: boolean; status: SyncStatus }
+export interface ToCheck { n: number; record: string; what: string; label: string; context: string | null; field: string; deleted: boolean; kept: string | null; other: string | null; kept_by: string; kept_when: number; other_by: string; other_when: number }

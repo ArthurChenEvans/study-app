@@ -507,7 +507,7 @@ impl App {
             Some(_) => Some(self.make_backup(clock, Reason::BeforeImport)?),
             None => None,
         };
-        let added = self.store.apply(&pending.snapshot, &Plan { theirs, today: clock.day })?;
+        let added = self.store.apply(&pending.snapshot, &Plan { theirs, today: clock.day, history_edits: false })?;
         self.active = None;
         self.card_session = None;
         Ok(ImportResult { added: added.counts.into_iter().map(|(what, count)| Count { what, count }).collect(), replaced: added.replaced, backup })

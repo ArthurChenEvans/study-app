@@ -535,6 +535,42 @@ fn set_backup_settings(state: AppState, settings: BackupSettings) -> ApiResult<B
     with(state, |app| app.set_backup_settings(settings, clock()))
 }
 
+#[tauri::command]
+fn sync_status(state: AppState) -> ApiResult<study_api::sync::SyncStatus> {
+    with(state, |app| app.sync_status(clock()))
+}
+#[tauri::command]
+fn sync_now(state: AppState, auto: bool) -> ApiResult<study_api::sync::SyncResult> {
+    with(state, |app| app.sync_now(auto, clock()))
+}
+#[tauri::command]
+fn sync_setup(state: AppState, setup: study_api::sync::SyncSetup) -> ApiResult<study_api::sync::SyncResult> {
+    with(state, |app| app.sync_setup(setup, clock()))
+}
+#[tauri::command]
+fn sync_rename(state: AppState, name: String) -> ApiResult<study_api::sync::SyncStatus> {
+    with(state, |app| {
+        app.sync_rename(&name)?;
+        app.sync_status(clock())
+    })
+}
+#[tauri::command]
+fn sync_off(state: AppState) -> ApiResult<study_api::sync::SyncStatus> {
+    with(state, |app| app.sync_off())
+}
+#[tauri::command]
+fn sync_resume(state: AppState) -> ApiResult<study_api::sync::SyncResult> {
+    with(state, |app| app.sync_resume(clock()))
+}
+#[tauri::command]
+fn sync_to_check(state: AppState) -> ApiResult<Vec<study_api::sync::ToCheck>> {
+    with(state, |app| app.sync_to_check())
+}
+#[tauri::command]
+fn sync_settle(state: AppState, n: i64, other: bool) -> ApiResult<Vec<study_api::sync::ToCheck>> {
+    with(state, |app| app.sync_settle(n, other, clock()))
+}
+
 pub fn run() {
     tauri::Builder::default()
         .setup(|handle| {
@@ -547,6 +583,7 @@ pub fn run() {
             let store = Store::open(&database).map_err(|error| error.to_string())?;
             let mut app = App::new(store);
             app.set_backups(backups);
+            app.set_sync_home(&dir);
             if let Err(error) = app.daily_backup(clock()) {
                 eprintln!("couldn't make today's backup: {}", error.message);
             }
@@ -567,6 +604,14 @@ pub fn run() {
             import_preview,
             import_apply,
             cancel_import,
+            sync_status,
+            sync_now,
+            sync_setup,
+            sync_rename,
+            sync_off,
+            sync_resume,
+            sync_to_check,
+            sync_settle,
             projects,
             create_project,
             delete_project,

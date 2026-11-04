@@ -135,6 +135,15 @@ pub fn dispatch_at(app: &mut App, command: &str, args: &Value, today: i64, clock
         })),
         "import_preview" => json(app.import_preview(&base64(a, "file")?, &arg::<String>(a, "name")?)),
         "import_apply" => json(app.import_apply(arg(a, "choice")?, clock)),
+        // Sync (R119 to R128)
+        "sync_status" => json(app.sync_status(clock)),
+        "sync_now" => json(app.sync_now(arg(a, "auto")?, clock)),
+        "sync_setup" => json(app.sync_setup(arg(a, "setup")?, clock)),
+        "sync_rename" => json(app.sync_rename(&arg::<String>(a, "name")?).and_then(|()| app.sync_status(clock))),
+        "sync_off" => json(app.sync_off()),
+        "sync_resume" => json(app.sync_resume(clock)),
+        "sync_to_check" => json(app.sync_to_check()),
+        "sync_settle" => json(app.sync_settle(arg(a, "n")?, arg(a, "other")?, clock)),
         "cancel_import" => {
             app.cancel_import();
             json(Ok(()))

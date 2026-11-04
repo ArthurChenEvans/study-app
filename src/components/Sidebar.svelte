@@ -1,10 +1,12 @@
 <script lang="ts">
-  import { BookOpen, Brain, CalendarDays, Database, Hammer, SquareStack, History, Layers, LayoutDashboard, Library, Moon, Play, Search, ShieldAlert, ShieldCheck, Sun, Volume2 } from "@lucide/svelte";
+  import { BookOpen, Brain, CalendarDays, Database, Hammer, SquareStack, History, Layers, FolderX, GitCompare, LayoutDashboard, Library, Moon, Play, RefreshCw, RefreshCwOff, Search, ShieldAlert, ShieldCheck, Sun, Volume2 } from "@lucide/svelte";
   import { DARK, LIGHT, applyTheme, type Theme } from "../lib/theme";
   import { isSoundOn, setSoundOn } from "../lib/sound";
   import type { Screen } from "../lib/router";
 
-  let { current, onNavigate, due = {}, backup = null }: { current: Screen; onNavigate: (screen: Screen) => void; due?: Partial<Record<Screen, number>>; backup?: { safe: boolean; short: string } | null } = $props();
+  let { current, onNavigate, due = {}, backup = null, sync = null }: { current: Screen; onNavigate: (screen: Screen) => void; due?: Partial<Record<Screen, number>>; backup?: { safe: boolean; short: string } | null; sync?: { ok: boolean; short: string; icon?: string } | null } = $props();
+  // One line: the backup when it needs attention, otherwise sync once it's on (R108, R128).
+  const showSync = $derived(sync !== null && (backup === null || backup.safe));
 
   let theme = $state<Theme>((document.documentElement.dataset.theme as Theme) ?? DARK);
   let sound = $state(isSoundOn());
@@ -69,7 +71,11 @@
     >
   </div>
   <div class="mt-auto flex flex-col gap-3 px-3 pb-2">
-    {#if backup}
+    {#if showSync && sync}
+      <a href="#data" class="-mx-2 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-base-300 {sync.ok ? 'text-muted' : 'font-semibold'}" onclick={(event) => go(event, "data")}>
+        {#if sync.icon === "check"}<GitCompare class="size-4" />{:else if sync.icon === "missing"}<FolderX class="size-4" />{:else if sync.ok}<RefreshCw class="size-4" />{:else}<RefreshCwOff class="size-4" />{/if}<span>{sync.short}</span>
+      </a>
+    {:else if backup}
       <!-- R108: the backup status in one line, linking to Your data -->
       <a href="#data" class="-mx-2 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-base-300 {backup.safe ? 'text-muted' : 'font-semibold'}" onclick={(event) => go(event, "data")}>
         {#if backup.safe}<ShieldCheck class="size-4" />{:else}<ShieldAlert class="size-4" />{/if}<span>{backup.short}</span>

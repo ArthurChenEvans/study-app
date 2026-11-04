@@ -491,7 +491,7 @@ Waiting for a greenlight. Built after testing the real app against the large pro
 
 # Backup, export, import and sync (backup-and-sync.html)
 
-Waiting for a greenlight. One new screen, "Your data" (in the sidebar under Search), plus a status line at the bottom of the sidebar. Designed together because they share the same foundations (IDs that are unique everywhere, a record of changes, one file format), and built in stages: backup, then the ID change and export/import, then sync.
+Built (see the "built" sections below). One new screen, "Your data" (in the sidebar under Search), plus a status line at the bottom of the sidebar. Designed together because they share the same foundations (IDs that are unique everywhere, a record of changes, one file format), and built in stages: backup, then the ID change and export/import, then sync.
 
 | State | What it shows |
 |---|---|
@@ -599,4 +599,31 @@ Tests:
 - **Round trip:** the demo profile is exported, imported into a database that already has other records, and exported again. The two files match record for record, and history, every quiz's results, checklists, projects, due counts and suggestions all match too, including one that was dismissed.
 - **Hostile files:** a newer format, a zip bomb, a reference to something missing, a repeated ID, a script posing as an image and an image named `../../etc/passwd` are each refused, and nothing changes.
 - **Large profile:** a 0.7 MB file, exported in 0.3 seconds and imported in 0.5.
+
+## Sync built (4 Nov 2026)
+
+Built test-first: requirements R119 to R128, scenarios in `specs/features/sync.feature`. Backup, IDs, export and import, and sync are now all built from this design.
+
+How it works:
+- **A shadow of every record as last synced**, flattened into fields, with which computer changed each field and in which of its change lines. Syncing compares the database with the shadow, writes only the fields that changed, and merges the other computers' lines field by field. The shadow matches the database after every sync, so syncing again writes nothing.
+- **Each line says which of every computer's lines it had seen.** Two changes to the same field are either one after the other (the later one wins quietly, and settles any clash over that field) or made at the same time (the newer stamp wins and the pair is listed to check).
+- **A note's front and back are separate fields,** so editing the front on one computer and the back on the other keeps both. A card's own copy of its note's text is never listed, so a clash shows once.
+- **Deletes:** a computer deletes what goes with a record first, so a parent never goes while its children are there. A delete loses to a change, or to something added to it, that the deleting computer hadn't seen, and both computers keep it and list it.
+- **Something that refers to a thing still on its way waits,** and so does a record only heard about through an edit, until its creation arrives.
+
+Differences from the design:
+- **The folder is a typed path,** like "Also copy to" for backups, instead of a folder picker. That keeps out the Tauri dialog plugin. Say if you'd rather have the picker.
+- **The computers table's last column is "Changes waiting":** for this computer, changes not in the folder yet (or waiting for it). For the others, changes they've made that haven't arrived here yet.
+- **Things to check are kept per computer.** Putting the other version back goes to every computer and settles it everywhere. "Keep" only dismisses it on the computer you're using.
+- **Other schedules (a topic's quiz step, a checklist's step, a drill's due date) take the newer one** rather than being replayed. A card reviewed on two computers at once is worked out again from all its reviews on both, so they end up the same.
+- **"Sync now" during a quiz or review says to finish first,** and the 30-second tick waits quietly.
+- **No "Edit the card" button** on things to check yet. Both versions are shown and either can be kept.
+- **Found while building:** writing a record's stamp when it already had that stamp counted as an edit to the database triggers, a quiz's per-topic results came out in local row order, and a review's schedule stamp leaked into a card's "last changed". All three would have kept two computers sending each other the same change forever, and are fixed.
+
+Tests:
+- **Two and three computers** as separate databases sharing a real folder: setting up, studying on both, different and same fields, deletes, a delete losing to an addition, the same card reviewed on both, something arriving before what it belongs to, an edit before its creation, a missing folder, a half-written file and a junk line, a newer app, a quiz in progress, a restore, renaming, moving and turning off.
+- **Random:** three computers doing random edits, deletes, reviews and syncs in a random order, 20 runs in the suite (and 660 while building), all ending with exactly the same data and nothing left to send.
+- **Mutation checks:** ten deliberate breaks in the merge (an off-by-one in what was seen, no child check on deletes, no replay, last arrival wins, parents deleted first and so on) are each caught.
+- **In the real app:** the desktop app syncs with a browser-version server through one folder. Audit clean in both themes.
+- **Large profile:** the first sync takes 0.7 seconds to send and 1.2 to receive (10 MB of change files), a sync with nothing new 0.1 seconds.
 

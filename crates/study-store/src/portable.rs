@@ -374,7 +374,7 @@ const ATTEMPT_REFS: &[(&[&str], &str)] = &[
 struct ToUid(HashMap<&'static str, HashMap<i64, String>>);
 
 impl ToUid {
-    fn read(connection: &Connection) -> Result<Self> {
+    pub(crate) fn read(connection: &Connection) -> Result<Self> {
         let mut maps = HashMap::new();
         for table in crate::ids::STAMPED {
             let mut statement = connection.prepare(&format!("SELECT id, uid FROM {table}"))?;
@@ -401,7 +401,7 @@ impl ToUid {
     }
 
     /// `quiz:12`, `recall:3:text` and `struggle:9` suggestion keys, with IDs.
-    fn key(&self, key: &str) -> Option<String> {
+    pub(crate) fn key(&self, key: &str) -> Option<String> {
         let (kind, rest) = key.split_once(':')?;
         match kind {
             "quiz" => Some(format!("quiz:{}", self.of("questions", rest.parse().ok()?)?)),
@@ -420,7 +420,7 @@ impl ToUid {
 pub struct ToLocal(HashMap<&'static str, HashMap<String, i64>>);
 
 impl ToLocal {
-    fn read(connection: &Connection) -> Result<Self> {
+    pub(crate) fn read(connection: &Connection) -> Result<Self> {
         let mut maps = HashMap::new();
         for table in crate::ids::STAMPED {
             let mut statement = connection.prepare(&format!("SELECT uid, id FROM {table} WHERE uid IS NOT NULL"))?;
@@ -454,7 +454,7 @@ impl ToLocal {
         }
     }
 
-    fn key(&self, key: &str) -> Option<String> {
+    pub(crate) fn key(&self, key: &str) -> Option<String> {
         let (kind, rest) = key.split_once(':')?;
         match kind {
             "quiz" => Some(format!("quiz:{}", self.of("questions", rest)?)),
@@ -686,7 +686,10 @@ impl Store {
                     .collect::<rusqlite::Result<Vec<_>>>()?
                     .into_iter()
                     .filter_map(|(topic, quiz_move)| Some(QuizMove { topic: uids.of("topics", topic)?, ..quiz_move }))
-                    .collect();
+                    .collect::<Vec<_>>();
+                // By topic ID, so the order is the same on every computer.
+                let mut moves = moves;
+                moves.sort_by(|left, right| left.topic.cmp(&right.topic));
                 snapshot.attempts.push(Attempt { uid, changed, day, status: parse_json(&status)?, retry_of: uids.opt("attempts", retry_of), attempt, reasons: parse_json(&reasons)?, moves });
             }
         }
@@ -748,6 +751,9 @@ pub struct Plan {
     pub theirs: HashSet<String>,
     /// The day new cards and checklists start from when the file has no history.
     pub today: i64,
+    /// Whether quizzes and project sessions here can be updated too (a later overruled
+    /// answer, a session that's since ended). Sync does this, an import never does (R117).
+    pub history_edits: bool,
 }
 
 /// How many records were added, by kind.
@@ -833,7 +839,7 @@ impl Writer<'_> {
     }
 }
 
-fn write(tx: &Transaction, snapshot: &Snapshot, plan: &Plan) -> Result<Added> {
+pub(crate) fn write(tx: &Transaction, snapshot: &Snapshot, plan: &Plan) -> Result<Added> {
     let mut writer = Writer { tx, plan, local: ToLocal::read(tx)?, added: HashMap::new(), replaced: 0 };
 
     // Images first, so references to them in text can be put back as row numbers. An
@@ -1056,7 +1062,8 @@ fn write(tx: &Transaction, snapshot: &Snapshot, plan: &Plan) -> Result<Added> {
     }
 
     for attempt in &snapshot.attempts {
-        if writer.local.of("attempts", &attempt.uid).is_some() {
+        let here = writer.local.of("attempts", &attempt.uid);
+        if here.is_some() && !plan.history_edits {
             continue;
         }
         let mut stored = attempt.attempt.clone();
@@ -1066,6 +1073,14 @@ fn write(tx: &Transaction, snapshot: &Snapshot, plan: &Plan) -> Result<Added> {
         let retry_of = writer.local.opt("attempts", attempt.retry_of.as_deref());
         if let (Some(retry_of), Value::Object(fields)) = (retry_of, &mut stored) {
             fields.insert("retry_of".into(), Value::from(retry_of));
+        }
+        if let Some(id) = here {
+            tx.execute(
+                "UPDATE attempts SET day = ?2, status = ?3, retry_of = ?4, attempt = ?5, reasons = ?6, changed = ?7 WHERE id = ?1 AND (day, status, retry_of, attempt, reasons) IS NOT (?2, ?3, ?4, ?5, ?6)",
+                params![id, attempt.day, serde_json::to_string(&attempt.status)?, retry_of, serde_json::to_string(&stored)?, serde_json::to_string(&attempt.reasons)?, attempt.changed],
+            )?;
+            writer.stamp("attempts", id, &attempt.changed)?;
+            continue;
         }
         tx.execute(
             "INSERT INTO attempts (day, status, retry_of, attempt, reasons, uid, changed) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
@@ -1095,7 +1110,11 @@ fn write(tx: &Transaction, snapshot: &Snapshot, plan: &Plan) -> Result<Added> {
         }
     }
     for session in &snapshot.sessions {
-        if writer.local.of("project_sessions", &session.uid).is_some() {
+        if let Some(id) = writer.local.of("project_sessions", &session.uid) {
+            if plan.history_edits {
+                tx.execute("UPDATE project_sessions SET day = ?2, started = ?3, ended = ?4, changed = ?5 WHERE id = ?1", params![id, session.day, session.started, session.ended, session.changed])?;
+                writer.stamp("project_sessions", id, &session.changed)?;
+            }
             continue;
         }
         let Some(project) = writer.local.of("projects", &session.project) else { continue };

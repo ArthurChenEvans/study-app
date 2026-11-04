@@ -24,8 +24,9 @@
   import DrillSession from "./screens/DrillSession.svelte";
   import YourData from "./screens/YourData.svelte";
   import { statusLine } from "./lib/backup";
+  import { syncLine } from "./lib/sync";
   import { screenFromHash, type Screen } from "./lib/router";
-  import { api, type Id, type QuizView, type Subject } from "./lib/api";
+  import { api, type Id, type QuizView, type Subject, type SyncStatus } from "./lib/api";
 
   type Route =
     | { screen: Screen }
@@ -73,8 +74,36 @@
       backup = null;
     }
   }
+  // R121, R128: sync when the app starts and every 30 seconds while it's open. The backend
+  // waits while a quiz or review is in progress. Screens that only show things reload when
+  // changes come in, and screens being edited are left alone.
+  let sync = $state<{ ok: boolean; short: string; icon: string } | null>(null);
+  const showSync = (status: SyncStatus | null) => (sync = status?.on ? syncLine(status, Math.floor(Date.now() / 1000)) : null);
+  let dataVersion = $state(0);
+  const RELOADS = ["overview", "calendar", "topics", "cards", "recall", "projects", "bibliography", "history"];
+  async function syncTick(auto = true) {
+    try {
+      let status = await api.syncStatus();
+      if (status?.on && !status.paused) {
+        const result = await api.syncNow(auto);
+        status = result.status;
+        if (result.received && RELOADS.includes(route.screen)) dataVersion++;
+        if (result.received) refreshCounts();
+      }
+      showSync(status);
+    } catch {
+      /* shown on Your data */
+    }
+  }
+  syncTick();
+  const timer = setInterval(() => syncTick(), 30_000);
+  $effect(() => () => clearInterval(timer));
+
   async function refreshDue() {
     refreshBackup();
+    refreshCounts();
+  }
+  async function refreshCounts() {
     try {
       const today = await api.dueToday();
       due = today && typeof today === "object" ? { calendar: today.total, topics: today.quizzes, cards: today.cards, recall: today.checklists, projects: today.drills } : {};
@@ -119,8 +148,9 @@
 <svelte:window onhashchange={() => (route = { screen: screenFromHash(location.hash) })} onkeydown={shortcut} />
 
 <div class="flex min-h-screen">
-  {#if !["quiz", "recall-session", "card-review", "session-review", "drills"].includes(route.screen)}<Sidebar current={navScreen} {due} {backup} onNavigate={(screen) => go({ screen })} />{/if}
+  {#if !["quiz", "recall-session", "card-review", "session-review", "drills"].includes(route.screen)}<Sidebar current={navScreen} {due} {backup} {sync} onNavigate={(screen) => go({ screen })} />{/if}
   <main class="min-w-0 flex-1">
+    {#key dataVersion}
     {#if route.screen === "topics"}
       <Topics onEdit={(topic) => go({ screen: "editor", topic })} onQuiz={(topic) => go({ screen: "setup-for", topics: [topic] })} onQuizTopics={(topics) => go({ screen: "setup-for", topics })} />
     {:else if route.screen === "editor"}
@@ -158,7 +188,7 @@
       {@const back = route.back}
       {#key route.run}<DrillSession ids={route.ids} onLeave={() => go(back)} />{/key}
     {:else if route.screen === "data"}
-      <YourData onRestored={refreshDue} />
+      <YourData onRestored={() => { refreshDue(); syncTick(); }} onSync={showSync} />
     {:else if route.screen === "bibliography"}
       <Bibliography />
     {:else if route.screen === "history"}
@@ -168,5 +198,6 @@
     {:else}
       <Overview onNavigate={(screen) => go({ screen })} />
     {/if}
+    {/key}
   </main>
 </div>

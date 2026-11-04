@@ -12,6 +12,7 @@ pub mod practice;
 pub mod recall;
 pub mod seed;
 pub mod seed_large;
+pub mod sync;
 pub mod transfer;
 
 use rand::SeedableRng;
@@ -250,6 +251,7 @@ pub struct App {
     card_session: Option<cards::CardSession>,
     backups: Option<backup::Backups>,
     pending_import: Option<transfer::PendingImport>,
+    sync: sync::Sync,
 }
 
 impl App {
@@ -261,6 +263,7 @@ impl App {
             card_session: None,
             backups: None,
             pending_import: None,
+            sync: sync::Sync::default(),
         }
     }
 
@@ -273,6 +276,7 @@ impl App {
             card_session: None,
             backups: None,
             pending_import: None,
+            sync: sync::Sync::default(),
         }
     }
 
@@ -778,3 +782,5 @@ mod practice_tests;
 mod ids_tests;
 #[cfg(test)]
 mod transfer_tests;
+#[cfg(test)]
+mod sync_tests;

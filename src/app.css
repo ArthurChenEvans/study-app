@@ -338,3 +338,10 @@
 .step-name:not(:hover):not(:focus) { border-color: transparent; background: transparent; }
 .path { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 13px; background: var(--color-base-200); border-radius: 4px; padding: 1px 6px; }
 .file-button:has(input:focus-visible) { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+
+/* Sync (design/backup-and-sync.html). What differs is underlined or struck through, never only coloured. */
+ins.chg { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; font-weight: 600; background: transparent; }
+del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: var(--muted); }
+.step-dot { width: 28px; height: 28px; border-radius: 999px; display: grid; place-items: center; font-size: 13px; font-weight: 600; border: 2px solid var(--field-border); flex-shrink: 0; }
+.step-dot.done { border-color: var(--color-base-content); background: var(--color-base-content); color: var(--color-base-100); }
+.step-dot.now { border-color: var(--color-base-content); }

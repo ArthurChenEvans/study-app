@@ -103,6 +103,18 @@ describe("Sidebar", () => {
     expect(screen.getByRole("link", { name: "No backup yet" })).toHaveClass("font-semibold");
   });
 
+  // sync.feature (R128): with sync on, the line says how sync is going, unless the backup needs attention
+  it("shows the sync status in the same line once sync is on", async () => {
+    const onNavigate = vi.fn();
+    const { rerender } = render(Sidebar, { current: "overview", onNavigate, backup: { safe: true, short: "Backed up today" }, sync: { ok: true, short: "Synced 2 minutes ago" } });
+    expect(screen.getByRole("link", { name: "Synced 2 minutes ago" })).toHaveClass("text-muted");
+    expect(screen.queryByRole("link", { name: "Backed up today" })).not.toBeInTheDocument();
+    await rerender({ current: "overview", onNavigate, backup: { safe: true, short: "Backed up today" }, sync: { ok: false, short: "Synced, 1 to check" } });
+    expect(screen.getByRole("link", { name: "Synced, 1 to check" })).toHaveClass("font-semibold");
+    await rerender({ current: "overview", onNavigate, backup: { safe: false, short: "No backup yet" }, sync: { ok: true, short: "Synced just now" } });
+    expect(screen.getByRole("link", { name: "No backup yet" })).toBeInTheDocument();
+  });
+
   it("leaves the backup line out until the status has loaded", () => {
     render(Sidebar, { current: "overview", onNavigate: vi.fn() });
     expect(screen.queryByRole("link", { name: /Backed up|No backup/ })).not.toBeInTheDocument();

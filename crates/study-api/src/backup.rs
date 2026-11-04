@@ -22,6 +22,7 @@ pub enum Reason {
     BeforeRestore,
     BeforeUpdate,
     BeforeImport,
+    BeforeSync,
 }
 
 impl Reason {
@@ -32,11 +33,12 @@ impl Reason {
             Reason::BeforeRestore => "before-restore",
             Reason::BeforeUpdate => "before-update",
             Reason::BeforeImport => "before-import",
+            Reason::BeforeSync => "before-sync",
         }
     }
 
     fn from_slug(slug: &str) -> Option<Self> {
-        [Reason::Daily, Reason::ByHand, Reason::BeforeRestore, Reason::BeforeUpdate, Reason::BeforeImport].into_iter().find(|reason| reason.slug() == slug)
+        [Reason::Daily, Reason::ByHand, Reason::BeforeRestore, Reason::BeforeUpdate, Reason::BeforeImport, Reason::BeforeSync].into_iter().find(|reason| reason.slug() == slug)
     }
 }
 
@@ -371,6 +373,7 @@ impl App {
         self.store.restore_from(&path)?;
         self.active = None;
         self.card_session = None;
+        self.pause_sync_after_restore();
         Ok(safety)
     }
 

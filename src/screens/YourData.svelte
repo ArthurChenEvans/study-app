@@ -11,8 +11,12 @@
   import { FileInput, FileOutput } from "@lucide/svelte";
   import type { ExportFile, ImportPreview, ImportResult } from "../lib/api";
   import { countList } from "../lib/transfer";
+  import type { SyncStatus, ToCheck } from "../lib/api";
+  import { syncLine } from "../lib/sync";
+  import SyncSection from "../components/SyncSection.svelte";
+  import { FolderX, GitCompare, RefreshCw, RefreshCwOff } from "@lucide/svelte";
 
-  let { onRestored = () => {} }: { onRestored?: () => void } = $props();
+  let { onRestored = () => {}, onSync = () => {} }: { onRestored?: () => void; onSync?: (status: SyncStatus | null) => void } = $props();
 
   let status = $state<BackupStatus | null>(null);
   let list = $state<BackupInfo[]>([]);
@@ -81,7 +85,24 @@
 
   async function load() {
     [status, list, today] = await Promise.all([api.backupStatus(), api.backups(), api.today()]);
+    await loadSync();
   }
+
+  // ---------- Sync (R119 to R128) ----------
+  let sync = $state<SyncStatus | null>(null);
+  let checks = $state<ToCheck[]>([]);
+  async function loadSync(next?: SyncStatus) {
+    try {
+      sync = next ?? (await api.syncStatus());
+      checks = sync?.to_check ? await api.syncToCheck() : [];
+      onSync(sync);
+    } catch {
+      sync = null;
+    }
+  }
+  const syncWords = $derived(sync ? syncLine(sync, Math.floor(Date.now() / 1000)) : null);
+  // The page's one primary button is whatever fixes sync, when it needs fixing.
+  const syncFix = $derived<"paused" | "folder" | null>(sync?.on ? (sync.paused ? "paused" : sync.problem?.startsWith("Can't find the sync folder") ? "folder" : null) : null);
 
   async function backUp() {
     busy = true;
@@ -169,7 +190,7 @@
 </script>
 
 <div class="mx-auto max-w-4xl px-12 pb-24">
-  <PageHeader title="Your data" subtitle="Backups of everything you've studied, kept on this computer." />
+  <PageHeader title="Your data" subtitle="Backups, sync, and export and import. Everything stays on your computers." />
 
   {#if status && line}
     <div class="space-y-6">
@@ -189,6 +210,14 @@
               </p>
             </div>
           </div>
+          {#if sync && syncWords}
+            <div class="flex items-start gap-3">
+              <span class="grid size-9 shrink-0 place-items-center rounded-full border-2 {syncWords.ok ? 'text-right-ink' : 'text-wrong-ink'}">
+                {#if !sync.on}<RefreshCwOff class="size-4" />{:else if syncFix === "folder"}<FolderX class="size-4" />{:else if sync.to_check}<GitCompare class="size-4" />{:else}<RefreshCw class="size-4" />{/if}
+              </span>
+              <div><p class="font-semibold">{syncWords.title}</p><p class="text-sm text-muted">{syncWords.detail}</p></div>
+            </div>
+          {/if}
           {#if status.copy_problem}
             <div class="flex items-start gap-3">
               <span class="grid size-9 shrink-0 place-items-center rounded-full border-2 text-wrong-ink"><ShieldAlert class="size-4" /></span>
@@ -207,7 +236,7 @@
             <h2 id="backups-h" class="text-lg font-semibold">Backups</h2>
             <p class="mt-1 text-sm text-muted">A full copy of everything, made while the app is open. Your study isn't interrupted.</p>
           </div>
-          <button class="btn btn-primary shrink-0" disabled={busy} onclick={backUp}><HardDriveDownload class="size-4" />{busy ? "Backing up…" : "Back up now"}</button>
+          <button class="btn shrink-0 {syncFix ? 'btn-outline border-field-border' : 'btn-primary'}" disabled={busy} onclick={backUp}><HardDriveDownload class="size-4" />{busy ? "Backing up…" : "Back up now"}</button>
         </div>
 
         {#if list.length}
@@ -243,6 +272,8 @@
           <dd><button class="btn btn-ghost btn-sm" onclick={openCopying}>{#if status.settings.copy_to}<FolderInput class="size-4" />Change{:else}<Plus class="size-4" />Add a place{/if}</button></dd>
         </dl>
       </section>
+
+      {#if sync}<SyncSection status={sync} {checks} fix={syncFix} onStatus={loadSync} onChanged={onRestored} />{/if}
 
       <section class="panel p-6" aria-labelledby="transfer-h">
         <h2 id="transfer-h" class="text-lg font-semibold">Export and import</h2>

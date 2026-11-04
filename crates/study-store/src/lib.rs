@@ -25,6 +25,7 @@ pub mod practice;
 pub mod recall;
 mod schema;
 pub mod search;
+pub mod sync;
 
 /// The newest database schema this version of the app knows.
 pub const LATEST_SCHEMA: i64 = schema::LATEST;

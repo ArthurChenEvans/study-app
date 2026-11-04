@@ -39,7 +39,7 @@ pub struct ReviewRow {
 
 const SETTINGS_KEY: &str = "card_settings";
 
-fn rating_from(value: i64) -> Rating {
+pub(crate) fn rating_from(value: i64) -> Rating {
     match value {
         1 => Rating::Again,
         2 => Rating::Hard,

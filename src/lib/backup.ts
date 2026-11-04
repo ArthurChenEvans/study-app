@@ -27,6 +27,7 @@ export const reasonLabel: Record<BackupReason, string> = {
   BeforeRestore: "Before restore",
   BeforeUpdate: "Before update",
   BeforeImport: "Before import",
+  BeforeSync: "Before sync",
 };
 
 /** "6.1 MB", "820 KB". */
