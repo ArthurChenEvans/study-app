@@ -1,0 +1,15 @@
+[package]
+name = "study-core"
+description = "Domain rules for the Study App: questions, quizzes, scoring, retries and progress. No IO."
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+chrono = { version = "0.4", default-features = false, features = ["std"] }
+fsrs = "6"
+rand = "0.9"
+serde = { version = "1.0.229", features = ["derive"] }
+thiserror = "2"
+
+[dev-dependencies]
+serde_json = "1"

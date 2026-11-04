@@ -1,0 +1,9 @@
+[workspace]
+resolver = "2"
+members = ["crates/study-core", "crates/study-store", "crates/study-api", "crates/study-web", "src-tauri"]
+# The Tauri shell needs WebKitGTK to build, so plain `cargo test` covers the testable crates.
+default-members = ["crates/study-core", "crates/study-store", "crates/study-api", "crates/study-web"]
+
+[workspace.package]
+edition = "2024"
+version = "0.1.0"

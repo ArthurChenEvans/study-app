@@ -1,0 +1,187 @@
+<script lang="ts">
+  // free-recall.feature (R52, R58, R60): checklists due today first, then the rest by date.
+  import { Brain, CalendarCog, CircleCheck, Clock, Play, Plus } from "@lucide/svelte";
+  import { api, errorMessage, type ModuleRow, type RecallRow, type Schedule, type TopicRow } from "../lib/api";
+  import PageHeader from "../components/PageHeader.svelte";
+  import Ladder from "../components/Ladder.svelte";
+  import ScheduleDialog from "../components/ScheduleDialog.svelte";
+  import { dueLabel, onDay } from "../lib/dates";
+
+  let { onOpen, onStart, onChanged = () => {} }: { onOpen: (id: number) => void; onStart: (id: number) => void; onChanged?: () => void } = $props();
+
+  let rows = $state<RecallRow[]>([]);
+  let schedule = $state<Schedule | null>(null);
+  let today = $state(0);
+  let loaded = $state(false);
+
+  let creating = $state(false);
+  let modules = $state<ModuleRow[]>([]);
+  let topics = $state<TopicRow[]>([]);
+  let subject = $state("");
+  let find = $state("");
+  // A find box over a grouped list, not a dropdown of every module and topic.
+  const matches = (name: string) => name.toLowerCase().includes(find.trim().toLowerCase());
+  const moduleOptions = $derived(modules.filter((module) => matches(module.name)));
+  const topicOptions = $derived(topics.filter((topic) => matches(topic.name)));
+  const hasChecklist = (name: string, module: boolean) => rows.some((row) => row.module === module && row.subject_name === name);
+  const topicCount = (module: number) => { const count = topics.filter((topic) => topic.module === module).length; return `${count} ${count === 1 ? "topic" : "topics"}`; };
+  const moduleName = (id: number | null) => modules.find((module) => module.id === id)?.name ?? "No module";
+  let createError = $state("");
+
+  let editing = $state<Schedule | null>(null);
+
+  const due = $derived(rows.filter((row) => row.due_today));
+  const later = $derived(rows.filter((row) => !row.due_today));
+
+  async function load() {
+    [rows, schedule, today] = await Promise.all([api.recallList(), api.recallSchedule(), api.today()]);
+    loaded = true;
+  }
+
+  async function openCreate() {
+    [modules, topics] = await Promise.all([api.modules(), api.topics()]);
+    subject = "";
+    find = "";
+    createError = "";
+    creating = true;
+  }
+
+  async function create(event: SubmitEvent) {
+    event.preventDefault();
+    if (!subject) {
+      createError = "Pick a module or topic to recall.";
+      return;
+    }
+    const [kind, id] = subject.split(":");
+    try {
+      const checklist = await api.createChecklist(kind === "module" ? { Module: Number(id) } : { Topic: Number(id) });
+      creating = false;
+      onChanged();
+      onOpen(checklist);
+    } catch (failure) {
+      createError = errorMessage(failure);
+    }
+  }
+
+  function openSchedule() {
+    if (!schedule) return;
+    editing = structuredClone($state.snapshot(schedule));
+  }
+
+  load();
+</script>
+
+<div class="mx-auto max-w-6xl px-12 pb-24">
+  <PageHeader title="Recall" subtitle={loaded && rows.length ? (due.length ? `${due.length} due today` : "Nothing due today") : ""}>
+    {#if rows.length}
+      <button class="btn btn-ghost" onclick={openSchedule}><CalendarCog class="size-4" />Schedule</button>
+      <button class="btn btn-ghost" onclick={openCreate}><Plus class="size-4" />New checklist</button>
+    {/if}
+  </PageHeader>
+
+  {#if loaded && rows.length === 0}
+    <div class="panel max-w-xl p-10">
+      <span class="grid size-10 place-items-center rounded-lg bg-base-200"><Brain class="size-5" /></span>
+      <h2 class="mt-6 text-xl font-semibold">No checklists yet</h2>
+      <p class="mt-2 max-w-prose text-muted">Free recall means writing or saying everything you remember about a module or topic, then ticking it off against a checklist. The app schedules the next one from how you did.</p>
+      <button class="btn btn-primary mt-6" onclick={openCreate}><Plus class="size-4" />Create your first checklist</button>
+    </div>
+  {/if}
+
+  {#if due.length && schedule}
+    <section aria-labelledby="due-h">
+      <h2 id="due-h" class="eyebrow mb-3">Due today</h2>
+      <div class="grid grid-cols-2 gap-6">
+        {#each due as row, index (row.id)}
+          <article class="panel flex flex-col gap-6 p-6" aria-label={row.subject_name}>
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <p class="text-sm text-muted">{row.module ? "Module" : "Topic"} · {row.points} {row.points === 1 ? "point" : "points"}</p>
+                <h3 class="mt-1 text-xl font-semibold"><button class="text-left hover:underline" onclick={() => onOpen(row.id)}>{row.subject_name}</button></h3>
+              </div>
+              {#if row.days_late}<span class="flex items-center gap-1 whitespace-nowrap text-sm text-muted"><Clock class="size-3.5" />Due {row.days_late} {row.days_late === 1 ? "day" : "days"} ago</span>{/if}
+            </div>
+            <div><Ladder steps={schedule.steps} position={row.position} step={row.step} next={row.next_step} /></div>
+            <div class="flex items-center justify-between gap-4">
+              <p class="text-sm text-muted">{#if row.last_score !== null}Last check <span class="font-semibold tabular-nums text-base-content">{row.last_score}%</span>{:else}First check{/if}</p>
+              {#if row.points}
+                <button class="btn {index === 0 ? 'btn-primary' : 'btn-outline border-field-border'}" onclick={() => onStart(row.id)}><Play class="size-4" />Start recall</button>
+              {:else}
+                <button class="btn btn-outline border-field-border" onclick={() => onOpen(row.id)}><Plus class="size-4" />Add points</button>
+              {/if}
+            </div>
+          </article>
+        {/each}
+      </div>
+    </section>
+  {:else if loaded && rows.length}
+    <div class="panel flex max-w-xl items-center gap-4 p-6">
+      <CircleCheck class="size-5" />
+      <div><p class="font-semibold">All caught up</p><p class="text-sm text-muted">Next up is {later[0].subject_name}, {onDay(later[0].due, today)}.</p></div>
+    </div>
+  {/if}
+
+  {#if later.length && schedule}
+    <section class="mt-12" aria-labelledby="later-h">
+      <h2 id="later-h" class="eyebrow mb-3">{due.length ? "Coming up" : "All checklists"}</h2>
+      <div class="panel overflow-hidden">
+        <table class="table table-fixed" aria-label="Checklists">
+          <colgroup><col class="w-[28%]" /><col class="w-[12%]" /><col class="w-[30%]" /><col class="w-[15%]" /><col class="w-[15%]" /></colgroup>
+          <thead><tr class="text-muted"><th>Checklist</th><th>Points</th><th>Step</th><th>Last check</th><th>Next</th></tr></thead>
+          <tbody>
+            {#each later as row (row.id)}
+              <tr class="hover:bg-base-100">
+                <td><button class="py-0.5 text-left font-semibold hover:underline" onclick={() => onOpen(row.id)}>{row.subject_name}</button><div class="text-xs text-muted">{row.module ? "Module" : "Topic"}{row.subject_exists ? "" : " (deleted)"}</div></td>
+                <td class="tabular-nums">{row.points}</td>
+                <td><div class="flex items-center gap-3"><div class="w-28"><Ladder compact steps={schedule.steps} position={row.position} step={row.step} next={row.next_step} /></div><span class="text-sm">{row.step ?? "Not started"}</span></div></td>
+                <td class="tabular-nums">{row.last_score === null ? "None yet" : `${row.last_score}%`}</td>
+                <td class="tabular-nums">{dueLabel(row.due, today)}</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  {/if}
+</div>
+
+{#if creating}
+  <dialog open class="modal modal-open" aria-labelledby="new-checklist-h">
+    <form class="modal-box max-w-md" onsubmit={create}>
+      <h3 id="new-checklist-h" class="text-lg font-semibold">New checklist</h3>
+      <p class="mt-1 text-sm text-muted">Recall about a module (all its topics) or one topic.</p>
+      <fieldset class="mt-5">
+        <legend class="sr-only">Recall about</legend>
+        <!-- svelte-ignore a11y_autofocus -->
+        <input type="search" class="input w-full" aria-label="Find a module or topic" placeholder="Find a module or topic…" bind:value={find} autofocus />
+        <div class="mt-2 max-h-80 overflow-y-auto rounded-lg border border-base-300 bg-base-100 py-1" role="presentation">
+          {#each [["Modules", moduleOptions, "module"], ["Topics", topicOptions, "topic"]] as const as [group, options, kind] (group)}
+            {#if options.length}
+              <p class="eyebrow px-4 pb-1 pt-3" aria-hidden="true">{group}</p>
+              {#each options as option (option.id)}
+                {@const value = `${kind}:${option.id}`}
+                <label class="flex cursor-pointer items-center gap-3 px-4 py-2 hover:bg-base-200 {subject === value ? 'bg-base-200 shadow-[inset_3px_0_0_var(--color-primary)]' : ''}">
+                  <input type="radio" name="recall-about" class="radio radio-sm" checked={subject === value} onchange={() => (subject = value)} />
+                  <span class="flex-1"><span class="block">{option.name}</span><span class="block text-xs text-muted">{kind === "module" ? topicCount(option.id) : moduleName((option as TopicRow).module)}</span></span>
+                  {#if hasChecklist(option.name, kind === "module")}<span class="text-xs text-muted">Has a checklist</span>{/if}
+                </label>
+              {/each}
+            {/if}
+          {/each}
+          {#if !moduleOptions.length && !topicOptions.length}<p class="px-4 py-3 text-sm text-muted">Nothing matches "{find.trim()}".</p>{/if}
+        </div>
+        <p class="mt-2 text-xs text-muted">{modules.length} {modules.length === 1 ? "module" : "modules"} and {topics.length} {topics.length === 1 ? "topic" : "topics"}. Type to narrow it down.</p>
+      </fieldset>
+      {#if createError}<p role="alert" class="mt-4 text-sm text-error">{createError}</p>{/if}
+      <div class="modal-action">
+        <button type="button" class="btn btn-ghost" onclick={() => (creating = false)}>Cancel</button>
+        <button type="submit" class="btn btn-primary">Create checklist</button>
+      </div>
+    </form>
+  </dialog>
+{/if}
+
+{#if editing}
+  <ScheduleDialog title="Recall schedule" intro="Every checklist climbs these steps. Passing moves it up one, and the next date counts from the day you did the check." passWhat="points recalled" applies="Changes apply from each checklist's next check." schedule={editing}
+    onSave={async (next) => { await api.setRecallSchedule(next); editing = null; await load(); }} onReset={() => api.resetRecallSchedule()} onClose={() => (editing = null)} />
+{/if}

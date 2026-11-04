@@ -1,0 +1,740 @@
+<!doctype html>
+<html lang="en" data-theme="studyapp-dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#18130e">
+<title>Free Recall Designs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/daisyui@5.0.43/daisyui.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<style>
+  /* studyapp theme, same values as docs/design-rules.md */
+  :root, [data-theme="studyapp"] {
+    color-scheme: light;
+    --color-base-100: oklch(97% 0.010 80);
+    --color-base-200: oklch(94% 0.014 78);
+    --color-base-300: oklch(89% 0.018 75);
+    --color-base-content: oklch(27% 0.025 60);
+    --color-primary: oklch(40% 0.065 50);
+    --color-primary-content: oklch(97% 0.010 80);
+    --color-secondary: oklch(32% 0.02 60);
+    --color-secondary-content: oklch(94% 0.014 78);
+    --color-accent: oklch(78% 0.13 78);
+    --color-accent-content: oklch(27% 0.025 60);
+    --color-neutral: oklch(32% 0.02 60);
+    --color-neutral-content: oklch(94% 0.014 78);
+    --color-info: oklch(44% 0.07 235);
+    --color-info-content: oklch(97% 0.010 80);
+    --color-success: oklch(42% 0.11 145);
+    --color-success-content: oklch(97% 0.010 80);
+    --color-warning: oklch(78% 0.13 78);
+    --color-warning-content: oklch(27% 0.025 60);
+    --color-error: oklch(44% 0.15 30);
+    --color-error-content: oklch(97% 0.010 80);
+    --radius-selector: 0.25rem;
+    --radius-field: 0.375rem;
+    --radius-box: 0.5rem;
+    --size-selector: 0.25rem;
+    --size-field: 0.25rem;
+    --border: 1px;
+    --depth: 0;
+    --noise: 0;
+
+    /* Raised surface for panels, and chart tokens (validated, see design rules) */
+    --surface: oklch(99% 0.006 80);
+    /* Quiz outcomes: blue / orange pair, colour-blind safe; guessed = hatched right */
+    --chart-right: #025884;
+    --chart-wrong: #cc6c13;
+    --right-ink: #004d77;
+    --wrong-ink: #853900;
+    --guessed-tint: #c1dcf0;
+    --guessed-ink: #013658;
+    --guessed-fill: repeating-linear-gradient(135deg, #025884 0 2px, #c1dcf0 2px 6px);
+    --chart-ink: #643d26;
+    --chart-grid: oklch(91% 0.016 76);
+    --muted: oklch(42% 0.022 65);
+    --shadow-panel: 0 1px 2px oklch(27% 0.025 60 / .06), 0 6px 16px oklch(27% 0.025 60 / .05);
+    --shadow-soft: 0 1px 2px oklch(27% 0.025 60 / .08);
+    --field-border: oklch(58% 0.02 65);
+    --on-right: #fff;
+    --on-wrong: #140d08;
+    --diagram-fill: oklch(94% 0.014 78);
+  }
+  /* Dark theme: its own palette, validated against the dark panel surface (see design rules) */
+  [data-theme="studyapp-dark"] {
+    color-scheme: dark;
+    --color-base-100: oklch(19% 0.012 65);
+    --color-base-200: oklch(16% 0.012 65);
+    --color-base-300: oklch(32% 0.016 65);
+    --color-base-content: oklch(93% 0.012 80);
+    --color-primary: oklch(74% 0.10 62);
+    --color-primary-content: oklch(18% 0.012 65);
+    --color-secondary: oklch(88% 0.015 75);
+    --color-secondary-content: oklch(18% 0.012 65);
+    --color-accent: oklch(80% 0.13 80);
+    --color-accent-content: oklch(18% 0.012 65);
+    --color-neutral: oklch(88% 0.015 75);
+    --color-neutral-content: oklch(18% 0.012 65);
+    --color-info: oklch(76% 0.08 235);
+    --color-info-content: oklch(18% 0.012 65);
+    --color-success: oklch(76% 0.13 145);
+    --color-success-content: oklch(18% 0.012 65);
+    --color-warning: oklch(80% 0.13 80);
+    --color-warning-content: oklch(18% 0.012 65);
+    --color-error: oklch(76% 0.13 30);
+    --color-error-content: oklch(18% 0.012 65);
+    --radius-selector: 0.25rem; --radius-field: 0.375rem; --radius-box: 0.5rem;
+    --size-selector: 0.25rem; --size-field: 0.25rem; --border: 1px; --depth: 0; --noise: 0;
+
+    --surface: oklch(23% 0.014 65);
+    --chart-right: #0573aa;
+    --chart-wrong: #d67523;
+    --right-ink: #87c6f2;
+    --wrong-ink: #f9b379;
+    --guessed-tint: #163c54;
+    --guessed-ink: #bbddf6;
+    --guessed-fill: repeating-linear-gradient(135deg, #0573aa 0 2px, #163c54 2px 6px);
+    --chart-ink: oklch(74% 0.10 62);
+    --chart-grid: oklch(30% 0.014 65);
+    --muted: oklch(78% 0.016 75);
+    --field-border: oklch(52% 0.018 70);
+    --on-right: #fff;
+    --on-wrong: #140d08;
+    --diagram-fill: oklch(28% 0.014 65);
+    --shadow-panel: 0 1px 0 oklch(100% 0 0 / .04) inset, 0 1px 2px oklch(0% 0 0 / .4), 0 8px 24px oklch(0% 0 0 / .25);
+    --shadow-soft: 0 1px 2px oklch(0% 0 0 / .4);
+  }
+  body { background: var(--color-base-100); color: var(--color-base-content); font-family: "IBM Plex Sans", ui-sans-serif, sans-serif; }
+  code, pre, .font-mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  h1, h2 { text-wrap: balance; }
+  h1 { letter-spacing: -0.015em; }
+  .input, .select, .textarea, .checkbox, .radio { border-color: var(--field-border); }
+  .input, .select, .textarea { background: var(--surface); }
+  :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+  pre.shiki { padding: 12px 16px; border-radius: var(--radius-box); font-size: 14px; overflow-x: auto; border: 1px solid var(--color-base-300); }
+  .divide-y > * { border-color: var(--color-base-300) !important; }
+  .btn .kbd { background: transparent; border-color: currentColor; color: inherit; opacity: .8; }
+  .btn { transition: transform 120ms ease-out, background-color 150ms ease-out, box-shadow 150ms ease-out; }
+  .btn:active:not(:disabled) { transform: scale(.97); }
+  .btn-primary { box-shadow: 0 1px 2px oklch(27% 0.025 60 / .25), inset 0 1px 0 oklch(100% 0 0 / .12); }
+
+  /* Panels: the one raised surface. Used for groups you read as a unit (charts, summaries) */
+  .panel { background: var(--surface); border: 1px solid var(--color-base-300); border-radius: 12px; box-shadow: var(--shadow-panel); }
+  .eyebrow { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+
+  /* Segmented control */
+  .seg { display: inline-flex; align-items: stretch; height: 2rem; padding: 2px; gap: 2px; border: 1px solid var(--field-border); border-radius: var(--radius-field); background: var(--color-base-200); vertical-align: middle; }
+  .seg > button { padding: 0 12px; font-size: 14px; line-height: 1; border-radius: calc(var(--radius-field) - 2px); color: var(--muted); transition: background-color 150ms ease-out, color 150ms ease-out; }
+  .seg > button:hover:not([aria-checked="true"]) { background: var(--color-base-300); color: var(--color-base-content); }
+  .seg > button[aria-checked="true"] { background: var(--color-neutral); color: var(--color-neutral-content); font-weight: 600; }
+  .seg > button:focus-visible { outline-offset: 1px; }
+  /* Fields: one focus ring */
+  .input:focus, .input:focus-within, .select:focus, .textarea:focus { outline: none !important; border-color: var(--color-primary) !important; box-shadow: 0 0 0 1px var(--color-primary) !important; }
+  label.input input:focus, label.input input:focus-visible { outline: none !important; box-shadow: none !important; }
+  .input-sm, .seg { min-height: 2rem; }
+  .btn:disabled .kbd { opacity: .5; }
+  .toggle:checked { background-color: var(--color-primary); border-color: var(--color-primary); color: var(--color-primary-content); }
+  [role=tab] .count { font-size: 12px; margin-left: 4px; color: var(--muted); font-weight: 400; }
+  .open-q { border: 1px dashed var(--color-info); color: var(--color-info); background: var(--surface); }
+
+  /* Navigation */
+  .nav-link { color: var(--muted); transition: background-color 150ms ease-out, color 150ms ease-out; }
+  .nav-link:hover { background: var(--color-base-300); color: var(--color-base-content); }
+  .nav-link[aria-current="page"] { background: var(--surface); color: var(--color-base-content); font-weight: 600; box-shadow: var(--shadow-soft); }
+
+  /* Charts */
+  .seg-bar { display: flex; gap: 2px; border-radius: 999px; overflow: hidden; }
+  .seg-bar > span { display: block; height: 100%; }
+  .tall-bar { display: flex; gap: 2px; height: 28px; }
+  .tall-bar > span { border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: visible; }
+  .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .text-right-ink { color: var(--right-ink); } .text-wrong-ink { color: var(--wrong-ink); }
+  .is-right { border-color: var(--chart-right) !important; box-shadow: 0 0 0 1px var(--chart-right); }
+  .is-wrong { border-color: var(--chart-wrong) !important; box-shadow: 0 0 0 1px var(--chart-wrong); }
+  .guessed-chip { background: var(--guessed-tint); color: var(--guessed-ink); border-color: var(--guessed-tint); }
+  .hbar { height: 12px; border-radius: 0 4px 4px 0; background: var(--chart-ink); transition: width 400ms ease-out; }
+  .cell { width: 24px; height: 24px; border-radius: 4px; display: grid; place-items: center; font-size: 12px; font-weight: 600; color: #fff; }
+  .chart-tip { position: fixed; pointer-events: none; z-index: 50; background: var(--color-neutral); color: var(--color-neutral-content); font-size: 12px; line-height: 1.4; padding: 8px 10px; border-radius: 6px; box-shadow: 0 4px 12px oklch(27% 0.025 60 / .2); opacity: 0; transition: opacity 120ms ease-out; max-width: 240px; }
+  .chart-tip.show { opacity: 1; }
+  details.table-view summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+
+  /* Quiz progress track */
+  .track { display: flex; gap: 2px; height: 6px; }
+  .track > span { flex: 1; border-radius: 2px; background: var(--color-base-300); }
+
+  /* Motion */
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .rise { animation: rise 260ms ease-out both; }
+  .rise-2 { animation-delay: 60ms; } .rise-3 { animation-delay: 120ms; } .rise-4 { animation-delay: 180ms; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+:root { --strip: 2.5rem; }
+</style>
+<style type="text/tailwindcss">
+  @theme {
+    --color-muted: var(--muted);
+    --color-field-border: var(--field-border);
+    --color-surface: var(--surface);
+    --font-sans: "IBM Plex Sans", ui-sans-serif, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+</style>
+<style>
+  /* Free recall additions. Same tokens as the MVP prototype. */
+  .ladder { display: flex; gap: 2px; align-items: stretch; }
+  .ladder > .step { flex: 1; min-width: 0; }
+  .ladder .bar { height: 6px; border-radius: 2px; background: var(--color-base-300); display: flex; gap: 1px; }
+  .ladder .bar > span { flex: 1; border-radius: 2px; }
+  .ladder .done { background: var(--chart-ink); }
+  .ladder .here { background: var(--chart-ink); box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px var(--chart-ink); }
+  .ladder .name { font-size: 12px; color: var(--muted); margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ladder .step[data-here] .name { color: var(--color-base-content); font-weight: 600; }
+  .point-row { min-height: 44px; }
+  .point-row:hover { background: var(--color-base-100); }
+  .point-row[aria-checked="true"] .tick { background: var(--chart-right); border-color: var(--chart-right); color: var(--on-right); }
+  .tick { width: 24px; height: 24px; border-radius: 6px; border: 1px solid var(--field-border); display: grid; place-items: center; flex-shrink: 0; background: var(--surface); }
+  .meter { position: relative; height: 10px; border-radius: 999px; background: var(--color-base-300); }
+  .meter > .fill { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: var(--chart-right); transition: width 200ms ease-out; }
+  .meter > .mark { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--color-base-content); border-radius: 1px; }
+  .badge-src { font-size: 12px; color: var(--muted); border: 1px solid var(--color-base-300); border-radius: 4px; padding: 0 6px; line-height: 20px; white-space: nowrap; }
+  .dump { min-height: 22rem; font-size: 16px; line-height: 1.6; }
+  .handle { cursor: grab; color: var(--muted); }
+  .missed-ink { color: var(--wrong-ink); }
+  .recalled-ink { color: var(--right-ink); }
+</style>
+</head>
+<body class="min-h-screen">
+<div id="proto-strip" class="sticky top-0 z-50 flex min-h-10 flex-wrap items-center gap-2 border-b border-base-300 bg-base-200 px-4 py-1.5 text-xs" aria-label="Prototype state">
+  <span class="mr-2 font-semibold uppercase tracking-wide text-muted">Prototype</span>
+  <span class="text-muted">Screen</span>
+  <div id="screens" class="flex gap-1 flex-wrap"></div>
+  <span class="ml-3 text-muted">State</span>
+  <div id="states" class="flex gap-1 flex-wrap"></div>
+</div>
+<div class="flex min-h-[calc(100vh-var(--strip))]">
+  <nav class="w-60 shrink-0 bg-base-200 border-r border-base-300 flex flex-col p-3 gap-1 sticky top-[var(--strip)] h-[calc(100vh-var(--strip))]" aria-label="Main">
+    <div class="flex items-center gap-2 px-3 py-4">
+      <span class="size-8 rounded-lg bg-primary text-primary-content grid place-items-center"><i data-lucide="layers" class="size-4"></i></span>
+      <span class="text-base font-semibold">Study App</span>
+    </div>
+    <a href="index.html#overview" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="layout-dashboard" class="size-4"></i>Overview</a>
+    <a href="index.html#topics" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="library" class="size-4"></i>Topics</a>
+    <a href="#recall" data-nav="recall" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="brain" class="size-4"></i><span class="flex-1">Recall</span><span id="due-badge" class="text-xs tabular-nums" aria-label="2 due today">2</span></a>
+    <a href="index.html#bibliography" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="book-open" class="size-4"></i>Bibliography</a>
+    <a href="index.html#history" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="history" class="size-4"></i>History</a>
+    <a href="index.html#search" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="search" class="size-4"></i>Search</a>
+    <div class="px-3 mt-4"><a href="index.html#setup" class="btn btn-outline btn-sm w-full justify-start border-field-border"><i data-lucide="play" class="size-4"></i>New quiz</a></div>
+    <div class="mt-auto px-3 pt-6">
+      <div class="seg w-full" role="radiogroup" aria-label="Theme" id="theme-switch">
+        <button type="button" role="radio" class="flex-1 flex items-center justify-center gap-1.5" data-theme-choice="studyapp-dark"><i data-lucide="moon" class="size-3.5"></i>Dark</button>
+        <button type="button" role="radio" class="flex-1 flex items-center justify-center gap-1.5" data-theme-choice="studyapp"><i data-lucide="sun" class="size-3.5"></i>Light</button>
+      </div>
+    </div>
+    <div class="px-3 pt-4 text-xs text-muted leading-relaxed">Free recall design prototype. Screens and states are clickable, data is sample only.</div>
+  </nav>
+  <main id="app" class="flex-1 min-w-0"></main>
+</div>
+
+<div id="tip" class="chart-tip" role="tooltip"></div>
+
+<script>
+/* ---------------- Helpers ---------------- */
+const icon = (name, cls = "size-4") => `<i data-lucide="${name}" class="${cls}" aria-hidden="true"></i>`;
+const openQ = (n, text) => `<span class="open-q inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs" title="Open question ${n}, see design/README.md">${icon("circle-help","size-3")}Open ${n}: ${text}</span>`;
+const pct = (a, b) => Math.round(a / b * 100);
+const esc = (t) => t.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const header = (title, subtitle = "", actions = "") => `<header class="flex items-end justify-between gap-6 pt-12 pb-8"><div><h1 class="text-3xl font-semibold leading-tight">${title}</h1>${subtitle ? `<p class="mt-2 text-muted">${subtitle}</p>` : ""}</div><div class="flex items-center gap-2">${actions}</div></header>`;
+
+/* ---------------- Schedule (the editable default ladder) ----------------
+   Steps from your calendar schedule: day, week, fortnight, month, then monthly x6,
+   seasonal x4, then yearly for good. Dates are anchored to the day a checklist started. */
+const LADDER = [
+  { name: "Day", every: "1 day", repeats: 1 },
+  { name: "Week", every: "1 week", repeats: 1 },
+  { name: "Fortnight", every: "2 weeks", repeats: 1 },
+  { name: "Month", every: "1 month", repeats: 1 },
+  { name: "Monthly", every: "1 month", repeats: 6 },
+  { name: "Seasonal", every: "3 months", repeats: 4 },
+  { name: "Yearly", every: "1 year", repeats: 0 },
+];
+const PASS = 70;
+const stepLabel = (s) => s.step === 4 ? `Monthly ${s.rep} of 6` : s.step === 5 ? `Seasonal ${s.rep} of 4` : LADDER[s.step].name;
+
+/* Ladder track: one segment per step, repeats as sub-ticks, with a caption saying where you
+   are and what comes next. Step names aren't drawn under each segment, they don't fit. */
+const nextLabel = (s) => { const l = LADDER[s.step]; if (l.repeats > 1 && s.rep < l.repeats) return stepLabel({ step: s.step, rep: s.rep + 1 }); const n = LADDER[s.step + 1]; return n ? (n.repeats > 1 ? `${n.name} ×${n.repeats}` : n.name) : "Yearly from then on"; };
+function ladder(s, compact = false) {
+  const bars = `<div class="ladder" role="img" aria-label="Schedule step: ${stepLabel(s)}, then ${nextLabel(s)}">${LADDER.map((l, i) => {
+    const subs = Math.max(1, l.repeats);
+    const bars = Array.from({ length: subs }, (_, k) => {
+      const here = i === s.step && (subs === 1 || k === (s.rep - 1));
+      const done = i < s.step || (i === s.step && subs > 1 && k < s.rep - 1);
+      return `<span class="${here ? "here" : done ? "done" : ""}"></span>`;
+    }).join("");
+    return `<div class="step" style="flex:${subs > 1 ? 2 : 1}"><div class="bar">${bars}</div></div>`;
+  }).join("")}</div>`;
+  if (compact) return bars;
+  return `${bars}<p class="mt-2 flex justify-between gap-4 text-sm"><span class="font-semibold">${stepLabel(s)}</span><span class="text-muted">then ${nextLabel(s)}</span></p>`;
+}
+
+/* ---------------- Sample data ---------------- */
+const today = "Tue 3 Nov";
+const lists = [
+  { id: "arch", subject: "Computer Architecture", kind: "Module", points: 12, step: 3, rep: 1, due: "Today", dueNote: "", last: 79, started: "4 Sep" },
+  { id: "osi", subject: "OSI model", kind: "Topic", points: 8, step: 2, rep: 1, due: "Today", dueNote: "1 day late", last: 62, started: "12 Oct" },
+  { id: "crypto", subject: "Cryptography", kind: "Module", points: 15, step: 1, rep: 1, due: "Thu 5 Nov", dueNote: "", last: 74, started: "29 Oct" },
+  { id: "gpu", subject: "GPU", kind: "Topic", points: 6, step: 5, rep: 1, due: "14 Jan", dueNote: "", last: 90, started: "3 Mar" },
+];
+const points = [
+  { text: "Von Neumann vs Harvard: shared vs separate instruction and data memory", src: "Written" },
+  { text: "Five pipeline stages: fetch, decode, execute, memory, write back", src: "Written" },
+  { text: "Which stage reads registers? → Decode", src: "MCQ" },
+  { text: "Data hazards and forwarding, and when a stall is still needed", src: "Written" },
+  { text: "Control hazards: branch prediction, the cost of a misprediction", src: "Written" },
+  { text: "Cache levels L1 to L3: size, latency and who shares them", src: "Written" },
+  { text: "Direct-mapped vs set-associative caches → set-associative trades lookup cost for fewer conflict misses", src: "MCQ" },
+  { text: "Temporal and spatial locality", src: "Written" },
+  { text: "Amdahl's law: $S = \\frac{1}{(1-p) + p/n}$", src: "Written" },
+  { text: "SIMD vs SIMT, and why a warp diverges", src: "Written" },
+  { text: "What does the TLB cache? → Virtual to physical page translations", src: "MCQ" },
+  { text: "Memory-mapped I/O vs port I/O", src: "Written" },
+];
+const sessions = [
+  { date: "20 Oct", score: 79, change: "Fortnight → Month", dump: "Typed" },
+  { date: "13 Oct", score: 74, change: "Week → Fortnight", dump: "Outside the app" },
+  { date: "18 Sep", score: 58, change: "Fortnight → Week", dump: "Typed" },
+  { date: "11 Sep", score: 71, change: "Week → Fortnight", dump: "Typed" },
+  { date: "5 Sep", score: 80, change: "Day → Week", dump: "Typed" },
+];
+const checkScores = [...sessions].reverse().map(s => ({ date: s.date, score: s.score }));
+const mcqs = [
+  { topic: "CPU", text: "Which stage reads registers?", answer: "Decode", added: true },
+  { topic: "CPU", text: "What does the program counter hold?", answer: "The address of the next instruction", added: false },
+  { topic: "CPU", text: "Which hazard does forwarding fix?", answer: "Data hazards (read after write)", added: false },
+  { topic: "Memory", text: "What does the TLB cache?", answer: "Virtual to physical page translations", added: true },
+  { topic: "Memory", text: "Direct-mapped vs set-associative caches", answer: "Set-associative trades lookup cost for fewer conflict misses", added: true },
+  { topic: "GPU", text: "What is a warp?", answer: "32 threads that run one instruction together", added: false },
+];
+
+/* ---------------- State ---------------- */
+const variants = {
+  recall: ["two due", "nothing due", "first time", "schedule settings"],
+  checklist: ["points", "import from questions", "no points yet", "history"],
+  session: ["dump typed", "dump outside the app", "check", "result moved up", "result went back"],
+};
+const state = { editing: null, screen: "recall", variant: "two due", ticked: new Set([0, 1, 2, 3, 5, 6, 7, 9, 10]), mode: "typed", importPick: new Set([1]), importRemove: new Set() };
+
+/* ---------------- Recall list ---------------- */
+function screenRecall() {
+  const v = state.variant;
+  if (v === "first time") return `<div class="mx-auto max-w-6xl px-12 pb-24">${header("Recall")}
+    <div class="panel max-w-xl p-10 rise">
+      <span class="grid size-10 place-items-center rounded-lg bg-base-200">${icon("brain","size-5")}</span>
+      <h2 class="mt-6 text-xl font-semibold">No checklists yet</h2>
+      <p class="mt-2 text-muted max-w-prose">Free recall means writing or saying everything you remember about a module or topic, then ticking it off against a checklist. The app schedules the next one from how you did.</p>
+      <button class="btn btn-primary mt-6" onclick="go('checklist','no points yet')">${icon("plus")}Create your first checklist</button>
+    </div></div>`;
+  const due = v === "nothing due" ? [] : lists.filter(l => l.due === "Today");
+  const order = ["Thu 5 Nov", "Sat 7 Nov", "3 Dec", "14 Jan"];
+  const later = (v === "nothing due" ? lists.map(l => ({ ...l, due: l.due === "Today" ? (l.id === "arch" ? "3 Dec" : "Sat 7 Nov") : l.due, dueNote: "" })) : lists.filter(l => l.due !== "Today"))
+    .sort((a, b) => order.indexOf(a.due) - order.indexOf(b.due));
+  return `<div class="mx-auto max-w-6xl px-12 pb-24">
+    ${header("Recall", v === "nothing due" ? "Nothing due today" : `${due.length} due today`, `<button class="btn btn-ghost" onclick="setVariant('schedule settings')">${icon("calendar-cog")}Schedule</button><button class="btn btn-ghost" onclick="go('checklist','no points yet')">${icon("plus")}New checklist</button>`)}
+    ${due.length ? `<section aria-labelledby="due-h" class="rise">
+      <h2 id="due-h" class="eyebrow mb-3">Due today</h2>
+      <div class="grid grid-cols-2 gap-6">${due.map((l, i) => `
+        <article class="panel p-6 flex flex-col gap-6" aria-label="${l.subject}">
+          <div class="flex items-start justify-between gap-4">
+            <div><p class="text-sm text-muted">${l.kind} · ${l.points} points</p><h3 class="mt-1 text-xl font-semibold">${l.subject}</h3></div>
+            ${l.dueNote ? `<span class="flex items-center gap-1 text-sm text-muted whitespace-nowrap">${icon("clock","size-3.5")}${l.dueNote}</span>` : ""}
+          </div>
+          ${ladder(l)}
+          <div class="flex items-center justify-between gap-4">
+            <p class="text-sm text-muted">Last check <span class="text-base-content font-semibold tabular-nums">${l.last}%</span></p>
+            <button class="btn ${i === 0 ? "btn-primary" : "btn-outline border-field-border"}" onclick="go('session','dump typed')">${icon("play")}Start recall</button>
+          </div>
+        </article>`).join("")}</div>
+    </section>` : `<div class="panel p-6 max-w-xl flex items-center gap-4 rise">${icon("circle-check","size-5")}<div><p class="font-semibold">All caught up</p><p class="text-sm text-muted">Next up is OSI model on Sat 7 Nov.</p></div></div>`}
+    <section class="mt-12 rise rise-2" aria-labelledby="later-h">
+      <h2 id="later-h" class="eyebrow mb-3">${due.length ? "Coming up" : "All checklists"}</h2>
+      <div class="panel overflow-hidden">
+        <table class="table table-fixed">
+          <colgroup><col class="w-[28%]"><col class="w-[12%]"><col class="w-[30%]"><col class="w-[15%]"><col class="w-[15%]"></colgroup>
+          <thead><tr class="text-muted"><th>Checklist</th><th>Points</th><th>Step</th><th>Last check</th><th>Next</th></tr></thead>
+          <tbody>${later.map(l => `<tr class="hover:bg-base-100 cursor-pointer" onclick="go('checklist','points')">
+            <td><a href="#checklist" class="inline-block py-0.5 font-semibold hover:underline" onclick="event.preventDefault()">${l.subject}</a><div class="text-xs text-muted">${l.kind}</div></td>
+            <td class="tabular-nums">${l.points}</td>
+            <td><div class="flex items-center gap-3"><div class="w-28">${ladder(l, true)}</div><span class="text-sm">${stepLabel(l)}</span></div></td>
+            <td class="tabular-nums">${l.last}%</td>
+            <td class="tabular-nums">${l.due}</td></tr>`).join("")}</tbody>
+        </table>
+      </div>
+    </section>
+  </div>${v === "schedule settings" ? scheduleDialog() : ""}`;
+}
+
+function scheduleDialog() {
+  return `<dialog open class="modal modal-open" aria-labelledby="sched-h">
+    <form class="modal-box max-w-2xl" onsubmit="event.preventDefault(); setVariant('two due')">
+      <h3 id="sched-h" class="text-lg font-semibold">Recall schedule</h3>
+      <p class="mt-2 text-sm text-muted">Every checklist climbs these steps. Dates count from the day a checklist started, so checklists made on different days stay staggered.</p>
+      <table class="table mt-6">
+        <thead><tr class="text-muted"><th>Step</th><th>Every</th><th>Times</th><th><span class="sr-only">Remove</span></th></tr></thead>
+        <tbody>${LADDER.map(l => `<tr>
+          <td><input class="input input-sm w-36" aria-label="Step name" value="${l.name}"></td>
+          <td><div class="flex gap-2"><input class="input input-sm w-16 tabular-nums" type="number" min="1" aria-label="${l.name} interval" value="${parseInt(l.every)}"><select class="select select-sm w-28" aria-label="${l.name} unit">${["days","weeks","months","years"].map(u => `<option ${l.every.includes(u.slice(0,-1)) ? "selected" : ""}>${u}</option>`).join("")}</select></div></td>
+          <td>${l.repeats === 0 ? `<span class="text-sm text-muted">From then on</span>` : `<input class="input input-sm w-16 tabular-nums" type="number" min="1" aria-label="${l.name} times" value="${l.repeats}">`}</td>
+          <td class="text-right">${l.repeats === 0 ? "" : `<button type="button" class="btn btn-ghost btn-sm btn-square" aria-label="Remove ${l.name}">${icon("x")}</button>`}</td></tr>`).join("")}</tbody>
+      </table>
+      <button type="button" class="btn btn-ghost btn-sm mt-2">${icon("plus")}Add a step before Yearly</button>
+      <div class="mt-6 grid grid-cols-2 gap-6">
+        <label class="block"><span class="text-sm font-semibold">Pass mark</span>
+          <div class="mt-1 flex items-center gap-2"><input class="input w-24 tabular-nums" type="number" min="1" max="100" value="${PASS}"><span class="text-sm text-muted">% of points recalled</span></div></label>
+        <label class="block"><span class="text-sm font-semibold">Under the pass mark</span>
+          <select class="select mt-1 w-full"><option>Go back one step</option><option>Stay on the same step</option></select>
+          <span class="mt-2 block">${openQ("A", "back one step, or back a whole band?")}</span></label>
+      </div>
+      <p class="mt-6 text-sm text-muted">Changes apply from each checklist's next check. Past checks keep their dates.</p>
+      <div class="modal-action">
+        <button type="button" class="btn btn-ghost mr-auto" onclick="setVariant('two due')">${icon("rotate-ccw")}Reset to default</button>
+        <button type="button" class="btn btn-ghost" onclick="setVariant('two due')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save schedule</button>
+      </div>
+    </form></dialog>`;
+}
+
+/* ---------------- Checklist editor ---------------- */
+function subjectPicker(selected = "Computer Architecture") {
+  return `<label class="block"><span class="block text-sm font-semibold">Recall about</span>
+    <select class="select mt-1 w-80">
+      <optgroup label="Modules">${["Computer Architecture","Networks","Cryptography"].map(m => `<option ${m === selected ? "selected" : ""}>${m}</option>`).join("")}</optgroup>
+      <optgroup label="Topics">${["CPU","GPU","Memory","OSI model","TCP/IP"].map(t => `<option>${t}</option>`).join("")}</optgroup>
+    </select>
+    <span class="mt-1 block text-sm text-muted">A module covers all its topics. Pick a topic for something narrower.</span></label>`;
+}
+function screenChecklist() {
+  const v = state.variant;
+  const empty = v === "no points yet";
+  const tabs = `<div class="flex items-center gap-1 border-b border-base-300" role="tablist" aria-label="Checklist views">
+    ${["Checklist","History"].map(t => { const on = (t === "History") === (v === "history"); return `<button role="tab" aria-selected="${on}" class="px-3 py-2 text-sm ${on ? "border-b-2 border-primary font-semibold" : "text-muted"}" onclick="setVariant('${t === "History" ? "history" : "points"}')">${t}${t === "Checklist" && !empty ? `<span class="count">${points.length}</span>` : ""}</button>`; }).join("")}</div>`;
+  const title = empty ? "New checklist" : "Computer Architecture";
+  const actions = empty ? "" : `<button class="btn btn-primary" onclick="go('session','dump typed')">${icon("play")}Start recall</button>`;
+  let body = "";
+  if (v === "history") body = historyView();
+  else body = `
+    <div class="grid grid-cols-[1fr_300px] gap-12 items-start mt-8">
+      <div>
+        ${empty ? `<div class="mb-8">${subjectPicker("")}</div>` : ""}
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-semibold">Points to recall</h2>
+          <button class="btn btn-ghost btn-sm" onclick="setVariant('import from questions')">${icon("list-plus")}Add from questions</button>
+        </div>
+        ${empty ? `<div class="panel p-8 text-center">
+            <p class="font-semibold">No points yet</p>
+            <p class="mt-1 text-sm text-muted">Write the main things you should be able to recall, one per point, or add them from your questions.</p>
+          </div>` : `<ol class="panel divide-y" aria-label="Points to recall">${points.map((p, i) => `
+          <li class="flex items-center gap-3 px-4 py-2 point-row">
+            <span class="handle" title="Drag to reorder, or Alt+Up and Alt+Down" aria-hidden="true">${icon("grip-vertical")}</span>
+            <span class="w-6 text-right text-xs tabular-nums text-muted">${i + 1}</span>
+            ${state.editing === i ? `<input class="input input-sm flex-1" aria-label="Point ${i + 1}" value="${esc(p.text)}" onblur="state.editing = null; render()" onkeydown="if(event.key==='Enter'||event.key==='Escape'){state.editing = null; render()}">`
+              : `<button class="flex-1 min-w-0 text-left text-[15px] rounded px-2 py-1 hover:bg-base-200" title="Click to edit" aria-label="Edit point ${i + 1}: ${esc(p.text)}" onclick="state.editing = ${i}; render(); document.querySelector('input[aria-label=&quot;Point ${i + 1}&quot;]')?.focus()">${p.text}</button>`}
+            ${p.src === "MCQ" ? `<span class="badge-src" title="Added from an MCQ. Removing it here doesn't change the question.">From MCQ</span>` : ""}
+            <button class="btn btn-ghost btn-sm btn-square" aria-label="Remove point ${i + 1}">${icon("x")}</button>
+          </li>`).join("")}</ol>`}
+        <form class="mt-3 flex gap-2" onsubmit="event.preventDefault()">
+          <input class="input flex-1" aria-label="New point" placeholder="e.g. Write-back vs write-through caches…">
+          <button class="btn btn-ghost" type="submit">${icon("plus")}Add point</button>
+        </form>
+        <p class="mt-2 text-sm text-muted">Markdown and maths in <code>$…$</code> work. Keep each point to one idea, so ticking it is a clear yes or no.</p>
+      </div>
+      <aside class="panel p-6 sticky top-8" aria-label="Schedule">
+        <p class="eyebrow">Schedule</p>
+        ${empty ? `<p class="mt-3 text-sm text-muted">Starts at the first step the day you first do it.</p><div class="mt-4">${ladder({ step: 0, rep: 1 })}</div>
+          <button class="btn btn-primary w-full mt-6" onclick="go('session','dump typed')">${icon("play")}Save and start recall</button>
+          <p class="mt-3 text-sm text-muted">Needs at least one point.</p>` : `
+          <p class="mt-3 text-2xl font-semibold">${stepLabel(lists[0])}</p>
+          <p class="text-sm text-muted">Next check today</p>
+          <div class="mt-4">${ladder(lists[0])}</div>
+          <dl class="mt-6 space-y-3 text-sm">
+            <div class="flex justify-between"><dt class="text-muted">Started</dt><dd>4 Sep</dd></div>
+            <div class="flex justify-between"><dt class="text-muted">Last check</dt><dd class="tabular-nums">79%</dd></div>
+            <div class="flex justify-between"><dt class="text-muted">Recall about</dt><dd>Module</dd></div>
+          </dl>`}
+      </aside>
+    </div>`;
+  return `<div class="mx-auto max-w-6xl px-12 pb-24">
+    <a href="#recall" class="mt-8 inline-flex items-center gap-1 py-1 text-sm text-muted hover:underline" onclick="event.preventDefault(); go('recall','two due')">${icon("arrow-left")}Recall</a>
+    <div class="flex items-end justify-between gap-6 pt-4 pb-6"><div>${empty ? "" : `<p class="text-sm text-muted">Module · ${points.length} points</p>`}<h1 class="mt-1 text-3xl font-semibold">${title}</h1></div><div>${actions}</div></div>
+    ${empty ? "" : tabs}${body}
+  </div>${v === "import from questions" ? importDialog() : ""}`;
+}
+
+function importDialog() {
+  const adds = [...state.importPick].filter(i => !mcqs[i].added).length;
+  const removes = [...mcqs.keys()].filter(i => mcqs[i].added && state.importPick.has(i) === false && state.importRemove.has(i)).length;
+  const label = adds && removes ? `Add ${adds}, remove ${removes}` : adds ? `Add ${adds} point${adds === 1 ? "" : "s"}` : removes ? `Remove ${removes} point${removes === 1 ? "" : "s"}` : "No changes yet";
+  return `<dialog open class="modal modal-open" aria-labelledby="imp-h">
+    <div class="modal-box max-w-3xl">
+      <h3 id="imp-h" class="text-lg font-semibold">Add points from questions</h3>
+      <p class="mt-2 text-sm text-muted">Each question becomes one point: the question, then its answer. You can edit the point after, and the question stays as it is. Untick one that's already in the checklist to remove its point.</p>
+      <div class="mt-6 flex items-center justify-between gap-4">
+        <div class="seg" role="radiogroup" aria-label="Question type">
+          <button type="button" role="radio" aria-checked="true">MCQ <span class="text-xs opacity-80 tabular-nums">6</span></button>
+          <button type="button" role="radio" aria-checked="false" disabled title="Not built yet" class="opacity-60">Short answer</button>
+          <button type="button" role="radio" aria-checked="false" disabled title="Not built yet" class="opacity-60">Flashcards</button>
+        </div>
+        <label class="input input-sm flex items-center gap-2 w-64">${icon("search","size-4")}<input type="search" aria-label="Filter questions" placeholder="Filter…"></label>
+      </div>
+      <p class="mt-2 text-xs text-muted">From the topics in Computer Architecture: CPU, GPU and Memory. Short answer and flashcards appear here once they're built.</p>
+      <ul class="mt-4 panel divide-y max-h-80 overflow-y-auto" aria-label="Questions">
+        ${mcqs.map((q, i) => { const on = q.added ? !state.importRemove.has(i) : state.importPick.has(i); return `<li>
+          <label class="flex items-start gap-4 px-4 py-3 cursor-pointer hover:bg-base-100">
+            <input type="checkbox" class="checkbox checkbox-sm mt-0.5" ${on ? "checked" : ""} onchange="togglePick(${i})">
+            <span class="flex-1"><span class="text-sm">${q.text}</span><span class="block text-sm text-muted">→ ${q.answer}</span></span>
+            <span class="text-xs whitespace-nowrap ${q.added && !on ? "missed-ink font-semibold" : "text-muted"}">${q.added ? (on ? "In the checklist" : "Will be removed") : q.topic}</span>
+          </label></li>`; }).join("")}
+      </ul>
+      <div class="modal-action">
+        <button class="btn btn-ghost" onclick="setVariant('points')">Cancel</button>
+        <button class="btn btn-primary" ${adds || removes ? "" : "disabled"} onclick="setVariant('points')">${label}</button>
+      </div>
+    </div></dialog>`;
+}
+
+function historyView() {
+  return `<div class="mt-8 grid grid-cols-[1fr_300px] gap-12 items-start">
+    <div class="space-y-8">
+      <section class="panel p-6" aria-labelledby="trend-h">
+        <div class="flex items-baseline justify-between"><h2 id="trend-h" class="text-sm font-semibold">Score per check</h2><span class="flex items-center gap-2 text-xs text-muted"><svg width="20" height="2" aria-hidden="true"><line x1="0" x2="20" y1="1" y2="1" stroke="currentColor" stroke-dasharray="4 4"/></svg>Pass mark ${PASS}%</span></div>
+        <div class="mt-4" data-chart="trend"></div>
+      </section>
+      <section aria-labelledby="checks-h">
+        <h2 id="checks-h" class="eyebrow mb-3">Checks</h2>
+        <div class="panel overflow-hidden"><table class="table">
+          <thead><tr class="text-muted"><th>Date</th><th>Score</th><th>Step</th><th>Dump</th></tr></thead>
+          <tbody>${sessions.map(s => `<tr>
+            <td class="tabular-nums">${s.date}</td>
+            <td class="tabular-nums"><span class="font-semibold">${s.score}%</span> <span class="text-xs ${s.score >= PASS ? "recalled-ink" : "missed-ink"}">${s.score >= PASS ? "passed" : "under pass mark"}</span></td>
+            <td class="text-sm">${s.change}</td>
+            <td>${s.dump === "Typed" ? `<button class="btn btn-ghost btn-xs">${icon("file-text","size-3.5")}View dump</button>` : `<span class="text-sm text-muted">Outside the app</span>`}</td></tr>`).join("")}</tbody>
+        </table></div>
+      </section>
+    </div>
+    <aside class="panel p-6" aria-label="Most missed">
+      <p class="eyebrow">Missed most often</p>
+      <ol class="mt-4 space-y-4 text-sm">
+        <li><p>Memory-mapped I/O vs port I/O</p><p class="text-xs text-muted tabular-nums">Missed 3 of 5 checks</p></li>
+        <li><p>Amdahl's law</p><p class="text-xs text-muted tabular-nums">Missed 2 of 5 checks</p></li>
+        <li><p>Control hazards: branch prediction</p><p class="text-xs text-muted tabular-nums">Missed 2 of 5 checks</p></li>
+      </ol>
+    </aside>
+  </div>`;
+}
+
+/* Score per check, same line style as the Overview chart */
+function drawTrend(el) {
+  const W = el.clientWidth || 600, H = 200, m = { t: 24, r: 24, b: 28, l: 48 };
+  const x = i => m.l + i * (W - m.l - m.r) / (checkScores.length - 1);
+  const y = v => m.t + (100 - v) / 100 * (H - m.t - m.b);
+  const pts = checkScores.map((h, i) => ({ ...h, x: x(i), y: y(h.score) }));
+  const line = pts.map((p, i) => `${i ? "L" : "M"}${p.x},${p.y}`).join("");
+  const grid = [0, 50, 100].map(v => `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" stroke="var(--chart-grid)"/><text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end" font-size="12" fill="var(--muted)">${v}%</text>`).join("");
+  const passLine = `<line x1="${m.l}" x2="${W - m.r}" y1="${y(PASS)}" y2="${y(PASS)}" stroke="var(--muted)" stroke-dasharray="4 4"/>`;
+  const dots = pts.map(p => `<circle cx="${p.x}" cy="${p.y}" r="4.5" fill="var(--chart-ink)" stroke="var(--surface)" stroke-width="2"><title>${p.date}: ${p.score}%</title></circle>`).join("");
+  const xl = pts.map((p, i) => `<text x="${p.x}" y="${H - 8}" text-anchor="${i === 0 ? "start" : i === pts.length - 1 ? "end" : "middle"}" font-size="12" fill="var(--muted)">${p.date}</text>`).join("");
+  const last = pts[pts.length - 1];
+  el.innerHTML = `<svg width="${W}" height="${H}" role="img" aria-label="Score per check, from ${pts[0].score}% to ${last.score}%">${grid}${passLine}<path d="${line}" fill="none" stroke="var(--chart-ink)" stroke-width="2" stroke-linejoin="round"/>${dots}${xl}<text x="${last.x - 8}" y="${last.y - 12}" text-anchor="end" font-size="12" font-weight="600" fill="var(--color-base-content)">${last.score}%</text></svg>
+    <details class="table-view mt-2"><summary>Show as table</summary><table class="table table-xs mt-2"><tbody>${checkScores.map(h => `<tr><td>${h.date}</td><td class="tabular-nums">${h.score}%</td></tr>`).join("")}</tbody></table></details>`;
+}
+
+/* ---------------- Session: dump, check, result ---------------- */
+function sessionBar(stepIndex) {
+  const steps = ["Recall", "Check", "Result"];
+  return `<div class="flex items-center justify-between gap-6 px-12 py-4 border-b border-base-300 bg-base-100 sticky top-[var(--strip)] z-10">
+    <div class="flex items-center gap-3 text-sm"><span class="text-muted">Recall</span>${icon("chevron-right","size-3.5")}<span class="font-semibold">Computer Architecture</span><span class="text-muted">· Month</span></div>
+    <ol class="flex items-center gap-2 text-sm" aria-label="Session steps">${steps.map((s, i) => `<li class="flex items-center gap-2 ${i === stepIndex ? "font-semibold" : "text-muted"}" ${i === stepIndex ? 'aria-current="step"' : ""}><span class="size-6 rounded-full grid place-items-center text-xs tabular-nums ${i < stepIndex ? "bg-neutral text-neutral-content" : i === stepIndex ? "border-2 border-base-content" : "border border-field-border"}">${i < stepIndex ? "✓" : i + 1}</span>${s}</li>${i < 2 ? `<li aria-hidden="true" class="w-6 h-px bg-base-300"></li>` : ""}`).join("")}</ol>
+    <button class="btn btn-ghost btn-sm font-normal" onclick="go('recall','two due')">${icon("log-out")}Leave</button>
+  </div>`;
+}
+function screenSession() {
+  const v = state.variant;
+  if (v.startsWith("dump")) return dumpView(v === "dump outside the app");
+  if (v === "check") return checkView();
+  return resultView(v === "result moved up");
+}
+function dumpView(outside) {
+  return `${sessionBar(0)}<div class="mx-auto max-w-3xl px-12 pb-24">
+    <div class="pt-12 flex items-end justify-between gap-6">
+      <div><p class="text-sm text-muted">Everything you remember about</p><h1 class="mt-1 text-3xl font-semibold">Computer Architecture</h1></div>
+      <span role="timer" aria-label="Time spent" class="flex items-center gap-2 text-sm text-muted tabular-nums">${icon("timer")}12:40</span>
+    </div>
+    <div class="mt-8 flex items-center justify-between gap-4">
+      <div class="seg" role="radiogroup" aria-label="Where you recall">
+        <button type="button" role="radio" aria-checked="${!outside}" onclick="setVariant('dump typed')">Type it here</button>
+        <button type="button" role="radio" aria-checked="${outside}" onclick="setVariant('dump outside the app')">Outside the app</button>
+      </div>
+      <p class="text-sm text-muted flex items-center gap-2">${icon("eye-off")}The checklist stays hidden until you're done</p>
+    </div>
+    ${outside ? `<div class="panel mt-6 p-8">
+        <p class="text-lg font-semibold">Recall it your way</p>
+        <p class="mt-2 text-muted max-w-prose">Write on paper, talk it through out loud, walk your memory palace or draw it. Come back when you've got everything you can, and tick off the checklist.</p>
+      </div>` : `<textarea class="textarea dump w-full mt-6 font-sans" aria-label="Your recall" placeholder="Start anywhere and keep going. Order and wording don't matter…">Von Neumann puts instructions and data in one memory, Harvard splits them, which is why it can fetch both at once.
+
+Pipeline: fetch, decode, execute, memory, write back. Registers are read in decode. Hazards: data (forwarding fixes most, load-use still stalls), control (branch prediction, flush on a miss), structural.
+
+Caches: L1 per core, L3 shared. Locality, temporal and spatial. Set-associative vs direct-mapped…
+
+TLB caches page translations.
+
+GPUs: SIMT, warps of 32, divergence serialises the branches.</textarea>
+      <p class="mt-2 flex justify-between text-xs text-muted tabular-nums"><span>Saved with this check, so you can look back at it in History</span><span>82 words</span></p>`}
+    <div class="mt-8 flex items-center justify-end gap-3">
+      <button class="btn btn-primary" onclick="setVariant('check')">${outside ? "I'm done, show the checklist" : "Done, check it"} <kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">Enter</kbd></button>
+    </div>
+  </div>`;
+}
+function outcome(n) {
+  const score = pct(n, points.length);
+  const pass = score >= PASS;
+  return { score, pass, line: pass ? `Moves up to Monthly 1 of 6, next on Thu 3 Dec` : `Goes back to Fortnight, next on Tue 17 Nov` };
+}
+function checkView() {
+  const n = state.ticked.size, o = outcome(n);
+  return `${sessionBar(1)}<div class="grid grid-cols-2 gap-0 h-[calc(100vh-65px-var(--strip))]">
+    <section class="bg-base-200 px-10 py-10 border-r border-base-300 overflow-y-auto" aria-labelledby="dump-h">
+      <h2 id="dump-h" class="eyebrow">Your recall</h2>
+      <div class="mt-4 max-w-prose leading-relaxed whitespace-pre-line text-[15px]">Von Neumann puts instructions and data in one memory, Harvard splits them, which is why it can fetch both at once.
+
+Pipeline: fetch, decode, execute, memory, write back. Registers are read in decode. Hazards: data (forwarding fixes most, load-use still stalls), control (branch prediction, flush on a miss), structural.
+
+Caches: L1 per core, L3 shared. Locality, temporal and spatial. Set-associative vs direct-mapped…
+
+TLB caches page translations.
+
+GPUs: SIMT, warps of 32, divergence serialises the branches.</div>
+    </section>
+    <section class="px-10 pb-10 overflow-y-auto" aria-labelledby="check-h">
+      <div class="sticky top-0 z-10 bg-base-100 pt-10 pb-4">
+      <div class="flex items-end justify-between gap-4">
+        <div><h2 id="check-h" class="text-xl font-semibold">Tick what you recalled</h2><p class="mt-1 text-sm text-muted">Only tick a point if it was in your recall, not if you recognise it now.</p></div>
+      </div>
+      <div class="panel mt-6 p-5" aria-live="polite" aria-label="Score so far">
+        <div class="flex items-baseline justify-between"><p><span class="text-2xl font-semibold tabular-nums">${o.score}%</span> <span class="text-sm text-muted tabular-nums">${n} of ${points.length} recalled</span></p><p class="text-sm ${o.pass ? "recalled-ink" : "missed-ink"} font-semibold flex items-center gap-1">${icon(o.pass ? "arrow-up" : "arrow-down","size-4")}${o.pass ? "Passing" : "Under the pass mark"}</p></div>
+        <div class="meter mt-3" role="img" aria-label="${o.score}% with the pass mark at ${PASS}%"><div class="fill" style="width:${o.score}%"></div><div class="mark" style="left:${PASS}%"></div></div>
+        <div class="mt-4 flex items-center justify-between gap-4"><p class="text-sm text-muted">${o.line}</p>
+          <button class="btn btn-primary shrink-0" onclick="setVariant('${o.pass ? "result moved up" : "result went back"}')">Finish check <kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">Enter</kbd></button></div>
+      </div>
+      </div>
+      <ol class="mt-2 panel divide-y" aria-label="Checklist">${points.map((p, i) => { const on = state.ticked.has(i); return `
+        <li role="checkbox" aria-checked="${on}" tabindex="0" class="point-row flex items-center gap-4 px-4 py-2 cursor-pointer" onclick="toggleTick(${i})" onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();toggleTick(${i})}">
+          <span class="tick">${on ? "✓" : ""}</span>
+          <span class="flex-1 text-[15px]">${p.text}</span>
+          <span class="text-xs whitespace-nowrap ${on ? "recalled-ink font-semibold" : "text-muted"}">${on ? "Recalled" : "Not yet"}</span>
+        </li>`; }).join("")}</ol>
+      <div class="mt-4 flex items-center justify-between gap-3">
+        <button class="btn btn-ghost btn-sm">${icon("plus")}Add a point the list is missing</button>
+        <p class="text-xs text-muted">Space ticks the focused point, Tab moves to the next</p>
+      </div>
+    </section>
+  </div>`;
+}
+function resultView(up) {
+  const n = up ? 10 : 7, score = pct(n, points.length);
+  const missed = up ? [8, 11] : [4, 5, 8, 9, 11];
+  const to = up ? { step: 4, rep: 1 } : { step: 2, rep: 1 };
+  return `${sessionBar(2)}<div class="mx-auto max-w-3xl px-12 pb-24">
+    <section class="pt-12 rise" aria-labelledby="score-h">
+      <p class="text-sm text-muted">Computer Architecture</p>
+      <h1 id="score-h" class="mt-2 flex items-baseline gap-4"><span class="text-5xl font-semibold tabular-nums">${score}%</span><span class="text-lg text-muted tabular-nums">${n} of ${points.length} recalled</span></h1>
+      <p class="mt-2 text-sm text-muted tabular-nums">Last check 79% · pass mark ${PASS}%</p>
+    </section>
+    <section class="panel p-6 mt-8 rise rise-2" aria-labelledby="next-h">
+      <div class="flex items-start justify-between gap-6">
+        <div>
+          <h2 id="next-h" class="text-lg font-semibold flex items-center gap-2">${up ? `${icon("arrow-up","size-5")}Up a step` : `${icon("arrow-down","size-5")}Back a step`}</h2>
+          <p class="mt-1 text-muted">${up ? "Month → Monthly 1 of 6" : "Month → Fortnight"}. Next check on <span class="text-base-content font-semibold">${up ? "Thu 3 Dec" : "Tue 17 Nov"}</span>.</p>
+        </div>
+        <span class="text-sm text-muted whitespace-nowrap">${up ? "" : openQ("A", "how far back?")}</span>
+      </div>
+      <div class="mt-6">${ladder(to)}</div>
+    </section>
+    <section class="mt-12 rise rise-3" aria-labelledby="missed-h">
+      <h2 id="missed-h" class="eyebrow mb-3">Missed this time · ${missed.length}</h2>
+      <ul class="panel divide-y">${missed.map(i => `<li class="flex items-center gap-4 px-4 py-3"><span class="missed-ink" aria-hidden="true">${icon("x","size-4")}</span><span class="flex-1 text-[15px]">${points[i].text}</span>${i === 11 ? `<span class="text-xs text-muted whitespace-nowrap">Missed 4 of 6 checks</span>` : ""}</li>`).join("")}</ul>
+      <p class="mt-3 text-sm text-muted">These are what to look over before the next check.</p>
+    </section>
+    <div class="mt-12 flex items-center justify-end gap-3">
+      <button class="btn btn-ghost" onclick="go('checklist','points')">${icon("pencil")}Edit checklist</button>
+      <button class="btn btn-primary" onclick="go('session','dump typed')">${icon("play")}Next: OSI model</button>
+    </div>
+    <p class="mt-3 text-sm text-muted text-right">1 more due today</p>
+  </div>`;
+}
+
+/* ---------------- Interactions ---------------- */
+function toggleTick(i) { state.ticked.has(i) ? state.ticked.delete(i) : state.ticked.add(i); const f = document.activeElement?.closest("[role=checkbox]"); render(); if (f) document.querySelectorAll("[role=checkbox]")[i]?.focus(); }
+function togglePick(i) {
+  const set = mcqs[i].added ? state.importRemove : state.importPick;
+  set.has(i) ? set.delete(i) : set.add(i); render();
+}
+
+/* ---------------- Tooltip ---------------- */
+const tipEl = document.getElementById("tip");
+function tip(html, x, y) { tipEl.innerHTML = html; tipEl.classList.add("show"); const r = tipEl.getBoundingClientRect(); tipEl.style.left = Math.min(x + 12, innerWidth - r.width - 8) + "px"; tipEl.style.top = Math.max(y - r.height - 12, 8) + "px"; }
+function hideTip() { tipEl.classList.remove("show"); }
+
+/* ---------------- Render ---------------- */
+const screens = { recall: screenRecall, checklist: screenChecklist, session: screenSession };
+const screenNames = { recall: "Recall list", checklist: "Checklist", session: "Recall session" };
+function setVariant(v) { state.variant = v; render(); }
+function go(screen, v) { state.screen = screen; state.variant = v || variants[screen][0]; history_replace(); render(); window.scrollTo(0, 0); }
+function history_replace() { try { history.replaceState(null, "", `#${state.screen}`); } catch (e) {} }
+function render() {
+  const el = document.getElementById("app");
+  el.innerHTML = screens[state.screen]();
+  document.querySelector('nav[aria-label="Main"]').hidden = state.screen === "session";
+  const noneDue = state.screen === "recall" && ["nothing due", "first time"].includes(state.variant);
+  document.getElementById("due-badge").hidden = noneDue;
+  document.querySelectorAll(".nav-link").forEach(a => a.dataset.nav === "recall" ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
+  document.getElementById("screens").innerHTML = Object.keys(screens).map(s => `<button class="px-2 py-1 rounded ${s === state.screen ? "bg-neutral text-neutral-content font-semibold" : "hover:underline"}" onclick="go('${s}')">${screenNames[s]}</button>`).join("");
+  document.getElementById("states").innerHTML = variants[state.screen].map(v => `<button class="px-2 py-1 rounded ${v === state.variant ? "bg-neutral text-neutral-content font-semibold" : "hover:underline"}" onclick="setVariant('${v}')">${v}</button>`).join("");
+  if (window.lucide) lucide.createIcons();
+  if (window.renderMathInElement) renderMathInElement(el, { delimiters: [{ left: "$", right: "$", display: false }], throwOnError: false });
+  el.querySelectorAll('[data-chart="trend"]').forEach(drawTrend);
+  const dialog = el.querySelector("dialog[open]");
+  if (dialog) dialog.querySelector("input, select, button")?.focus();
+  hideTip();
+}
+
+/* ---------------- Theme: dark by default, choice remembered per device ---------------- */
+const isDark = () => document.documentElement.dataset.theme === "studyapp-dark";
+function applyTheme(name, save = true) {
+  document.documentElement.dataset.theme = name;
+  document.querySelector('meta[name="theme-color"]').content = name === "studyapp-dark" ? "#18130e" : "#f9f4ee";
+  document.querySelectorAll("[data-theme-choice]").forEach(b => b.setAttribute("aria-checked", b.dataset.themeChoice === name));
+  if (save) { try { localStorage.setItem("studyapp-theme", name); } catch (e) {} render(); }
+}
+document.getElementById("theme-switch").addEventListener("click", e => { const b = e.target.closest("[data-theme-choice]"); if (b) applyTheme(b.dataset.themeChoice); });
+(() => { let saved = null; try { saved = localStorage.getItem("studyapp-theme"); } catch (e) {} applyTheme(saved === "studyapp" ? "studyapp" : "studyapp-dark", false); })();
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && document.querySelector("dialog[open]")) setVariant(variants[state.screen][0] === "two due" ? "two due" : "points");
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && state.screen === "session") {
+    e.preventDefault();
+    if (state.variant.startsWith("dump")) setVariant("check");
+    else if (state.variant === "check") setVariant(outcome(state.ticked.size).pass ? "result moved up" : "result went back");
+  }
+});
+const start = location.hash.slice(1);
+if (screens[start]) state.screen = start, state.variant = variants[start][0];
+render();
+  const strip = document.getElementById("proto-strip");
+  new ResizeObserver(() => document.documentElement.style.setProperty("--strip", strip.offsetHeight + "px")).observe(strip);
+</script>
+</body>
+</html>

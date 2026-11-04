@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="en" data-theme="studyapp-dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#18130e">
+<title>Exam and Other Dates</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/daisyui@5.0.43/daisyui.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<style>
+  /* studyapp theme, same values as docs/design-rules.md */
+  :root, [data-theme="studyapp"] {
+    color-scheme: light;
+    --color-base-100: oklch(97% 0.010 80);
+    --color-base-200: oklch(94% 0.014 78);
+    --color-base-300: oklch(89% 0.018 75);
+    --color-base-content: oklch(27% 0.025 60);
+    --color-primary: oklch(40% 0.065 50);
+    --color-primary-content: oklch(97% 0.010 80);
+    --color-secondary: oklch(32% 0.02 60);
+    --color-secondary-content: oklch(94% 0.014 78);
+    --color-accent: oklch(78% 0.13 78);
+    --color-accent-content: oklch(27% 0.025 60);
+    --color-neutral: oklch(32% 0.02 60);
+    --color-neutral-content: oklch(94% 0.014 78);
+    --color-info: oklch(44% 0.07 235);
+    --color-info-content: oklch(97% 0.010 80);
+    --color-success: oklch(42% 0.11 145);
+    --color-success-content: oklch(97% 0.010 80);
+    --color-warning: oklch(78% 0.13 78);
+    --color-warning-content: oklch(27% 0.025 60);
+    --color-error: oklch(44% 0.15 30);
+    --color-error-content: oklch(97% 0.010 80);
+    --radius-selector: 0.25rem;
+    --radius-field: 0.375rem;
+    --radius-box: 0.5rem;
+    --size-selector: 0.25rem;
+    --size-field: 0.25rem;
+    --border: 1px;
+    --depth: 0;
+    --noise: 0;
+
+    /* Raised surface for panels, and chart tokens (validated, see design rules) */
+    --surface: oklch(99% 0.006 80);
+    /* Quiz outcomes: blue / orange pair, colour-blind safe; guessed = hatched right */
+    --chart-right: #025884;
+    --chart-wrong: #cc6c13;
+    --right-ink: #004d77;
+    --wrong-ink: #853900;
+    --guessed-tint: #c1dcf0;
+    --guessed-ink: #013658;
+    --guessed-fill: repeating-linear-gradient(135deg, #025884 0 2px, #c1dcf0 2px 6px);
+    --chart-ink: #643d26;
+    --chart-grid: oklch(91% 0.016 76);
+    --muted: oklch(42% 0.022 65);
+    --shadow-panel: 0 1px 2px oklch(27% 0.025 60 / .06), 0 6px 16px oklch(27% 0.025 60 / .05);
+    --shadow-soft: 0 1px 2px oklch(27% 0.025 60 / .08);
+    --field-border: oklch(58% 0.02 65);
+    --on-right: #fff;
+    --on-wrong: #140d08;
+    --diagram-fill: oklch(94% 0.014 78);
+  }
+  /* Dark theme: its own palette, validated against the dark panel surface (see design rules) */
+  [data-theme="studyapp-dark"] {
+    color-scheme: dark;
+    --color-base-100: oklch(19% 0.012 65);
+    --color-base-200: oklch(16% 0.012 65);
+    --color-base-300: oklch(32% 0.016 65);
+    --color-base-content: oklch(93% 0.012 80);
+    --color-primary: oklch(74% 0.10 62);
+    --color-primary-content: oklch(18% 0.012 65);
+    --color-secondary: oklch(88% 0.015 75);
+    --color-secondary-content: oklch(18% 0.012 65);
+    --color-accent: oklch(80% 0.13 80);
+    --color-accent-content: oklch(18% 0.012 65);
+    --color-neutral: oklch(88% 0.015 75);
+    --color-neutral-content: oklch(18% 0.012 65);
+    --color-info: oklch(76% 0.08 235);
+    --color-info-content: oklch(18% 0.012 65);
+    --color-success: oklch(76% 0.13 145);
+    --color-success-content: oklch(18% 0.012 65);
+    --color-warning: oklch(80% 0.13 80);
+    --color-warning-content: oklch(18% 0.012 65);
+    --color-error: oklch(76% 0.13 30);
+    --color-error-content: oklch(18% 0.012 65);
+    --radius-selector: 0.25rem; --radius-field: 0.375rem; --radius-box: 0.5rem;
+    --size-selector: 0.25rem; --size-field: 0.25rem; --border: 1px; --depth: 0; --noise: 0;
+
+    --surface: oklch(23% 0.014 65);
+    --chart-right: #0573aa;
+    --chart-wrong: #d67523;
+    --right-ink: #87c6f2;
+    --wrong-ink: #f9b379;
+    --guessed-tint: #163c54;
+    --guessed-ink: #bbddf6;
+    --guessed-fill: repeating-linear-gradient(135deg, #0573aa 0 2px, #163c54 2px 6px);
+    --chart-ink: oklch(74% 0.10 62);
+    --chart-grid: oklch(30% 0.014 65);
+    --muted: oklch(78% 0.016 75);
+    --field-border: oklch(52% 0.018 70);
+    --on-right: #fff;
+    --on-wrong: #140d08;
+    --diagram-fill: oklch(28% 0.014 65);
+    --shadow-panel: 0 1px 0 oklch(100% 0 0 / .04) inset, 0 1px 2px oklch(0% 0 0 / .4), 0 8px 24px oklch(0% 0 0 / .25);
+    --shadow-soft: 0 1px 2px oklch(0% 0 0 / .4);
+  }
+  body { background: var(--color-base-100); color: var(--color-base-content); font-family: "IBM Plex Sans", ui-sans-serif, sans-serif; }
+  code, pre, .font-mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  h1, h2 { text-wrap: balance; }
+  h1 { letter-spacing: -0.015em; }
+  .input, .select, .textarea, .checkbox, .radio { border-color: var(--field-border); }
+  .input, .select, .textarea { background: var(--surface); }
+  :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+  pre.shiki { padding: 12px 16px; border-radius: var(--radius-box); font-size: 14px; overflow-x: auto; border: 1px solid var(--color-base-300); }
+  .divide-y > * { border-color: var(--color-base-300) !important; }
+  .btn .kbd { background: transparent; border-color: currentColor; color: inherit; opacity: .8; }
+  .btn { transition: transform 120ms ease-out, background-color 150ms ease-out, box-shadow 150ms ease-out; }
+  .btn:active:not(:disabled) { transform: scale(.97); }
+  .btn-primary { box-shadow: 0 1px 2px oklch(27% 0.025 60 / .25), inset 0 1px 0 oklch(100% 0 0 / .12); }
+
+  /* Panels: the one raised surface. Used for groups you read as a unit (charts, summaries) */
+  .panel { background: var(--surface); border: 1px solid var(--color-base-300); border-radius: 12px; box-shadow: var(--shadow-panel); }
+  .eyebrow { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+
+  /* Segmented control */
+  .seg { display: inline-flex; align-items: stretch; height: 2rem; padding: 2px; gap: 2px; border: 1px solid var(--field-border); border-radius: var(--radius-field); background: var(--color-base-200); vertical-align: middle; }
+  .seg > button { padding: 0 12px; font-size: 14px; line-height: 1; border-radius: calc(var(--radius-field) - 2px); color: var(--muted); transition: background-color 150ms ease-out, color 150ms ease-out; }
+  .seg > button:hover:not([aria-checked="true"]) { background: var(--color-base-300); color: var(--color-base-content); }
+  .seg > button[aria-checked="true"] { background: var(--color-neutral); color: var(--color-neutral-content); font-weight: 600; }
+  .seg > button:focus-visible { outline-offset: 1px; }
+  /* Fields: one focus ring */
+  .input:focus, .input:focus-within, .select:focus, .textarea:focus { outline: none !important; border-color: var(--color-primary) !important; box-shadow: 0 0 0 1px var(--color-primary) !important; }
+  label.input input:focus, label.input input:focus-visible { outline: none !important; box-shadow: none !important; }
+  .input-sm, .seg { min-height: 2rem; }
+  .btn:disabled .kbd { opacity: .5; }
+  .toggle:checked { background-color: var(--color-primary); border-color: var(--color-primary); color: var(--color-primary-content); }
+  [role=tab] .count { font-size: 12px; margin-left: 4px; color: var(--muted); font-weight: 400; }
+  .open-q { border: 1px dashed var(--color-info); color: var(--color-info); background: var(--surface); }
+
+  /* Navigation */
+  .nav-link { color: var(--muted); transition: background-color 150ms ease-out, color 150ms ease-out; }
+  .nav-link:hover { background: var(--color-base-300); color: var(--color-base-content); }
+  .nav-link[aria-current="page"] { background: var(--surface); color: var(--color-base-content); font-weight: 600; box-shadow: var(--shadow-soft); }
+
+  /* Charts */
+  .seg-bar { display: flex; gap: 2px; border-radius: 999px; overflow: hidden; }
+  .seg-bar > span { display: block; height: 100%; }
+  .tall-bar { display: flex; gap: 2px; height: 28px; }
+  .tall-bar > span { border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: visible; }
+  .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .text-right-ink { color: var(--right-ink); } .text-wrong-ink { color: var(--wrong-ink); }
+  .is-right { border-color: var(--chart-right) !important; box-shadow: 0 0 0 1px var(--chart-right); }
+  .is-wrong { border-color: var(--chart-wrong) !important; box-shadow: 0 0 0 1px var(--chart-wrong); }
+  .guessed-chip { background: var(--guessed-tint); color: var(--guessed-ink); border-color: var(--guessed-tint); }
+  .hbar { height: 12px; border-radius: 0 4px 4px 0; background: var(--chart-ink); transition: width 400ms ease-out; }
+  .cell { width: 24px; height: 24px; border-radius: 4px; display: grid; place-items: center; font-size: 12px; font-weight: 600; color: #fff; }
+  .chart-tip { position: fixed; pointer-events: none; z-index: 50; background: var(--color-neutral); color: var(--color-neutral-content); font-size: 12px; line-height: 1.4; padding: 8px 10px; border-radius: 6px; box-shadow: 0 4px 12px oklch(27% 0.025 60 / .2); opacity: 0; transition: opacity 120ms ease-out; max-width: 240px; }
+  .chart-tip.show { opacity: 1; }
+  details.table-view summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+
+  /* Quiz progress track */
+  .track { display: flex; gap: 2px; height: 6px; }
+  .track > span { flex: 1; border-radius: 2px; background: var(--color-base-300); }
+
+  /* Motion */
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .rise { animation: rise 260ms ease-out both; }
+  .rise-2 { animation-delay: 60ms; } .rise-3 { animation-delay: 120ms; } .rise-4 { animation-delay: 180ms; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+:root { --strip: 2.5rem; }
+</style>
+<style type="text/tailwindcss">
+  @theme {
+    --color-muted: var(--muted);
+    --color-field-border: var(--field-border);
+    --color-surface: var(--surface);
+    --font-sans: "IBM Plex Sans", ui-sans-serif, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+</style>
+<style>
+  /* Projects, drills and calendar additions. Same tokens as the other prototypes. */
+  .badge-src { font-size: 12px; color: var(--muted); border: 1px solid var(--color-base-300); border-radius: 4px; padding: 0 6px; line-height: 20px; white-space: nowrap; }
+  .kind { font-size: 12px; border-radius: 4px; padding: 0 6px; line-height: 20px; white-space: nowrap; border: 1px solid var(--field-border); }
+  .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .cal-day { min-height: 104px; border-right: 1px solid var(--color-base-300); border-bottom: 1px solid var(--color-base-300); padding: 6px 8px; text-align: left; display: flex; flex-direction: column; gap: 2px; }
+  .cal-day:hover { background: var(--color-base-200); }
+  .cal-day[aria-current="date"] { box-shadow: inset 0 0 0 2px var(--color-base-content); }
+  .cal-day[aria-selected="true"] { background: var(--color-base-200); }
+  .cal-day.other { color: var(--muted); }
+  .cal-day .num { font-size: 13px; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .cal-row { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .cal-row b { color: var(--color-base-content); font-weight: 600; }
+  .cal-past .cal-row { opacity: 1; }
+  .timer-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-variant-numeric: tabular-nums; border: 1px solid var(--field-border); border-radius: 999px; padding: 2px 10px; }
+  .step-dot { width: 24px; height: 24px; border-radius: 999px; display: grid; place-items: center; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .rate { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 9rem; padding: 10px 16px; height: auto; }
+  .rate .when { font-size: 12px; font-weight: 400; opacity: .85; }
+  .text-right-ink { color: var(--right-ink); } .text-wrong-ink { color: var(--wrong-ink); }
+  .ladder { display: flex; gap: 4px; }
+  .ladder > span { flex: 1; height: 6px; border-radius: 2px; background: var(--color-base-300); }
+  .ladder > span.on { background: var(--chart-ink); }
+  .ladder > span.now { background: transparent; box-shadow: inset 0 0 0 2px var(--color-base-content); }
+  /* Dates on the calendar */
+  .date-chip { display: flex; align-items: center; gap: 4px; min-width: 0; max-width: 100%; font-size: 12px; font-weight: 600; border: 1px solid var(--field-border); border-radius: 4px; padding: 0 4px; line-height: 18px; margin-bottom: 2px; }
+  .date-chip.exam { border-color: var(--color-base-content); }
+</style>
+</head>
+<body class="min-h-screen">
+<div id="proto-strip" class="sticky top-0 z-50 flex min-h-10 flex-wrap items-center gap-2 border-b border-base-300 bg-base-200 px-4 py-1.5 text-xs" aria-label="Prototype state">
+  <span class="mr-2 font-semibold uppercase tracking-wide text-muted">Prototype</span>
+  <span class="text-muted">Screen</span><div id="screens" class="flex gap-1 flex-wrap"></div>
+  <span class="ml-3 text-muted">State</span><div id="states" class="flex gap-1 flex-wrap"></div>
+</div>
+<div class="flex min-h-[calc(100vh-var(--strip))]">
+  <nav class="w-60 shrink-0 bg-base-200 border-r border-base-300 flex flex-col p-3 gap-1 sticky top-[var(--strip)] h-[calc(100vh-var(--strip))]" aria-label="Main">
+    <div class="flex items-center gap-2 px-3 py-4">
+      <span class="size-8 rounded-lg bg-primary text-primary-content grid place-items-center"><i data-lucide="layers" class="size-4"></i></span>
+      <span class="text-base font-semibold">Study App</span>
+    </div>
+    <a href="index.html#overview" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="layout-dashboard" class="size-4"></i>Overview</a>
+    <a href="#calendar" data-nav="calendar" onclick="event.preventDefault(); go('calendar')" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="calendar-days" class="size-4"></i><span class="flex-1">Calendar</span><span class="text-xs tabular-nums" aria-label="17 things due today">17</span></a>
+    <a href="#topics" data-nav="topics" onclick="event.preventDefault(); go('topics')" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="library" class="size-4"></i><span class="flex-1">Topics</span><span class="text-xs tabular-nums" aria-label="2 quizzes due today">2</span></a>
+    <a href="flashcards.html#cards" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="square-stack" class="size-4"></i><span class="flex-1">Cards</span><span class="text-xs tabular-nums" aria-label="12 cards due today">12</span></a>
+    <a href="free-recall.html#recall" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="brain" class="size-4"></i><span class="flex-1">Recall</span><span class="text-xs tabular-nums" aria-label="1 checklist due today">1</span></a>
+    <a href="#projects" data-nav="projects" onclick="event.preventDefault(); go('projects')" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="hammer" class="size-4"></i><span class="flex-1">Projects</span><span class="text-xs tabular-nums" aria-label="2 drills due today">2</span></a>
+    <a href="index.html#bibliography" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="book-open" class="size-4"></i>Bibliography</a>
+    <a href="index.html#history" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="history" class="size-4"></i>History</a>
+    <a href="index.html#search" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="search" class="size-4"></i>Search</a>
+    <div class="px-3 mt-4"><a href="index.html#setup" class="btn btn-outline btn-sm w-full justify-start border-field-border"><i data-lucide="play" class="size-4"></i>New quiz</a></div>
+    <div class="mt-auto px-3 pt-6">
+      <div class="seg w-full" role="radiogroup" aria-label="Theme" id="theme-switch">
+        <button type="button" role="radio" class="flex-1 flex items-center justify-center gap-1.5" data-theme-choice="studyapp-dark"><i data-lucide="moon" class="size-3.5"></i>Dark</button>
+        <button type="button" role="radio" class="flex-1 flex items-center justify-center gap-1.5" data-theme-choice="studyapp"><i data-lucide="sun" class="size-3.5"></i>Light</button>
+      </div>
+    </div>
+    <div class="px-3 pt-4 text-xs text-muted leading-relaxed">Dates on the calendar design prototype. Screens and states are clickable, data is sample only.</div>
+  </nav>
+  <main id="app" class="flex-1 min-w-0"></main>
+</div>
+
+<script>
+const icon = (name, cls = "size-4") => `<i data-lucide="${name}" class="${cls}" aria-hidden="true"></i>`;
+const header = (title, subtitle = "", actions = "") => `<header class="flex items-end justify-between gap-6 pt-12 pb-8"><div><h1 class="text-3xl font-semibold leading-tight">${title}</h1>${subtitle ? `<p class="mt-2 text-muted">${subtitle}</p>` : ""}</div><div class="flex items-center gap-2">${actions}</div></header>`;
+const back = (label, screen, v) => `<button class="mt-8 inline-flex items-center gap-1 py-1 text-sm text-muted hover:underline" onclick="go('${screen}'${v ? `,'${v}'` : ""})">${icon("arrow-left")}${label}</button>`;
+const TYPES = { cards: ["square-stack", "cards", "card", "Cards"], recall: ["brain", "checklists", "checklist", "Recall"], quiz: ["list-checks", "quizzes", "quiz", "Quizzes"], drill: ["dumbbell", "drills", "drill", "Drills"] };
+
+const variants = {
+  calendar: ["month", "the exam's day", "the week before", "add a date", "covers topics", "a plain date", "edit a date"],
+  topics: ["tightened", "results"],
+};
+const state = { screen: "calendar", variant: "month" };
+
+/* ---------------- Sample data ---------------- */
+const TODAY = 3; // Tue 3 Nov 2026
+const DATES = {
+  13: [{ name: "Study app write-up", kind: "Deadline", covers: "", tight: false }],
+  23: [{ name: "Networks exam", kind: "Exam", covers: "Networks module · 3 topics", tight: true }],
+};
+const due = {
+  1: { done: { cards: 9 } }, 2: { done: { cards: 14, quiz: 1, struggles: 3 } },
+  3: { cards: 12, recall: 1, quiz: 2, drill: 2 },
+  4: { cards: 4, drill: 1 }, 5: { cards: 9, quiz: 1 }, 6: { cards: 3 }, 7: { cards: 7 }, 9: { cards: 31, recall: 1 },
+  10: { cards: 9, quiz: 1 }, 12: { cards: 8, quiz: 1 }, 13: { cards: 8, recall: 1 }, 16: { cards: 4, quiz: 1 }, 17: { cards: 6 }, 18: { cards: 7, quiz: 1 }, 20: { cards: 5, recall: 1 }, 21: { cards: 6, quiz: 1 }, 24: { cards: 3 }, 30: { cards: 2, recall: 1 },
+};
+const october = { 26: { done: { cards: 11, quiz: 1 } }, 27: { done: { cards: 8, recall: 1, struggles: 2 } }, 28: { done: { cards: 12 } }, 29: { done: { cards: 6, quiz: 2 } }, 30: { done: { cards: 10, struggles: 1 } }, 31: { done: { cards: 7 } } };
+
+/* ---------------- Calendar ---------------- */
+const chip = (date) => `<span class="date-chip ${date.kind === "Exam" ? "exam" : ""}">${icon(date.kind === "Exam" ? "graduation-cap" : "flag", "size-3.5 shrink-0")}<span class="truncate">${date.name}</span></span>`;
+function rows(counts, past) {
+  return Object.entries(TYPES).filter(([key]) => counts[key]).map(([key, [ic, plural, single]]) =>
+    `<span class="cal-row">${icon(ic, "size-3.5")}<b>${counts[key]}</b> ${counts[key] === 1 ? single : plural}<span class="sr-only">${past ? " done" : " due"}</span></span>`).join("")
+    + (counts.struggles ? `<span class="cal-row">${icon("triangle-alert", "size-3.5")}<b>${counts.struggles}</b> ${counts.struggles === 1 ? "struggle" : "struggles"}</span>` : "");
+}
+function comingUp() {
+  return `<section class="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2" aria-label="Coming up">
+    <span class="eyebrow">Coming up</span>
+    <button class="flex items-center gap-2 py-1 text-sm hover:underline" onclick="setVariant('the exam\\'s day')">${icon("graduation-cap")}<b class="font-semibold">Networks exam</b><span class="text-muted">Mon 23 Nov, in 20 days</span><span class="kind">Reviews tightened</span></button>
+    <button class="flex items-center gap-2 py-1 text-sm hover:underline" onclick="setVariant('edit a date')">${icon("flag")}<b class="font-semibold">Study app write-up</b><span class="text-muted">Fri 13 Nov, in 10 days</span></button>
+  </section>`;
+}
+function month() {
+  const cells = [];
+  [26, 27, 28, 29, 30, 31].forEach(d => cells.push({ d, other: true, counts: october[d].done, past: true }));
+  for (let d = 1; d <= 30; d++) { const info = due[d] || {}; cells.push({ d, past: d < TODAY, counts: d < TODAY ? info.done || {} : info, dates: DATES[d] || [] }); }
+  for (let d = 1; d <= 6; d++) cells.push({ d, other: true, counts: d === 1 ? { cards: 4 } : d === 4 ? { cards: 6, recall: 1 } : {} });
+  return `<div class="cal" role="grid" aria-label="November 2026">${cells.map(c => `<button class="cal-day ${c.other ? "other" : ""}" ${!c.other && c.d === TODAY ? 'aria-current="date"' : ""} onclick="setVariant('${c.d === 23 && !c.other ? "the exam\\'s day" : c.d === 16 && !c.other ? "the week before" : state.variant}')" aria-label="${c.other ? "" : c.d + " November"}">
+        <span class="num">${c.d}</span>${(c.dates || []).map(chip).join("")}${rows(c.counts, c.past)}</button>`).join("")}</div>`;
+}
+function screenCalendar() {
+  const v = state.variant;
+  if (v === "the exam's day" || v === "the week before") return dayView(v);
+  return `<div class="mx-auto max-w-6xl px-12 pb-24">
+    ${header("Calendar", "Everything due, day by day. Past days show what you did.", `<button class="btn btn-ghost btn-square btn-sm" aria-label="Previous month">${icon("chevron-left")}</button><span class="w-36 text-center font-semibold">November 2026</span><button class="btn btn-ghost btn-square btn-sm" aria-label="Next month">${icon("chevron-right")}</button><button class="btn btn-outline btn-sm border-field-border ml-2">Today</button><button class="btn btn-primary btn-sm ml-2" onclick="setVariant('add a date')">${icon("plus")}Add a date</button>`)}
+    ${comingUp()}
+    <div class="mb-3 flex flex-wrap items-center gap-4 text-xs text-muted" aria-label="Key">
+      ${Object.values(TYPES).map(([ic, , , label]) => `<span class="flex items-center gap-1.5">${icon(ic, "size-3.5")}${label}</span>`).join("")}
+      <span class="flex items-center gap-1.5">${icon("triangle-alert", "size-3.5")}Struggles logged</span>
+      <span class="flex items-center gap-1.5">${icon("graduation-cap", "size-3.5")}Exam</span>
+      <span class="flex items-center gap-1.5">${icon("flag", "size-3.5")}Other dates</span>
+      <span class="ml-auto">Future cards are a forecast and move as you review</span>
+    </div>
+    <div class="panel overflow-hidden">
+      <div class="cal border-b border-base-300 text-xs font-semibold text-muted">${["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(n => `<div class="px-2 py-2">${n}</div>`).join("")}</div>
+      ${month()}
+    </div>
+    ${["add a date", "covers topics", "a plain date", "edit a date"].includes(v) ? dateDialog(v) : ""}
+  </div>`;
+}
+
+function dateDialog(v) {
+  const editing = v === "edit a date", plain = v === "a plain date" || editing, topics = v === "covers topics";
+  const name = editing ? "Study app write-up" : plain ? "Mum's birthday" : topics ? "Architecture mock" : "Networks exam";
+  const kind = editing ? "Deadline" : plain ? "" : "Exam";
+  const date = editing ? "2026-11-13" : plain ? "2026-11-28" : topics ? "2026-11-26" : "2026-11-23";
+  const covers = plain ? "nothing" : topics ? "topics" : "module";
+  const seg = (key, label) => `<button type="button" role="radio" aria-checked="${covers === key}" onclick="setVariant('${key === "nothing" ? "a plain date" : key === "topics" ? "covers topics" : "add a date"}')">${label}</button>`;
+  const topicList = [["CPU", true, "Next quiz Mon 30 Nov, would be pulled in to Fri 13 Nov"], ["Pipelining", true, "Not quizzed yet"], ["Caches", false, "Next quiz Tue 10 Nov"], ["Memory hierarchy", false, "Next quiz Wed 18 Nov"]];
+  return `<dialog open class="modal modal-open" aria-labelledby="date-h"><form class="modal-box max-w-lg" onsubmit="event.preventDefault(); setVariant('month')">
+    <h3 id="date-h" class="text-lg font-semibold">${editing ? "Edit date" : "Add a date"}</h3>
+    <div class="mt-6 grid grid-cols-[1fr_11rem] gap-4">
+      <label class="block"><span class="text-sm font-semibold">Name</span><input class="input mt-1 w-full" value="${name}"></label>
+      <label class="block"><span class="text-sm font-semibold">Date</span><input type="date" class="input mt-1 w-full" value="${date}"></label>
+    </div>
+    <label class="mt-4 block"><span class="text-sm font-semibold">Kind <span class="font-normal text-muted">(optional)</span></span>
+      <input class="input mt-1 w-full" list="date-kinds" value="${kind}" placeholder="Exam, Deadline, Coursework…"></label>
+    <datalist id="date-kinds"><option value="Exam"></option><option value="Deadline"></option><option value="Coursework"></option><option value="Mock exam"></option></datalist>
+    <fieldset class="mt-4"><legend class="text-sm font-semibold">Covers</legend>
+      <div class="seg mt-1" role="radiogroup" aria-label="Covers">${seg("nothing", "Nothing")}${seg("module", "A module")}${seg("topics", "Topics")}</div></fieldset>
+    ${covers === "module" ? `<label class="mt-3 block"><span class="sr-only">Module</span><select class="select w-full"><option>Networks (3 topics)</option><option>Computer Architecture (4 topics)</option><option>Security (3 topics)</option></select></label>` : ""}
+    ${covers === "topics" ? `<ul class="mt-3 divide-y rounded-lg border border-base-300" aria-label="Topics it covers">${topicList.map(([t, on, sub]) => `<li><label class="flex items-start gap-3 px-3 py-2"><input type="checkbox" class="checkbox checkbox-sm mt-0.5" ${on ? "checked" : ""}><span><span class="block text-[15px]">${t}</span><span class="block text-xs text-muted">${sub}</span></span></label></li>`).join("")}</ul>` : ""}
+    <label class="mt-5 flex items-start gap-3 ${covers === "nothing" ? "opacity-60" : ""}"><input type="checkbox" class="checkbox mt-0.5" ${covers === "nothing" ? "disabled" : "checked"}>
+      <span><span class="block text-sm font-semibold">Tighten reviews before this</span>
+      <span class="block text-sm text-muted">${covers === "nothing" ? "Pick a module or topics for this to do anything." : "Until the day, no quiz, card or drill for these topics waits longer than half the days left. Nothing lands after it."}</span></span></label>
+    ${covers === "module" ? `<div class="mt-4 rounded-lg bg-base-200 p-4 text-sm"><p class="font-semibold">If you add this today</p><ul class="mt-2 space-y-1 text-muted">
+      <li><b class="text-base-content">TCP/IP</b> quiz moves from Sat 28 Nov to Tue 10 Nov</li>
+      <li><b class="text-base-content">OSI model</b> quiz moves from Mon 16 Nov to Thu 12 Nov</li>
+      <li><b class="text-base-content">Subnetting</b> hasn't been quizzed yet, so it has no schedule to tighten</li>
+      <li><b class="text-base-content">9 cards</b> due after the exam come in before it</li></ul></div>` : ""}
+    <div class="modal-action">
+      ${editing ? `<button type="button" class="btn btn-ghost mr-auto text-error">${icon("trash-2")}Delete</button>` : ""}
+      <button type="button" class="btn btn-ghost" onclick="setVariant('month')">Cancel</button>
+      <button type="submit" class="btn btn-primary">${editing ? "Save" : "Add date"}</button>
+    </div></form></dialog>`;
+}
+
+function dayView(v) {
+  const examDay = v === "the exam's day";
+  const title = examDay ? "Mon 23 Nov" : "Mon 16 Nov";
+  const start = (label) => `<button class="btn btn-outline btn-sm border-field-border">${icon("play")}${label}</button>`;
+  const section = (key, items) => `<section class="panel p-6" aria-labelledby="h-${key}"><h2 id="h-${key}" class="flex items-center gap-2 text-sm font-semibold">${icon(TYPES[key][0])}${TYPES[key][3]}</h2><ul class="mt-3 divide-y">${items}</ul></section>`;
+  const li = (main, sub, right) => `<li class="flex items-center justify-between gap-4 py-3"><div><p class="text-[15px]">${main}</p>${sub ? `<p class="text-sm text-muted">${sub}</p>` : ""}</div>${right || ""}</li>`;
+  const examPanel = `<section class="panel p-6" aria-labelledby="h-exam">
+      <div class="flex items-start justify-between gap-4"><div>
+        <h2 id="h-exam" class="flex items-center gap-2 text-lg font-semibold">${icon("graduation-cap")}Networks exam</h2>
+        <p class="mt-1 text-sm text-muted">Exam · Networks module · in 20 days</p></div>
+        <button class="btn btn-ghost btn-sm" onclick="go('calendar','edit a date')">${icon("pencil")}Edit</button></div>
+      <h3 class="mt-5 text-sm font-semibold">Before it, with reviews tightened</h3>
+      <ul class="mt-2 divide-y">
+        ${li("OSI model", "Fortnight step · next quiz Thu 12 Nov, pulled in from Mon 16 Nov")}
+        ${li("TCP/IP", "Month step · next quiz Tue 10 Nov, pulled in from Sat 28 Nov")}
+        ${li("Subnetting", "Not quizzed yet, so nothing to tighten", `<button class="btn btn-outline btn-sm border-field-border">${icon("play")}Quiz it</button>`)}
+        ${li("21 Networks cards due before it", "9 of them pulled in from after the exam")}
+      </ul>
+      <p class="mt-4 text-sm text-muted">From the day after, these go back to their normal schedules.</p>
+    </section>`;
+  let body;
+  if (examDay) body = examPanel + section("cards", li("About 3 cards", "A forecast, it changes as you review"));
+  else body = `<section class="panel p-6"><p class="flex items-center gap-2 text-[15px]">${icon("graduation-cap")}<b class="font-semibold">Networks exam</b> in 7 days, on Mon 23 Nov</p></section>
+    ${section("quiz", li("TCP/IP", "Quiz due · Month step · tightened for the Networks exam", start("Quiz it")))}
+    ${section("cards", li("About 4 cards", "A forecast, it changes as you review"))}`;
+  return `<div class="mx-auto max-w-4xl px-12 pb-24">
+    ${back("November", "calendar", "month")}
+    <div class="flex items-end justify-between gap-6 pb-8 pt-4"><div><h1 class="text-3xl font-semibold">${title}</h1><p class="mt-2 text-muted">What's due so far</p></div>
+      <div class="flex gap-2"><button class="btn btn-ghost btn-square btn-sm" aria-label="Previous day">${icon("chevron-left")}</button><button class="btn btn-ghost btn-square btn-sm" aria-label="Next day">${icon("chevron-right")}</button></div></div>
+    <div class="space-y-6">${body}</div>
+  </div>`;
+}
+
+/* ---------------- Topics ---------------- */
+function screenTopics() {
+  if (state.variant === "results") return `<div class="mx-auto max-w-4xl px-12 pb-24">${header("Results", "Quiz: OSI model, TCP/IP · Tue 3 Nov")}
+    <section class="panel p-8"><p class="text-6xl font-semibold leading-none">8 <span class="text-3xl font-normal text-muted">/ 10</span></p></section>
+    <section class="panel mt-6 p-6" aria-labelledby="sched-h"><h2 id="sched-h" class="text-sm font-semibold">Quiz schedule</h2>
+      <ul class="mt-3 divide-y">
+        <li class="flex items-center justify-between gap-4 py-3"><div><p class="text-[15px]"><b class="font-semibold">OSI model</b> moved up to Month</p><p class="text-sm text-muted">5 of 6 right · next quiz Fri 13 Nov, tightened for the Networks exam (would be Thu 3 Dec)</p></div><span class="kind">${icon("graduation-cap", "size-3.5 inline -mt-0.5")} Tightened</span></li>
+        <li class="flex items-center justify-between gap-4 py-3"><div><p class="text-[15px]"><b class="font-semibold">TCP/IP</b> moved up to Month</p><p class="text-sm text-muted">3 of 4 right · next quiz Fri 13 Nov, tightened for the Networks exam (would be Thu 3 Dec)</p></div><span class="kind">${icon("graduation-cap", "size-3.5 inline -mt-0.5")} Tightened</span></li>
+      </ul></section></div>`;
+  const rowsT = [
+    ["CPU", "Computer Architecture", "Week", "Tue 10 Nov", ""],
+    ["OSI model", "Networks", "Fortnight", "Thu 12 Nov", "Networks exam"],
+    ["TCP/IP", "Networks", "Month", "Tue 10 Nov", "Networks exam"],
+    ["Subnetting", "Networks", "", "Quiz it to start", ""],
+  ];
+  return `<div class="mx-auto max-w-6xl px-12 pb-24">${header("Topics", "", `<button class="btn btn-ghost">Quiz schedule</button><button class="btn btn-primary">${icon("plus")}New topic</button>`)}
+    <div class="panel overflow-hidden"><table class="table" aria-label="Topics"><thead><tr class="text-muted"><th>Topic</th><th>Module</th><th>Quiz step</th><th>Next quiz</th></tr></thead><tbody>
+    ${rowsT.map(([t, m, step, next, exam]) => `<tr><td class="font-semibold">${t}</td><td class="text-sm">${m}</td><td class="text-sm ${step ? "" : "text-muted"}">${step || "Not started"}</td>
+      <td class="text-sm ${step ? "" : "text-muted"}">${next}${exam ? `<span class="mt-0.5 flex items-center gap-1 text-xs text-muted">${icon("graduation-cap", "size-3.5")}Tightened for ${exam}</span>` : ""}</td></tr>`).join("")}
+    </tbody></table></div></div>`;
+}
+
+/* ---------------- Render ---------------- */
+const screens = { calendar: screenCalendar, topics: screenTopics };
+const screenNames = { calendar: "Calendar", topics: "Topics and results" };
+const navOf = { calendar: "calendar", topics: "topics" };
+function setVariant(v) { state.variant = v; render(); }
+function go(screen, v) { state.screen = screen; state.variant = v || variants[screen][0]; try { history.replaceState(null, "", `#${screen}`); } catch (e) {} render(); window.scrollTo(0, 0); }
+function render() {
+  document.getElementById("app").innerHTML = screens[state.screen]();
+  document.querySelectorAll(".nav-link").forEach(a => a.dataset.nav && a.dataset.nav === navOf[state.screen] ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
+  document.getElementById("screens").innerHTML = Object.keys(screens).map(s => `<button class="px-2 py-1 rounded ${s === state.screen ? "bg-neutral text-neutral-content font-semibold" : "hover:underline"}" onclick="go('${s}')">${screenNames[s]}</button>`).join("");
+  document.getElementById("states").innerHTML = variants[state.screen].map(v => `<button class="px-2 py-1 rounded ${v === state.variant ? "bg-neutral text-neutral-content font-semibold" : "hover:underline"}" onclick="setVariant(${JSON.stringify(v).replace(/"/g, "&quot;")})">${v}</button>`).join("");
+  if (window.lucide) lucide.createIcons();
+}
+function applyTheme(name, save = true) {
+  document.documentElement.dataset.theme = name;
+  document.querySelector('meta[name="theme-color"]').content = name === "studyapp-dark" ? "#18130e" : "#f9f4ee";
+  document.querySelectorAll("[data-theme-choice]").forEach(b => b.setAttribute("aria-checked", b.dataset.themeChoice === name));
+  if (save) { try { localStorage.setItem("studyapp-theme", name); } catch (e) {} render(); }
+}
+document.getElementById("theme-switch").addEventListener("click", e => { const b = e.target.closest("[data-theme-choice]"); if (b) applyTheme(b.dataset.themeChoice); });
+(() => { let saved = null; try { saved = localStorage.getItem("studyapp-theme"); } catch (e) {} applyTheme(saved === "studyapp" ? "studyapp" : "studyapp-dark", false); })();
+const start = location.hash.slice(1);
+if (screens[start]) state.screen = start, state.variant = variants[start][0];
+render();
+const strip = document.getElementById("proto-strip");
+new ResizeObserver(() => document.documentElement.style.setProperty("--strip", strip.offsetHeight + "px")).observe(strip);
+</script>
+</body>
+</html>

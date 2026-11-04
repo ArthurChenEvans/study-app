@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="en" data-theme="studyapp-dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#18130e">
+<title>Lists at Scale</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/daisyui@5.0.43/daisyui.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<style>
+  /* studyapp theme, same values as docs/design-rules.md */
+  :root, [data-theme="studyapp"] {
+    color-scheme: light;
+    --color-base-100: oklch(97% 0.010 80);
+    --color-base-200: oklch(94% 0.014 78);
+    --color-base-300: oklch(89% 0.018 75);
+    --color-base-content: oklch(27% 0.025 60);
+    --color-primary: oklch(40% 0.065 50);
+    --color-primary-content: oklch(97% 0.010 80);
+    --color-secondary: oklch(32% 0.02 60);
+    --color-secondary-content: oklch(94% 0.014 78);
+    --color-accent: oklch(78% 0.13 78);
+    --color-accent-content: oklch(27% 0.025 60);
+    --color-neutral: oklch(32% 0.02 60);
+    --color-neutral-content: oklch(94% 0.014 78);
+    --color-info: oklch(44% 0.07 235);
+    --color-info-content: oklch(97% 0.010 80);
+    --color-success: oklch(42% 0.11 145);
+    --color-success-content: oklch(97% 0.010 80);
+    --color-warning: oklch(78% 0.13 78);
+    --color-warning-content: oklch(27% 0.025 60);
+    --color-error: oklch(44% 0.15 30);
+    --color-error-content: oklch(97% 0.010 80);
+    --radius-selector: 0.25rem;
+    --radius-field: 0.375rem;
+    --radius-box: 0.5rem;
+    --size-selector: 0.25rem;
+    --size-field: 0.25rem;
+    --border: 1px;
+    --depth: 0;
+    --noise: 0;
+
+    /* Raised surface for panels, and chart tokens (validated, see design rules) */
+    --surface: oklch(99% 0.006 80);
+    /* Quiz outcomes: blue / orange pair, colour-blind safe; guessed = hatched right */
+    --chart-right: #025884;
+    --chart-wrong: #cc6c13;
+    --right-ink: #004d77;
+    --wrong-ink: #853900;
+    --guessed-tint: #c1dcf0;
+    --guessed-ink: #013658;
+    --guessed-fill: repeating-linear-gradient(135deg, #025884 0 2px, #c1dcf0 2px 6px);
+    --chart-ink: #643d26;
+    --chart-grid: oklch(91% 0.016 76);
+    --muted: oklch(42% 0.022 65);
+    --shadow-panel: 0 1px 2px oklch(27% 0.025 60 / .06), 0 6px 16px oklch(27% 0.025 60 / .05);
+    --shadow-soft: 0 1px 2px oklch(27% 0.025 60 / .08);
+    --field-border: oklch(58% 0.02 65);
+    --on-right: #fff;
+    --on-wrong: #140d08;
+    --diagram-fill: oklch(94% 0.014 78);
+  }
+  /* Dark theme: its own palette, validated against the dark panel surface (see design rules) */
+  [data-theme="studyapp-dark"] {
+    color-scheme: dark;
+    --color-base-100: oklch(19% 0.012 65);
+    --color-base-200: oklch(16% 0.012 65);
+    --color-base-300: oklch(32% 0.016 65);
+    --color-base-content: oklch(93% 0.012 80);
+    --color-primary: oklch(74% 0.10 62);
+    --color-primary-content: oklch(18% 0.012 65);
+    --color-secondary: oklch(88% 0.015 75);
+    --color-secondary-content: oklch(18% 0.012 65);
+    --color-accent: oklch(80% 0.13 80);
+    --color-accent-content: oklch(18% 0.012 65);
+    --color-neutral: oklch(88% 0.015 75);
+    --color-neutral-content: oklch(18% 0.012 65);
+    --color-info: oklch(76% 0.08 235);
+    --color-info-content: oklch(18% 0.012 65);
+    --color-success: oklch(76% 0.13 145);
+    --color-success-content: oklch(18% 0.012 65);
+    --color-warning: oklch(80% 0.13 80);
+    --color-warning-content: oklch(18% 0.012 65);
+    --color-error: oklch(76% 0.13 30);
+    --color-error-content: oklch(18% 0.012 65);
+    --radius-selector: 0.25rem; --radius-field: 0.375rem; --radius-box: 0.5rem;
+    --size-selector: 0.25rem; --size-field: 0.25rem; --border: 1px; --depth: 0; --noise: 0;
+
+    --surface: oklch(23% 0.014 65);
+    --chart-right: #0573aa;
+    --chart-wrong: #d67523;
+    --right-ink: #87c6f2;
+    --wrong-ink: #f9b379;
+    --guessed-tint: #163c54;
+    --guessed-ink: #bbddf6;
+    --guessed-fill: repeating-linear-gradient(135deg, #0573aa 0 2px, #163c54 2px 6px);
+    --chart-ink: oklch(74% 0.10 62);
+    --chart-grid: oklch(30% 0.014 65);
+    --muted: oklch(78% 0.016 75);
+    --field-border: oklch(52% 0.018 70);
+    --on-right: #fff;
+    --on-wrong: #140d08;
+    --diagram-fill: oklch(28% 0.014 65);
+    --shadow-panel: 0 1px 0 oklch(100% 0 0 / .04) inset, 0 1px 2px oklch(0% 0 0 / .4), 0 8px 24px oklch(0% 0 0 / .25);
+    --shadow-soft: 0 1px 2px oklch(0% 0 0 / .4);
+  }
+  body { background: var(--color-base-100); color: var(--color-base-content); font-family: "IBM Plex Sans", ui-sans-serif, sans-serif; }
+  code, pre, .font-mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  h1, h2 { text-wrap: balance; }
+  h1 { letter-spacing: -0.015em; }
+  .input, .select, .textarea, .checkbox, .radio { border-color: var(--field-border); }
+  .input, .select, .textarea { background: var(--surface); }
+  :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+  pre.shiki { padding: 12px 16px; border-radius: var(--radius-box); font-size: 14px; overflow-x: auto; border: 1px solid var(--color-base-300); }
+  .divide-y > * { border-color: var(--color-base-300) !important; }
+  .btn .kbd { background: transparent; border-color: currentColor; color: inherit; opacity: .8; }
+  .btn { transition: transform 120ms ease-out, background-color 150ms ease-out, box-shadow 150ms ease-out; }
+  .btn:active:not(:disabled) { transform: scale(.97); }
+  .btn-primary { box-shadow: 0 1px 2px oklch(27% 0.025 60 / .25), inset 0 1px 0 oklch(100% 0 0 / .12); }
+
+  /* Panels: the one raised surface. Used for groups you read as a unit (charts, summaries) */
+  .panel { background: var(--surface); border: 1px solid var(--color-base-300); border-radius: 12px; box-shadow: var(--shadow-panel); }
+  .eyebrow { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+
+  /* Segmented control */
+  .seg { display: inline-flex; align-items: stretch; height: 2rem; padding: 2px; gap: 2px; border: 1px solid var(--field-border); border-radius: var(--radius-field); background: var(--color-base-200); vertical-align: middle; }
+  .seg > button { padding: 0 12px; font-size: 14px; line-height: 1; border-radius: calc(var(--radius-field) - 2px); color: var(--muted); transition: background-color 150ms ease-out, color 150ms ease-out; }
+  .seg > button:hover:not([aria-checked="true"]) { background: var(--color-base-300); color: var(--color-base-content); }
+  .seg > button[aria-checked="true"] { background: var(--color-neutral); color: var(--color-neutral-content); font-weight: 600; }
+  .seg > button:focus-visible { outline-offset: 1px; }
+  /* Fields: one focus ring */
+  .input:focus, .input:focus-within, .select:focus, .textarea:focus { outline: none !important; border-color: var(--color-primary) !important; box-shadow: 0 0 0 1px var(--color-primary) !important; }
+  label.input input:focus, label.input input:focus-visible { outline: none !important; box-shadow: none !important; }
+  .input-sm, .seg { min-height: 2rem; }
+  .btn:disabled .kbd { opacity: .5; }
+  .toggle:checked { background-color: var(--color-primary); border-color: var(--color-primary); color: var(--color-primary-content); }
+  [role=tab] .count { font-size: 12px; margin-left: 4px; color: var(--muted); font-weight: 400; }
+  .open-q { border: 1px dashed var(--color-info); color: var(--color-info); background: var(--surface); }
+
+  /* Navigation */
+  .nav-link { color: var(--muted); transition: background-color 150ms ease-out, color 150ms ease-out; }
+  .nav-link:hover { background: var(--color-base-300); color: var(--color-base-content); }
+  .nav-link[aria-current="page"] { background: var(--surface); color: var(--color-base-content); font-weight: 600; box-shadow: var(--shadow-soft); }
+
+  /* Charts */
+  .seg-bar { display: flex; gap: 2px; border-radius: 999px; overflow: hidden; }
+  .seg-bar > span { display: block; height: 100%; }
+  .tall-bar { display: flex; gap: 2px; height: 28px; }
+  .tall-bar > span { border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: visible; }
+  .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .text-right-ink { color: var(--right-ink); } .text-wrong-ink { color: var(--wrong-ink); }
+  .is-right { border-color: var(--chart-right) !important; box-shadow: 0 0 0 1px var(--chart-right); }
+  .is-wrong { border-color: var(--chart-wrong) !important; box-shadow: 0 0 0 1px var(--chart-wrong); }
+  .guessed-chip { background: var(--guessed-tint); color: var(--guessed-ink); border-color: var(--guessed-tint); }
+  .hbar { height: 12px; border-radius: 0 4px 4px 0; background: var(--chart-ink); transition: width 400ms ease-out; }
+  .cell { width: 24px; height: 24px; border-radius: 4px; display: grid; place-items: center; font-size: 12px; font-weight: 600; color: #fff; }
+  .chart-tip { position: fixed; pointer-events: none; z-index: 50; background: var(--color-neutral); color: var(--color-neutral-content); font-size: 12px; line-height: 1.4; padding: 8px 10px; border-radius: 6px; box-shadow: 0 4px 12px oklch(27% 0.025 60 / .2); opacity: 0; transition: opacity 120ms ease-out; max-width: 240px; }
+  .chart-tip.show { opacity: 1; }
+  details.table-view summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+
+  /* Quiz progress track */
+  .track { display: flex; gap: 2px; height: 6px; }
+  .track > span { flex: 1; border-radius: 2px; background: var(--color-base-300); }
+
+  /* Motion */
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .rise { animation: rise 260ms ease-out both; }
+  .rise-2 { animation-delay: 60ms; } .rise-3 { animation-delay: 120ms; } .rise-4 { animation-delay: 180ms; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+:root { --strip: 2.5rem; }
+</style>
+<style type="text/tailwindcss">
+  @theme {
+    --color-muted: var(--muted);
+    --color-field-border: var(--field-border);
+    --color-surface: var(--surface);
+    --font-sans: "IBM Plex Sans", ui-sans-serif, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+</style>
+<style>
+  /* Projects, drills and calendar additions. Same tokens as the other prototypes. */
+  .badge-src { font-size: 12px; color: var(--muted); border: 1px solid var(--color-base-300); border-radius: 4px; padding: 0 6px; line-height: 20px; white-space: nowrap; }
+  .kind { font-size: 12px; border-radius: 4px; padding: 0 6px; line-height: 20px; white-space: nowrap; border: 1px solid var(--field-border); }
+  .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .cal-day { min-height: 104px; border-right: 1px solid var(--color-base-300); border-bottom: 1px solid var(--color-base-300); padding: 6px 8px; text-align: left; display: flex; flex-direction: column; gap: 2px; }
+  .cal-day:hover { background: var(--color-base-200); }
+  .cal-day[aria-current="date"] { box-shadow: inset 0 0 0 2px var(--color-base-content); }
+  .cal-day[aria-selected="true"] { background: var(--color-base-200); }
+  .cal-day.other { color: var(--muted); }
+  .cal-day .num { font-size: 13px; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .cal-row { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .cal-row b { color: var(--color-base-content); font-weight: 600; }
+  .cal-past .cal-row { opacity: 1; }
+  .timer-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-variant-numeric: tabular-nums; border: 1px solid var(--field-border); border-radius: 999px; padding: 2px 10px; }
+  .step-dot { width: 24px; height: 24px; border-radius: 999px; display: grid; place-items: center; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .rate { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 9rem; padding: 10px 16px; height: auto; }
+  .rate .when { font-size: 12px; font-weight: 400; opacity: .85; }
+  .text-right-ink { color: var(--right-ink); } .text-wrong-ink { color: var(--wrong-ink); }
+  .ladder { display: flex; gap: 4px; }
+  .ladder > span { flex: 1; height: 6px; border-radius: 2px; background: var(--color-base-300); }
+  .ladder > span.on { background: var(--chart-ink); }
+  .ladder > span.now { background: transparent; box-shadow: inset 0 0 0 2px var(--color-base-content); }
+</style>
+</head>
+<body class="min-h-screen">
+<div id="proto-strip" class="sticky top-0 z-50 flex min-h-10 flex-wrap items-center gap-2 border-b border-base-300 bg-base-200 px-4 py-1.5 text-xs" aria-label="Prototype state">
+  <span class="mr-2 font-semibold uppercase tracking-wide text-muted">Prototype</span>
+  <span class="text-muted">Screen</span><div id="screens" class="flex gap-1 flex-wrap"></div>
+  <span class="ml-3 text-muted">State</span><div id="states" class="flex gap-1 flex-wrap"></div>
+</div>
+<div class="flex min-h-[calc(100vh-var(--strip))]">
+  <nav class="w-60 shrink-0 bg-base-200 border-r border-base-300 flex flex-col p-3 gap-1 sticky top-[var(--strip)] h-[calc(100vh-var(--strip))]" aria-label="Main">
+    <div class="flex items-center gap-2 px-3 py-4">
+      <span class="size-8 rounded-lg bg-primary text-primary-content grid place-items-center"><i data-lucide="layers" class="size-4"></i></span>
+      <span class="text-base font-semibold">Study App</span>
+    </div>
+    <a href="#overview" data-nav="overview" onclick="event.preventDefault(); go('overview')" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="layout-dashboard" class="size-4"></i>Overview</a>
+    <a href="#calendar" data-nav="calendar" onclick="event.preventDefault(); go('today')" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="calendar-days" class="size-4"></i><span class="flex-1">Calendar</span><span class="text-xs tabular-nums" aria-label="61 things due today">61</span></a>
+    <a href="#topics" data-nav="topics" onclick="event.preventDefault(); go('topics')" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="library" class="size-4"></i><span class="flex-1">Topics</span><span class="text-xs tabular-nums" aria-label="5 quizzes due today">5</span></a>
+    <a href="#cards" data-nav="cards" onclick="event.preventDefault(); go('cards')" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="square-stack" class="size-4"></i><span class="flex-1">Cards</span><span class="text-xs tabular-nums" aria-label="54 cards due today">54</span></a>
+    <a href="free-recall.html#recall" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="brain" class="size-4"></i><span class="flex-1">Recall</span><span class="text-xs tabular-nums" aria-label="1 checklist due today">1</span></a>
+    <a href="projects-drills-calendar.html#projects" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="hammer" class="size-4"></i><span class="flex-1">Projects</span><span class="text-xs tabular-nums" aria-label="2 drills due today">2</span></a>
+    <a href="#bibliography" data-nav="bibliography" onclick="event.preventDefault(); go('bibliography')" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="book-open" class="size-4"></i>Bibliography</a>
+    <a href="#history" data-nav="history" onclick="event.preventDefault(); go('history')" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="history" class="size-4"></i>History</a>
+    <a href="#search" data-nav="search" onclick="event.preventDefault(); go('search')" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="search" class="size-4"></i>Search</a>
+    <div class="px-3 mt-4"><a href="#setup" onclick="event.preventDefault(); go('setup')" class="btn btn-outline btn-sm w-full justify-start border-field-border"><i data-lucide="play" class="size-4"></i>New quiz</a></div>
+    <div class="mt-auto px-3 pt-6">
+      <div class="seg w-full" role="radiogroup" aria-label="Theme" id="theme-switch">
+        <button type="button" role="radio" class="flex-1 flex items-center justify-center gap-1.5" data-theme-choice="studyapp-dark"><i data-lucide="moon" class="size-3.5"></i>Dark</button>
+        <button type="button" role="radio" class="flex-1 flex items-center justify-center gap-1.5" data-theme-choice="studyapp"><i data-lucide="sun" class="size-3.5"></i>Light</button>
+      </div>
+    </div>
+    <div class="px-3 pt-4 text-xs text-muted leading-relaxed">Lists at scale design prototype, with 171 generated topics. Filter, sort, the rail and ticks all work.</div>
+  </nav>
+  <main id="app" class="flex-1 min-w-0"></main>
+</div>
+
+<style>
+  /* Lists at scale: a SkyUI-style layout. Module rail, filter box, sortable columns, an item card. */
+  .rail { position: sticky; top: calc(var(--strip) + 16px); align-self: start; }
+  .rail button { width: 100%; display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 6px; font-size: 14px; text-align: left; color: var(--muted); min-height: 32px; }
+  .rail button:hover { background: var(--color-base-300); color: var(--color-base-content); }
+  .rail button[aria-pressed="true"] { background: var(--surface); color: var(--color-base-content); font-weight: 600; box-shadow: inset 0 0 0 1px var(--color-base-content); }
+  .rail .n { margin-left: auto; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .rows { width: 100%; font-size: 14px; border-collapse: separate; border-spacing: 0; }
+  .rows thead th { position: sticky; top: 0; z-index: 2; background: var(--surface); text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; padding: 0; border-bottom: 1px solid var(--color-base-300); }
+  .rows thead th > button, .rows thead th > span { display: flex; align-items: center; gap: 4px; width: 100%; padding: 10px 12px; min-height: 36px; }
+  .rows thead th > button:hover { color: var(--color-base-content); }
+  .rows thead th[aria-sort="ascending"] > button, .rows thead th[aria-sort="descending"] > button { color: var(--color-base-content); }
+  .rows td { padding: 7px 12px; border-bottom: 1px solid var(--color-base-300); vertical-align: middle; }
+  .rows tbody tr { cursor: default; }
+  .rows tbody tr:hover td { background: var(--color-base-200); }
+  .rows tbody tr[aria-selected="true"] td { background: var(--color-base-200); }
+  .rows tbody tr[aria-selected="true"] td:first-child { box-shadow: inset 2px 0 0 var(--color-base-content); }
+  .rows .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .rows th.num > button { justify-content: flex-end; }
+  .mark { background: transparent; color: inherit; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 2px; font-weight: 600; }
+  .itemcard { position: sticky; top: calc(var(--strip) + 16px); align-self: start; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; border: 1px solid var(--field-border); border-radius: 999px; padding: 0 8px; line-height: 22px; white-space: nowrap; }
+  .menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 20; background: var(--surface); border: 1px solid var(--color-base-300); border-radius: 8px; box-shadow: var(--shadow-panel); padding: 6px; min-width: 12rem; }
+  .menu label { display: flex; align-items: center; gap: 8px; padding: 4px 8px; font-size: 14px; min-height: 28px; }
+  .ladder { display: flex; gap: 3px; } .ladder > span { flex: 1; height: 6px; border-radius: 2px; background: var(--color-base-300); }
+  .ladder > span.on { background: var(--chart-ink); } .ladder > span.now { background: transparent; box-shadow: inset 0 0 0 2px var(--color-base-content); }
+  .kind { font-size: 12px; border-radius: 4px; padding: 0 6px; line-height: 20px; white-space: nowrap; border: 1px solid var(--field-border); }
+  .selbar { position: sticky; bottom: 16px; z-index: 5; }
+  /* The list scrolls inside its own pane, so the page never gets longer than the window */
+  .pane { position: relative; overflow-y: auto; max-height: calc(100vh - var(--strip) - 15rem); min-height: 16rem; overscroll-behavior: contain; }
+</style>
+<script>
+const icon = (name, cls = "size-4") => `<i data-lucide="${name}" class="${cls}" aria-hidden="true"></i>`;
+const kbd = (k) => `<kbd class="kbd kbd-xs">${k}</kbd>`;
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+const header = (title, subtitle = "", actions = "") => `<header class="flex items-end justify-between gap-6 pt-12 pb-6"><div><h1 class="text-3xl font-semibold leading-tight">${title}</h1>${subtitle ? `<p class="mt-2 text-muted">${subtitle}</p>` : ""}</div><div class="flex items-center gap-2">${actions}</div></header>`;
+
+/* ---------------- Generated data, like the large test profile ---------------- */
+let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const pick = (list) => list[Math.floor(rnd() * list.length)];
+const MODULES = ["Algorithms and Data Structures", "Cloud and Virtualisation", "Computer Architecture", "Cryptography", "Databases", "Digital Forensics", "Discrete Mathematics", "Law, Ethics and Professional Practice", "Networks", "Operating Systems", "Penetration Testing", "Security Fundamentals", "Software Engineering", "Web Application Security"];
+const SUBJECTS = ["Caches", "Pipelining", "Branch prediction", "Virtual memory", "Paging and segmentation", "Interrupts", "TCP congestion control", "Subnetting", "Routing protocols", "DNS", "TLS handshakes", "Public key infrastructure", "Block cipher modes", "Hash functions", "Access control models", "Threat modelling", "SQL injection", "Cross-site scripting", "Session management", "Normal forms", "Transactions and isolation levels", "Indexes", "Graph search", "Dynamic programming", "Heaps", "Hash tables", "Sorting", "Recurrences", "Scheduling", "Deadlock", "File systems", "Memory forensics", "Chain of custody", "Incident response", "GDPR", "Computer Misuse Act", "Set theory", "Proof by induction", "Containers", "Hypervisors"];
+const BY_MODULE = {
+  "Algorithms and Data Structures": ["Graph search", "Dynamic programming", "Heaps", "Hash tables", "Sorting", "Recurrences"],
+  "Cloud and Virtualisation": ["Containers", "Hypervisors", "Shared responsibility", "Object storage"],
+  "Computer Architecture": ["Caches", "Pipelining", "Branch prediction", "Interrupts", "Memory hierarchy"],
+  "Cryptography": ["Block cipher modes", "Hash functions", "Public key infrastructure", "Key exchange"],
+  "Databases": ["Normal forms", "Transactions and isolation levels", "Indexes", "Query plans"],
+  "Digital Forensics": ["Memory forensics", "Chain of custody", "Disk imaging", "Timeline analysis"],
+  "Discrete Mathematics": ["Set theory", "Proof by induction", "Relations", "Graph theory"],
+  "Law, Ethics and Professional Practice": ["GDPR", "Computer Misuse Act", "Codes of conduct", "Intellectual property"],
+  "Networks": ["Subnetting", "Routing protocols", "DNS", "TCP congestion control", "OSI model"],
+  "Operating Systems": ["Scheduling", "Deadlock", "File systems", "Virtual memory", "Paging and segmentation"],
+  "Penetration Testing": ["Reconnaissance", "Privilege escalation", "Reporting findings", "Scoping and rules of engagement"],
+  "Security Fundamentals": ["Access control models", "Threat modelling", "Risk assessment", "Defence in depth"],
+  "Software Engineering": ["Testing strategies", "Version control", "Requirements", "Design patterns"],
+  "Web Application Security": ["SQL injection", "Cross-site scripting", "Session management", "TLS handshakes"],
+};
+const QUAL = ["", "", "", " basics", " in practice", " and their trade-offs", ": worked examples", " revision", " for the exam", " (lecture 7)", " deep dive", ", common mistakes"];
+const STEPS = ["Day", "3 days", "Week", "Fortnight", "Month", "2 months"];
+const TOPICS = [];
+MODULES.forEach((module, m) => { const count = 8 + Math.floor(rnd() * 9); for (let i = 0; i < count; i++) {
+  const n = TOPICS.length, list = BY_MODULE[module], round = Math.floor(i / list.length);
+  const started = rnd() > 0.08;
+  const late = started && rnd() < 0.55 ? Math.floor(rnd() * 20) : null;
+  TOPICS.push({ id: n, name: list[i % list.length] + QUAL[(n * 7 + round) % QUAL.length] + (round ? ` ${round + 1}` : ""), module, questions: 10 + Math.floor(rnd() * 34), cards: 10 + Math.floor(rnd() * 30),
+    cardsDue: rnd() < 0.3 ? 1 + Math.floor(rnd() * 8) : 0, step: started ? Math.floor(rnd() * 5) : null, next: started ? (late !== null ? -late : 1 + Math.floor(rnd() * 40)) : null,
+    accuracy: started ? Math.round(30 + rnd() * 70) : null, tags: rnd() < 0.5 ? [`week ${1 + Math.floor(rnd() * 12)}`] : [], exam: module === "Networks" && started && rnd() < 0.7 });
+} });
+for (let i = 0; i < 6; i++) { const n = TOPICS.length; TOPICS.push({ id: n, name: ["Exam technique", "Reading list", "Lab safety", "Maths refresher", "Referencing in APA", "Study skills"][i], module: null, questions: 12, cards: 8, cardsDue: 0, step: null, next: null, accuracy: null, tags: [], exam: false }); }
+const DUE = TOPICS.filter((t) => t.next !== null && t.next <= 0).sort((a, b) => a.next - b.next);
+const DAILY = 5;
+
+const DAY0 = new Date(2026, 10, 3);
+const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const dateOf = (offset) => { const d = new Date(DAY0); d.setDate(d.getDate() + offset); return d; };
+const dayLabel = (offset) => offset === 0 ? "Today" : offset === 1 ? "Tomorrow" : offset === -1 ? "Yesterday" : (d => `${WD[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}`)(dateOf(offset));
+const nextLabel = (t) => t.next === null ? "Quiz it to start" : t.next < 0 ? `${-t.next} ${-t.next === 1 ? "day" : "days"} late` : t.next === 0 ? "Due today" : dayLabel(t.next);
+
+/* ---------------- Shared list state ---------------- */
+const variants = {
+  topics: ["all", "one module", "filtering", "due only", "a topic picked", "three ticked", "columns", "nothing matches"],
+  setup: ["picking", "whole module ticked", "filtered"],
+  today: ["capped quizzes", "quiz schedule"],
+  search: ["empty", "typed", "more results"],
+  history: ["by month", "filtered"],
+  suggestions: ["grouped by topic"],
+  bibliography: ["list", "a source picked"],
+  overview: ["weakest few"],
+  cards: ["by topic"],
+  exam: ["picking topics"],
+};
+const state = { screen: "topics", variant: "all" };
+const ui = {};
+function preset(screen, v) {
+  Object.assign(ui, { module: "all", filter: "", status: "all", sort: ["name", 1], selected: null, ticked: new Set(), menu: false, cols: { tags: false, questions: true, cards: false, step: true, next: true, accuracy: false }, more: 0 });
+  if (screen === "topics") {
+    if (v === "one module") ui.module = "Networks";
+    if (v === "filtering") ui.filter = "cache";
+    if (v === "due only") { ui.status = "due"; ui.sort = ["next", 1]; }
+    if (v === "a topic picked") { ui.module = "Networks"; ui.selected = TOPICS.find((t) => t.module === "Networks" && t.exam).id; }
+    if (v === "three ticked") { ui.module = "Networks"; TOPICS.filter((t) => t.module === "Networks").slice(0, 3).forEach((t) => ui.ticked.add(t.id)); }
+    if (v === "columns") { ui.menu = true; }
+    if (v === "nothing matches") ui.filter = "kerberos";
+  }
+  if (screen === "setup" || screen === "exam") {
+    ui.cols = {};
+    if (v === "whole module ticked") { ui.module = "Networks"; TOPICS.filter((t) => t.module === "Networks").forEach((t) => ui.ticked.add(t.id)); }
+    if (v === "filtered") { ui.filter = "hash"; ui.ticked.add(TOPICS.find((t) => /hash/i.test(t.name)).id); }
+    if (screen === "exam") { ui.module = "Computer Architecture"; TOPICS.filter((t) => t.module === "Computer Architecture").slice(0, 4).forEach((t) => ui.ticked.add(t.id)); }
+  }
+  if (screen === "search") { ui.filter = v === "empty" ? "" : "cache"; ui.more = v === "more results" ? 1 : 0; }
+  if (screen === "history") { ui.filter = v === "filtered" ? "Networks" : ""; }
+  if (screen === "bibliography") { ui.selected = v === "a source picked" ? 1 : null; ui.sort = ["cited", -1]; }
+  if (screen === "cards") { ui.status = "due"; ui.sort = ["cardsDue", -1]; ui.cols = {}; }
+}
+
+function matches(t) {
+  if (ui.module !== "all" && (ui.module === "none" ? t.module !== null : t.module !== ui.module)) return false;
+  if (ui.status === "due" && !(t.next !== null && t.next <= 0)) return false;
+  if (ui.status === "new" && t.step !== null) return false;
+  if (ui.status === "tight" && !t.exam) return false;
+  if (ui.status === "cards" && !t.cardsDue) return false;
+  if (ui.filter && !(`${t.name} ${t.module ?? ""} ${t.tags.join(" ")}`.toLowerCase().includes(ui.filter.toLowerCase()))) return false;
+  return true;
+}
+function sorted(list) {
+  const [key, dir] = ui.sort;
+  const value = (t) => key === "name" ? t.name.toLowerCase() : key === "module" ? (t.module ?? "~") : key === "next" ? (t.next ?? 9999) : key === "step" ? (t.step ?? -1) : key === "accuracy" ? (t.accuracy ?? 101) : t[key];
+  return [...list].sort((a, b) => (value(a) > value(b) ? 1 : value(a) < value(b) ? -1 : 0) * dir);
+}
+const highlight = (text) => { if (!ui.filter) return esc(text); const i = text.toLowerCase().indexOf(ui.filter.toLowerCase()); return i < 0 ? esc(text) : esc(text.slice(0, i)) + `<mark class="mark">${esc(text.slice(i, i + ui.filter.length))}</mark>` + esc(text.slice(i + ui.filter.length)); };
+
+/* Module rail, like SkyUI's category column: every module with its count, and what's in the current status. */
+function rail(pool, label = "Modules") {
+  const count = (m) => pool.filter((t) => m === "all" ? true : m === "none" ? t.module === null : t.module === m).length;
+  const item = (key, text, ic) => `<button aria-pressed="${ui.module === key}" onclick="ui.module='${esc(key)}'; ui.selected=null; render()">${icon(ic, "size-4 shrink-0")}<span class="truncate">${esc(text)}</span><span class="n">${count(key)}</span></button>`;
+  return `<nav class="rail w-52 shrink-0" aria-label="${label}"><p class="eyebrow px-2.5 pb-2">${label}</p>
+    ${item("all", "All modules", "layers")}
+    <div class="my-1 border-t border-base-300"></div>
+    ${MODULES.map((m) => item(m, m, "folder")).join("")}
+    ${item("none", "No module", "folder-open")}
+  </nav>`;
+}
+function filterBox(placeholder, shown, total) {
+  return `<label class="input input-sm flex w-80 items-center gap-2">${icon("search", "size-4 text-muted")}<input id="filter" type="search" class="grow" placeholder="${placeholder}" value="${esc(ui.filter)}" oninput="ui.filter=this.value; ui.selected=null; render(true)" aria-label="Filter">${ui.filter ? "" : kbd("/")}</label>
+    <span class="text-sm text-muted tabular-nums" aria-live="polite">${shown === total ? `${total}` : `${shown} of ${total}`}</span>`;
+}
+function statusSeg(options) {
+  return `<div class="seg" role="radiogroup" aria-label="Show">${options.map(([key, label, n]) => `<button type="button" role="radio" aria-checked="${ui.status === key}" onclick="ui.status='${key}'; ui.selected=null; render()">${label}${n === undefined ? "" : `<span class="ml-1 text-xs tabular-nums">${n}</span>`}</button>`).join("")}</div>`;
+}
+const th = (key, label, cls = "") => { const [k, d] = ui.sort; return `<th class="${cls}" aria-sort="${k === key ? (d > 0 ? "ascending" : "descending") : "none"}"><button type="button" onclick="ui.sort=['${key}', ui.sort[0]==='${key}' ? -ui.sort[1] : 1]; render()">${label}${k === key ? icon(d > 0 ? "arrow-up" : "arrow-down", "size-3.5") : icon("arrow-up-down", "size-3.5 opacity-50")}</button></th>`; };
+const ladder = (step) => `<span class="ladder w-16" aria-hidden="true">${STEPS.slice(0, 5).map((_, i) => `<span class="${i < step ? "on" : i === step ? "now" : ""}"></span>`).join("")}</span>`;
+
+/* ---------------- Topics ---------------- */
+function screenTopics() {
+  const pool = TOPICS.filter((t) => { const keep = ui.module; ui.module = "all"; const ok = matches(t); ui.module = keep; return ok; });
+  const shown = sorted(TOPICS.filter(matches));
+  const total = TOPICS.length;
+  const colMenu = `<div class="relative"><button class="btn btn-ghost btn-sm" aria-expanded="${ui.menu}" onclick="ui.menu=!ui.menu; render()">${icon("columns-3")}Columns</button>
+    ${ui.menu ? `<div class="menu" role="group" aria-label="Columns">${[["tags", "Tags"], ["questions", "Questions"], ["cards", "Cards"], ["step", "Quiz step"], ["next", "Next quiz"], ["accuracy", "Last score"]].map(([k, l]) => `<label><input type="checkbox" class="checkbox" ${ui.cols[k] ? "checked" : ""} onchange="ui.cols.${k}=this.checked; render()">${l}</label>`).join("")}</div>` : ""}</div>`;
+  const rows = shown.map((t) => `<tr aria-selected="${ui.selected === t.id}" onclick="ui.selected=${t.id}; render()" ondblclick="">
+      <td class="w-10"><input type="checkbox" class="checkbox" aria-label="Tick ${esc(t.name)}" ${ui.ticked.has(t.id) ? "checked" : ""} onclick="event.stopPropagation(); ui.ticked.has(${t.id}) ? ui.ticked.delete(${t.id}) : ui.ticked.add(${t.id}); render()"></td>
+      <td class="w-full max-w-0" title="${esc(t.name)}"><span class="line-clamp-2 font-semibold">${highlight(t.name)}</span>${ui.module === "all" ? `<span class="block truncate text-xs text-muted">${t.module ? highlight(t.module) : "No module"}</span>` : ""}</td>
+      ${ui.cols.tags ? `<td class="text-xs text-muted">${t.tags.map(highlight).join(", ") || ""}</td>` : ""}
+      ${ui.cols.questions ? `<td class="num">${t.questions}</td>` : ""}
+      ${ui.cols.cards ? `<td class="num">${t.cards}</td>` : ""}
+      ${ui.cols.step ? `<td>${t.step === null ? `<span class="text-muted">Not started</span>` : `<span class="flex items-center gap-2 whitespace-nowrap">${ladder(t.step)}<span class="text-xs">${STEPS[t.step]}</span></span>`}</td>` : ""}
+      ${ui.cols.next ? `<td class="whitespace-nowrap ${t.next === null ? "text-muted" : t.next <= 0 ? "font-semibold" : ""}">${nextLabel(t)}${t.exam && t.next > 0 ? `<span class="ml-1 inline-flex align-middle" title="Tightened for Networks exam">${icon("graduation-cap", "size-3.5")}<span class="sr-only">tightened for Networks exam</span></span>` : ""}</td>` : ""}
+      ${ui.cols.accuracy ? `<td class="num">${t.accuracy === null ? "" : t.accuracy + "%"}</td>` : ""}
+    </tr>`).join("");
+  const card = ui.selected !== null ? itemCard(TOPICS[ui.selected]) : `<div class="text-sm text-muted panel p-5"><p class="font-semibold text-base-content">Pick a topic to see it here</p><p class="mt-2">${kbd("↑")} ${kbd("↓")} to move, ${kbd("Enter")} to edit, ${kbd("Space")} to tick, ${kbd("/")} to filter, ${kbd("Esc")} to clear it.</p></div>`;
+  return `<div class="mx-auto max-w-[96rem] px-10 pb-24">
+    ${header("Topics", `${total} topics in ${MODULES.length} modules · ${DUE.length} quizzes due, ${DAILY} today`, `<button class="btn btn-ghost">${icon("calendar-cog")}Quiz schedule</button><button class="btn btn-ghost">${icon("folder-plus")}New module</button><button class="btn btn-ghost">${icon("plus")}New topic</button><button class="btn btn-primary" onclick="go('today')">${icon("play")}Quiz today's ${DAILY}</button>`)}
+    <div class="flex gap-6">
+      ${rail(pool)}
+      <section class="min-w-0 flex-1" aria-label="Topic list">
+        <div class="mb-3 flex flex-wrap items-center gap-3">
+          ${filterBox("Filter by name, module or tag…", shown.length, total)}
+          ${statusSeg([["all", "All"], ["due", "Due", DUE.length], ["tight", "Tightened", TOPICS.filter((t) => t.exam).length], ["new", "Not started", TOPICS.filter((t) => t.step === null).length]])}
+          <span class="ml-auto"></span>${colMenu}
+        </div>
+        ${shown.length ? `<div class="panel pane" tabindex="-1"><table class="rows" aria-label="Topics" aria-multiselectable="true"><thead><tr><th class="w-10"><span><input type="checkbox" class="checkbox" aria-label="Tick all ${shown.length} shown" ${shown.every((t) => ui.ticked.has(t.id)) && ui.ticked.size ? "checked" : ""} onclick="${shown.every((t) => ui.ticked.has(t.id)) ? `ui.ticked.clear()` : `[${shown.map((t) => t.id)}].forEach(i=>ui.ticked.add(i))`}; render()"></span></th>
+          ${th("name", "Topic")}${ui.cols.tags ? `<th><span>Tags</span></th>` : ""}${ui.cols.questions ? th("questions", "Questions", "num") : ""}${ui.cols.cards ? th("cards", "Cards", "num") : ""}${ui.cols.step ? th("step", "Quiz step") : ""}${ui.cols.next ? th("next", "Next quiz") : ""}${ui.cols.accuracy ? th("accuracy", "Last score", "num") : ""}</tr></thead><tbody>${rows}</tbody></table></div>`
+        : `<div class="panel p-8"><p class="font-semibold">Nothing matches "${esc(ui.filter)}"${ui.module !== "all" ? ` in ${esc(ui.module)}` : ""}</p><p class="mt-1 text-sm text-muted">Filters look at names, modules and tags. To look inside questions, use Search.</p>
+          <div class="mt-4 flex gap-2"><button class="btn btn-outline btn-sm border-field-border" onclick="ui.filter=''; render()">Clear the filter</button>${ui.module !== "all" ? `<button class="btn btn-ghost btn-sm" onclick="ui.module='all'; render()">Look in all modules</button>` : ""}<button class="btn btn-ghost btn-sm" onclick="go('search','typed')">${icon("search")}Search questions</button></div></div>`}
+        ${ui.ticked.size ? `<div class="selbar mt-4 flex items-center gap-3 rounded-lg border border-base-content bg-base-100 px-4 py-2 shadow-lg"><span class="text-sm font-semibold">${ui.ticked.size} ticked</span><button class="btn btn-outline btn-sm border-field-border">${icon("play")}Quiz them</button><button class="btn btn-ghost btn-sm">${icon("folder-input")}Move to module</button><button class="btn btn-ghost btn-sm">${icon("tag")}Tag</button><button class="btn btn-ghost btn-sm ml-auto" onclick="ui.ticked.clear(); render()">Untick all</button></div>` : ""}
+      </section>
+      <aside class="itemcard w-72 shrink-0" aria-label="Selected topic">${card}</aside>
+    </div></div>`;
+}
+function itemCard(t) {
+  return `<div class="panel p-5">
+    <p class="text-xs text-muted">${t.module ?? "No module"}</p>
+    <h2 class="mt-1 text-lg font-semibold leading-snug">${esc(t.name)}</h2>
+    ${t.tags.length ? `<div class="mt-2 flex flex-wrap gap-1">${t.tags.map((g) => `<span class="chip">${icon("tag", "size-3")}${g}</span>`).join("")}</div>` : ""}
+    <dl class="mt-4 grid grid-cols-2 gap-y-3 text-sm">
+      <dt class="text-muted">Questions</dt><dd class="text-right tabular-nums">${t.questions}</dd>
+      <dt class="text-muted">Cards</dt><dd class="text-right tabular-nums">${t.cards}${t.cardsDue ? `, ${t.cardsDue} due` : ""}</dd>
+      <dt class="text-muted">Last score</dt><dd class="text-right tabular-nums">${t.accuracy === null ? "None yet" : t.accuracy + "%"}</dd>
+      <dt class="text-muted">Quiz step</dt><dd class="flex items-center justify-end gap-2">${t.step === null ? "Not started" : ladder(t.step) + STEPS[t.step]}</dd>
+      <dt class="text-muted">Next quiz</dt><dd class="text-right">${nextLabel(t)}</dd>
+    </dl>
+    ${t.exam ? `<p class="mt-3 flex items-start gap-2 rounded-md bg-base-200 p-2 text-xs">${icon("graduation-cap", "size-3.5 mt-0.5 shrink-0")}Tightened for the Networks exam on Mon 23 Nov</p>` : ""}
+    <div class="mt-5 grid grid-cols-2 gap-2"><button class="btn btn-outline btn-sm border-field-border">${icon("play")}Quiz</button><button class="btn btn-outline btn-sm border-field-border">${icon("pencil")}Edit</button>
+      <button class="btn btn-ghost btn-sm">${icon("square-stack")}Cards</button><button class="btn btn-ghost btn-sm">${icon("brain")}Checklist</button></div>
+    <div class="mt-3 flex justify-between border-t border-base-300 pt-3"><button class="btn btn-ghost btn-xs">${icon("folder-input", "size-3.5")}Move</button><button class="btn btn-ghost btn-xs">${icon("tag", "size-3.5")}Tags</button><button class="btn btn-ghost btn-xs text-error">${icon("trash-2", "size-3.5")}Delete</button></div>
+  </div>`;
+}
+
+/* ---------------- A topic picker: New quiz, and an exam's topics ---------------- */
+function picker(heading) {
+  const shown = sorted(TOPICS.filter(matches));
+  const inModule = ui.module !== "all" && ui.module !== "none" ? TOPICS.filter((t) => t.module === ui.module) : [];
+  const allTicked = inModule.length && inModule.every((t) => ui.ticked.has(t.id));
+  return `<div class="flex gap-5">
+    ${rail(TOPICS)}
+    <section class="min-w-0 flex-1" aria-label="${heading}">
+      <div class="mb-3 flex flex-wrap items-center gap-3">${filterBox("Filter topics…", shown.length, TOPICS.length)}
+        ${inModule.length ? `<button class="btn btn-ghost btn-sm" onclick="${allTicked ? `[${inModule.map((t) => t.id)}].forEach(i=>ui.ticked.delete(i))` : `[${inModule.map((t) => t.id)}].forEach(i=>ui.ticked.add(i))`}; render()">${icon(allTicked ? "square-minus" : "square-check")}${allTicked ? "Untick" : "Tick"} all ${inModule.length} in ${esc(ui.module)}</button>` : ""}</div>
+      <div class="panel pane"><table class="rows" aria-label="${heading}"><thead><tr><th class="w-10"><span></span></th>${th("name", "Topic")}${ui.module === "all" ? th("module", "Module") : ""}${th("questions", "Questions", "num")}${th("next", "Next quiz")}</tr></thead><tbody>
+      ${shown.map((t) => `<tr onclick="ui.ticked.has(${t.id}) ? ui.ticked.delete(${t.id}) : ui.ticked.add(${t.id}); render()" aria-selected="${ui.ticked.has(t.id)}"><td><input type="checkbox" class="checkbox" aria-label="${esc(t.name)}" ${ui.ticked.has(t.id) ? "checked" : ""}></td><td class="font-semibold">${highlight(t.name)}</td>${ui.module === "all" ? `<td class="text-muted">${t.module ?? "No module"}</td>` : ""}<td class="num">${t.questions}</td><td class="text-sm ${t.next !== null && t.next <= 0 ? "font-semibold" : "text-muted"}">${nextLabel(t)}</td></tr>`).join("")}
+      </tbody></table></div>
+    </section></div>`;
+}
+function tickedSummary() {
+  const ticked = TOPICS.filter((t) => ui.ticked.has(t.id));
+  const questions = ticked.reduce((n, t) => n + t.questions, 0);
+  return { ticked, questions, chips: ticked.length ? `<div class="mt-3 flex max-h-40 flex-wrap gap-1 overflow-y-auto">${ticked.slice(0, 12).map((t) => `<button class="chip hover:bg-base-300" onclick="ui.ticked.delete(${t.id}); render()" aria-label="Untick ${esc(t.name)}">${esc(t.name)}${icon("x", "size-3")}</button>`).join("")}${ticked.length > 12 ? `<span class="chip">and ${ticked.length - 12} more</span>` : ""}</div>` : "" };
+}
+function screenSetup() {
+  const s = tickedSummary();
+  return `<div class="mx-auto max-w-[96rem] px-10 pb-24">${header("New quiz", "Pick what to practise and how")}
+    <div class="flex gap-6"><div class="min-w-0 flex-1">${picker("Topics to quiz")}</div>
+    <aside class="itemcard w-80 shrink-0"><div class="panel p-5"><p class="eyebrow">Your quiz</p>
+      ${s.ticked.length ? `<p class="mt-2 text-2xl font-semibold tabular-nums">${s.questions} questions</p><p class="text-sm text-muted">from ${s.ticked.length} ${s.ticked.length === 1 ? "topic" : "topics"}</p>${s.chips}
+        <label class="mt-4 block text-sm"><span class="font-semibold">Questions</span><select class="select select-sm mt-1 w-full"><option>20, spread evenly</option><option>All ${s.questions}</option><option>10</option><option>40</option></select></label>` : `<p class="mt-2 text-sm text-muted">Tick topics, or a whole module from the rail.</p>`}
+      <button class="btn btn-primary mt-5 w-full" ${s.ticked.length ? "" : "disabled"}>${icon("play")}Start quiz</button></div></aside></div></div>`;
+}
+function screenExam() {
+  const s = tickedSummary();
+  return `<div class="mx-auto max-w-[96rem] px-10 pb-24">${header("Calendar", "Everything due, day by day")}
+    <dialog open class="modal modal-open" aria-labelledby="exam-h"><div class="modal-box max-w-[72rem]">
+      <h3 id="exam-h" class="text-lg font-semibold">Add a date: topics it covers</h3>
+      <p class="mt-1 text-sm text-muted">Architecture mock · Thu 26 Nov · Exam</p>
+      <div class="mt-5">${picker("Topics it covers")}</div>
+      <div class="modal-action items-center"><span class="mr-auto text-sm text-muted">${s.ticked.length} ${s.ticked.length === 1 ? "topic" : "topics"} ticked</span><button class="btn btn-ghost">Back</button><button class="btn btn-primary">Add date</button></div>
+    </div></dialog></div>`;
+}
+
+/* ---------------- Today's quizzes, capped ---------------- */
+function screenToday() {
+  const today = DUE.slice(0, DAILY), rest = DUE.slice(DAILY);
+  const spread = [1, 2, 3, 4, 5, 6].map((d) => ({ d, n: rest.slice((d - 1) * DAILY, d * DAILY).length })).filter((x) => x.n);
+  const settings = state.variant === "quiz schedule";
+  return `<div class="mx-auto max-w-4xl px-12 pb-24">
+    <button class="mt-8 inline-flex items-center gap-1 py-1 text-sm text-muted hover:underline">${icon("arrow-left")}November 2026</button>
+    <div class="pb-6 pt-4"><h1 class="text-3xl font-semibold">Today, Tue 3 Nov</h1><p class="mt-2 text-muted">${54 + DAILY + 2} things due · about 40 minutes</p></div>
+    <div class="mb-6"><button class="btn btn-primary">${icon("play")}Start with the cards</button></div>
+    <div class="space-y-6">
+    <section class="panel p-6" aria-labelledby="h-quiz"><div class="flex items-center justify-between"><h2 id="h-quiz" class="flex items-center gap-2 text-sm font-semibold">${icon("list-checks")}Quizzes, ${DAILY} today</h2><button class="btn btn-ghost btn-sm">${icon("calendar-cog")}Quiz schedule</button></div>
+      <ul class="mt-3 divide-y">${today.map((t) => `<li class="flex items-center justify-between gap-4 py-3"><div><p class="text-[15px]">${esc(t.name)}</p><p class="text-sm text-muted">${t.module} · ${STEPS[t.step]} step · ${-t.next ? `${-t.next} ${-t.next === 1 ? "day" : "days"} late` : "due today"} · ${t.questions} questions</p></div><button class="btn btn-outline btn-sm border-field-border">${icon("play")}Quiz</button></li>`).join("")}
+      <li class="pt-3"><button class="btn btn-outline btn-sm border-field-border">${icon("play")}Quiz all ${DAILY} together, 20 questions</button></li></ul>
+      <details class="mt-4 rounded-lg bg-base-200 p-4"><summary class="cursor-pointer text-sm"><b>${rest.length} more waiting</b>, most overdue first. They come in ${DAILY} a day on top of what's due then, so the last of them is in by ${dayLabel(Math.ceil(rest.length / DAILY))}.</summary>
+        <p class="mt-3 text-sm text-muted">Most overdue first. A waiting topic keeps its place in the queue and its step, it just isn't moved down for being late.</p>
+        <ul class="mt-2 divide-y text-sm">${rest.slice(0, 6).map((t) => `<li class="flex justify-between py-2"><span>${esc(t.name)}</span><span class="text-muted">${-t.next} days late</span></li>`).join("")}<li class="py-2 text-muted">and ${rest.length - 6} more, all in Topics with "Due"</li></ul></details>
+    </section>
+    <section class="panel p-6"><h2 class="flex items-center gap-2 text-sm font-semibold">${icon("square-stack")}Cards</h2><ul class="mt-3"><li class="flex items-center justify-between py-3"><div><p class="text-[15px]">54 cards due</p><p class="text-sm text-muted">10 new · 44 to review · about 23 minutes</p></div><button class="btn btn-outline btn-sm border-field-border">${icon("play")}Start review</button></li></ul></section>
+    </div>
+    ${settings ? `<dialog open class="modal modal-open" aria-labelledby="qs-h"><div class="modal-box max-w-lg"><h3 id="qs-h" class="text-lg font-semibold">Quiz schedule</h3>
+      <p class="mt-2 text-sm text-muted">The ladder and pass mark are as before. New here:</p>
+      <label class="mt-5 flex items-center justify-between gap-4"><span><span class="block text-sm font-semibold">Topics to quiz a day</span><span class="block text-sm text-muted">The rest wait, most overdue first, and come in on the next days.</span></span><input type="number" class="input w-20 text-right" value="${DAILY}" min="1" max="50"></label>
+      <p class="mt-3 flex items-start gap-2 rounded-md bg-base-200 p-3 text-sm">${icon("info", "size-4 mt-0.5 shrink-0")}About 6 topics come due a day at the moment, more than ${DAILY}, so the waiting list would keep growing. 7 a day clears it in about 3 weeks.</p>
+      <label class="mt-4 flex items-center justify-between gap-4"><span><span class="block text-sm font-semibold">Questions in "Quiz them together"</span><span class="block text-sm text-muted">Spread evenly over the day's topics.</span></span><input type="number" class="input w-20 text-right" value="20" min="5" max="200"></label>
+      <div class="modal-action"><button class="btn btn-ghost" onclick="setVariant('capped quizzes')">Cancel</button><button class="btn btn-primary" onclick="setVariant('capped quizzes')">Save</button></div></div></dialog>` : ""}
+  </div>`;
+}
+
+/* ---------------- Search ---------------- */
+function screenSearch() {
+  const v = state.variant;
+  const results = v === "empty" ? [] : Array.from({ length: 112 }, (_, i) => { const t = TOPICS.filter((t) => /cache/i.test(t.name))[i % 6] || TOPICS[i]; return { q: `${["Which of these best describes", "What is the main purpose of", "When would you choose"][i % 3]} ${t.name.toLowerCase()} (Q${t.id}.${i})?`, t: t.name, edited: dayLabel(-(i * 3) % 40) }; });
+  const page = 50 * (1 + ui.more);
+  return `<div class="mx-auto max-w-6xl px-12 pb-24">${header("Search")}
+    <label class="input flex w-full items-center gap-2 text-lg">${icon("search", "size-5 text-muted")}<input id="filter" type="search" class="grow" placeholder="Questions, options, explanations, tags, sources…" value="${esc(ui.filter)}" aria-label="Search"></label>
+    ${v === "empty" ? `<div class="mt-8 grid grid-cols-2 gap-6">
+        <section class="panel p-6"><h2 class="text-sm font-semibold">Recent searches</h2><ul class="mt-3 divide-y text-[15px]">${["cache", "tcp handshake", "gdpr article 17"].map((s) => `<li><button class="w-full py-2.5 text-left hover:underline">${icon("history", "size-4 inline -mt-0.5 mr-2 text-muted")}${s}</button></li>`).join("")}</ul></section>
+        <section class="panel p-6"><h2 class="text-sm font-semibold">Recently edited</h2><ul class="mt-3 divide-y text-sm">${TOPICS.slice(0, 5).map((t, i) => `<li class="flex justify-between gap-3 py-2.5"><span class="truncate">What is the main purpose of ${t.name.toLowerCase()}?</span><span class="shrink-0 text-muted">${dayLabel(-i)}</span></li>`).join("")}</ul></section>
+        <p class="col-span-2 text-sm text-muted">Type to search ${(4578).toLocaleString()} questions, ${TOPICS.length} topics and 60 sources. Results show 50 at a time.</p></div>`
+    : `<div role="tablist" class="mt-6 flex gap-1 border-b border-base-300">${[["All", 118], ["Questions", 112], ["Topics", 6], ["Tags", 0], ["Sources", 0]].map(([l, n], i) => `<button role="tab" aria-selected="${i === 0}" class="px-3 py-2 text-sm ${i === 0 ? "border-b-2 border-base-content font-semibold" : "text-muted"}">${l}<span class="ml-1 text-xs font-normal text-muted">${n}</span></button>`).join("")}</div>
+      <div class="mt-4 panel overflow-clip"><table class="rows"><thead><tr>${th("name", "Question")}<th><span>Topic</span></th>${th("next", "Edited")}</tr></thead><tbody>
+      ${results.slice(0, Math.min(page, 8)).map((r) => `<tr><td>${highlight(r.q)}</td><td>${highlight(r.t)}</td><td class="text-muted">${r.edited}</td></tr>`).join("")}
+      <tr><td colspan="3" class="text-center text-xs text-muted">… ${Math.min(page, results.length) - 8} more rows on this page …</td></tr></tbody></table></div>
+      <div class="mt-4 flex items-center justify-between"><span class="text-sm text-muted">Showing ${Math.min(page, results.length)} of ${results.length}</span>${page < results.length ? `<button class="btn btn-outline btn-sm border-field-border" onclick="setVariant('more results')">Show ${Math.min(50, results.length - page)} more</button>` : ""}</div>`}
+  </div>`;
+}
+
+/* ---------------- History ---------------- */
+function screenHistory() {
+  const filtered = state.variant === "filtered";
+  const months = [["November 2026", 3], ["October 2026", 46], ["September 2026", 44], ["August 2026", 47], ["July 2026", 35]];
+  return `<div class="mx-auto max-w-6xl px-12 pb-24">${header("History", "175 quizzes", `<button class="btn btn-primary">${icon("play")}New quiz</button>`)}
+    <section class="panel p-6"><div class="flex items-center justify-between"><h2 class="text-sm font-semibold">Score per quiz</h2><div class="seg" role="radiogroup" aria-label="Range">${["Last 30", "90 days", "All"].map((l, i) => `<button type="button" role="radio" aria-checked="${i === 0}">${l}</button>`).join("")}</div></div>
+      <svg viewBox="0 0 900 140" class="mt-4 w-full" role="img" aria-label="Scores of the last 30 quizzes, mostly between 60 and 90 percent"><line x1="0" y1="130" x2="900" y2="130" stroke="var(--chart-grid)"/><polyline fill="none" stroke="var(--chart-ink)" stroke-width="2" points="${Array.from({ length: 30 }, (_, i) => `${15 + i * 30},${130 - (60 + Math.sin(i * 1.7) * 18 + i * 0.6)}`).join(" ")}"/>${Array.from({ length: 30 }, (_, i) => `<circle cx="${15 + i * 30}" cy="${130 - (60 + Math.sin(i * 1.7) * 18 + i * 0.6)}" r="3.5" fill="var(--chart-ink)"/>`).join("")}</svg></section>
+    <div class="mt-6 mb-3 flex flex-wrap items-center gap-3">${filterBox("Filter by topic or module…", filtered ? 31 : 175, 175)}
+      <div class="seg" role="radiogroup" aria-label="Kind">${["All", "Exam mode", "Study", "Retries"].map((l, i) => `<button type="button" role="radio" aria-checked="${i === 0}">${l}</button>`).join("")}</div></div>
+    ${months.map(([m, n], i) => `<details class="mb-3" ${i < 2 ? "open" : ""}><summary class="flex cursor-pointer items-center gap-3 py-2"><span class="font-semibold">${m}</span><span class="text-sm text-muted">${filtered ? Math.round(n / 6) : n} quizzes · average ${72 + i * -3}%</span></summary>
+      ${i < 2 ? `<div class="panel overflow-clip"><table class="rows"><thead><tr>${th("next", "Day")}${th("name", "Topics")}${th("accuracy", "Score", "num")}<th><span></span></th></tr></thead><tbody>${Array.from({ length: i === 0 ? 3 : 4 }, (_, r) => { const a = TOPICS[(r * 13 + i * 7) % TOPICS.length], b = TOPICS[(r * 13 + i * 7 + 1) % TOPICS.length]; return `<tr><td class="text-muted">${dayLabel(-(r + 1 + i * 10))}</td><td>${filtered ? "OSI model, Subnetting" : `${esc(a.name)}, ${esc(b.name)}`}</td><td class="num">${60 + ((r * 17 + i * 5) % 40)}%</td><td class="text-right"><button class="btn btn-ghost btn-xs">View</button></td></tr>`; }).join("")}
+        ${i === 1 ? `<tr><td colspan="4" class="text-center text-xs text-muted">… the rest of the month …</td></tr>` : ""}</tbody></table></div>` : ""}</details>`).join("")}
+  </div>`;
+}
+
+/* ---------------- Suggestions ---------------- */
+function screenSuggestions() {
+  const groups = TOPICS.filter((t) => t.step !== null).slice(0, 7).map((t, i) => ({ t, n: [14, 9, 7, 6, 4, 3, 2][i] }));
+  return `<div class="mx-auto max-w-6xl px-12 pb-24">${header("Suggestions", "Things you missed in a recall or got wrong in a quiz. Make a card for the ones that matter, dismiss the rest.")}
+    <div class="mb-4 flex flex-wrap items-center gap-3">${filterBox("Filter by topic or text…", 202, 202)}
+      <div class="seg" role="radiogroup" aria-label="From">${[["All", 202], ["Recall misses", 47], ["Quiz mistakes", 115], ["Project struggles", 40]].map(([l, n], i) => `<button type="button" role="radio" aria-checked="${i === 0}">${l}<span class="ml-1 text-xs">${n}</span></button>`).join("")}</div>
+      <label class="ml-auto flex items-center gap-2 text-sm">Group by<select class="select select-sm w-36"><option>Topic</option><option>Module</option><option>Day</option><option>No grouping</option></select></label></div>
+    ${groups.map(({ t, n }, i) => `<details class="panel mb-3" ${i === 0 ? "open" : ""}><summary class="flex cursor-pointer items-center gap-3 px-5 py-3"><span class="font-semibold">${esc(t.name)}</span><span class="text-sm text-muted">${t.module} · ${n} suggestions</span><span class="ml-auto"></span><button class="btn btn-ghost btn-xs" onclick="event.preventDefault()">${icon("x", "size-3.5")}Dismiss these ${n}</button></summary>
+      ${i === 0 ? `<ul class="divide-y border-t border-base-300">${Array.from({ length: 3 }, (_, r) => `<li class="flex items-center justify-between gap-4 px-5 py-3"><div><p class="text-xs text-muted">Quiz · ${r ? "Wrong" : "Right but guessed"} · ${dayLabel(-(r + 1))}</p><p class="text-[15px]">What is the main purpose of ${t.name.toLowerCase()} (Q${t.id}.${r})?</p></div><div class="flex gap-2"><button class="btn btn-ghost btn-sm">${icon("x")}Dismiss</button><button class="btn btn-outline btn-sm border-field-border">${icon("plus")}Make a card</button></div></li>`).join("")}<li class="px-5 py-3"><button class="btn btn-ghost btn-sm">Show the other ${n - 3}</button></li></ul>` : ""}</details>`).join("")}
+    <p class="text-sm text-muted">and 38 more topics, smaller groups last</p></div>`;
+}
+
+/* ---------------- Bibliography ---------------- */
+function screenBibliography() {
+  const SOURCES = Array.from({ length: 60 }, (_, i) => ({ id: i, who: `${["Anderson", "Cormen", "Hepburn", "Patterson", "Ross", "Silberschatz", "Stallings", "Tanenbaum"][i % 8]}, ${"ABJMR"[i % 5]}.`, year: 2005 + (i * 7) % 21, title: `${TOPICS[i * 2].name}: notes and readings, part ${i + 1}`, slides: i % 3 === 0, cited: 2 + ((i * 11) % 19), topics: 2 + ((i * 7) % 11) }));
+  const list = [...SOURCES].sort((a, b) => b.cited - a.cited);
+  const sel = ui.selected !== null ? SOURCES[ui.selected] : null;
+  return `<div class="mx-auto max-w-[96rem] px-10 pb-24">${header("Bibliography", "60 sources, formatted in APA", `<button class="btn btn-ghost">${icon("copy")}Copy all</button><button class="btn btn-primary">${icon("plus")}Add source</button>`)}
+    <div class="flex gap-6"><section class="min-w-0 flex-1">
+      <div class="mb-3 flex flex-wrap items-center gap-3">${filterBox("Filter by author, title, year…", 60, 60)}<div class="seg" role="radiogroup" aria-label="Show">${["All", "Books", "Lecture slides", "Not cited"].map((l, i) => `<button type="button" role="radio" aria-checked="${i === 0}">${l}</button>`).join("")}</div></div>
+      <div class="panel pane"><table class="rows" aria-label="Sources"><thead><tr>${th("name", "Author")}${th("year", "Year", "num")}<th><span>Title</span></th>${th("cited", "Cited by", "num")}</tr></thead><tbody>
+      ${list.map((s) => `<tr aria-selected="${ui.selected === s.id}" onclick="ui.selected=${s.id}; render()"><td class="whitespace-nowrap font-semibold">${s.who}</td><td class="num">${s.year}</td><td><i>${esc(s.title)}</i>${s.slides ? ` <span class="text-muted">[Lecture slides]</span>` : ""}</td><td class="num whitespace-nowrap">${s.cited} <span class="text-muted">in ${s.topics} topics</span></td></tr>`).join("")}
+</tbody></table></div></section>
+    <aside class="itemcard w-96 shrink-0">${sel ? `<div class="panel p-5"><p class="text-[15px] leading-relaxed" style="text-indent:-1.5em; padding-left:1.5em">${sel.who} (${sel.year}). <i>${esc(sel.title)}</i>${sel.slides ? " [Lecture slides]" : ""}. University College Isle of Man.</p>
+      <div class="mt-3 flex gap-2"><button class="btn btn-ghost btn-sm">${icon("copy")}Copy</button><button class="btn btn-ghost btn-sm">${icon("pencil")}Edit</button><button class="btn btn-ghost btn-sm text-error ml-auto">${icon("trash-2")}Delete</button></div>
+      <h3 class="mt-4 border-t border-base-300 pt-4 text-sm font-semibold">Cited by ${sel.cited} questions in ${sel.topics} topics</h3>
+      <ul class="mt-2 divide-y text-sm">${TOPICS.slice(sel.id * 3, sel.id * 3 + sel.topics).map((t, i) => `<li class="flex items-center justify-between gap-3 py-1"><button class="py-1 text-left hover:underline">${esc(t.name)}</button><span class="text-muted tabular-nums">${1 + (i % 3)}</span></li>`).join("")}</ul></div>`
+      : `<div class="panel p-5 text-sm text-muted"><p class="font-semibold text-base-content">Pick a source to see it here</p><p class="mt-2">Its full reference, and which topics cite it.</p></div>`}</aside></div></div>`;
+}
+
+/* ---------------- Overview ---------------- */
+function screenOverview() {
+  const weakest = TOPICS.filter((t) => t.accuracy !== null).sort((a, b) => a.accuracy - b.accuracy).slice(0, 8);
+  return `<div class="mx-auto max-w-6xl px-12 pb-24">${header("Overview", "Last 7 days, compared with the 7 days before", `<button class="btn btn-primary">${icon("play")}New quiz</button>`)}
+    <section class="panel p-6" aria-labelledby="weak-h"><div class="flex items-baseline justify-between"><div><h2 id="weak-h" class="font-semibold">Topics, weakest first</h2><p class="text-sm text-muted">Latest quiz on each topic · the 8 weakest of ${TOPICS.filter((t) => t.accuracy !== null).length}</p></div>
+      <div class="flex items-center gap-3"><select class="select select-sm w-56" aria-label="Module"><option>All modules</option>${MODULES.map((m) => `<option>${m}</option>`).join("")}</select><button class="btn btn-ghost btn-sm" onclick="go('topics')">See all in Topics${icon("arrow-right")}</button></div></div>
+      <ul class="mt-4 space-y-3">${weakest.map((t) => `<li><div class="flex justify-between text-sm"><span class="font-semibold">${esc(t.name)} <span class="font-normal text-muted">· ${t.module}</span></span><span class="tabular-nums text-muted">${t.accuracy}% right</span></div><div class="mt-1 flex h-2.5 overflow-hidden rounded-full"><span style="width:${t.accuracy}%; background: var(--chart-right)"></span><span style="flex:1; background: var(--chart-wrong)"></span></div></li>`).join("")}</ul></section></div>`;
+}
+
+/* ---------------- Cards home, by topic ---------------- */
+function screenCards() {
+  const shown = sorted(TOPICS.filter(matches));
+  return `<div class="mx-auto max-w-[96rem] px-10 pb-24">${header("Cards", "54 due today", `<button class="btn btn-ghost">${icon("settings-2")}Settings</button><button class="btn btn-primary">${icon("play")}Start review</button>`)}
+    <p class="eyebrow mb-3">By topic</p>
+    <div class="flex gap-6">${rail(TOPICS)}<section class="min-w-0 flex-1">
+      <div class="mb-3 flex flex-wrap items-center gap-3">${filterBox("Filter topics…", shown.length, TOPICS.length)}${statusSeg([["all", "All"], ["cards", "Due today", TOPICS.filter((t) => t.cardsDue).length]])}</div>
+      <div class="panel pane"><table class="rows"><thead><tr>${th("name", "Topic")}${th("cardsDue", "Due today", "num")}${th("cards", "Cards", "num")}${th("accuracy", "Retention", "num")}<th><span></span></th></tr></thead><tbody>
+      ${shown.map((t) => `<tr><td><span class="font-semibold">${highlight(t.name)}</span><div class="text-xs text-muted">${t.module ?? "No module"}</div></td><td class="num">${t.cardsDue}</td><td class="num">${t.cards}</td><td class="num">${t.accuracy === null ? "" : Math.min(99, 70 + Math.round(t.accuracy / 4)) + "%"}</td><td class="text-right"><button class="btn btn-ghost btn-xs">${icon("play", "size-3.5")}Review</button></td></tr>`).join("")}
+</tbody></table></div></section></div></div>`;
+}
+
+/* ---------------- Render ---------------- */
+const screens = { topics: screenTopics, setup: screenSetup, today: screenToday, search: screenSearch, history: screenHistory, suggestions: screenSuggestions, bibliography: screenBibliography, overview: screenOverview, cards: screenCards, exam: screenExam };
+const screenNames = { topics: "Topics", setup: "New quiz", today: "Today", search: "Search", history: "History", suggestions: "Suggestions", bibliography: "Bibliography", overview: "Overview", cards: "Cards", exam: "Exam topics" };
+const navOf = { topics: "topics", setup: "", today: "calendar", search: "search", history: "history", suggestions: "cards", bibliography: "bibliography", overview: "overview", cards: "cards", exam: "calendar" };
+function setVariant(v) { state.variant = v; preset(state.screen, v); render(); }
+function go(screen, v) { state.screen = screen; state.variant = v || variants[screen][0]; preset(screen, state.variant); try { history.replaceState(null, "", `#${screen}`); } catch (e) {} render(); window.scrollTo(0, 0); }
+function render(keepFocus) {
+  const caret = keepFocus ? document.getElementById("filter")?.selectionStart : null;
+  document.getElementById("app").innerHTML = screens[state.screen]();
+  document.querySelectorAll(".nav-link").forEach((a) => a.dataset.nav && a.dataset.nav === navOf[state.screen] ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current"));
+  document.getElementById("screens").innerHTML = Object.keys(screens).map((s) => `<button class="px-2 py-1 rounded ${s === state.screen ? "bg-neutral text-neutral-content font-semibold" : "hover:underline"}" onclick="go('${s}')">${screenNames[s]}</button>`).join("");
+  document.getElementById("states").innerHTML = variants[state.screen].map((v) => `<button class="px-2 py-1 rounded ${v === state.variant ? "bg-neutral text-neutral-content font-semibold" : "hover:underline"}" onclick="setVariant('${v}')">${v}</button>`).join("");
+  if (window.lucide) lucide.createIcons();
+  if (keepFocus) { const f = document.getElementById("filter"); if (f) { f.focus(); f.setSelectionRange(caret, caret); } }
+}
+function applyTheme(name, save = true) {
+  document.documentElement.dataset.theme = name;
+  document.querySelector('meta[name="theme-color"]').content = name === "studyapp-dark" ? "#18130e" : "#f9f4ee";
+  document.querySelectorAll("[data-theme-choice]").forEach((b) => b.setAttribute("aria-checked", b.dataset.themeChoice === name));
+  if (save) { try { localStorage.setItem("studyapp-theme", name); } catch (e) {} render(); }
+}
+document.getElementById("theme-switch").addEventListener("click", (e) => { const b = e.target.closest("[data-theme-choice]"); if (b) applyTheme(b.dataset.themeChoice); });
+(() => { let saved = null; try { saved = localStorage.getItem("studyapp-theme"); } catch (e) {} applyTheme(saved === "studyapp" ? "studyapp" : "studyapp-dark", false); })();
+// Keyboard, like SkyUI: "/" filters, arrows move the selection, Space ticks, Esc clears.
+document.addEventListener("keydown", (e) => {
+  const typing = ["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName);
+  if (e.key === "/" && !typing) { e.preventDefault(); document.getElementById("filter")?.focus(); return; }
+  if (e.key === "Escape") { if (ui.menu) { ui.menu = false; render(); return; } if (ui.filter) { ui.filter = ""; render(true); return; } }
+  if (state.screen !== "topics") return;
+  const shown = sorted(TOPICS.filter(matches));
+  if ((e.key === "ArrowDown" || e.key === "ArrowUp") && shown.length && (!typing || e.target.id === "filter")) {
+    e.preventDefault();
+    const at = shown.findIndex((t) => t.id === ui.selected);
+    const next = at < 0 ? 0 : Math.max(0, Math.min(shown.length - 1, at + (e.key === "ArrowDown" ? 1 : -1)));
+    ui.selected = shown[next].id; render(e.target.id === "filter");
+    document.querySelector('tr[aria-selected="true"]')?.scrollIntoView({ block: "nearest" });
+  }
+  if (e.key === " " && !typing && ui.selected !== null) { e.preventDefault(); ui.ticked.has(ui.selected) ? ui.ticked.delete(ui.selected) : ui.ticked.add(ui.selected); render(); }
+});
+const start = location.hash.slice(1);
+if (screens[start]) state.screen = start;
+state.variant = variants[state.screen][0]; preset(state.screen, state.variant);
+render();
+const strip = document.getElementById("proto-strip");
+new ResizeObserver(() => document.documentElement.style.setProperty("--strip", strip.offsetHeight + "px")).observe(strip);
+</script>
+</body>
+</html>

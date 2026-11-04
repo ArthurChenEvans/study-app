@@ -1,0 +1,10 @@
+target
+node_modules
+dist
+.git
+src-tauri/gen
+src-tauri/target
+e2e
+design
+docs
+specs

@@ -1,0 +1,23 @@
+// Every command the frontend invokes must be registered in the Tauri shell,
+// otherwise the app fails at runtime with "Command ... not found".
+import { describe, expect, it } from "vitest";
+import api from "./api.ts?raw";
+import shell from "../../src-tauri/src/lib.rs?raw";
+import web from "../../crates/study-web/src/dispatch.rs?raw";
+const handler = shell.slice(shell.indexOf("generate_handler!["), shell.indexOf("]", shell.indexOf("generate_handler![")));
+
+describe("Tauri commands", () => {
+  const invoked = [...api.matchAll(/invoke<[^>]*>\("(\w+)"/g)].map((match) => match[1]);
+  it.each(invoked)("%s is registered", (name) => {
+    expect(handler).toMatch(new RegExp(`\\b${name}\\b`));
+    expect(shell).toMatch(new RegExp(`fn ${name}\\b`));
+  });
+});
+
+describe("Web commands", () => {
+  const invoked = [...api.matchAll(/invoke<[^>]*>\("(\w+)"/g)].map((match) => match[1]).filter((name) => name !== "slides_to_pdf");
+  it.each(invoked)("%s is handled by study-web", (name) => {
+    expect(web).toContain(`"${name}" =>`);
+  });
+});
+
