@@ -1,6 +1,6 @@
 <script lang="ts">
   // projects.feature (R88 to R90): sessions on a project, logging struggles, and the list.
-  import { ArrowLeft, ListChecks, Play, Plus, Square, Timer } from "@lucide/svelte";
+  import { ArrowLeft, CircleDot, ListChecks, Play, Plus, Square, Timer } from "@lucide/svelte";
   import { onDestroy, tick } from "svelte";
   import { api, errorMessage, type Id, type ProjectView, type StruggleKind, type StruggleView, type TopicRow } from "../lib/api";
   import { fullLabel, onDay, pastOn } from "../lib/dates";
@@ -104,8 +104,23 @@
     return `${struggle.issue ? `Issue: ${struggle.issue} · ` : ""}drill ${value.Drill.due === null ? "ticked off" : onDay(value.Drill.due, today)}`;
   };
 
+  const toReviewCount = $derived((view?.struggles ?? []).filter((s) => s.outcome === null).length);
+
   load();
 </script>
+
+<!-- What became of a struggle. Anything still to do stands out: a labelled chip to review,
+     or the drill day in bold. Settled outcomes stay quiet. -->
+{#snippet outcomeOf(struggle: StruggleView)}
+  {@const value = struggle.outcome}
+  {#if value === null}
+    <span class="todo-chip"><CircleDot class="size-3.5" aria-hidden="true" />{outcome(struggle)}</span>
+  {:else if typeof value === "object" && "Drill" in value && value.Drill.due !== null && value.Drill.due <= today}
+    <span class="text-muted">{struggle.issue ? `Issue: ${struggle.issue} · ` : ""}</span><span class="font-semibold text-base-content">drill {onDay(value.Drill.due, today)}</span>
+  {:else}
+    <span class="text-muted">{outcome(struggle)}</span>
+  {/if}
+{/snippet}
 
 <svelte:window onkeydown={keys} />
 
@@ -153,7 +168,7 @@
       {#if view.struggles.length}
         <div class="flex items-center gap-3">
           <input type="search" class="input input-sm w-56" aria-label="Search struggles" placeholder="Search…" bind:value={search} />
-          <div class="seg" role="radiogroup" aria-label="Show"><button type="button" role="radio" aria-checked={!onlyToReview} onclick={() => (onlyToReview = false)}>All</button><button type="button" role="radio" aria-checked={onlyToReview} onclick={() => (onlyToReview = true)}>To review</button></div>
+          <div class="seg" role="radiogroup" aria-label="Show"><button type="button" role="radio" aria-checked={!onlyToReview} onclick={() => (onlyToReview = false)}>All</button><button type="button" role="radio" aria-checked={onlyToReview} onclick={() => (onlyToReview = true)}>To review{#if toReviewCount}<span class="ml-1.5 tabular-nums text-muted">{toReviewCount}</span>{/if}</button></div>
         </div>
       {/if}
     </div>
@@ -169,7 +184,7 @@
           <li class="flex items-start gap-6 px-6 py-4">
             <div class="flex-1"><p class="text-[15px]">{struggle.what}</p>{#if struggle.why}<p class="mt-1 text-sm text-muted">Why it wasn't obvious: {struggle.why}</p>{/if}
               <div class="mt-2 flex flex-wrap items-center gap-2"><span class="kind">{kindLabel[struggle.kind]}</span>{#if struggle.topic_name}<span class="badge-src">{struggle.topic_name}</span>{/if}<span class="text-xs text-muted tabular-nums">{time(struggle.minute)}</span></div></div>
-            <span class="max-w-72 text-right text-sm {struggle.outcome === null ? 'font-semibold' : 'text-muted'}">{outcome(struggle)}</span>
+            <span class="max-w-72 text-right text-sm">{@render outcomeOf(struggle)}</span>
           </li>
         {/each}
       </ul>

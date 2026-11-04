@@ -48,6 +48,9 @@ pub enum Hit {
         tags: Vec<String>,
         /// UTC, as "YYYY-MM-DD HH:MM:SS".
         edited: String,
+        /// Where the words matched, when it wasn't the question itself, so the
+        /// result can show why it's there.
+        matched: Option<Matched>,
     },
     Module {
         id: ModuleId,
@@ -64,6 +67,13 @@ pub enum Hit {
         id: SourceId,
         apa: String,
     },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Matched {
+    Option(String),
+    Explanation(String),
+    Tag(String),
 }
 
 impl Store {
@@ -159,19 +169,46 @@ impl Store {
         let mut tags = self
             .connection
             .prepare("SELECT tag FROM question_tags WHERE question_id = ?1 ORDER BY tag")?;
+        let mut options = self
+            .connection
+            .prepare("SELECT text FROM options WHERE question_id = ?1 ORDER BY position")?;
+        let mut explanation = self
+            .connection
+            .prepare("SELECT explanation FROM questions WHERE id = ?1")?;
+        let contains = |haystack: &str| haystack.to_lowercase().contains(text);
         let mut hits = vec![];
         for row in rows {
-            let (id, text, topic, topic_name, edited) = row?;
-            let tags = tags
+            let (id, question, topic, topic_name, edited) = row?;
+            let tags: Vec<String> = tags
                 .query_map([id.0], |row| row.get(0))?
                 .collect::<rusqlite::Result<_>>()?;
+            let matched = if text.is_empty() || contains(&question) {
+                None
+            } else {
+                let option = options
+                    .query_map([id.0], |row| row.get::<_, String>(0))?
+                    .collect::<rusqlite::Result<Vec<_>>>()?
+                    .into_iter()
+                    .find(|option| contains(option));
+                let why: String = explanation.query_row([id.0], |row| row.get(0))?;
+                option
+                    .map(Matched::Option)
+                    .or_else(|| contains(&why).then(|| Matched::Explanation(why)))
+                    .or_else(|| {
+                        tags.iter()
+                            .find(|tag| contains(tag))
+                            .cloned()
+                            .map(Matched::Tag)
+                    })
+            };
             hits.push(Hit::Question {
                 id,
-                text,
+                text: question,
                 topic,
                 topic_name,
                 tags,
                 edited,
+                matched,
             });
         }
         Ok(hits)
@@ -325,6 +362,32 @@ mod tests {
         }
     }
 
+    #[test]
+    fn says_where_a_question_matched_when_it_wasnt_the_question() {
+        let f = fixture();
+        let matched = |text: &str| match &f
+            .store
+            .search(&SearchQuery {
+                text: text.into(),
+                ..Default::default()
+            })
+            .unwrap()[0]
+        {
+            Hit::Question { matched, .. } => matched.clone(),
+            _ => panic!("expected a question"),
+        };
+        assert_eq!(matched("shader"), None);
+        assert_eq!(
+            matched("small alu"),
+            Some(Matched::Option("A small ALU".into()))
+        );
+        assert_eq!(
+            matched("many cores"),
+            Some(Matched::Explanation("Shaders run on many cores.".into()))
+        );
+        assert_eq!(matched("pipeline"), Some(Matched::Tag("pipeline".into())));
+    }
+
     // search.feature: Search across categories (outline)
     #[test]
     fn each_tab_shows_its_own_category() {
@@ -341,7 +404,10 @@ mod tests {
         };
         assert_eq!(tab(Tab::Topics, "gpu"), vec!["T:GPU"]);
         // R50: a Questions tab shows only questions
-        assert_eq!(tab(Tab::Questions, "shader"), vec!["Q:What is a shader core?"]);
+        assert_eq!(
+            tab(Tab::Questions, "shader"),
+            vec!["Q:What is a shader core?"]
+        );
         assert_eq!(
             tab(Tab::Modules, "architecture"),
             vec!["M:Computer Architecture"]

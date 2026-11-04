@@ -30,9 +30,10 @@ describe("Search", () => {
     render(Search, { onOpenTopic: vi.fn() });
     await u.type(await screen.findByRole("searchbox", { name: "Search" }), "shad");
     expect(lastQuery()).toEqual({ text: "shad", tab: "All", module: null, tag: null, sort: "Edited", descending: true });
-    const results = await screen.findByRole("table", { name: "Questions" });
-    expect(within(results).getByText("What is a shader core?")).toBeInTheDocument();
-    expect(within(results).getByText("Today")).toBeInTheDocument();
+    const results = await screen.findByRole("list", { name: "Questions" });
+    expect(within(results).getByRole("button", { name: "What is a shader core?" })).toBeInTheDocument();
+    expect(within(results).getByText("· Today")).toBeInTheDocument();
+    expect(within(results).getByText("shad").tagName).toBe("MARK");
     expect(screen.getByRole("list", { name: "Other matches" })).toHaveTextContent("hardware");
   });
 
@@ -60,10 +61,29 @@ describe("Search", () => {
   it("sorts by a column, then flips the direction", async () => {
     const u = userEvent.setup();
     render(Search, { onOpenTopic: vi.fn() });
-    await u.click(await screen.findByRole("button", { name: /Sort by topic/ }));
+    await u.click(await screen.findByRole("radio", { name: "Topic" }));
     expect(lastQuery()).toMatchObject({ sort: "Topic", descending: false });
-    await u.click(screen.getByRole("button", { name: /Sort by topic/ }));
+    await u.click(screen.getByRole("button", { name: /switch to descending/ }));
     expect(lastQuery()).toMatchObject({ sort: "Topic", descending: true });
+  });
+
+  it("shows where a question matched, and moves through results with the arrow keys", async () => {
+    const u = userEvent.setup();
+    mocked.search.mockResolvedValue([
+      { Question: { id: 10, text: "What does the TLB cache?", topic: 2, topic_name: "Memory", tags: [], edited: "2026-11-02 10:15:00", matched: null } },
+      { Question: { id: 11, text: "What does a branch predictor guess?", topic: 3, topic_name: "CPU", tags: [], edited: "2026-11-02 10:15:00", matched: { Option: "Which cache line to evict" } } },
+    ]);
+    render(Search, { onOpenTopic: vi.fn() });
+    const box = await screen.findByRole("searchbox", { name: "Search" });
+    await u.type(box, "cache");
+    const second = await screen.findByRole("button", { name: "What does a branch predictor guess? Option: Which cache line to evict" });
+    expect(screen.getByText("2 questions match \"cache\"")).toBeInTheDocument();
+    await u.keyboard("{ArrowDown}");
+    expect(screen.getByRole("button", { name: "What does the TLB cache?" })).toHaveFocus();
+    await u.keyboard("{ArrowDown}");
+    expect(second).toHaveFocus();
+    await u.keyboard("{ArrowUp}{ArrowUp}");
+    expect(box).toHaveFocus();
   });
 
   it("opens a question's topic", async () => {

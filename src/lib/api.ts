@@ -112,8 +112,10 @@ export interface Progress {
 }
 export type Overview = "FirstRun" | { Progress: Progress };
 
+/** Where a question matched, when it wasn't its own text. */
+export type Matched = { Option: string } | { Explanation: string } | { Tag: string };
 export type SearchHit =
-  | { Question: { id: Id; text: string; topic: Id; topic_name: string; tags: string[]; edited: string } }
+  | { Question: { id: Id; text: string; topic: Id; topic_name: string; tags: string[]; edited: string; matched?: Matched | null } }
   | { Module: { id: Id; name: string } }
   | { Topic: { id: Id; name: string } }
   | { Tag: { name: string } }

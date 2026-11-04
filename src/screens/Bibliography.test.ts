@@ -39,6 +39,12 @@ describe("Bibliography", () => {
     expect(within(entry).getByText("CPU")).toBeInTheDocument();
   });
 
+  it("says 1 question, not 1 questions", async () => {
+    mocked.sources.mockResolvedValue([{ ...kirk, cited_by_questions: 1 }]);
+    render(Bibliography);
+    expect(await screen.findByText(/^1 question$/)).toBeInTheDocument();
+  });
+
   it("has an empty state", async () => {
     mocked.sources.mockResolvedValue([]);
     render(Bibliography);
@@ -80,7 +86,8 @@ describe("Bibliography", () => {
     mocked.sources.mockResolvedValue([kirk]);
     const u = userEvent.setup();
     render(Bibliography);
-    await u.click(await screen.findByRole("button", { name: "Edit source" }));
+    await u.click(await screen.findByRole("button", { name: "Source actions" }));
+    await u.click(screen.getByRole("menuitem", { name: "Edit source" }));
     const year = screen.getByLabelText("Year");
     expect(year).toHaveValue("2022");
     await u.clear(year);
@@ -95,7 +102,8 @@ describe("Bibliography", () => {
     mocked.deleteSource.mockResolvedValue(7);
     const u = userEvent.setup();
     render(Bibliography);
-    await u.click(await screen.findByRole("button", { name: "Delete source" }));
+    await u.click(await screen.findByRole("button", { name: "Source actions" }));
+    await u.click(screen.getByRole("menuitem", { name: "Delete source…" }));
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveTextContent("7 questions cite it");
     mocked.sources.mockResolvedValue([]);

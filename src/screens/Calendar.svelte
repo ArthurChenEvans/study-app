@@ -27,7 +27,22 @@
   let error = $state("");
 
   const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  /** A cell shows at most this many kinds, then "+N more", so busy days stay readable. */
+  const MAX_LINES = 3;
   const grid = $derived(year ? monthGrid(year, month) : []);
+  const weeks = $derived(Array.from({ length: Math.ceil(grid.length / 7) }, (_, index) => grid.slice(index * 7, index * 7 + 7)));
+  let gridEl = $state<HTMLDivElement>();
+
+  // Arrow keys move a day or a week, as in any date grid.
+  function gridKeys(event: KeyboardEvent, value: number) {
+    const by = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[event.key];
+    if (by === undefined) return;
+    const target = gridEl?.querySelector<HTMLButtonElement>(`[data-day="${value + by}"]`);
+    if (!target) return;
+    event.preventDefault();
+    target.focus();
+  }
   const counts = (entry: CalendarDay) => [
     { key: "cards", icon: SquareStack, count: entry.cards, one: "card", many: "cards" },
     { key: "checklists", icon: Brain, count: entry.checklists, one: "checklist", many: "checklists" },
@@ -119,17 +134,28 @@
     </PageHeader>
     <p class="mb-3 text-right text-xs text-muted">Future cards are a forecast and move as you review</p>
     <div class="panel overflow-hidden">
-      <div class="grid grid-cols-7 border-b border-base-300 text-xs font-semibold text-muted" aria-hidden="true">{#each WEEKDAYS as name (name)}<div class="px-2 py-2">{name}</div>{/each}</div>
-      <div class="grid grid-cols-7" role="grid" aria-label={monthLabel(year, month)}>
-        {#each grid as value (value)}
-          {@const entry = days.find((d) => d.day === value)}
-          {@const date = dateOf(value)}
-          <button class="cal-day {date.month !== month ? 'other' : ''}" aria-current={value === today ? "date" : undefined}
-            aria-label="{longDate(value)}{entry && counts(entry).length ? `: ${counts(entry).map((c) => `${c.count} ${c.count === 1 ? c.one : c.many}`).join(", ")}${entry.when === 'Past' ? ' done' : ' due'}` : ''}"
-            onclick={() => open(value)}>
-            <span class="num">{date.date}</span>
-            {#if entry}{#each counts(entry) as item (item.key)}<span class="cal-row"><item.icon class="size-3.5" /><b>{item.count}</b> {item.count === 1 ? item.one : item.many}</span>{/each}{/if}
-          </button>
+      <div bind:this={gridEl} role="grid" aria-label={monthLabel(year, month)}>
+        <div role="row" class="grid grid-cols-7 border-b border-base-300 text-xs font-semibold text-muted">
+          {#each WEEKDAYS as name, index (name)}<div role="columnheader" class="px-2 py-2"><abbr title={WEEKDAY_NAMES[index]} class="no-underline" aria-label={WEEKDAY_NAMES[index]}>{name}</abbr></div>{/each}
+        </div>
+        {#each weeks as week (week[0])}
+          <div role="row" class="grid grid-cols-7">
+            {#each week as value (value)}
+              {@const entry = days.find((d) => d.day === value)}
+              {@const date = dateOf(value)}
+              {@const items = entry ? counts(entry) : []}
+              {@const shown = items.length > MAX_LINES ? items.slice(0, MAX_LINES - 1) : items}
+              <div role="gridcell" class="cal-cell">
+                <button class="cal-day {date.month !== month ? 'other' : ''} {value < today ? 'past' : ''}" data-day={value} tabindex={value === (selected ?? today) ? 0 : -1} aria-current={value === today ? "date" : undefined}
+                  aria-label="{longDate(value)}{items.length ? `: ${items.map((c) => `${c.count} ${c.count === 1 ? c.one : c.many}`).join(", ")}${entry?.when === 'Past' ? ' done' : ' due'}` : ''}"
+                  onclick={() => open(value)} onkeydown={(event) => gridKeys(event, value)}>
+                  <span class="flex items-center gap-2"><span class="num">{date.date}</span>{#if value === today}<span class="cal-today">Today</span>{/if}</span>
+                  {#each shown as item (item.key)}<span class="cal-row"><item.icon class="size-3.5" /><b>{item.count}</b> {item.count === 1 ? item.one : item.many}</span>{/each}
+                  {#if shown.length < items.length}<span class="cal-row">+{items.length - shown.length} more</span>{/if}
+                </button>
+              </div>
+            {/each}
+          </div>
         {/each}
       </div>
     </div>

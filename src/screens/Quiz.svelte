@@ -214,7 +214,7 @@
       </span>
       <button class="btn btn-ghost btn-sm font-normal" onclick={quit} disabled={busy}><LogOut class="size-4" />Quit</button>
     </div>
-    <div class="track mt-4" aria-label="Progress, question {current.position} of {current.total}">
+    <div class="track mt-4" role="progressbar" aria-valuemin={1} aria-valuemax={current.total} aria-valuenow={current.position} aria-label="Progress" aria-valuetext="Question {current.position} of {current.total}">
       {#each current.track as cell, index (index)}<span style={trackColour[cell]}></span>{/each}
     </div>
   </div>

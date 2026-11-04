@@ -8,6 +8,8 @@
 
   const still = typeof window === "undefined" || typeof window.requestAnimationFrame !== "function" || !window.matchMedia || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  // Counts once, from the value it was given. Results is keyed by attempt, so it never changes.
+  // svelte-ignore state_referenced_locally
   let shown = $state(still ? value : 0);
   let frame = 0;
 

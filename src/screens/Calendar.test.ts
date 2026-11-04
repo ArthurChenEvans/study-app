@@ -48,6 +48,23 @@ describe("Calendar", () => {
     expect(within(grid).getByRole("button", { name: /^Wed 4 Nov: 1 card, 1 drill due$/ })).toHaveTextContent("1 card1 drill");
   });
 
+  it("names the weekdays in full, keeps busy days to three lines, and moves by arrow key", async () => {
+    const u = userEvent.setup();
+    render(Calendar, {});
+    const grid = await screen.findByRole("grid", { name: "November 2026" });
+    expect(within(grid).getAllByRole("row")).toHaveLength(7);
+    expect(within(grid).getAllByRole("columnheader")[0]).toHaveAccessibleName("Monday");
+    const today = within(grid).getByRole("button", { name: /^Today, Tue 3 Nov/ });
+    expect(today).toHaveTextContent("Today");
+    expect(today).toHaveTextContent("+2 more");
+    expect(today).not.toHaveTextContent("1 drill");
+    today.focus();
+    await u.keyboard("{ArrowRight}");
+    expect(within(grid).getByRole("button", { name: /^Wed 4 Nov/ })).toHaveFocus();
+    await u.keyboard("{ArrowUp}");
+    expect(within(grid).getByRole("button", { name: /^Wed 28 Oct/ })).toHaveFocus();
+  });
+
   it("moves between months", async () => {
     const u = userEvent.setup();
     render(Calendar, {});

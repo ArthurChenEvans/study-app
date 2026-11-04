@@ -128,7 +128,7 @@ describe("A project", () => {
     expect(monday).toHaveTextContent("Card suggested");
     expect(monday).toHaveTextContent("Issue: Off-by-one in loops · drill today");
     expect(screen.getByRole("button", { name: /Review 1 struggle/ })).toBeInTheDocument();
-    await u.click(screen.getByRole("radio", { name: "To review" }));
+    await u.click(screen.getByRole("radio", { name: /To review/ }));
     expect(screen.queryByRole("list", { name: "Struggles on Mon 2 Nov" })).toBeNull();
     await u.click(screen.getByRole("radio", { name: "All" }));
     await u.type(screen.getByRole("searchbox", { name: "Search struggles" }), "slice");
