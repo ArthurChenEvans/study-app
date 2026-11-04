@@ -39,9 +39,12 @@ describe("Projects", () => {
     mocked.createProject.mockResolvedValue(7);
     render(Projects, { onOpen });
     const table = await screen.findByRole("table", { name: "Projects" });
-    const [first, second] = within(table).getAllByRole("row").slice(1);
+    // A running session comes first, then the most recently worked on.
+    const [second, first] = within(table).getAllByRole("row").slice(1);
     expect(first).toHaveTextContent("Study appCoding");
     expect(first).toHaveTextContent("Today");
+    expect(first).toHaveTextContent("2 to review");
+    expect(first).toHaveTextContent("1 today");
     expect(second).toHaveTextContent("Session running");
     expect(second).toHaveTextContent("None");
     await u.click(within(first).getByRole("button", { name: "Study app" }));
@@ -49,10 +52,37 @@ describe("Projects", () => {
     await u.click(screen.getByRole("button", { name: /New project/ }));
     const dialog = screen.getByRole("dialog");
     await u.type(within(dialog).getByLabelText("Name"), "Networks past paper");
-    await u.type(within(dialog).getByLabelText(/Kind/), "Past paper");
+    await u.click(within(dialog).getByRole("radio", { name: "Past paper" }));
     await u.click(within(dialog).getByRole("button", { name: "Create project" }));
     expect(mocked.createProject).toHaveBeenCalledWith("Networks past paper", "Past paper");
     expect(onOpen).toHaveBeenLastCalledWith(7);
+  });
+
+  it("takes a kind of its own under Something else", async () => {
+    const u = userEvent.setup();
+    mocked.projects.mockResolvedValue([row()]);
+    mocked.issues.mockResolvedValue([]);
+    mocked.createProject.mockResolvedValue(8);
+    render(Projects, { onOpen: vi.fn() });
+    await u.click(await screen.findByRole("button", { name: /New project/ }));
+    const dialog = screen.getByRole("dialog");
+    await u.type(within(dialog).getByLabelText("Name"), "Mug");
+    await u.click(within(dialog).getByRole("radio", { name: "Something else" }));
+    await u.type(within(dialog).getByLabelText("Kind"), "Pottery");
+    await u.click(within(dialog).getByRole("button", { name: "Create project" }));
+    expect(mocked.createProject).toHaveBeenCalledWith("Mug", "Pottery");
+  });
+
+  it("finds a project and filters by kind once there are many", async () => {
+    const u = userEvent.setup();
+    mocked.projects.mockResolvedValue(Array.from({ length: 7 }, (_, n) => row({ id: n + 1, name: `Project ${n}`, kind: n < 4 ? "Coding" : "Blender", last_day: TODAY - n })));
+    mocked.issues.mockResolvedValue([]);
+    render(Projects, {});
+    const table = await screen.findByRole("table", { name: "Projects" });
+    await u.click(screen.getByRole("radio", { name: "Blender 3" }));
+    expect(within(table).getAllByRole("row")).toHaveLength(4);
+    await u.type(screen.getByRole("searchbox", { name: "Find a project" }), "Project 6");
+    expect(within(table).getAllByRole("row")).toHaveLength(2);
   });
 
   it("explains itself the first time", async () => {
@@ -82,6 +112,22 @@ describe("Projects", () => {
     expect(rows[2]).toHaveTextContent("None");
     await u.click(screen.getByRole("button", { name: "Do today's drill" }));
     expect(onDrills).toHaveBeenCalledWith([5]);
+    await u.click(within(rows[0]).getByRole("button", { name: "Do the drill for Off-by-one in loops" }));
+    expect(onDrills).toHaveBeenLastCalledWith([5]);
+  });
+
+  it("puts a due drill first, then the issues seen most", async () => {
+    const u = userEvent.setup();
+    mocked.projects.mockResolvedValue([row()]);
+    mocked.issues.mockResolvedValue([
+      { id: 1, name: "Seen once", seen: 1, projects: ["Study app"], last_seen: TODAY - 1, drill: null },
+      { id: 2, name: "Seen a lot", seen: 6, projects: ["Study app", "Mug"], last_seen: TODAY - 30, drill: null },
+      { id: 3, name: "Drill today", seen: 2, projects: ["Study app"], last_seen: TODAY - 9, drill },
+    ]);
+    render(Projects, {});
+    await u.click(await screen.findByRole("tab", { name: /Issues/ }));
+    const rows = within(screen.getByRole("table", { name: "Issues" })).getAllByRole("row").slice(1);
+    expect(rows.map((r) => r.querySelector("td span")?.textContent)).toEqual(["Drill today", "Seen a lot", "Seen once"]);
   });
 });
 
