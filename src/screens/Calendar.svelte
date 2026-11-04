@@ -3,8 +3,9 @@
   import { ArrowLeft, Brain, CalendarArrowUp, ChevronLeft, ChevronRight, Dumbbell, ListChecks, Play, SquareStack, TriangleAlert } from "@lucide/svelte";
   import { untrack } from "svelte";
   import { api, errorMessage, type CalendarDay, type DayView, type DrillView, type Id, type StruggleView } from "../lib/api";
+  import MoveDrillDialog from "../components/MoveDrillDialog.svelte";
   import PageHeader from "../components/PageHeader.svelte";
-  import { dateOf, dayFromIso, dueLabel, fullLabel, isoOf, monthGrid, monthLabel, onDay } from "../lib/dates";
+  import { dateOf, dueLabel, fullLabel, monthGrid, monthLabel, onDay } from "../lib/dates";
 
   let {
     initialDay = null, onOpenDay = () => {},
@@ -23,7 +24,6 @@
   let selected = $state<number | null>(null);
   let day = $state<DayView | null>(null);
   let moving = $state<DrillView | null>(null);
-  let moveTo = $state("");
   let error = $state("");
 
   const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -97,11 +97,10 @@
     await loadMonth();
   }
 
-  async function moveDrill(event: SubmitEvent) {
-    event.preventDefault();
+  async function moveDrill(to: number) {
     if (!moving || selected === null) return;
     try {
-      await api.moveDrill(moving.id, dayFromIso(moveTo));
+      await api.moveDrill(moving.id, to);
       moving = null;
       await open(selected);
     } catch (failure) {
@@ -186,7 +185,7 @@
             {#each day.drills as drill (drill.id)}
               <li class="flex items-center justify-between gap-4 py-3"><div><p class="text-[15px]">{drill.task}</p><p class="text-sm text-muted">{drill.issue ? `Issue: ${drill.issue}` : "No issue"}{drill.from[0] ? ` · from ${drill.from[0].project_name}` : ""}{drill.last && drill.last.rating !== "Solid" ? ` · again, it was ${drill.last.rating}` : ""}{drill.due !== null && drill.due < day.day ? ` · was due ${dueLabel(drill.due, drill.due)}` : ""}</p></div>
                 <div class="flex shrink-0 gap-2">
-                  <button class="btn btn-ghost btn-sm" onclick={() => { moving = drill; moveTo = isoOf(Math.max(today + 1, day!.day + 1)); }}><CalendarArrowUp class="size-4" />Move</button>
+                  <button class="btn btn-ghost btn-sm" onclick={() => { error = ""; moving = drill; }}><CalendarArrowUp class="size-4" />Move</button>
                   {#if day.when === "Today"}<button class="btn btn-outline btn-sm border-field-border" onclick={() => onDrills([drill.id])}><Play class="size-4" />Do drill</button>{/if}
                 </div></li>
             {/each}
@@ -239,16 +238,6 @@
   </div>
 {/if}
 
-{#if moving}
-  <dialog open class="modal modal-open" aria-labelledby="move-h">
-    <form class="modal-box max-w-md" onsubmit={moveDrill}>
-      <h3 id="move-h" class="text-lg font-semibold">Move this drill</h3>
-      <p class="mt-2 text-sm text-muted">{moving.task}</p>
-      <label class="mt-5 block"><span class="text-sm font-semibold">Do it on</span><input type="date" class="input mt-1 w-full" min={isoOf(today)} bind:value={moveTo} /></label>
-      <div class="modal-action">
-        <button type="button" class="btn btn-ghost" onclick={() => (moving = null)}>Cancel</button>
-        <button type="submit" class="btn btn-primary">Move to {moveTo ? dueLabel(dayFromIso(moveTo), today) : "that day"}</button>
-      </div>
-    </form>
-  </dialog>
+{#if moving && selected !== null}
+  <MoveDrillDialog task={moving.task} {today} current={moving.due} {error} onMove={moveDrill} onCancel={() => (moving = null)} />
 {/if}

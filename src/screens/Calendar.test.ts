@@ -143,7 +143,10 @@ describe("Calendar", () => {
     expect(screen.queryByRole("button", { name: /Do drill/ })).toBeNull();
     await u.click(screen.getByRole("button", { name: /Move/ }));
     const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByLabelText("Do it on")).toHaveValue("2026-11-05");
+    expect(within(dialog).getByText(drill.task)).toBeInTheDocument();
+    await u.click(within(dialog).getByRole("radio", { name: /Another day/ }));
+    await u.clear(within(dialog).getByLabelText("Pick a day"));
+    await u.type(within(dialog).getByLabelText("Pick a day"), "2026-11-05");
     await u.click(within(dialog).getByRole("button", { name: "Move to Thu 5 Nov" }));
     expect(mocked.moveDrill).toHaveBeenCalledWith(5, TODAY + 2);
   });

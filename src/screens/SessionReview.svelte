@@ -102,10 +102,25 @@
     }
   }
 
+  const choices = [
+    ["card", SquareStack, "Suggest a card", "Waits in Suggestions for you to accept"],
+    ["checklist", ListChecks, "Add to a recall checklist", "It becomes a point to recall"],
+    ["drill", Dumbbell, "Schedule a drill", "For something you couldn't apply"],
+    ["nothing", Minus, "Nothing", "Just keep it logged"],
+  ] as const;
+
   function keys(event: KeyboardEvent) {
     if ((event.ctrlKey || event.metaKey) && event.key === "Enter" && current && !asking) {
       event.preventDefault();
       next();
+      return;
+    }
+    // 1 to 4 pick a choice, unless you're typing.
+    const typing = (event.target as HTMLElement | null)?.closest("input, textarea, select");
+    if (!typing && !asking && current && /^[1-4]$/.test(event.key) && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault();
+      action = choices[Number(event.key) - 1][0];
+      error = "";
     }
   }
 
@@ -126,22 +141,25 @@
   </div>
 
   {#if current}
-    <form class="mx-auto max-w-3xl px-12 pb-24 pt-10" onsubmit={next}>
-      <div class="space-y-8">
+    <form class="mx-auto max-w-3xl px-12 pb-24 pt-8" onsubmit={next}>
+      <div class="space-y-6">
         <section class="panel p-6" aria-label="The struggle">
           <div class="flex items-center gap-2"><span class="kind">{kindLabel[current.kind]}</span><span class="text-sm text-muted">Logged {current.day === today ? "" : `${pastOn(current.day, today).replace(/^on /, "")} `}at {time(current.minute)}</span>{#if current.topic_name}<span class="badge-src">{current.topic_name}</span>{/if}</div>
           <p class="mt-3 text-lg">{current.what}</p>
           {#if current.why}<p class="mt-1 text-muted">Why it wasn't obvious: {current.why}</p>{/if}
         </section>
 
-        <fieldset class="space-y-3">
+        <fieldset>
           <legend class="mb-3 text-sm font-semibold">What should happen with it?</legend>
-          {#each [["card", SquareStack, "Suggest a card", "The front starts as what tripped you up, with your 'why' beside it to help write the cue. You'll still accept it in Suggestions."], ["checklist", ListChecks, "Add to a recall checklist", "It becomes a point to recall."], ["drill", Dumbbell, "Schedule a drill", "For something you could recall but couldn't apply."], ["nothing", Minus, "Nothing, just keep it logged", ""]] as const as [key, Icon, title, sub] (key)}
-            <label class="flex min-h-12 cursor-pointer items-start gap-4 rounded-lg border {action === key ? 'border-primary' : 'border-field-border'} bg-surface px-4 py-3">
-              <input type="radio" name="action" class="radio radio-sm mt-0.5" checked={action === key} onchange={() => { action = key; error = ""; }} />
-              <span class="flex-1"><span class="flex items-center gap-2 font-semibold"><Icon class="size-4" />{title}</span>{#if sub}<span class="mt-1 block text-sm text-muted">{sub}</span>{/if}</span>
-            </label>
-          {/each}
+          <div class="grid grid-cols-2 gap-3">
+            {#each choices as [key, Icon, title, sub], position (key)}
+              <label class="flex min-h-12 cursor-pointer items-start gap-3 rounded-lg border bg-surface px-4 py-3 {action === key ? 'border-2 border-primary bg-base-200' : 'border-field-border'}">
+                <input type="radio" name="action" class="radio radio-sm mt-0.5" checked={action === key} onchange={() => { action = key; error = ""; }} />
+                <span class="flex-1"><span class="flex items-center gap-2 font-semibold"><Icon class="size-4" />{title}</span><span class="mt-0.5 block text-sm text-muted">{sub}</span></span>
+                <kbd class="kbd kbd-xs" aria-hidden="true">{position + 1}</kbd>
+              </label>
+            {/each}
+          </div>
         </fieldset>
 
         {#if action === "checklist"}
@@ -155,7 +173,7 @@
             <label class="block text-sm font-semibold" for="review-issue">Issue</label>
             <input id="review-issue" class="input mt-1 w-full" list="known-issues" placeholder="Name the issue, or pick one you've had before…" bind:value={issue} onchange={findDrill} onblur={findDrill} />
             <datalist id="known-issues">{#each issues as row (row.id)}<option value={row.name}></option>{/each}</datalist>
-            <p class="mt-1 text-sm text-muted">{seenBefore ? `Seen ${seenBefore.seen} ${seenBefore.seen === 1 ? "time" : "times"} before, in ${seenBefore.projects.join(" and ")}.` : "Name it so you'd recognise it next time it comes up. Issues are shared by every project."}</p>
+            <p class="mt-1 text-sm text-muted">{seenBefore ? `Seen ${seenBefore.seen} ${seenBefore.seen === 1 ? "time" : "times"} before, in ${seenBefore.projects.join(" and ")}.` : "Issues are shared by every project, so name it the way you'd recognise it again."}</p>
           </div>
           {#if known}
             <div class="panel flex items-start gap-4 p-5" role="note"><Dumbbell class="mt-0.5 size-5 shrink-0" />
@@ -170,7 +188,7 @@
             <div class="space-y-4">
               <div><label class="block text-sm font-semibold" for="review-task">The drill</label>
                 <textarea id="review-task" class="textarea mt-1 w-full text-[15px]" rows="2" placeholder="A small task that practises exactly this…" bind:value={task}></textarea>
-                <p class="mt-1 text-sm text-muted">Make it small and specific, something you can finish in one sitting. Rated Solid, it's ticked off. Rated Struggled or Shaky, it comes back the next day.</p></div>
+                <p class="mt-1 text-sm text-muted">Small enough for one sitting. Solid ticks it off, Struggled or Shaky brings it back tomorrow.</p></div>
               <div class="grid grid-cols-2 gap-6">
                 <div><label class="block text-sm font-semibold" for="review-topic">Topic <span class="font-normal text-muted">(optional)</span></label>
                   <select id="review-topic" class="select mt-1 w-full" bind:value={topic}><option value="">No topic</option>{#each topics as row (row.id)}<option value={String(row.id)}>{row.name}</option>{/each}</select></div>
