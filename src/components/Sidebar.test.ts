@@ -63,4 +63,31 @@ describe("Sidebar", () => {
     const names = screen.getAllByRole("link").map((link) => link.textContent?.replace(/\d+/g, "").trim());
     expect(names.slice(0, 6)).toEqual(["Overview", "Calendar", "Topics", "Cards", "Recall", "Projects"]);
   });
+
+  // UI polish: a count says what it counts, out loud and on hover
+  it("says the Projects count is drills", () => {
+    render(Sidebar, { current: "overview", onNavigate: vi.fn(), due: { projects: 1, topics: 2 } });
+    expect(screen.getByLabelText("1 drill due today")).toHaveAttribute("title", "1 drill due today");
+    expect(screen.getByLabelText("2 due today")).toHaveAttribute("title", "2 due today");
+  });
+
+  it("shows the search shortcut", () => {
+    render(Sidebar, { current: "overview", onNavigate: vi.fn() });
+    expect(screen.getByRole("link", { name: /Search/ })).toHaveTextContent("/");
+  });
+
+  it("marks New quiz as the current page on the setup screen", () => {
+    render(Sidebar, { current: "setup", onNavigate: vi.fn() });
+    expect(screen.getByRole("link", { name: "New quiz" })).toHaveAttribute("aria-current", "page");
+  });
+
+  // UI polish: sounds can be turned off, and the choice is remembered on this device
+  it("switches sound off and remembers it", async () => {
+    render(Sidebar, { current: "overview", onNavigate: vi.fn() });
+    const toggle = screen.getByRole("switch", { name: "Sound" });
+    expect(toggle).toBeChecked();
+    await userEvent.click(toggle);
+    expect(toggle).not.toBeChecked();
+    expect(localStorage.getItem("studyapp-sound")).toBe("off");
+  });
 });

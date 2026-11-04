@@ -55,13 +55,13 @@
     >
       {#each [0, 50, 100] as tick (tick)}
         <line x1={margin.left} x2={width - margin.right} y1={y(tick)} y2={y(tick)} stroke="var(--chart-grid)" stroke-width="1" />
-        <text x={margin.left - 8} y={y(tick) + 4} text-anchor="end" font-size="11" fill="var(--muted)" class="tabular-nums">{tick}%</text>
+        <text x={margin.left - 8} y={y(tick) + 4} text-anchor="end" font-size="12" fill="var(--muted)" class="tabular-nums">{tick}%</text>
       {/each}
       <path d={area} fill="var(--chart-ink)" opacity="0.08" />
       <path d={line} fill="none" stroke="var(--chart-ink)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
       {#each points as point, index (index)}
         {#if index % labelEvery === 0 || index === points.length - 1}
-          <text x={x(index)} y={height - 8} text-anchor="middle" font-size="11" fill="var(--muted)">{point.label}</text>
+          <text x={x(index)} y={height - 8} text-anchor="middle" font-size="12" fill="var(--muted)">{point.label}</text>
         {/if}
       {/each}
       {#if selected !== null}<line x1={x(selected)} x2={x(selected)} y1={margin.top} y2={height - margin.bottom} stroke="var(--muted)" opacity="0.5" />{/if}
