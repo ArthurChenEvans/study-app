@@ -581,3 +581,22 @@ Migration 8, test-first: requirements R109 to R111, scenarios in `specs/features
 - **Stamped per record, not per field:** field-by-field comparison will come from sync's change log, which records which fields changed.
 - **Triggers do all of it,** calling `new_uid()`, `stamp_now()` and `device_id()`, which the app registers on its database connection. Other SQLite tools can still read the file, but they can't add rows to it.
 - **Cost:** opening and upgrading the large test profile took 0.2 seconds (with a "Before update" backup first). The file grew from 5.5 MB to 8.2 MB, and seeding it took about 8% longer.
+
+## Export and import built (4 Nov 2026)
+
+Built test-first: requirements R112 to R118, scenarios in `specs/features/transfer.feature`.
+
+Differences from the prototype:
+- **Export saves to Downloads (desktop) or downloads in the browser,** instead of asking where to save. A save dialog needs a Tauri plugin. "Import…" uses the system's file picker, which needs none.
+- **"Everything" is picked first** in the export dialog, since moving to another computer is the case where getting it wrong costs the most. Picking "Some topics" unticks history.
+- **Clashes are settled before importing, not listed afterwards.** The choices are whichever changed last (the default for a full export), keep mine (the default for shared topics), take the file's, or look at each one, which lists each clash with Mine or The file's. A list of things to check afterwards comes with sync.
+- **The topic picker** is a filterable list grouped by module, with a tick for a whole module.
+- **Schedules:** when both sides have a card, checklist or topic, the side that reviewed, checked or quizzed it more recently keeps its schedule. Replaying the full history is left for sync.
+- **Sharing some topics with history** includes card reviews, recall checks and quiz steps, but not quiz results, since those mix topics.
+- **Deletions don't travel** in an import. Nothing here is ever deleted by one.
+
+Tests:
+- **Round trip:** the demo profile is exported, imported into a database that already has other records, and exported again. The two files match record for record, and history, every quiz's results, checklists, projects, due counts and suggestions all match too, including one that was dismissed.
+- **Hostile files:** a newer format, a zip bomb, a reference to something missing, a repeated ID, a script posing as an image and an image named `../../etc/passwd` are each refused, and nothing changes.
+- **Large profile:** a 0.7 MB file, exported in 0.3 seconds and imported in 0.5.
+

@@ -21,6 +21,7 @@ use study_api::recall::{Candidate, CheckResult, ChecklistView, Item, PointInput,
 use study_core::recall::Schedule;
 use study_api::backup::{BackupInfo, BackupSettings, BackupStatus, RestorePreview};
 use study_api::calendar::{CalendarDay, DayView, DueToday};
+use study_api::transfer::{ExportFile, ExportRequest, ExportSummary, ImportChoice, ImportPreview, ImportResult};
 use study_api::practice::{DrillView, IssueView, ProjectRow, ProjectView, ReviewChoice, StruggleInput, StruggleView, TopicQuizView};
 use study_core::practice::DrillRating;
 use study_store::practice::{DrillId, ProjectId, SessionId, StruggleId};
@@ -491,6 +492,44 @@ fn restore_preview(state: AppState, name: String) -> ApiResult<RestorePreview> {
 fn restore_backup(state: AppState, name: String) -> ApiResult<BackupInfo> {
     with(state, |app| app.restore_backup(&name, clock()))
 }
+// ---------- Export and import (R112 to R118) ----------
+
+#[tauri::command]
+fn export_summary(state: AppState, request: ExportRequest) -> ApiResult<ExportSummary> {
+    with(state, |app| app.export_summary(&request, today()))
+}
+/// The desktop app saves exports to Downloads and says where.
+#[tauri::command]
+fn export_file(handle: tauri::AppHandle, state: AppState, request: ExportRequest) -> ApiResult<ExportFile> {
+    let (name, bytes) = with(state, |app| app.export(&request, today()))?;
+    // The desktop's Downloads folder, or ~/Downloads when it doesn't name one.
+    let folder = handle
+        .path()
+        .download_dir()
+        .or_else(|_| handle.path().home_dir().map(|home| home.join("Downloads")))
+        .map_err(|_| ApiError { message: "couldn't find your Downloads folder".into() })?;
+    std::fs::create_dir_all(&folder).map_err(|error| ApiError { message: format!("couldn't make {}: {error}", folder.display()) })?;
+    let path = study_api::transfer::free_path(&folder, &name);
+    std::fs::write(&path, bytes).map_err(|error| ApiError { message: format!("couldn't save {}: {error}", path.display()) })?;
+    Ok(ExportFile { name, path: Some(path.display().to_string()), data: None })
+}
+#[tauri::command]
+fn import_preview(state: AppState, name: String, data: String) -> ApiResult<ImportPreview> {
+    use base64::Engine;
+    let bytes = base64::engine::general_purpose::STANDARD.decode(data).map_err(|_| ApiError { message: "that file couldn't be read, try picking it again".into() })?;
+    with(state, |app| app.import_preview(&bytes, &name))
+}
+#[tauri::command]
+fn import_apply(state: AppState, choice: ImportChoice) -> ApiResult<ImportResult> {
+    with(state, |app| app.import_apply(choice, clock()))
+}
+#[tauri::command]
+fn cancel_import(state: AppState) -> ApiResult<()> {
+    with(state, |app| {
+        app.cancel_import();
+        Ok(())
+    })
+}
 #[tauri::command]
 fn set_backup_settings(state: AppState, settings: BackupSettings) -> ApiResult<BackupStatus> {
     with(state, |app| app.set_backup_settings(settings, clock()))
@@ -523,6 +562,11 @@ pub fn run() {
             restore_preview,
             restore_backup,
             set_backup_settings,
+            export_summary,
+            export_file,
+            import_preview,
+            import_apply,
+            cancel_import,
             projects,
             create_project,
             delete_project,

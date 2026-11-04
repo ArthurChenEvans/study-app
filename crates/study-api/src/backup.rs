@@ -21,6 +21,7 @@ pub enum Reason {
     ByHand,
     BeforeRestore,
     BeforeUpdate,
+    BeforeImport,
 }
 
 impl Reason {
@@ -30,11 +31,12 @@ impl Reason {
             Reason::ByHand => "by-hand",
             Reason::BeforeRestore => "before-restore",
             Reason::BeforeUpdate => "before-update",
+            Reason::BeforeImport => "before-import",
         }
     }
 
     fn from_slug(slug: &str) -> Option<Self> {
-        [Reason::Daily, Reason::ByHand, Reason::BeforeRestore, Reason::BeforeUpdate].into_iter().find(|reason| reason.slug() == slug)
+        [Reason::Daily, Reason::ByHand, Reason::BeforeRestore, Reason::BeforeUpdate, Reason::BeforeImport].into_iter().find(|reason| reason.slug() == slug)
     }
 }
 
@@ -102,6 +104,11 @@ fn epoch() -> NaiveDate {
 
 fn date_of(day: i64) -> NaiveDate {
     epoch() + Days::new(day.max(0) as u64)
+}
+
+/// "2026-11-04", for file names.
+pub(crate) fn date_label(day: i64) -> String {
+    date_of(day).format("%Y-%m-%d").to_string()
 }
 
 fn file_name(day: i64, minute: u32, reason: Reason, copy: usize) -> String {
@@ -323,7 +330,7 @@ impl App {
         })
     }
 
-    fn make_backup(&self, clock: Clock, reason: Reason) -> ApiResult<BackupInfo> {
+    pub(crate) fn make_backup(&self, clock: Clock, reason: Reason) -> ApiResult<BackupInfo> {
         let backups = self.backups_folder()?;
         backups.add(clock, reason, |partial| Ok(self.store.backup_into(partial)?))
     }

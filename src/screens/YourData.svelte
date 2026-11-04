@@ -6,6 +6,11 @@
   import { api, errorMessage, type BackupInfo, type BackupSettings, type BackupStatus, type RestorePreview } from "../lib/api";
   import { keptLabel, madeDay, madeInline, madeLabel, reasonLabel, sizeLabel, statusLine } from "../lib/backup";
   import PageHeader from "../components/PageHeader.svelte";
+  import ExportDialog from "../components/ExportDialog.svelte";
+  import ImportDialog from "../components/ImportDialog.svelte";
+  import { FileInput, FileOutput } from "@lucide/svelte";
+  import type { ExportFile, ImportPreview, ImportResult } from "../lib/api";
+  import { countList } from "../lib/transfer";
 
   let { onRestored = () => {} }: { onRestored?: () => void } = $props();
 
@@ -16,6 +21,57 @@
   let busy = $state(false);
   let error = $state("");
   let notice = $state("");
+
+  // ---------- Export and import (R112 to R118) ----------
+  let exporting = $state(false);
+  let importing = $state<ImportPreview | null>(null);
+
+  function exported(file: ExportFile) {
+    exporting = false;
+    error = "";
+    if (file.data) {
+      // The browser version hands the file to the browser to save.
+      const bytes = Uint8Array.from(atob(file.data), (letter) => letter.charCodeAt(0));
+      const url = URL.createObjectURL(new Blob([bytes], { type: "application/zip" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = file.name;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      notice = `Downloaded ${file.name}.`;
+    } else {
+      notice = `Saved ${file.name} to ${file.path}.`;
+    }
+  }
+
+  async function pickFile(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file) return;
+    error = "";
+    notice = "";
+    try {
+      importing = await api.importPreview(file, file.name);
+    } catch (failure) {
+      error = errorMessage(failure);
+    }
+  }
+
+  function closeImport() {
+    importing = null;
+    Promise.resolve(api.cancelImport()).catch(() => {});
+  }
+
+  async function imported(result: ImportResult) {
+    importing = null;
+    const replaced = result.replaced ? `, and used the file's version of ${result.replaced} ${result.replaced === 1 ? "thing" : "things"}` : "";
+    await load();
+    const backup = result.backup;
+    const undo = backup ? ` To undo it, restore the backup from ${madeDay(backup, today)} at ${madeLabel(backup, today).split(", ")[1]}.` : "";
+    notice = `Imported ${countList(result.added)}${replaced}.${undo}`;
+    onRestored();
+  }
 
   let restoring = $state<RestorePreview | null>(null);
   let keeping = $state<{ keep_days: number; keep_weeks: number; keep_months: number } | null>(null);
@@ -187,9 +243,21 @@
           <dd><button class="btn btn-ghost btn-sm" onclick={openCopying}>{#if status.settings.copy_to}<FolderInput class="size-4" />Change{:else}<Plus class="size-4" />Add a place{/if}</button></dd>
         </dl>
       </section>
+
+      <section class="panel p-6" aria-labelledby="transfer-h">
+        <h2 id="transfer-h" class="text-lg font-semibold">Export and import</h2>
+        <p class="mt-1 text-sm text-muted">One <span class="path">.studyapp</span> file: readable JSON inside a zip, with images. Share topics with a friend, or move everything to another computer.</p>
+        <div class="mt-5 flex gap-2">
+          <button class="btn btn-outline border-field-border" onclick={() => { notice = ""; exporting = true; }}><FileOutput class="size-4" />Export…</button>
+          <label class="btn btn-outline border-field-border file-button"><FileInput class="size-4" />Import…<input type="file" accept=".studyapp,application/zip" class="sr-only" aria-label="Import a .studyapp file" onchange={pickFile} /></label>
+        </div>
+      </section>
     </div>
   {/if}
 </div>
+
+{#if exporting}<ExportDialog onClose={() => (exporting = false)} onDone={exported} />{/if}
+{#if importing}<ImportDialog preview={importing} {today} onClose={closeImport} onDone={imported} />{/if}
 
 {#if restoring}
   {@const chosen = restoring.backup}

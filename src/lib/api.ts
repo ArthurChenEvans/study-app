@@ -329,6 +329,12 @@ export const api = {
   restorePreview: (name: string) => invoke<RestorePreview>("restore_preview", { name }),
   restoreBackup: (name: string) => invoke<BackupInfo>("restore_backup", { name }),
   setBackupSettings: (settings: BackupSettings) => invoke<BackupStatus>("set_backup_settings", { settings }),
+  // Export and import (R112 to R118)
+  exportSummary: (request: ExportRequest) => invoke<ExportSummary>("export_summary", { request }),
+  exportFile: (request: ExportRequest) => invoke<ExportFile>("export_file", { request }),
+  importPreview: async (file: Blob, name: string) => invoke<ImportPreview>("import_preview", { name, data: await toBase64(file) }),
+  importApply: (choice: ImportChoice) => invoke<ImportResult>("import_apply", { choice }),
+  cancelImport: () => invoke<void>("cancel_import"),
   slidesToPdf: async (file: File) => {
     const pdf = await invoke<ArrayBuffer | number[]>("slides_to_pdf", { name: file.name, data: await toBase64(file) });
     return new Uint8Array(pdf);
@@ -346,9 +352,21 @@ function toBase64(file: Blob): Promise<string> {
 }
 
 // ---------- Backups (R101 to R108) ----------
-export type BackupReason = "Daily" | "ByHand" | "BeforeRestore" | "BeforeUpdate";
+export type BackupReason = "Daily" | "ByHand" | "BeforeRestore" | "BeforeUpdate" | "BeforeImport";
 export interface BackupInfo { name: string; day: number; minute: number; reason: BackupReason; bytes: number }
 export interface BackupSettings { keep_days: number; keep_weeks: number; keep_months: number; copy_to: string | null }
 export interface BackupStatus { latest: BackupInfo | null; count: number; bytes: number; folder: string; settings: BackupSettings; copy_problem: string | null; has_data: boolean }
 export interface Undone { count: number; one: string; many: string }
 export interface RestorePreview { backup: BackupInfo; undone: Undone[]; older: boolean }
+
+// ---------- Export and import (R112 to R118) ----------
+export interface ExportRequest { topics: Id[] | null; history: boolean }
+export interface Count { what: string; count: number }
+export interface ExportSummary { name: string; counts: Count[] }
+export interface ExportFile { name: string; path: string | null; data: string | null }
+export interface PreviewRow { what: string; new: number; same: number; changed: number }
+export interface Clash { uid: string; what: string; label: string; mine_day: number; theirs_day: number; theirs_newer: boolean }
+export type ClashRule = "KeepMine" | "TakeTheirs" | "Newer" | "EachOne";
+export interface ImportPreview { file_name: string; everything: boolean; history: boolean; exported: number; from_here: boolean; rows: PreviewRow[]; clashes: Clash[]; suggested: ClashRule }
+export interface ImportChoice { rule: ClashRule; theirs: string[] }
+export interface ImportResult { added: Count[]; replaced: number; backup: BackupInfo | null }

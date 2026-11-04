@@ -127,6 +127,18 @@ pub fn dispatch_at(app: &mut App, command: &str, args: &Value, today: i64, clock
         "restore_preview" => json(app.restore_preview(&arg::<String>(a, "name")?)),
         "restore_backup" => json(app.restore_backup(&arg::<String>(a, "name")?, clock)),
         "set_backup_settings" => json(app.set_backup_settings(arg(a, "settings")?, clock)),
+        "export_summary" => json(app.export_summary(&arg(a, "request")?, today)),
+        // The browser saves the file itself, so it comes back as base64.
+        "export_file" => json(app.export(&arg(a, "request")?, today).map(|(name, bytes)| {
+            use base64::Engine;
+            study_api::transfer::ExportFile { name, path: None, data: Some(base64::engine::general_purpose::STANDARD.encode(bytes)) }
+        })),
+        "import_preview" => json(app.import_preview(&base64(a, "file")?, &arg::<String>(a, "name")?)),
+        "import_apply" => json(app.import_apply(arg(a, "choice")?, clock)),
+        "cancel_import" => {
+            app.cancel_import();
+            json(Ok(()))
+        }
         "start_project_session" => json(app.start_session(arg(a, "project")?, clock)),
         "end_project_session" => json(app.end_session(arg(a, "project")?, clock)),
         "log_struggle" => json(app.log_struggle(arg(a, "project")?, arg(a, "input")?, clock)),

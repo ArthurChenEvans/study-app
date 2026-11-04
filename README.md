@@ -60,6 +60,12 @@ The app backs itself up once a day (once there's something in it), and before a 
 
 Every record has an ID that's the same on every computer, a "last changed" stamp and, once deleted, a marker. The database's triggers fill these in using functions the app provides, so other SQLite tools can read the database but can't add or change rows in it.
 
+## Export and import
+
+"Your data" exports everything, or some topics to share, as one `.studyapp` file: a zip of readable JSON (`manifest.json`, `data/topics.jsonl` and so on) plus the images, so the data is never locked inside the app. The desktop app saves it to your Downloads folder, and the browser version downloads it.
+
+Importing shows what's new, what's here already and what's changed in both places before anything changes, then makes a backup and adds it all at once. Records are matched by ID, so importing a newer version of a shared file updates it instead of copying it. History is only ever added, and nothing here is deleted.
+
 ## Install
 
 ### Nix (NixOS)

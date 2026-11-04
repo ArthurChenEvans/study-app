@@ -12,6 +12,7 @@ pub mod practice;
 pub mod recall;
 pub mod seed;
 pub mod seed_large;
+pub mod transfer;
 
 use rand::SeedableRng;
 use rand::rngs::StdRng;
@@ -248,6 +249,7 @@ pub struct App {
     active: Option<Attempt>,
     card_session: Option<cards::CardSession>,
     backups: Option<backup::Backups>,
+    pending_import: Option<transfer::PendingImport>,
 }
 
 impl App {
@@ -258,6 +260,7 @@ impl App {
             active: None,
             card_session: None,
             backups: None,
+            pending_import: None,
         }
     }
 
@@ -269,6 +272,7 @@ impl App {
             active: None,
             card_session: None,
             backups: None,
+            pending_import: None,
         }
     }
 
@@ -772,3 +776,5 @@ mod short_tests;
 mod practice_tests;
 #[cfg(test)]
 mod ids_tests;
+#[cfg(test)]
+mod transfer_tests;
