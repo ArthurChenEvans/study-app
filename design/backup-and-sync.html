@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="en" data-theme="studyapp-dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#18130e">
+<title>Backup and Sync</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/daisyui@5.0.43/daisyui.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<style>
+  /* studyapp theme, same values as docs/design-rules.md */
+  :root, [data-theme="studyapp"] {
+    color-scheme: light;
+    --color-base-100: oklch(97% 0.010 80);
+    --color-base-200: oklch(94% 0.014 78);
+    --color-base-300: oklch(89% 0.018 75);
+    --color-base-content: oklch(27% 0.025 60);
+    --color-primary: oklch(40% 0.065 50);
+    --color-primary-content: oklch(97% 0.010 80);
+    --color-secondary: oklch(32% 0.02 60);
+    --color-secondary-content: oklch(94% 0.014 78);
+    --color-accent: oklch(78% 0.13 78);
+    --color-accent-content: oklch(27% 0.025 60);
+    --color-neutral: oklch(32% 0.02 60);
+    --color-neutral-content: oklch(94% 0.014 78);
+    --color-info: oklch(44% 0.07 235);
+    --color-info-content: oklch(97% 0.010 80);
+    --color-success: oklch(42% 0.11 145);
+    --color-success-content: oklch(97% 0.010 80);
+    --color-warning: oklch(78% 0.13 78);
+    --color-warning-content: oklch(27% 0.025 60);
+    --color-error: oklch(44% 0.15 30);
+    --color-error-content: oklch(97% 0.010 80);
+    --radius-selector: 0.25rem;
+    --radius-field: 0.375rem;
+    --radius-box: 0.5rem;
+    --size-selector: 0.25rem;
+    --size-field: 0.25rem;
+    --border: 1px;
+    --depth: 0;
+    --noise: 0;
+
+    /* Raised surface for panels, and chart tokens (validated, see design rules) */
+    --surface: oklch(99% 0.006 80);
+    /* Quiz outcomes: blue / orange pair, colour-blind safe; guessed = hatched right */
+    --chart-right: #025884;
+    --chart-wrong: #cc6c13;
+    --right-ink: #004d77;
+    --wrong-ink: #853900;
+    --guessed-tint: #c1dcf0;
+    --guessed-ink: #013658;
+    --guessed-fill: repeating-linear-gradient(135deg, #025884 0 2px, #c1dcf0 2px 6px);
+    --chart-ink: #643d26;
+    --chart-grid: oklch(91% 0.016 76);
+    --muted: oklch(42% 0.022 65);
+    --shadow-panel: 0 1px 2px oklch(27% 0.025 60 / .06), 0 6px 16px oklch(27% 0.025 60 / .05);
+    --shadow-soft: 0 1px 2px oklch(27% 0.025 60 / .08);
+    --field-border: oklch(58% 0.02 65);
+    --on-right: #fff;
+    --on-wrong: #140d08;
+    --diagram-fill: oklch(94% 0.014 78);
+  }
+  /* Dark theme: its own palette, validated against the dark panel surface (see design rules) */
+  [data-theme="studyapp-dark"] {
+    color-scheme: dark;
+    --color-base-100: oklch(19% 0.012 65);
+    --color-base-200: oklch(16% 0.012 65);
+    --color-base-300: oklch(32% 0.016 65);
+    --color-base-content: oklch(93% 0.012 80);
+    --color-primary: oklch(74% 0.10 62);
+    --color-primary-content: oklch(18% 0.012 65);
+    --color-secondary: oklch(88% 0.015 75);
+    --color-secondary-content: oklch(18% 0.012 65);
+    --color-accent: oklch(80% 0.13 80);
+    --color-accent-content: oklch(18% 0.012 65);
+    --color-neutral: oklch(88% 0.015 75);
+    --color-neutral-content: oklch(18% 0.012 65);
+    --color-info: oklch(76% 0.08 235);
+    --color-info-content: oklch(18% 0.012 65);
+    --color-success: oklch(76% 0.13 145);
+    --color-success-content: oklch(18% 0.012 65);
+    --color-warning: oklch(80% 0.13 80);
+    --color-warning-content: oklch(18% 0.012 65);
+    --color-error: oklch(76% 0.13 30);
+    --color-error-content: oklch(18% 0.012 65);
+    --radius-selector: 0.25rem; --radius-field: 0.375rem; --radius-box: 0.5rem;
+    --size-selector: 0.25rem; --size-field: 0.25rem; --border: 1px; --depth: 0; --noise: 0;
+
+    --surface: oklch(23% 0.014 65);
+    --chart-right: #0573aa;
+    --chart-wrong: #d67523;
+    --right-ink: #87c6f2;
+    --wrong-ink: #f9b379;
+    --guessed-tint: #163c54;
+    --guessed-ink: #bbddf6;
+    --guessed-fill: repeating-linear-gradient(135deg, #0573aa 0 2px, #163c54 2px 6px);
+    --chart-ink: oklch(74% 0.10 62);
+    --chart-grid: oklch(30% 0.014 65);
+    --muted: oklch(78% 0.016 75);
+    --field-border: oklch(52% 0.018 70);
+    --on-right: #fff;
+    --on-wrong: #140d08;
+    --diagram-fill: oklch(28% 0.014 65);
+    --shadow-panel: 0 1px 0 oklch(100% 0 0 / .04) inset, 0 1px 2px oklch(0% 0 0 / .4), 0 8px 24px oklch(0% 0 0 / .25);
+    --shadow-soft: 0 1px 2px oklch(0% 0 0 / .4);
+  }
+  body { background: var(--color-base-100); color: var(--color-base-content); font-family: "IBM Plex Sans", ui-sans-serif, sans-serif; }
+  code, pre, .font-mono { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  h1, h2 { text-wrap: balance; }
+  h1 { letter-spacing: -0.015em; }
+  .input, .select, .textarea, .checkbox, .radio { border-color: var(--field-border); }
+  .input, .select, .textarea { background: var(--surface); }
+  :focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+  pre.shiki { padding: 12px 16px; border-radius: var(--radius-box); font-size: 14px; overflow-x: auto; border: 1px solid var(--color-base-300); }
+  .divide-y > * { border-color: var(--color-base-300) !important; }
+  .btn .kbd { background: transparent; border-color: currentColor; color: inherit; opacity: .8; }
+  .btn { transition: transform 120ms ease-out, background-color 150ms ease-out, box-shadow 150ms ease-out; }
+  .btn:active:not(:disabled) { transform: scale(.97); }
+  .btn-primary { box-shadow: 0 1px 2px oklch(27% 0.025 60 / .25), inset 0 1px 0 oklch(100% 0 0 / .12); }
+
+  /* Panels: the one raised surface. Used for groups you read as a unit (charts, summaries) */
+  .panel { background: var(--surface); border: 1px solid var(--color-base-300); border-radius: 12px; box-shadow: var(--shadow-panel); }
+  .eyebrow { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+
+  /* Segmented control */
+  .seg { display: inline-flex; align-items: stretch; height: 2rem; padding: 2px; gap: 2px; border: 1px solid var(--field-border); border-radius: var(--radius-field); background: var(--color-base-200); vertical-align: middle; }
+  .seg > button { padding: 0 12px; font-size: 14px; line-height: 1; border-radius: calc(var(--radius-field) - 2px); color: var(--muted); transition: background-color 150ms ease-out, color 150ms ease-out; }
+  .seg > button:hover:not([aria-checked="true"]) { background: var(--color-base-300); color: var(--color-base-content); }
+  .seg > button[aria-checked="true"] { background: var(--color-neutral); color: var(--color-neutral-content); font-weight: 600; }
+  .seg > button:focus-visible { outline-offset: 1px; }
+  /* Fields: one focus ring */
+  .input:focus, .input:focus-within, .select:focus, .textarea:focus { outline: none !important; border-color: var(--color-primary) !important; box-shadow: 0 0 0 1px var(--color-primary) !important; }
+  label.input input:focus, label.input input:focus-visible { outline: none !important; box-shadow: none !important; }
+  .input-sm, .seg { min-height: 2rem; }
+  .btn:disabled .kbd { opacity: .5; }
+  .toggle:checked { background-color: var(--color-primary); border-color: var(--color-primary); color: var(--color-primary-content); }
+  [role=tab] .count { font-size: 12px; margin-left: 4px; color: var(--muted); font-weight: 400; }
+  .open-q { border: 1px dashed var(--color-info); color: var(--color-info); background: var(--surface); }
+
+  /* Navigation */
+  .nav-link { color: var(--muted); transition: background-color 150ms ease-out, color 150ms ease-out; }
+  .nav-link:hover { background: var(--color-base-300); color: var(--color-base-content); }
+  .nav-link[aria-current="page"] { background: var(--surface); color: var(--color-base-content); font-weight: 600; box-shadow: var(--shadow-soft); }
+
+  /* Charts */
+  .seg-bar { display: flex; gap: 2px; border-radius: 999px; overflow: hidden; }
+  .seg-bar > span { display: block; height: 100%; }
+  .tall-bar { display: flex; gap: 2px; height: 28px; }
+  .tall-bar > span { border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 12px; font-weight: 600; white-space: nowrap; overflow: visible; }
+  .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .text-right-ink { color: var(--right-ink); } .text-wrong-ink { color: var(--wrong-ink); }
+  .is-right { border-color: var(--chart-right) !important; box-shadow: 0 0 0 1px var(--chart-right); }
+  .is-wrong { border-color: var(--chart-wrong) !important; box-shadow: 0 0 0 1px var(--chart-wrong); }
+  .guessed-chip { background: var(--guessed-tint); color: var(--guessed-ink); border-color: var(--guessed-tint); }
+  .hbar { height: 12px; border-radius: 0 4px 4px 0; background: var(--chart-ink); transition: width 400ms ease-out; }
+  .cell { width: 24px; height: 24px; border-radius: 4px; display: grid; place-items: center; font-size: 12px; font-weight: 600; color: #fff; }
+  .chart-tip { position: fixed; pointer-events: none; z-index: 50; background: var(--color-neutral); color: var(--color-neutral-content); font-size: 12px; line-height: 1.4; padding: 8px 10px; border-radius: 6px; box-shadow: 0 4px 12px oklch(27% 0.025 60 / .2); opacity: 0; transition: opacity 120ms ease-out; max-width: 240px; }
+  .chart-tip.show { opacity: 1; }
+  details.table-view summary { cursor: pointer; font-size: 12px; color: var(--muted); }
+
+  /* Quiz progress track */
+  .track { display: flex; gap: 2px; height: 6px; }
+  .track > span { flex: 1; border-radius: 2px; background: var(--color-base-300); }
+
+  /* Motion */
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .rise { animation: rise 260ms ease-out both; }
+  .rise-2 { animation-delay: 60ms; } .rise-3 { animation-delay: 120ms; } .rise-4 { animation-delay: 180ms; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+:root { --strip: 2.5rem; }
+</style>
+<style type="text/tailwindcss">
+  @theme {
+    --color-muted: var(--muted);
+    --color-field-border: var(--field-border);
+    --color-surface: var(--surface);
+    --font-sans: "IBM Plex Sans", ui-sans-serif, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  }
+</style>
+<style>
+  /* Projects, drills and calendar additions. Same tokens as the other prototypes. */
+  .badge-src { font-size: 12px; color: var(--muted); border: 1px solid var(--color-base-300); border-radius: 4px; padding: 0 6px; line-height: 20px; white-space: nowrap; }
+  .kind { font-size: 12px; border-radius: 4px; padding: 0 6px; line-height: 20px; white-space: nowrap; border: 1px solid var(--field-border); }
+  .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .cal-day { min-height: 104px; border-right: 1px solid var(--color-base-300); border-bottom: 1px solid var(--color-base-300); padding: 6px 8px; text-align: left; display: flex; flex-direction: column; gap: 2px; }
+  .cal-day:hover { background: var(--color-base-200); }
+  .cal-day[aria-current="date"] { box-shadow: inset 0 0 0 2px var(--color-base-content); }
+  .cal-day[aria-selected="true"] { background: var(--color-base-200); }
+  .cal-day.other { color: var(--muted); }
+  .cal-day .num { font-size: 13px; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .cal-row { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .cal-row b { color: var(--color-base-content); font-weight: 600; }
+  .cal-past .cal-row { opacity: 1; }
+  .timer-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-variant-numeric: tabular-nums; border: 1px solid var(--field-border); border-radius: 999px; padding: 2px 10px; }
+  .step-dot { width: 24px; height: 24px; border-radius: 999px; display: grid; place-items: center; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .rate { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 9rem; padding: 10px 16px; height: auto; }
+  .rate .when { font-size: 12px; font-weight: 400; opacity: .85; }
+  .text-right-ink { color: var(--right-ink); } .text-wrong-ink { color: var(--wrong-ink); }
+  .ladder { display: flex; gap: 4px; }
+  .ladder > span { flex: 1; height: 6px; border-radius: 2px; background: var(--color-base-300); }
+  .ladder > span.on { background: var(--chart-ink); }
+  .ladder > span.now { background: transparent; box-shadow: inset 0 0 0 2px var(--color-base-content); }
+</style>
+</head>
+<body class="min-h-screen">
+<div id="proto-strip" class="sticky top-0 z-50 flex min-h-10 flex-wrap items-center gap-2 border-b border-base-300 bg-base-200 px-4 py-1.5 text-xs" aria-label="Prototype state">
+  <span class="mr-2 font-semibold uppercase tracking-wide text-muted">Prototype</span>
+  <span class="text-muted">Screen</span><div id="screens" class="flex gap-1 flex-wrap"></div>
+  <span class="ml-3 text-muted">State</span><div id="states" class="flex gap-1 flex-wrap"></div>
+</div>
+<div class="flex min-h-[calc(100vh-var(--strip))]">
+  <nav class="w-60 shrink-0 bg-base-200 border-r border-base-300 flex flex-col p-3 gap-1 sticky top-[var(--strip)] h-[calc(100vh-var(--strip))]" aria-label="Main">
+    <div class="flex items-center gap-2 px-3 py-4">
+      <span class="size-8 rounded-lg bg-primary text-primary-content grid place-items-center"><i data-lucide="layers" class="size-4"></i></span>
+      <span class="text-base font-semibold">Study App</span>
+    </div>
+    <a href="index.html#overview" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="layout-dashboard" class="size-4"></i>Overview</a>
+    <a href="projects-drills-calendar.html#calendar" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="calendar-days" class="size-4"></i><span class="flex-1">Calendar</span><span class="text-xs tabular-nums" aria-label="17 things due today">17</span></a>
+    <a href="lists-at-scale.html#topics" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="library" class="size-4"></i><span class="flex-1">Topics</span><span class="text-xs tabular-nums" aria-label="2 quizzes due today">2</span></a>
+    <a href="flashcards.html#cards" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="square-stack" class="size-4"></i><span class="flex-1">Cards</span><span class="text-xs tabular-nums" aria-label="12 cards due today">12</span></a>
+    <a href="free-recall.html#recall" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="brain" class="size-4"></i><span class="flex-1">Recall</span><span class="text-xs tabular-nums" aria-label="1 checklist due today">1</span></a>
+    <a href="projects-drills-calendar.html#projects" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="hammer" class="size-4"></i><span class="flex-1">Projects</span><span class="text-xs tabular-nums" aria-label="2 drills due today">2</span></a>
+    <a href="index.html#bibliography" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="book-open" class="size-4"></i>Bibliography</a>
+    <a href="index.html#history" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="history" class="size-4"></i>History</a>
+    <a href="index.html#search" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="search" class="size-4"></i>Search</a>
+    <a href="#data" aria-current="page" class="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm"><i data-lucide="database" class="size-4"></i>Your data</a>
+    <div class="px-3 mt-4"><a href="index.html#setup" class="btn btn-outline btn-sm w-full justify-start border-field-border"><i data-lucide="play" class="size-4"></i>New quiz</a></div>
+    <a href="#data" id="sync-status" class="mt-auto mx-3 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-muted hover:bg-base-300" aria-label="Sync and backup status"></a>
+    <div class="px-3 pt-3">
+      <div class="seg w-full" role="radiogroup" aria-label="Theme" id="theme-switch">
+        <button type="button" role="radio" class="flex-1 flex items-center justify-center gap-1.5" data-theme-choice="studyapp-dark"><i data-lucide="moon" class="size-3.5"></i>Dark</button>
+        <button type="button" role="radio" class="flex-1 flex items-center justify-center gap-1.5" data-theme-choice="studyapp"><i data-lucide="sun" class="size-3.5"></i>Light</button>
+      </div>
+    </div>
+    <div class="px-3 pt-4 text-xs text-muted leading-relaxed">Backup, export, import and sync design prototype. States are clickable, data is sample only.</div>
+  </nav>
+  <main id="app" class="flex-1 min-w-0"></main>
+</div>
+
+<style>
+  .stat-line { display: flex; align-items: flex-start; gap: 12px; }
+  .stat-line .badge-icon { width: 36px; height: 36px; border-radius: 999px; display: grid; place-items: center; flex-shrink: 0; border: 2px solid currentColor; }
+  .ok-ink { color: var(--right-ink); } .warn-ink { color: var(--wrong-ink); }
+  .rows { width: 100%; font-size: 14px; border-collapse: separate; border-spacing: 0; }
+  .rows th { text-align: left; font-size: 12px; font-weight: 600; color: var(--muted); padding: 8px 12px; border-bottom: 1px solid var(--color-base-300); }
+  .rows th.num { text-align: right; }
+  .rows td { padding: 10px 12px; border-bottom: 1px solid var(--color-base-300); vertical-align: middle; }
+  .rows tr:last-child td { border-bottom: 0; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .kind { font-size: 12px; border-radius: 4px; padding: 0 6px; line-height: 20px; white-space: nowrap; border: 1px solid var(--field-border); }
+  .path { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 13px; background: var(--color-base-200); border-radius: 4px; padding: 1px 6px; }
+  ins.chg { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; font-weight: 600; background: transparent; }
+  del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: var(--muted); }
+  .step-dot { width: 28px; height: 28px; border-radius: 999px; display: grid; place-items: center; font-size: 13px; font-weight: 600; border: 2px solid var(--field-border); flex-shrink: 0; }
+  .step-dot.done { border-color: var(--color-base-content); background: var(--color-base-content); color: var(--color-base-100); }
+  .step-dot.now { border-color: var(--color-base-content); }
+</style>
+<script>
+const icon = (name, cls = "size-4") => `<i data-lucide="${name}" class="${cls}" aria-hidden="true"></i>`;
+const header = (title, subtitle = "", actions = "") => `<header class="flex items-end justify-between gap-6 pt-12 pb-8"><div><h1 class="text-3xl font-semibold leading-tight">${title}</h1>${subtitle ? `<p class="mt-2 text-muted">${subtitle}</p>` : ""}</div><div class="flex items-center gap-2">${actions}</div></header>`;
+
+const variants = {
+  data: ["all good", "first time", "backing up", "restore a backup", "export", "import preview", "import a shared topic", "set up sync", "sync on", "a sync conflict", "sync folder missing"],
+};
+const state = { screen: "data", variant: "all good" };
+
+const BACKUPS = [
+  ["Today, 09:12", "Daily", "6.1 MB"], ["Yesterday, 08:47", "Daily", "6.0 MB"], ["Mon 2 Nov, 19:30", "Before import", "6.0 MB"], ["Mon 2 Nov, 09:05", "Daily", "5.9 MB"],
+  ["Sun 1 Nov", "Daily", "5.9 MB"], ["Sat 31 Oct", "Daily", "5.8 MB"], ["Fri 30 Oct", "Daily", "5.8 MB"], ["Mon 26 Oct", "Weekly", "5.6 MB"], ["Mon 19 Oct", "Weekly", "5.3 MB"], ["Thu 1 Oct", "Monthly", "4.2 MB"],
+];
+
+function statusCard() {
+  const v = state.variant;
+  const syncOn = ["sync on", "a sync conflict", "sync folder missing", "all good"].includes(v);
+  const first = v === "first time";
+  const backing = v === "backing up";
+  const missing = v === "sync folder missing", conflict = v === "a sync conflict";
+  const line = (ic, ok, title, sub) => `<div class="stat-line"><span class="badge-icon ${ok ? "ok-ink" : "warn-ink"}">${icon(ic)}</span><div><p class="font-semibold">${title}</p><p class="text-sm text-muted">${sub}</p></div></div>`;
+  return `<section class="panel p-6" aria-labelledby="status-h" aria-live="polite">
+    <h2 id="status-h" class="sr-only">Is your data safe?</h2>
+    <div class="grid grid-cols-2 gap-6">
+      ${backing ? `<div class="stat-line"><span class="badge-icon">${icon("loader", "size-4 animate-spin")}</span><div><p class="font-semibold">Backing up…</p><p class="text-sm text-muted">Safe to keep studying while it runs.</p></div></div>`
+        : first ? line("shield-alert", false, "No backups yet", "Your first one is made when you press Back up now, then once a day.")
+        : line("shield-check", true, "Backed up today at 09:12", "Daily, plus before imports and updates. 14 kept, 61 MB.")}
+      ${first || v === "set up sync" ? line("refresh-cw-off", false, "Sync is off", "Only this computer has your data.")
+        : missing ? line("folder-x", false, "Sync paused: can't find the sync folder", "Last synced yesterday at 22:10. Changes here are kept and go out once the folder is back.")
+        : conflict ? line("git-compare", false, "Synced 2 minutes ago, 1 thing to check", "The same card was edited on both computers.")
+        : syncOn ? line("refresh-cw", true, "Synced 2 minutes ago", "With Laptop. Both are up to date.")
+        : line("refresh-cw", true, "Synced 2 minutes ago", "With Laptop.")}
+    </div>
+    ${missing ? `<div class="mt-5 flex gap-2"><button class="btn btn-primary">${icon("folder-search")}Find the folder</button><button class="btn btn-ghost">Turn sync off</button></div>` : ""}
+    ${conflict ? `<div class="mt-5"><button class="btn btn-primary" onclick="document.getElementById('conflicts-h').scrollIntoView({block:'center'})">${icon("git-compare")}Check it</button></div>` : ""}
+  </section>`;
+}
+
+function backupsSection() {
+  const first = state.variant === "first time";
+  const primary = ["all good", "first time", "backing up", "sync on"].includes(state.variant);
+  return `<section class="panel p-6" aria-labelledby="backups-h">
+    <div class="flex items-start justify-between gap-4"><div><h2 id="backups-h" class="text-lg font-semibold">Backups</h2><p class="mt-1 text-sm text-muted">A full copy of everything, made while the app is open. Your study isn't interrupted.</p></div>
+      <button class="btn ${primary ? "btn-primary" : "btn-outline border-field-border"}" ${state.variant === "backing up" ? "disabled" : ""} onclick="setVariant('backing up')">${icon("hard-drive-download")}Back up now</button></div>
+    ${first ? `<p class="mt-6 rounded-lg bg-base-200 p-4 text-sm">Nothing backed up yet. Once you've made the first one, the app makes one a day, plus one before every import, restore and app update.</p>` : `
+    <div class="mt-5 overflow-hidden rounded-lg border border-base-300"><table class="rows" aria-label="Backups"><thead><tr><th>Made</th><th>Why</th><th class="num">Size</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody>
+      ${BACKUPS.slice(0, 5).map(([when, why, size]) => `<tr><td>${when}</td><td><span class="kind">${why}</span></td><td class="num">${size}</td><td class="text-right"><button class="btn btn-ghost btn-sm" onclick="setVariant('restore a backup')">${icon("history")}Restore</button></td></tr>`).join("")}
+      <tr><td colspan="4"><button class="btn btn-ghost btn-sm">Show all 14</button></td></tr></tbody></table></div>`}
+    <dl class="mt-5 grid grid-cols-[10rem_1fr_auto] items-center gap-x-4 gap-y-3 text-sm">
+      <dt class="text-muted">Kept</dt><dd>The last 7 days, 4 weeks and 12 months</dd><dd><button class="btn btn-ghost btn-sm">Change</button></dd>
+      <dt class="text-muted">Saved in</dt><dd><span class="path">~/.local/share/com.arthurchenevans.studyapp/backups</span></dd><dd><button class="btn btn-ghost btn-sm">${icon("folder-open")}Open</button></dd>
+      <dt class="text-muted">Also copy to</dt><dd class="text-muted">Nowhere else. A USB stick or another drive survives this one failing.</dd><dd><button class="btn btn-ghost btn-sm">${icon("plus")}Add a place</button></dd>
+    </dl>
+  </section>`;
+}
+
+function exportImportSection() {
+  return `<section class="panel p-6" aria-labelledby="ei-h">
+    <h2 id="ei-h" class="text-lg font-semibold">Export and import</h2>
+    <p class="mt-1 text-sm text-muted">One <span class="path">.studyapp</span> file: readable JSON inside a zip, with images. Share topics with a friend, or move everything to another computer.</p>
+    <div class="mt-5 flex gap-2"><button class="btn btn-outline border-field-border" onclick="setVariant('export')">${icon("file-output")}Export…</button><button class="btn btn-outline border-field-border" onclick="setVariant('import preview')">${icon("file-input")}Import…</button></div>
+  </section>`;
+}
+
+function syncSection() {
+  const v = state.variant;
+  const off = v === "first time" || v === "set up sync";
+  const conflict = v === "a sync conflict";
+  return `<section class="panel p-6" aria-labelledby="sync-h">
+    <div class="flex items-start justify-between gap-4"><div><h2 id="sync-h" class="text-lg font-semibold">Sync</h2>
+      <p class="mt-1 text-sm text-muted">Keeps your computers (and the browser version) in step through a folder you already keep in sync, like Syncthing. No account, no server, nothing to pay for.</p></div>
+      ${off ? `<button class="btn btn-outline border-field-border" onclick="setVariant('set up sync')">${icon("refresh-cw")}Set up sync</button>` : `<button class="btn btn-outline border-field-border">${icon("refresh-cw")}Sync now</button>`}</div>
+    ${off ? "" : `
+    <div class="mt-5 overflow-hidden rounded-lg border border-base-300"><table class="rows" aria-label="Devices"><thead><tr><th>Device</th><th>Last seen</th><th class="num">Changes it hasn't sent yet</th></tr></thead><tbody>
+      <tr><td><b>Desktop</b> <span class="kind ml-1">This one</span></td><td>Now</td><td class="num">${v === "sync folder missing" ? "37, waiting for the folder" : "0"}</td></tr>
+      <tr><td><b>Laptop</b></td><td>${v === "sync folder missing" ? "Yesterday, 22:10" : "2 minutes ago"}</td><td class="num">0</td></tr>
+      <tr><td><b>Browser (podman)</b></td><td>Mon 2 Nov</td><td class="num">0</td></tr></tbody></table></div>
+    <dl class="mt-5 grid grid-cols-[10rem_1fr_auto] items-center gap-x-4 gap-y-3 text-sm">
+      <dt class="text-muted">Sync folder</dt><dd><span class="path">~/Sync/StudyApp</span></dd><dd><button class="btn btn-ghost btn-sm">Change</button></dd>
+      <dt class="text-muted">This device</dt><dd>Desktop</dd><dd><button class="btn btn-ghost btn-sm">Rename</button></dd>
+      <dt class="text-muted">Checks the folder</dt><dd>Every 30 seconds while the app is open, and when it starts</dd><dd></dd>
+    </dl>
+    ${conflict ? conflictPanel() : ""}
+    <div class="mt-4 flex justify-end"><button class="btn btn-ghost btn-sm">Turn sync off</button></div>`}
+  </section>`;
+}
+
+function conflictPanel() {
+  return `<div class="mt-6 rounded-lg border border-base-content p-5" role="region" aria-labelledby="conflicts-h">
+    <h3 id="conflicts-h" class="font-semibold">1 thing to check</h3>
+    <p class="mt-1 text-sm text-muted">This card was changed on both computers before they synced. The newer change is in use. Keep it, or switch to the other one. Nothing is lost either way.</p>
+    <p class="mt-4 text-sm"><span class="text-muted">Card in</span> <b>Caches</b> · Computer Architecture</p>
+    <div class="mt-3 grid grid-cols-2 gap-4">
+      <div class="rounded-lg bg-base-200 p-4"><p class="flex items-center justify-between text-xs text-muted"><span><b class="text-base-content">Laptop</b>, Tue 3 Nov 21:40</span><span class="kind">In use, newer</span></p>
+        <p class="mt-3 text-sm text-muted">Back</p><p class="text-[15px]">About <ins class="chg">4 cycles</ins> at L1, <ins class="chg">12 at L2</ins> and 40 at L3.</p></div>
+      <div class="rounded-lg bg-base-200 p-4"><p class="text-xs text-muted"><b class="text-base-content">Desktop</b>, Tue 3 Nov 18:05</p>
+        <p class="mt-3 text-sm text-muted">Back</p><p class="text-[15px]">About <del class="chg">3 cycles</del> at L1, <del class="chg">10 at L2</del> and 40 at L3.</p></div>
+    </div>
+    <p class="mt-2 text-xs text-muted">Underlined: only in the newer one. Struck through: only in the older one.</p>
+    <div class="mt-4 flex gap-2"><button class="btn btn-outline btn-sm border-field-border">${icon("check")}Keep Laptop's</button><button class="btn btn-ghost btn-sm">Use Desktop's instead</button><button class="btn btn-ghost btn-sm">${icon("pencil")}Edit the card</button></div>
+  </div>`;
+}
+
+/* ---------------- Dialogs ---------------- */
+function dialogs() {
+  const v = state.variant;
+  const box = (id, title, body, actions, wide) => `<dialog open class="modal modal-open" aria-labelledby="${id}"><div class="modal-box ${wide ? "max-w-3xl" : "max-w-lg"}"><h3 id="${id}" class="text-lg font-semibold">${title}</h3>${body}<div class="modal-action">${actions}</div></div></dialog>`;
+  const cancel = `<button class="btn btn-ghost" autofocus onclick="setVariant('all good')">Cancel</button>`;
+  if (v === "restore a backup") return box("restore-h", "Restore the backup from Mon 2 Nov, 09:05?", `
+    <p class="mt-3 text-[15px]">Everything goes back to how it was then. Since then you've done:</p>
+    <ul class="mt-2 space-y-1 text-[15px]"><li class="flex gap-2">${icon("square-stack", "size-4 mt-1 shrink-0")}183 card reviews</li><li class="flex gap-2">${icon("list-checks", "size-4 mt-1 shrink-0")}3 quizzes</li><li class="flex gap-2">${icon("pencil", "size-4 mt-1 shrink-0")}12 edits to questions and cards</li></ul>
+    <p class="mt-4 flex gap-2 rounded-lg bg-base-200 p-3 text-sm">${icon("shield-check", "size-4 mt-0.5 shrink-0")}Your data as it is now is backed up first, so you can undo this by restoring that one.</p>
+    <p class="mt-3 flex gap-2 rounded-lg bg-base-200 p-3 text-sm">${icon("refresh-cw", "size-4 mt-0.5 shrink-0")}Sync is paused afterwards. Laptop still has the newer changes, and syncing would bring them straight back. Turn it on again when you're ready.</p>`,
+    `${cancel}<button class="btn btn-primary">${icon("history")}Restore Mon 2 Nov</button>`);
+  if (v === "export") return box("export-h", "Export", `
+    <fieldset class="mt-5"><legend class="text-sm font-semibold">What to export</legend>
+      <label class="mt-2 flex items-start gap-3"><input type="radio" name="what" class="radio mt-0.5"><span><span class="block text-[15px]">Everything</span><span class="block text-sm text-muted">To move to another computer, or keep a copy somewhere else. 6.1 MB.</span></span></label>
+      <label class="mt-3 flex items-start gap-3"><input type="radio" name="what" class="radio mt-0.5" checked><span><span class="block text-[15px]">Some topics, to share</span><span class="block text-sm text-muted">Questions, cards, checklists and their sources and images.</span></span></label></fieldset>
+    <button class="btn btn-outline btn-sm border-field-border mt-4 ml-8">${icon("list-checks")}Pick topics: Networks module, 3 topics</button>
+    <label class="mt-5 flex items-start gap-3"><input type="checkbox" class="checkbox mt-0.5"><span><span class="block text-sm font-semibold">Include my history</span><span class="block text-sm text-muted">Reviews, quiz results and schedules. Leave it off when sharing, so your friend starts fresh.</span></span></label>
+    <p class="mt-5 text-sm text-muted">Saves <span class="path">Networks.studyapp</span>, 44 questions, 31 cards, 1 checklist, 2 sources.</p>`,
+    `${cancel}<button class="btn btn-primary">${icon("file-output")}Export 3 topics</button>`);
+  if (v === "import preview" || v === "import a shared topic") {
+    const shared = v === "import a shared topic";
+    return box("import-h", shared ? "Import Networks.studyapp" : "Import everything-2026-11-02.studyapp", `
+      <p class="mt-2 text-sm text-muted">${shared ? "Shared from another computer on Mon 2 Nov · 3 topics, no history" : "Exported from Laptop on Mon 2 Nov · everything, with history"}</p>
+      <div class="mt-5 overflow-hidden rounded-lg border border-base-300"><table class="rows"><thead><tr><th>What</th><th class="num">New</th><th class="num">Already here</th><th class="num">Changed since</th></tr></thead><tbody>
+        ${(shared ? [["Topics", 1, 2, 0], ["Questions", 18, 22, 4], ["Cards", 12, 19, 0], ["Checklists", 0, 1, 1], ["Sources", 1, 1, 0]] : [["Topics", 0, 171, 2], ["Questions", 6, 4572, 9], ["Cards", 3, 5262, 1], ["Reviews", 214, 4250, ""], ["Quizzes", 4, 175, ""]]).map(([what, n, same, changed]) => `<tr><td>${what}</td><td class="num">${n}</td><td class="num text-muted">${same}</td><td class="num">${changed}</td></tr>`).join("")}
+      </tbody></table></div>
+      ${shared ? `<fieldset class="mt-5"><legend class="text-sm font-semibold">For the 5 things you both changed</legend>
+        <label class="mt-2 flex items-start gap-3"><input type="radio" name="clash" class="radio mt-0.5" checked><span><span class="block text-[15px]">Keep mine</span><span class="block text-sm text-muted">Only new questions and cards come in.</span></span></label>
+        <label class="mt-3 flex items-start gap-3"><input type="radio" name="clash" class="radio mt-0.5"><span><span class="block text-[15px]">Take theirs</span><span class="block text-sm text-muted">Your review history on those cards stays.</span></span></label>
+        <label class="mt-3 flex items-start gap-3"><input type="radio" name="clash" class="radio mt-0.5"><span><span class="block text-[15px]">Look at each one</span></span></label></fieldset>
+        <p class="mt-4 text-sm text-muted">New cards start as new for you. Importing a newer version of the same file later updates these topics instead of making copies.</p>`
+      : `<p class="mt-4 text-sm text-muted">Reviews and quizzes are added, never replaced. For the 12 things changed in both places, the newer one is used and the other is listed to check, the same as sync.</p>`}
+      <p class="mt-3 flex gap-2 text-sm text-muted">${icon("shield-check", "size-4 mt-0.5 shrink-0")}A backup is made first.</p>`,
+      `${cancel}<button class="btn btn-primary">${icon("file-input")}${shared ? "Import 32 new things" : "Import"}</button>`, true);
+  }
+  if (v === "set up sync") return box("setup-h", "Set up sync", `
+    <ol class="mt-5 space-y-5">
+      <li class="flex gap-3"><span class="step-dot done">${icon("check", "size-4")}</span><div><p class="font-semibold">Pick a folder that's kept in sync</p><p class="mt-1 text-sm text-muted">Any folder another app keeps the same on each computer. Syncthing is free and needs no account. Nextcloud, a network drive or a USB stick you carry also work.</p>
+        <div class="mt-2 flex items-center gap-2"><span class="path">~/Sync/StudyApp</span><button class="btn btn-ghost btn-sm">Change</button></div></div></li>
+      <li class="flex gap-3"><span class="step-dot now">2</span><div class="flex-1"><p class="font-semibold">Name this computer</p><input class="input mt-2 w-full" value="Desktop" aria-label="Device name"></div></li>
+      <li class="flex gap-3"><span class="step-dot">3</span><div><p class="font-semibold">On your other computer, pick the same folder</p><p class="mt-1 text-sm text-muted">It finds this one there and brings everything over. The first sync of a big profile takes a minute or two.</p></div></li>
+    </ol>
+    <p class="mt-6 flex gap-2 rounded-lg bg-base-200 p-3 text-sm">${icon("info", "size-4 mt-0.5 shrink-0")}The app never puts its database in the folder, only small files of changes, one per computer. Syncing a database file itself corrupts it.</p>`,
+    `${cancel}<button class="btn btn-primary">${icon("refresh-cw")}Start syncing</button>`);
+  return "";
+}
+
+function screenData() {
+  const v = state.variant;
+  return `<div class="mx-auto max-w-4xl px-12 pb-24">
+    ${header("Your data", "Backups, export and import, and sync. Everything stays on your computers.")}
+    <div class="space-y-6">${statusCard()}${backupsSection()}${syncSection()}${exportImportSection()}</div>
+    ${dialogs()}
+  </div>`;
+}
+
+/* ---------------- Render ---------------- */
+const screens = { data: screenData };
+const screenNames = { data: "Your data" };
+function setVariant(v) { state.variant = v; render(); }
+function go(screen, v) { state.screen = screen; state.variant = v || variants[screen][0]; render(); window.scrollTo(0, 0); }
+function render() {
+  document.getElementById("app").innerHTML = screens[state.screen]();
+  const v = state.variant;
+  const sync = document.getElementById("sync-status");
+  sync.innerHTML = v === "first time" ? `${icon("shield-alert", "size-4")}<span>No backup yet</span>`
+    : v === "set up sync" ? `${icon("shield-check", "size-4")}<span>Backed up today, sync off</span>`
+    : v === "sync folder missing" ? `${icon("folder-x", "size-4")}<span>Sync paused</span>`
+    : v === "a sync conflict" ? `${icon("git-compare", "size-4")}<span>Synced, 1 to check</span>`
+    : `${icon("refresh-cw", "size-4")}<span>Synced 2 min ago</span>`;
+  document.getElementById("screens").innerHTML = Object.keys(screens).map((s) => `<button class="px-2 py-1 rounded ${s === state.screen ? "bg-neutral text-neutral-content font-semibold" : "hover:underline"}" onclick="go('${s}')">${screenNames[s]}</button>`).join("");
+  document.getElementById("states").innerHTML = variants[state.screen].map((x) => `<button class="px-2 py-1 rounded ${x === v ? "bg-neutral text-neutral-content font-semibold" : "hover:underline"}" onclick="setVariant('${x}')">${x}</button>`).join("");
+  if (window.lucide) lucide.createIcons();
+}
+function applyTheme(name, save = true) {
+  document.documentElement.dataset.theme = name;
+  document.querySelector('meta[name="theme-color"]').content = name === "studyapp-dark" ? "#18130e" : "#f9f4ee";
+  document.querySelectorAll("[data-theme-choice]").forEach((b) => b.setAttribute("aria-checked", b.dataset.themeChoice === name));
+  if (save) { try { localStorage.setItem("studyapp-theme", name); } catch (e) {} render(); }
+}
+document.getElementById("theme-switch").addEventListener("click", (e) => { const b = e.target.closest("[data-theme-choice]"); if (b) applyTheme(b.dataset.themeChoice); });
+(() => { let saved = null; try { saved = localStorage.getItem("studyapp-theme"); } catch (e) {} applyTheme(saved === "studyapp" ? "studyapp" : "studyapp-dark", false); })();
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && document.querySelector("dialog[open]")) setVariant("all good"); });
+render();
+const strip = document.getElementById("proto-strip");
+new ResizeObserver(() => document.documentElement.style.setProperty("--strip", strip.offsetHeight + "px")).observe(strip);
+</script>
+</body>
+</html>

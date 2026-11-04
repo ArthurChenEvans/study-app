@@ -488,3 +488,74 @@ Waiting for a greenlight. Built after testing the real app against the large pro
 - Audit (contrast, 24px targets, at most one primary) passes everywhere. The first pass flagged the 20px checkboxes, now 24px.
 - Interaction test in the prototype: `/` focuses the filter, typing filters without losing focus, arrows move the selection into the item card, `Esc` clears, a header sorts both ways, the rail and Due narrow the list, and the page stays one window tall.
 - Found while building: DaisyUI's own `list` class made tables shrink to fit (renamed), and hidden screen-reader labels escaped the scroll pane and made the page 10,000px tall (fixed by containing them).
+
+# Backup, export, import and sync (backup-and-sync.html)
+
+Waiting for a greenlight. One new screen, "Your data" (in the sidebar under Search), plus a status line at the bottom of the sidebar. Designed together because they share the same foundations (IDs that are unique everywhere, a record of changes, one file format), and built in stages: backup, then the ID change and export/import, then sync.
+
+| State | What it shows |
+|---|---|
+| all good / sync on | backed up today, synced 2 minutes ago, three devices |
+| first time | no backups yet, sync off |
+| backing up | a backup running |
+| restore a backup | what you'd lose, that the current data is backed up first, and that sync pauses |
+| export | everything, or some topics to share, with or without your history |
+| import preview / import a shared topic | what's new, already here and changed, and what to do about clashes |
+| set up sync | pick a synced folder, name this computer, then pick the same folder on the other one |
+| a sync conflict | the same card edited on both computers, side by side |
+| sync folder missing | sync paused, with how many changes are waiting |
+
+## View goals
+
+- **Your data.** *Goal:* know your study is safe, and fix it if it isn't. *Most important:* when the last backup was and whether sync is working, so that's the first thing on the page, in words and an icon (never colour alone), read out by screen readers when it changes. The one primary is whatever fixes the problem (Find the folder, Check it), otherwise Back up now. *Not needed up front:* file paths and the full backup list (five shown, the rest one click away). *Disabilities:* status in words, not a green or red dot; the path is selectable text, not a picture.
+- **Restore.** *Goal:* go back to a point in time without regret. *Most important:* what will be undone, in counts you recognise ("183 card reviews"). Focus starts on Cancel, the button names the backup, and the current data is backed up first so a restore can itself be undone.
+- **Import.** *Goal:* bring in only what you want. *Most important:* new, already here and changed, as a table a screen reader can read cell by cell. A backup is made first.
+- **Set up sync.** *Goal:* connect two computers once and forget about it. *Most important:* which folder, and that the other computer just picks the same one. Three numbered steps with their state in the number (a tick when done), not only in colour.
+- **A sync conflict.** *Goal:* pick the right version quickly. *Most important:* what differs. Differences are underlined (newer) or struck through (older), with a key, so they don't depend on colour. The newer one is already in use and the other is kept, so ignoring it loses nothing.
+
+## How it works
+
+**Backups**
+- A full copy made with SQLite's own `VACUUM INTO`, which is safe while the app is open.
+- Made once a day, and also before an import, a restore, a migration (app update) and turning on sync.
+- Keeps the last 7 days, 4 weeks and 12 months, about 60 MB for the large profile.
+- Saved in the app's data folder, with an optional second place (a USB stick, another drive, a synced folder).
+- Restoring backs up the current data first, then swaps the file. With sync on, sync pauses after a restore, because the other computers would send the newer changes straight back.
+
+**IDs and changes (migration 8)**
+- Every row gets an ID that's unique on every computer (UUIDv7, which sorts by time). The numbers the app uses today stay as a local key, so most queries don't change.
+- Editable rows (topics, questions, options, notes, checklists and their points, sources, projects, issues, drills, settings) get "last changed" stamps from a hybrid logical clock: wall time, a counter and the device. This stays in order even when two computers' clocks disagree a little.
+- Deleting leaves a small marker so other devices learn about it.
+
+**The `.studyapp` file (export and import)**
+- A zip holding `manifest.json` (format version, app version, when, which device, what's in it, counts), one JSON Lines file per kind of record, and the images as files.
+- Readable with any zip tool, so your data never depends on this app.
+- **Everything** includes history and moves a whole profile. **Some topics** is for sharing: questions, cards, checklists, sources and images, with history off by default so a friend starts fresh.
+- Import matches by ID. Importing a newer version of a shared topic updates it instead of making copies.
+
+**Sync, through a folder**
+- Nothing to pay for and no always-on server. The app never puts its database in the folder, because syncing a live SQLite file corrupts it. Instead each device appends its own changes to its own files: `devices/<device>.json` and `changes/<device>/<month>.jsonl`.
+- Each file only ever has one writer, so the syncing app never has two versions of one file to choose between.
+- Any folder kept the same across computers works: Syncthing (free, open source, device to device), Nextcloud, a network drive, or a USB stick carried between them.
+- The browser version joins by mounting the same folder in `compose.yaml`, which also makes two-device testing easy.
+- The app reads the other devices' files when it starts, every 30 seconds while it's open, and on "Sync now".
+- **Things that only get added** (card reviews, quiz attempts, recall checks, drill runs, struggles) just merge, with no conflicts possible.
+- **Schedules worked out from those** (a card's FSRS state, a topic's quiz step, a checklist's step, a drill's due date) are replayed from the merged history, so both computers end up with the same schedule.
+- **Edits** are compared field by field, and the latest change wins. Only when both computers changed the same field before seeing each other's change is it listed under "things to check", with the other version kept.
+- **Edit against delete:** the edit wins and the delete is listed to check, so nothing is lost by accident.
+- A quiz or review still in progress isn't synced until it's finished.
+
+## Calls made in the design, to confirm or change
+
+- **Syncthing-style folder sync** rather than a server or direct device-to-device connection. It's free, needs no account, and works offline. The catch is that both computers need the folder synced at some point (Syncthing syncs whenever both are on).
+- **Newest edit wins, conflicts are listed, nothing is thrown away.** No "pick one before you can carry on" popups.
+- **Schedules are replayed from history** after a sync, not copied. This needs the FSRS replay to give the same result on both computers (same parameters), which the build will test.
+- **Backups keep 7 days, 4 weeks and 12 months.**
+- **Shared topics leave history out by default.**
+- **New dependency:** a folder and file picker needs Tauri's dialog plugin (`tauri-plugin-dialog`), so the Nix pnpm hash and Cargo lock change when it's built.
+
+## UI/UX test results
+
+- Every state screenshotted in both themes at 1440 × 900: no console errors, no blocked requests, no horizontal scroll.
+- Audit (contrast, 24px targets, exactly one primary per view) passes everywhere.
+- Found while building: DaisyUI's own `status` and `diff` classes squashed the status card and the conflict text into one word per line (renamed). The set-up-sync state also said "Synced 2 minutes ago" behind the dialog (fixed to "Sync is off").
