@@ -7,6 +7,9 @@ vi.mock("../lib/api", async (original) => {
   return { ...actual, api: { answer: vi.fn(), answerText: vi.fn(), overruleAnswer: vi.fn(), toggleFlag: vi.fn(), questionTimedOut: vi.fn(), totalTimedOut: vi.fn(), quitQuiz: vi.fn() } };
 });
 
+vi.mock("../lib/sound", () => ({ play: vi.fn() }));
+
+import { play } from "../lib/sound";
 import { api, type Feedback, type QuizView, type ShortFeedback } from "../lib/api";
 import Quiz from "./Quiz.svelte";
 
@@ -51,6 +54,22 @@ describe("Quiz", () => {
     expect(screen.getByRole("button", { name: /2 Fetch/ })).toHaveTextContent("Your pick");
     await u.click(screen.getByRole("button", { name: /Next question/ }));
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Second question");
+  });
+
+  // UI polish: the whole row answers, other options stay readable, and a cue plays
+  it("tints the picked and correct rows, keeps the others readable, and plays a cue", async () => {
+    const u = userEvent.setup();
+    mocked.answer.mockResolvedValue({ feedback: { index: 0, short: null, right: false, auto_reason: null, correct: [1], explanation: "", citations: [] }, next: { Question: second } });
+    render(Quiz, { initial: view(), onFinished: vi.fn() });
+    await u.click(screen.getByRole("button", { name: "2 Fetch" }));
+    await u.click(screen.getByRole("button", { name: /Submit/ }));
+    await screen.findByRole("status");
+    expect(screen.getByRole("button", { name: /2 Fetch/ })).toHaveClass("row-wrong");
+    expect(screen.getByRole("button", { name: /3 Decode/ })).toHaveClass("row-right");
+    const other = screen.getByRole("button", { name: /1 Execute/ });
+    expect(other).toHaveClass("text-muted");
+    expect(other.className).not.toMatch(/opacity/);
+    expect(vi.mocked(play)).toHaveBeenCalledWith("wrong");
   });
 
   // taking-quiz.feature: Exam mode feedback

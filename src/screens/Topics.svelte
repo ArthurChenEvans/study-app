@@ -1,7 +1,8 @@
 <script lang="ts">
   // topics.feature (R1, R2, R3, R30, R43, R51)
   // calendar.feature (R96, R97): each topic's quiz step and next quiz, and the schedule.
-  import { CalendarCog, Folder, FolderOpen, FolderPlus, Library, Pencil, Play, Plus, Tags, Trash2 } from "@lucide/svelte";
+  import { CalendarCog, Folder, FolderOpen, FolderPlus, Library, Pencil, Play, Plus } from "@lucide/svelte";
+  import RowMenu from "../components/RowMenu.svelte";
   import { api, errorMessage, type Id, type ModuleRow, type Schedule, type TopicQuizView, type TopicRow } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
   import ScheduleDialog from "../components/ScheduleDialog.svelte";
@@ -129,7 +130,7 @@
         {#if group.key === "none"}<FolderOpen class="size-4" />{:else}<Folder class="size-4" />{/if}{group.name}
         {#if group.id !== null}
           {@const id = group.id}
-          <button class="btn btn-ghost btn-xs btn-square ml-1" aria-label="Delete module {group.name}" onclick={() => (deletingModule = { id, name: group.name, count: group.topics.length })}><Trash2 class="size-3.5" /></button>
+          <RowMenu small label="{group.name} module actions" items={[{ label: "Delete module…", danger: true, onSelect: () => (deletingModule = { id, name: group.name, count: group.topics.length }) }]} />
         {/if}
       </h2>
       {#if group.topics.length === 0}
@@ -142,20 +143,24 @@
           <tbody>
             {#each group.topics as topic (topic.id)}
               <tr class="hover:bg-base-100">
-                <td class="font-semibold">{topic.name}</td>
+                <td class="font-semibold"><button type="button" class="text-left hover:underline" onclick={() => onEdit(topic.id)}>{topic.name}</button></td>
                 <td>
                   {#each topic.tags as tag (tag)}<span class="badge badge-ghost mr-1 rounded-full text-xs">{tag}</span>{:else}<span class="text-sm text-muted">None</span>{/each}
-                  <button class="btn btn-ghost btn-xs btn-square" aria-label="Edit tags for {topic.name}" onclick={() => openTags(topic)}><Tags class="size-3.5" /></button>
                 </td>
                 <td class="text-right tabular-nums">{topic.question_count}</td>
                 <td>
-                  {#if quizOf(topic.id)}{@const quiz = quizOf(topic.id)!}<span class="block text-sm {quiz.due_today ? 'font-semibold' : ''}">{dueLabel(quiz.due, today)}</span><span class="block text-xs text-muted">{quiz.step} step</span>
+                  {#if quizOf(topic.id)}{@const quiz = quizOf(topic.id)!}{#if quiz.due_today}<span class="flex items-center gap-1.5 text-sm font-semibold"><span class="due-dot" aria-hidden="true"></span>Due today</span>{:else}<span class="block text-sm">{dueLabel(quiz.due, today)}</span>{/if}<span class="block text-xs text-muted">{quiz.step} step</span>
                   {:else}<span class="text-sm text-muted">{topic.question_count ? "Quiz it to start" : "No questions yet"}</span>{/if}
                 </td>
                 <td class="whitespace-nowrap text-right">
-                  <button class="btn btn-ghost btn-sm" onclick={() => onQuiz(topic.id)}><Play class="size-4" />Quiz</button>
-                  <button class="btn btn-ghost btn-sm" onclick={() => onEdit(topic.id)}><Pencil class="size-4" />Edit</button>
-                  <button class="btn btn-ghost btn-sm btn-square" aria-label="Delete {topic.name}" onclick={() => (deleting = topic)}><Trash2 class="size-4" /></button>
+                  <span class="row-actions inline-flex items-center gap-1">
+                    <button class="btn btn-ghost btn-sm" aria-label="Quiz {topic.name}" onclick={() => onQuiz(topic.id)}><Play class="size-4" />Quiz</button>
+                    <button class="btn btn-ghost btn-sm" aria-label="Edit {topic.name}" onclick={() => onEdit(topic.id)}><Pencil class="size-4" />Edit</button>
+                    <RowMenu small label="More for {topic.name}" items={[
+                      { label: "Edit tags", onSelect: () => openTags(topic) },
+                      { label: "Delete topic…", danger: true, onSelect: () => (deleting = topic) },
+                    ]} />
+                  </span>
                 </td>
               </tr>
             {/each}

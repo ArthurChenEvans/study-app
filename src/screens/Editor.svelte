@@ -266,10 +266,11 @@
             <button type="button" role="radio" aria-checked={draft.multiple} onclick={() => setMultiple(true)}>Multiple</button>
           </div>
         </div>
+        <div class="option-grid text-xs text-muted" aria-hidden="true"><span>Answer</span><span class="text-center">Correct</span><span></span></div>
         {#each draft.options as option, index (index)}
-          <div class="flex items-center gap-3">
-            <input type="checkbox" class="checkbox checkbox-sm" aria-label="Option {index + 1} is correct" checked={option.correct} onchange={() => toggleCorrect(index)} />
-            <input class="input input-sm flex-1 {option.correct ? 'is-right' : ''}" aria-label="Option {index + 1}" data-rich="true" bind:value={option.text} />
+          <div class="option-grid">
+            <input class="input w-full {option.correct ? 'is-right' : ''}" aria-label="Option {index + 1}" placeholder="Option {index + 1}" data-rich="true" bind:value={option.text} />
+            <input type="checkbox" class="checkbox checkbox-correct justify-self-center" aria-label="Option {index + 1} is correct" checked={option.correct} onchange={() => toggleCorrect(index)} />
             <button type="button" class="btn btn-ghost btn-sm btn-square" aria-label="Remove option {index + 1}" disabled={draft.options.length <= MIN} onclick={() => (draft.options = draft.options.filter((_, position) => position !== index))}><X class="size-4" /></button>
           </div>
         {/each}

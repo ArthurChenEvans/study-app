@@ -92,6 +92,13 @@ describe("Question editor", () => {
   });
 
   // questions.feature: Single-answer / Multiple-answer question
+  // UI polish: the number of boxes says how many options there are, the placeholder says which
+  it("labels each empty option with a placeholder", async () => {
+    render(Editor, { topic: 1 });
+    expect(await screen.findByLabelText("Option 1")).toHaveAttribute("placeholder", "Option 1");
+    expect(screen.getByLabelText("Option 4")).toHaveAttribute("placeholder", "Option 4");
+  });
+
   it("single answer keeps one tick, multiple answer allows several", async () => {
     const u = user();
     render(Editor, { topic: 1 });

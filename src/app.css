@@ -152,6 +152,27 @@
   .nav-link[aria-current="page"] { background: var(--surface); color: var(--color-base-content); font-weight: 600; box-shadow: inset 3px 0 0 var(--color-primary), var(--shadow-soft); }
   .nav-current { border-color: var(--color-primary) !important; background: var(--surface); box-shadow: inset 3px 0 0 var(--color-primary); }
 
+  /* Row actions: shown on the row you're on (hover or keyboard focus), never all at once */
+  .row-actions { opacity: 0; transition: opacity var(--dur-fast) ease-out; }
+  :is(tr, li, .row):hover .row-actions, :is(tr, li, .row):focus-within .row-actions, .row-actions:has([aria-expanded="true"]) { opacity: 1; }
+  .row-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; min-width: 13rem; padding: 4px; display: flex; flex-direction: column; border: 1px solid var(--color-base-300); border-radius: 8px; background: var(--surface); box-shadow: 0 1px 2px oklch(0% 0 0 / .3), 0 8px 24px oklch(0% 0 0 / .25); animation: rise var(--dur-fast) var(--ease-out) both; }
+  .row-menu [role="menuitem"] { height: 32px; padding: 0 8px; border-radius: 6px; text-align: left; font-size: 14px; white-space: nowrap; }
+  .row-menu [role="menuitem"]:hover, .row-menu [role="menuitem"]:focus-visible { background: var(--color-base-300); outline: none; }
+  /* Quiz answers: the whole row answers, by fill, icon and word, never colour alone */
+  .row-right { background: color-mix(in oklch, var(--chart-right) 16%, var(--surface)) !important; }
+  .row-wrong { background: color-mix(in oklch, var(--chart-wrong) 14%, var(--surface)) !important; }
+  .answer-mark { width: 24px; height: 24px; flex-shrink: 0; border-radius: 6px; display: grid; place-items: center; }
+  .answer-mark-right { background: var(--chart-right); color: var(--on-right); }
+  .answer-mark-wrong { background: var(--chart-wrong); color: var(--on-wrong); }
+  .feedback-right { background: color-mix(in oklch, var(--chart-right) 8%, var(--surface)); border-color: color-mix(in oklch, var(--chart-right) 50%, transparent); }
+  .feedback-wrong { background: color-mix(in oklch, var(--chart-wrong) 7%, var(--surface)); border-color: color-mix(in oklch, var(--chart-wrong) 45%, transparent); }
+
+  /* Question editor: answer, correct, remove */
+  .option-grid { display: grid; grid-template-columns: minmax(0, 1fr) 64px 32px; gap: 12px; align-items: center; }
+  .checkbox-correct { width: 20px; height: 20px; border-radius: 5px; }
+  .checkbox-correct:checked { background-color: var(--chart-right); border-color: var(--chart-right); color: #fff; }
+  .due-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--color-warning); }
+
   /* Charts */
   .seg-bar { display: flex; gap: 2px; border-radius: 999px; overflow: hidden; }
   .seg-bar > span { display: block; height: 100%; }
