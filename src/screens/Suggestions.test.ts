@@ -84,10 +84,26 @@ describe("Suggestions", () => {
     render(Suggestions, { onBack: vi.fn() });
     await u.click(await screen.findByRole("radio", { name: "Project struggles 1" }));
     const item = screen.getAllByRole("listitem")[0];
-    expect(item).toHaveTextContent("Project: Study app · Why it wasn't obvious: thinking in Python's negative indexes");
+    expect(item).toHaveTextContent("ProjectStudy app · Why it wasn't obvious: thinking in Python's negative indexes");
     await u.click(within(item).getByRole("button", { name: /Make a card/ }));
     expect(within(item).getByLabelText("Front")).toHaveValue("Forgot how to slice a string from the end");
     expect(within(item).getByLabelText("Back")).toHaveValue("");
     expect(within(item).getByText(/Starts as what tripped you up/)).toBeInTheDocument();
+  });
+  it("shows ten at a time, says how many, and filters by topic", async () => {
+    const u = userEvent.setup();
+    const many = Array.from({ length: 23 }, (_, n): Suggestion => ({ ...quiz, key: `quiz:${n}`, text: `Question ${n}`, topic: n < 20 ? 2 : 1, from: n < 20 ? "Quiz: OSI model" : "Quiz: CPU" }));
+    mocked.cardSuggestions.mockResolvedValue(many);
+    render(Suggestions, { onBack: vi.fn() });
+    const list = await screen.findByRole("list", { name: "Suggestions" });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(10);
+    expect(within(list).getAllByRole("listitem")[0]).toHaveTextContent("QuizOSI model · wrong");
+    expect(screen.getByText("Showing 10 of 23")).toBeInTheDocument();
+    await u.click(screen.getByRole("button", { name: "Show 10 more" }));
+    await u.click(screen.getByRole("button", { name: "Show 3 more" }));
+    expect(within(list).getAllByRole("listitem")).toHaveLength(23);
+    expect(screen.queryByText(/^Showing/)).toBeNull();
+    await u.selectOptions(screen.getByLabelText("Topic"), "CPU");
+    expect(within(list).getAllByRole("listitem")).toHaveLength(3);
   });
 });

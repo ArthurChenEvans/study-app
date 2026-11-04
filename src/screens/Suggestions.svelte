@@ -13,7 +13,16 @@
   let error = $state("");
   let status = $state("");
 
-  const shown = $derived((items ?? []).filter((item) => filter === "all" || item.kind === filter));
+  // Ten at a time: a long backlog stays a short page, and keyboard users don't tab past hundreds of buttons.
+  const PAGE = 10;
+  let limit = $state(PAGE);
+  let topicFilter = $state<number | "all">("all");
+  const matching = $derived((items ?? []).filter((item) => (filter === "all" || item.kind === filter) && (topicFilter === "all" || item.topic === topicFilter)));
+  const shown = $derived(matching.slice(0, limit));
+  const usedTopics = $derived(topics.filter((topic) => (items ?? []).some((item) => item.topic === topic.id)));
+  const kindLabel = { Recall: "Recall", Quiz: "Quiz", Struggle: "Project" } as const;
+  /** "Quiz: Caches" reads as a chip and "Caches", so the kind isn't only words in a small line. */
+  const fromWhere = (item: Suggestion) => item.from.replace(/^[^:]+:\s*/, "");
   const count = (kind: Suggestion["kind"]) => (items ?? []).filter((item) => item.kind === kind).length;
   const topicName = (id: number | null) => topics.find((topic) => topic.id === id)?.name ?? "";
 
@@ -67,13 +76,20 @@
     {#if items.length === 0}
       <div class="panel max-w-lg p-8"><p class="font-semibold">No suggestions right now</p><p class="mt-1 text-sm text-muted">Points you miss in a recall check, and quiz questions you get wrong or guess, show up here.</p></div>
     {:else}
-      <div class="mb-3 flex items-center justify-between">
+      <div class="mb-3 flex flex-wrap items-center gap-y-2">
         <div class="seg" role="radiogroup" aria-label="Show">
-          <button type="button" role="radio" aria-checked={filter === "all"} onclick={() => (filter = "all")}>All {items.length}</button>
-          <button type="button" role="radio" aria-checked={filter === "Recall"} onclick={() => (filter = "Recall")}>Recall misses {count("Recall")}</button>
-          <button type="button" role="radio" aria-checked={filter === "Quiz"} onclick={() => (filter = "Quiz")}>Quiz mistakes {count("Quiz")}</button>
-          {#if count("Struggle")}<button type="button" role="radio" aria-checked={filter === "Struggle"} onclick={() => (filter = "Struggle")}>Project struggles {count("Struggle")}</button>{/if}
+          <button type="button" role="radio" aria-checked={filter === "all"} onclick={() => { filter = "all"; limit = PAGE; }}>All {items.length}</button>
+          <button type="button" role="radio" aria-checked={filter === "Recall"} onclick={() => { filter = "Recall"; limit = PAGE; }}>Recall misses {count("Recall")}</button>
+          <button type="button" role="radio" aria-checked={filter === "Quiz"} onclick={() => { filter = "Quiz"; limit = PAGE; }}>Quiz mistakes {count("Quiz")}</button>
+          {#if count("Struggle")}<button type="button" role="radio" aria-checked={filter === "Struggle"} onclick={() => { filter = "Struggle"; limit = PAGE; }}>Project struggles {count("Struggle")}</button>{/if}
         </div>
+        {#if usedTopics.length > 1}
+          <select class="select select-sm ml-3 w-56" aria-label="Topic" bind:value={topicFilter} onchange={() => (limit = PAGE)}>
+            <option value="all">All topics</option>
+            {#each usedTopics as topic (topic.id)}<option value={topic.id}>{topic.name}</option>{/each}
+          </select>
+        {/if}
+        <span class="flex-1"></span>
         <span class="text-sm text-muted">Nothing becomes a card until you say so</span>
       </div>
       <ul class="panel divide-y" aria-label="Suggestions">
@@ -81,7 +97,7 @@
           {@const open = making?.key === item.key}
           <li class="px-6 py-5">
             <div class="flex items-start justify-between gap-6">
-              <div class="flex-1"><p class="text-xs text-muted">{item.from} · {item.note}</p>
+              <div class="flex-1"><p class="flex flex-wrap items-center gap-2 text-xs text-muted"><span class="badge-src">{kindLabel[item.kind]}</span><span>{fromWhere(item)} · {item.note}</span></p>
                 <p class="mt-1 text-[15px]"><Rich inline text={item.text} /></p>
                 {#if item.answer}<p class="text-sm text-muted">→ <Rich inline text={item.answer} /></p>{/if}</div>
               {#if !open}
@@ -120,6 +136,12 @@
           </li>
         {/each}
       </ul>
+      {#if matching.length > shown.length}
+        <div class="mt-4 flex items-center justify-center gap-4">
+          <span class="text-sm text-muted">Showing {shown.length} of {matching.length}</span>
+          <button class="btn btn-outline border-field-border" onclick={() => (limit += PAGE)}>Show {Math.min(PAGE, matching.length - shown.length)} more</button>
+        </div>
+      {/if}
     {/if}
   {/if}
 </div>
