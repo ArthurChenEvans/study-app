@@ -192,7 +192,7 @@
 
   /* New quiz: settings summary and a start button that says why it can't start yet */
   .setting-chip { font-size: 12px; line-height: 22px; padding: 0 8px; border: 1px solid var(--color-base-300); border-radius: 4px; color: var(--color-base-content); }
-  .btn-soft-off { opacity: 0.55; cursor: not-allowed; }
+  /* Not ready yet, but still readable: muted fill, full-contrast label */
 
   /* Results: the one celebration. Bars fill left to right, the score settles once */
   @keyframes fill-in { from { transform: scaleX(0); } to { transform: none; } }
@@ -321,3 +321,7 @@
 .kind { font-size: 12px; border-radius: 4px; padding: 0 6px; line-height: 20px; white-space: nowrap; border: 1px solid var(--field-border); }
 .rate { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 9rem; padding: 10px 16px; height: auto; }
 .rate .when { font-size: 12px; font-weight: 400; opacity: .85; }
+
+/* New quiz's Start button before a topic is picked: still readable and focusable, says why
+   below. Outside @layer base so it wins over DaisyUI's disabled look. */
+.btn.btn-soft-off[aria-disabled="true"], .btn.btn-soft-off[aria-disabled="true"]:hover { pointer-events: auto; background-color: var(--color-base-300); color: var(--color-base-content); cursor: not-allowed; }
