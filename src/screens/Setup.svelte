@@ -1,7 +1,7 @@
 <script lang="ts">
   // quiz-setup.feature, short-answer.feature (R15 to R19, R36 to R38, R85)
-  import { CircleAlert, Play } from "@lucide/svelte";
-  import { api, errorMessage, type Id, type ModuleRow, type QuestionTypes, type QuizView, type TopicRow } from "../lib/api";
+  import { ChevronDown, CircleAlert, Play } from "@lucide/svelte";
+  import { api, errorMessage, type Id, type ModuleRow, type QuestionTypes, type QuizView, type TopicQuizView, type TopicRow } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
   import Seg from "../components/Seg.svelte";
 
@@ -9,6 +9,9 @@
 
   let topics = $state<TopicRow[]>([]);
   let modules = $state<ModuleRow[]>([]);
+  let quizzes = $state<TopicQuizView[]>([]);
+  // Settings fold away into one summary line: most quizzes use the same ones every time.
+  let showSettings = $state(false);
   // svelte-ignore state_referenced_locally
   let chosen = $state<Id[]>([...preselected]);
 
@@ -44,6 +47,22 @@
   const questionCount = $derived(setNumber ? Math.min(Number(count) || 0, available) : available);
   const overAsked = $derived(setNumber && Number(count) > available && chosen.length > 0);
   const moduleName = (id: Id | null) => modules.find((module) => module.id === id)?.name ?? "No module";
+
+  const isDue = (topic: TopicRow) => quizzes.some((quiz) => quiz.topic === topic.id && quiz.due_today) && countOf(topic) > 0;
+  const dueIds = $derived(topics.filter(isDue).map((topic) => topic.id));
+  const summary = $derived([
+    ...(anyShort ? [types === "Both" ? "Both types" : types === "Mcq" ? "MCQ only" : "Short answer only"] : []),
+    exam ? "Exam mode" : "Study mode",
+    setNumber ? `${count} questions` : "All questions",
+    even ? "Even pick" : "Random pick",
+    shuffleQuestions ? "Shuffled" : "Keep order",
+    useTotal ? `${totalMinutes} min total` : usePerQuestion ? `${perQuestionSeconds} sec each` : "No timer",
+    easy ? "Easy" : "Hard",
+  ]);
+
+  function pickDue() {
+    chosen = [...new Set([...chosen, ...dueIds])];
+  }
 
   function toggle(id: Id) {
     chosen = chosen.includes(id) ? chosen.filter((topic) => topic !== id) : [...chosen, id];
@@ -81,9 +100,10 @@
     }
   }
 
-  Promise.all([api.topics(), api.modules()]).then(([topicRows, moduleRows]) => {
+  Promise.all([api.topics(), api.modules(), Promise.resolve().then(() => api.topicQuizzes()).catch(() => [])]).then(([topicRows, moduleRows, quizRows]) => {
     topics = topicRows;
     modules = moduleRows;
+    quizzes = quizRows ?? [];
   });
 </script>
 
@@ -99,13 +119,17 @@
   <div class="grid grid-cols-[1fr_320px] items-start gap-8">
     <div class="space-y-8">
       <section>
-        <h2 class="eyebrow mb-3">Topics</h2>
+        <div class="mb-3 flex items-center justify-between">
+          <h2 class="eyebrow">Topics</h2>
+          {#if dueIds.length && dueIds.some((id) => !chosen.includes(id))}<button class="btn btn-ghost btn-sm" onclick={pickDue}>Pick the {dueIds.length} due</button>{/if}
+        </div>
         <div class="panel divide-y">
           {#each topics as topic (topic.id)}
             {@const empty = countOf(topic) === 0}
             <label class="flex items-center gap-4 px-6 py-3 {empty ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-base-100'}">
               <input type="checkbox" class="checkbox checkbox-sm" checked={chosen.includes(topic.id)} disabled={empty} onchange={() => toggle(topic.id)} />
               <span class="flex-1"><span class="text-sm font-semibold">{topic.name}</span> <span class="text-sm text-muted">· {moduleName(topic.module)}</span></span>
+              {#if isDue(topic)}<span class="flex items-center gap-1.5 text-sm font-semibold"><span class="due-dot" aria-hidden="true"></span>Due today</span>{/if}
               <span class="text-xs tabular-nums text-muted">{countLabel(topic)}</span>
             </label>
           {:else}
@@ -116,7 +140,16 @@
 
       <section>
         <h2 class="eyebrow mb-3">Settings</h2>
-        <div class="panel divide-y">
+        <div class="panel flex flex-wrap items-center gap-2 px-6 py-4">
+          <ul class="flex flex-1 flex-wrap gap-2" aria-label="Current settings">
+            {#each summary as item (item)}<li class="setting-chip">{item}</li>{/each}
+          </ul>
+          <button class="btn btn-ghost btn-sm" aria-expanded={showSettings} aria-controls="quiz-settings" onclick={() => (showSettings = !showSettings)}>
+            {showSettings ? "Hide settings" : "Change settings"}<ChevronDown class="size-4 transition-transform {showSettings ? 'rotate-180' : ''}" />
+          </button>
+        </div>
+        {#if showSettings}
+        <div id="quiz-settings" class="panel rise mt-3 divide-y">
           {#if anyShort}
             {#snippet typesControl()}<Seg label="Question types" bind:value={types} options={[{ value: "Both", label: "Both" }, { value: "Mcq", label: "MCQ" }, { value: "Short", label: "Short answer" }]} />{/snippet}
             {@render row("Question types", "Mixed together in the order below.", typesControl)}
@@ -161,13 +194,14 @@
           {#snippet difficulty()}<Seg label="Difficulty" bind:value={easy} options={[{ value: true, label: "Easy" }, { value: false, label: "Hard" }]} />{/snippet}
           {@render row("Difficulty", `Easy shows how many answers to pick on multiple-answer questions.${anyShort ? " Multiple choice only." : ""}`, difficulty)}
         </div>
+        {/if}
       </section>
     </div>
 
     <aside class="panel sticky top-8 p-6" aria-label="Quiz summary">
       <p class="eyebrow">Your quiz</p>
       {#if chosen.length === 0}
-        <p class="mt-4 text-sm text-muted">Pick a topic to see your quiz.</p>
+        <p class="mt-4 text-sm text-muted">No topics picked yet.</p>
       {:else}
         <p class="mt-3 text-4xl font-semibold leading-none">{questionCount} <span class="text-base font-normal text-muted">questions</span></p>
         <dl class="mt-6 space-y-3 text-sm">
@@ -178,8 +212,10 @@
         </dl>
       {/if}
       {#if error}<p role="alert" class="mt-6 flex items-start gap-2 text-sm text-error"><CircleAlert class="mt-0.5 size-4 shrink-0" />{error}</p>{/if}
-      <button class="btn btn-primary mt-6 w-full" onclick={start} disabled={starting}><Play class="size-4" />Start quiz</button>
-      <p class="mt-3 text-center text-xs text-muted">Press <kbd class="kbd kbd-xs">1</kbd>–<kbd class="kbd kbd-xs">5</kbd> to answer, <kbd class="kbd kbd-xs">F</kbd> to flag a guess</p>
+      <!-- aria-disabled rather than disabled: it stays focusable, and the reason is read with it. -->
+      <button class="btn btn-primary mt-6 w-full {chosen.length === 0 ? 'btn-soft-off' : ''}" onclick={start} disabled={starting} aria-disabled={chosen.length === 0} aria-describedby={chosen.length === 0 ? "start-why" : undefined}><Play class="size-4" />Start quiz</button>
+      {#if chosen.length === 0 && !error}<p id="start-why" class="mt-2 text-center text-sm text-muted">Pick at least one topic to start.</p>{/if}
+      <p class="mt-3 text-center text-xs text-muted">In the quiz, press <kbd class="kbd kbd-xs">1</kbd>–<kbd class="kbd kbd-xs">5</kbd> to answer, <kbd class="kbd kbd-xs">F</kbd> to flag a guess</p>
     </aside>
   </div>
 </div>

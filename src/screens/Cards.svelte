@@ -20,7 +20,6 @@
 
   const total = $derived(home ? home.due.new + home.due.learning + home.due.review : 0);
   const peak = $derived(home ? Math.max(1, ...home.forecast) : 1);
-  const peakDay = $derived(home ? home.forecast.indexOf(Math.max(...home.forecast.slice(1))) : -1);
 
   async function load() {
     [home, today, modules, topics] = await Promise.all([api.cardsHome(), api.today(), api.modules(), api.topics()]);
@@ -119,20 +118,31 @@
         <div class="mt-10">
           <div class="flex items-baseline justify-between"><h3 class="text-sm font-semibold">Next 14 days</h3><span class="text-xs text-muted">cards due per day</span></div>
           <div class="forecast mt-3" role="img" aria-label="Cards due over the next 14 days: {home.forecast.join(', ')}">
-            {#each home.forecast as count, index (index)}<span style="height: {(count / peak) * 100}%" title="{dueLabel(today + index, today)}: {count} {count === 1 ? 'card' : 'cards'}"></span>{/each}
+            {#each home.forecast as count, index (index)}
+              <span class="forecast-day" title="{dueLabel(today + index, today)}: {count} {count === 1 ? 'card' : 'cards'}">
+                {#if count > 0}<span class="forecast-count tabular-nums" aria-hidden="true">{count}</span>{/if}
+                <span class="forecast-bar" style="height: {(count / peak) * 100}%"></span>
+              </span>
+            {/each}
           </div>
-          <div class="mt-1 grid text-xs text-muted" style="grid-template-columns: repeat(14, 1fr)">
-            <span class="col-span-3">Today</span>
-            {#if peakDay > 2 && peakDay < 11 && home.forecast[peakDay] > 0}<span class="col-span-4 tabular-nums" style="grid-column-start: {peakDay + 1}">{dueLabel(today + peakDay, today)} · {home.forecast[peakDay]}</span>{/if}
-            <span class="col-span-3 text-right" style="grid-column-start: 12">{dueLabel(today + 13, today)}</span>
+          <div class="mt-1 flex justify-between text-xs text-muted">
+            <span>Today</span>
+            <span>{dueLabel(today + 13, today)}</span>
           </div>
+          <details class="table-view mt-4">
+            <summary>Show as table</summary>
+            <table class="table table-xs mt-2" aria-label="Cards due per day">
+              <thead><tr class="text-muted"><th>Day</th><th>Cards due</th></tr></thead>
+              <tbody>{#each home.forecast as count, index (index)}<tr><td>{dueLabel(today + index, today)}</td><td class="tabular-nums">{count}</td></tr>{/each}</tbody>
+            </table>
+          </details>
         </div>
       </section>
       <aside class="space-y-6">
         <section class="panel p-6" aria-labelledby="sugg-h">
           <div class="flex items-center justify-between"><h2 id="sugg-h" class="flex items-center gap-2 text-sm font-semibold"><Inbox class="size-4" />Suggestions</h2><span class="text-sm tabular-nums text-muted">{home.suggestions}</span></div>
           <p class="mt-2 text-sm text-muted">{home.suggestions ? "Points you missed in recalls and questions you got wrong or guessed could become cards." : "Nothing to suggest. Misses from recalls and quizzes show up here."}</p>
-          {#if home.suggestions}<button class="btn btn-outline btn-sm mt-4 border-field-border" onclick={onSuggestions}>Look through them</button>{/if}
+          {#if home.suggestions}<button class="btn btn-outline btn-sm mt-4 border-field-border" onclick={onSuggestions}>Look through all {home.suggestions}</button>{/if}
         </section>
         <section class="panel p-6" aria-labelledby="ret-h">
           <h2 id="ret-h" class="text-sm font-semibold">Retention, last 30 days</h2>

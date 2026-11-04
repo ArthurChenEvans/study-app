@@ -58,12 +58,12 @@ describe("Cards home", () => {
     expect(await screen.findByText("88%")).toBeInTheDocument();
     expect(screen.getByText("aiming for 90%")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /next 14 days: 27, 9, 4, 12, 31/ })).toBeInTheDocument();
-    expect(screen.getByText("Sat 7 Nov · 31")).toBeInTheDocument();
+    expect(within(screen.getByRole("table", { name: "Cards due per day" })).getByRole("row", { name: "Sat 7 Nov 31" })).toBeInTheDocument();
     const table = screen.getByRole("table", { name: "Cards by topic" });
     expect(within(table).getByText("None yet")).toBeInTheDocument();
     await u.click(within(table).getByRole("button", { name: "OSI model" }));
     expect(handlers.onTopic).toHaveBeenCalledWith(2);
-    await u.click(screen.getByRole("button", { name: "Look through them" }));
+    await u.click(screen.getByRole("button", { name: "Look through all 4" }));
     expect(handlers.onSuggestions).toHaveBeenCalled();
   });
 

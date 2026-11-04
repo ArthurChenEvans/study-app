@@ -90,7 +90,7 @@
                 <p class="text-sm text-muted">{row.module ? "Module" : "Topic"} · {row.points} {row.points === 1 ? "point" : "points"}</p>
                 <h3 class="mt-1 text-xl font-semibold"><button class="text-left hover:underline" onclick={() => onOpen(row.id)}>{row.subject_name}</button></h3>
               </div>
-              {#if row.days_late}<span class="flex items-center gap-1 whitespace-nowrap text-sm text-muted"><Clock class="size-3.5" />{row.days_late} {row.days_late === 1 ? "day" : "days"} late</span>{/if}
+              {#if row.days_late}<span class="flex items-center gap-1 whitespace-nowrap text-sm text-muted"><Clock class="size-3.5" />Due {row.days_late} {row.days_late === 1 ? "day" : "days"} ago</span>{/if}
             </div>
             <div><Ladder steps={schedule.steps} position={row.position} step={row.step} next={row.next_step} /></div>
             <div class="flex items-center justify-between gap-4">

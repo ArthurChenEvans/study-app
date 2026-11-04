@@ -119,7 +119,7 @@
     <div class="mx-auto max-w-3xl px-12 pb-24">
       <div class="flex items-end justify-between gap-6 pt-12">
         <div><p class="text-sm text-muted">Everything you remember about</p><h1 class="mt-1 text-3xl font-semibold">{view.row.subject_name}</h1></div>
-        <span role="timer" aria-label="Time spent" class="flex items-center gap-2 text-sm tabular-nums text-muted"><Timer class="size-4" />{clock(seconds)}</span>
+        <!-- No ticking clock while you recall: it pulls attention away. The time shows on the result. -->
       </div>
       <div class="mt-8 flex items-center justify-between gap-4">
         <div class="seg" role="radiogroup" aria-label="Where you recall">
@@ -198,7 +198,7 @@
       <section class="pt-12" aria-labelledby="score-h">
         <p class="text-sm text-muted">{view.row.subject_name}</p>
         <h1 id="score-h" class="mt-2 flex items-baseline gap-4"><span class="text-5xl font-semibold tabular-nums">{result.score}%</span><span class="text-lg tabular-nums text-muted">{result.recalled} of {result.total} recalled</span></h1>
-        <p class="mt-2 text-sm tabular-nums text-muted">{result.previous_score === null ? "First check" : `Last check ${result.previous_score}%`} · pass mark {schedule.pass_mark}%</p>
+        <p class="mt-2 text-sm tabular-nums text-muted">{result.previous_score === null ? "First check" : `Last check ${result.previous_score}%`} · pass mark {schedule.pass_mark}% · <span class="inline-flex items-center gap-1"><Timer class="size-3.5" aria-hidden="true" />Recalled in {clock(seconds)}</span></p>
       </section>
       <section class="panel mt-8 p-6" aria-labelledby="next-h">
         <h2 id="next-h" class="flex items-center gap-2 text-lg font-semibold">

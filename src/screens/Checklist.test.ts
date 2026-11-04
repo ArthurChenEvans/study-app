@@ -180,7 +180,8 @@ describe("Checklist editor", () => {
     mocked.checklist.mockResolvedValue(view([p("A")]));
     const u = userEvent.setup();
     render(Checklist, { id: 4, onBack, onStart: vi.fn() });
-    await u.click(await screen.findByRole("button", { name: "Delete checklist" }));
+    await u.click(await screen.findByRole("button", { name: "Checklist actions" }));
+    await u.click(screen.getByRole("menuitem", { name: "Delete checklist…" }));
     await u.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete checklist" }));
     expect(mocked.deleteChecklist).toHaveBeenCalledWith(4);
     expect(onBack).toHaveBeenCalled();

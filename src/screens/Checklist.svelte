@@ -1,6 +1,7 @@
 <script lang="ts">
   // free-recall.feature (R53, R54, R59): points, adding from questions, and history.
-  import { ArrowLeft, FileText, GripVertical, ListPlus, Play, Plus, Trash2, X } from "@lucide/svelte";
+  import { ArrowLeft, FileText, GripVertical, ListPlus, Play, Plus, X } from "@lucide/svelte";
+  import RowMenu from "../components/RowMenu.svelte";
   import { api, errorMessage, type Candidate, type ChecklistView, type RecallHistory, type RecallItem, type RecallPoint, type Schedule } from "../lib/api";
   import Ladder from "../components/Ladder.svelte";
   import Rich from "../components/Rich.svelte";
@@ -139,7 +140,10 @@
     <div class="flex items-end justify-between gap-6 pb-6 pt-4">
       <div>
         <p class="text-sm text-muted">{view.row.module ? "Module" : "Topic"}{view.row.subject_exists ? "" : " (deleted)"} · {points.length} {points.length === 1 ? "point" : "points"}</p>
-        <h1 class="mt-1 text-3xl font-semibold">{view.row.subject_name}</h1>
+        <div class="mt-1 flex items-center gap-1">
+          <h1 class="text-3xl font-semibold">{view.row.subject_name}</h1>
+          <RowMenu label="Checklist actions" items={[{ label: "Delete checklist…", danger: true, onSelect: () => (deleting = true) }]} />
+        </div>
       </div>
       <button class="btn btn-primary" disabled={points.length === 0} onclick={() => onStart(id)}><Play class="size-4" />Start recall</button>
     </div>
@@ -164,10 +168,10 @@
           {:else}
             <ol class="panel divide-y" aria-label="Points to recall">
               {#each points as point, index (index)}
-                <li class="flex min-h-11 items-center gap-3 px-4 py-2 {dragFrom === index ? 'opacity-50' : ''}" draggable="true"
+                <li class="point-row flex min-h-11 items-center gap-3 px-4 py-2 {dragFrom === index ? 'opacity-50' : ''}" draggable="true"
                   ondragstart={() => (dragFrom = index)} ondragend={() => (dragFrom = null)} ondragover={(event) => event.preventDefault()}
                   ondrop={() => { if (dragFrom !== null) move(dragFrom, index); dragFrom = null; }}>
-                  <span class="cursor-grab text-muted" title="Drag to reorder, or Alt+Up and Alt+Down" aria-hidden="true"><GripVertical class="size-4" /></span>
+                  <span class="point-grip cursor-grab text-muted" title="Drag to reorder, or Alt+Up and Alt+Down" aria-hidden="true"><GripVertical class="size-4" /></span>
                   <span class="w-6 text-right text-xs tabular-nums text-muted">{index + 1}</span>
                   {#if editingIndex === index}
                     <!-- svelte-ignore a11y_autofocus -->
@@ -180,7 +184,7 @@
                   {/if}
                   {#if point.question !== null}<span class="badge-src" title="Added from an MCQ. Removing it here doesn't change the question.">From MCQ</span>
                   {:else if point.note !== null}<span class="badge-src" title="Added from a flashcard. Removing it here doesn't change the card.">From card</span>{/if}
-                  <button class="btn btn-ghost btn-sm btn-square" aria-label="Remove point {index + 1}" onclick={() => save(points.filter((_, position) => position !== index), "Point removed")}><X class="size-4" /></button>
+                  <button class="point-remove btn btn-ghost btn-sm btn-square" aria-label="Remove point {index + 1}" onclick={() => save(points.filter((_, position) => position !== index), "Point removed")}><X class="size-4" /></button>
                 </li>
               {/each}
             </ol>
@@ -204,7 +208,6 @@
             <div class="flex justify-between gap-4"><dt class="text-muted">Covers</dt><dd class="text-right">{view.topics.join(", ") || "No topics now"}</dd></div>
           </dl>
           {#if points.length === 0}<p class="mt-6 text-sm text-muted">Needs at least one point to start.</p>{/if}
-          <button class="btn btn-ghost btn-sm mt-6 w-full justify-start" onclick={() => (deleting = true)}><Trash2 class="size-4" />Delete checklist</button>
         </aside>
       </div>
     {:else if history}

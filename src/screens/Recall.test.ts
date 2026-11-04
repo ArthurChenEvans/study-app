@@ -52,7 +52,7 @@ describe("Recall list", () => {
     ]);
     render(Recall, { onOpen: vi.fn(), onStart });
     const card = await screen.findByRole("article", { name: "OSI model" });
-    expect(card).toHaveTextContent("1 day late");
+    expect(card).toHaveTextContent("Due 1 day ago");
     expect(card).toHaveTextContent("Last check 74%");
     expect(screen.getByText("1 due today")).toBeInTheDocument();
     const table = screen.getByRole("table", { name: "Checklists" });

@@ -167,6 +167,15 @@
   .feedback-right { background: color-mix(in oklch, var(--chart-right) 8%, var(--surface)); border-color: color-mix(in oklch, var(--chart-right) 50%, transparent); }
   .feedback-wrong { background: color-mix(in oklch, var(--chart-wrong) 7%, var(--surface)); border-color: color-mix(in oklch, var(--chart-wrong) 45%, transparent); }
 
+  /* Checklist points: move and remove appear on the row you're on, not on every row */
+  .point-row .point-grip, .point-row .point-remove { opacity: 0; transition: opacity var(--dur-fast) var(--ease-out); }
+  .point-row:hover .point-grip, .point-row:hover .point-remove, .point-row:focus-within .point-grip, .point-row:focus-within .point-remove { opacity: 1; }
+  @media (hover: none) { .point-row .point-grip, .point-row .point-remove { opacity: 1; } }
+
+  /* New quiz: settings summary and a start button that says why it can't start yet */
+  .setting-chip { font-size: 12px; line-height: 22px; padding: 0 8px; border: 1px solid var(--color-base-300); border-radius: 4px; color: var(--color-base-content); }
+  .btn-soft-off { opacity: 0.55; cursor: not-allowed; }
+
   /* Results: the one celebration. Bars fill left to right, the score settles once */
   @keyframes fill-in { from { transform: scaleX(0); } to { transform: none; } }
   @keyframes settle { 0%, 66% { transform: none; } 83% { transform: scale(1.04); } 100% { transform: none; } }
@@ -256,8 +265,10 @@
 .grade .when { font-size: 12px; font-weight: 400; opacity: .85; font-variant-numeric: tabular-nums; }
 .grade-again { color: var(--wrong-ink); border-color: var(--color-field-border); }
 .queue-now { text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 2px; }
-.forecast { display: flex; align-items: flex-end; gap: 4px; height: 64px; }
-.forecast > span { flex: 1; background: var(--chart-ink); border-radius: 3px 3px 0 0; min-height: 2px; }
+.forecast { display: flex; align-items: stretch; gap: 4px; height: 84px; }
+.forecast-day { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; padding-top: 20px; }
+.forecast-count { font-size: 12px; line-height: 16px; color: var(--muted); margin-bottom: 2px; }
+.forecast-bar { display: block; width: 100%; background: var(--chart-ink); border-radius: 3px 3px 0 0; min-height: 2px; max-height: 64px; }
 /* Slider (design rules section 6): thin track, primary fill, 16px thumb, 24px hit area */
 .slider { -webkit-appearance: none; appearance: none; height: 24px; background: transparent; cursor: pointer; }
 .slider::-webkit-slider-runnable-track { height: 6px; border-radius: 999px; background: linear-gradient(to right, var(--color-primary) var(--fill), var(--color-base-300) var(--fill)); }

@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../lib/api", async (original) => {
   const actual = await original<typeof import("../lib/api")>();
-  return { ...actual, api: { topics: vi.fn(), modules: vi.fn(), startQuiz: vi.fn() } };
+  return { ...actual, api: { topics: vi.fn(), modules: vi.fn(), startQuiz: vi.fn(), topicQuizzes: vi.fn() } };
 });
 
 import { api } from "../lib/api";
@@ -44,6 +44,7 @@ describe("Quiz setup", () => {
     const u = userEvent.setup();
     render(Setup, { preselected: [1, 2], onStarted: vi.fn() });
     await screen.findByRole("checkbox", { name: /CPU/ });
+    await u.click(screen.getByRole("button", { name: "Change settings" }));
     await u.click(screen.getByRole("radio", { name: "Exam" }));
     await u.click(screen.getByRole("radio", { name: "Set number" }));
     await u.clear(screen.getByLabelText("Number of questions"));
@@ -94,6 +95,7 @@ describe("Quiz setup", () => {
     const u = userEvent.setup();
     render(Setup, { preselected: [1, 2], onStarted: vi.fn() });
     await screen.findByRole("checkbox", { name: /CPU/ });
+    await u.click(screen.getByRole("button", { name: "Change settings" }));
     await u.click(screen.getByRole("radio", { name: "Set number" }));
     const input = screen.getByLabelText("Number of questions");
     await u.clear(input);
@@ -113,6 +115,7 @@ describe("Quiz setup", () => {
     const cpu = await screen.findByRole("checkbox", { name: /CPU/ });
     expect(cpu.closest("label")).toHaveTextContent("5 MCQ · 2 short answer");
     expect(screen.getByLabelText("Quiz summary")).toHaveTextContent("17 questions");
+    await u.click(screen.getByRole("button", { name: "Change settings" }));
     await u.click(screen.getByRole("radio", { name: "Short answer" }));
     expect(screen.getByRole("checkbox", { name: /GPU/ })).toBeDisabled();
     expect(screen.getByRole("checkbox", { name: /GPU/ }).closest("label")).toHaveTextContent("no short answer yet");
@@ -123,8 +126,44 @@ describe("Quiz setup", () => {
   });
 
   it("only offers question types once there are short answers", async () => {
+    const u = userEvent.setup();
     render(Setup, { onStarted: vi.fn() });
     await screen.findByRole("checkbox", { name: /CPU/ });
+    await u.click(screen.getByRole("button", { name: "Change settings" }));
     expect(screen.queryByRole("radiogroup", { name: "Question types" })).toBeNull();
+  });
+  it("folds the settings into a summary until you ask to change them", async () => {
+    const u = userEvent.setup();
+    render(Setup, { onStarted: vi.fn() });
+    await screen.findByRole("checkbox", { name: /CPU/ });
+    expect(screen.getByRole("list", { name: "Current settings" })).toHaveTextContent("Study mode");
+    expect(screen.queryByRole("radio", { name: "Exam" })).toBeNull();
+    const toggle = screen.getByRole("button", { name: "Change settings" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await u.click(toggle);
+    await u.click(screen.getByRole("radio", { name: "Exam" }));
+    expect(screen.getByRole("list", { name: "Current settings" })).toHaveTextContent("Exam mode");
+  });
+
+  it("says why it can't start yet, and keeps the button reachable", async () => {
+    render(Setup, { onStarted: vi.fn() });
+    const start = await screen.findByRole("button", { name: "Start quiz" });
+    expect(start).toHaveAttribute("aria-disabled", "true");
+    expect(start).toHaveAccessibleDescription("Pick at least one topic to start.");
+  });
+
+  it("marks topics due today and picks them in one go", async () => {
+    const u = userEvent.setup();
+    mocked.topicQuizzes.mockResolvedValue([
+      { topic: 1, step: "Week", position: 2, steps: 6, due: 0, due_today: false },
+      { topic: 2, step: "Day", position: 1, steps: 6, due: 0, due_today: true },
+    ]);
+    render(Setup, { onStarted: vi.fn() });
+    const gpu = await screen.findByRole("checkbox", { name: /GPU/ });
+    expect(gpu.closest("label")).toHaveTextContent("Due today");
+    expect(screen.getByRole("checkbox", { name: /CPU/ }).closest("label")).not.toHaveTextContent("Due today");
+    await u.click(screen.getByRole("button", { name: "Pick the 1 due" }));
+    expect(gpu).toBeChecked();
+    expect(screen.queryByRole("button", { name: "Pick the 1 due" })).toBeNull();
   });
 });
