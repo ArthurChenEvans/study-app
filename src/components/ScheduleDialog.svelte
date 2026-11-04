@@ -74,7 +74,7 @@
               <input class="input input-sm w-16 tabular-nums" type="number" min="1" aria-label="{step.name} interval" bind:value={step.every.count} />
               <select class="select select-sm w-28" aria-label="{step.name} unit" bind:value={step.every.unit}>{#each units as unit (unit)}<option value={unit}>{unit.toLowerCase()}</option>{/each}</select>
             </div></td>
-            <td>{#if last && step.repeats === 0}<span class="text-sm text-muted">From then on</span>{:else}<input class="input input-sm w-16 tabular-nums" type="number" min="1" aria-label="{step.name} times" bind:value={step.repeats} />{/if}</td>
+            <td>{#if last && step.repeats === 0}<span class="whitespace-nowrap text-sm text-muted">From then on</span>{:else}<input class="input input-sm w-16 tabular-nums" type="number" min="1" aria-label="{step.name} times" bind:value={step.repeats} />{/if}</td>
             <td class="whitespace-nowrap text-sm text-muted">{reached[index]}</td>
             <td class="text-right">{#if !last}<button type="button" class="row-actions btn btn-ghost btn-sm btn-square" aria-label="Remove {step.name}" onclick={() => editing.steps.splice(index, 1)}><X class="size-4" /></button>{/if}</td>
           </tr>

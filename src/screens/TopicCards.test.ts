@@ -68,8 +68,10 @@ describe("Topic cards", () => {
     const table = await screen.findByRole("table", { name: "Cards in CPU" });
     const rows = () => within(table).getAllByRole("row").slice(1);
     expect(rows()[0]).toHaveTextContent("Due today");
-    await u.click(screen.getByRole("radio", { name: "Due 1" }));
+    await u.click(screen.getByRole("radio", { name: "To review 1" }));
     expect(rows()).toHaveLength(1);
+    await u.click(screen.getByRole("radio", { name: "New 0" }));
+    expect(screen.getByText("No cards match.")).toBeInTheDocument();
     await u.click(screen.getByRole("radio", { name: "Tricky 1" }));
     expect(rows()[0]).toHaveTextContent("Speedup");
     await u.click(screen.getByRole("radio", { name: "Archived 1" }));

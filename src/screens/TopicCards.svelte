@@ -21,18 +21,20 @@
   const leech = $derived(editing?.view?.cards.find((card) => card.leech) ?? null);
 
   // The list: filter by what needs you, or type to find a card.
-  type Show = "all" | "due" | "tricky" | "archived";
+  // New and To review are separate: a topic's "due" count includes today's new cards.
+  type Show = "all" | "new" | "due" | "tricky" | "archived";
   let show = $state<Show>("all");
   let query = $state("");
   const isDue = (card: TopicCards["cards"][number]) => !card.archived && !card.is_new && card.due <= today;
   const counts = $derived({
     all: data?.cards.length ?? 0,
+    new: data?.cards.filter((card) => card.is_new && !card.archived).length ?? 0,
     due: data?.cards.filter(isDue).length ?? 0,
     tricky: data?.cards.filter((card) => card.leech && !card.archived).length ?? 0,
     archived: data?.cards.filter((card) => card.archived).length ?? 0,
   });
   const listed = $derived((data?.cards ?? []).filter((card) =>
-    (show === "all" || (show === "due" && isDue(card)) || (show === "tricky" && card.leech && !card.archived) || (show === "archived" && card.archived))
+    (show === "all" || (show === "new" && card.is_new && !card.archived) || (show === "due" && isDue(card)) || (show === "tricky" && card.leech && !card.archived) || (show === "archived" && card.archived))
     && card.front.toLowerCase().includes(query.trim().toLowerCase())));
 
   async function load() {
@@ -134,7 +136,7 @@
       {:else}
         <div class="mb-4 flex flex-wrap items-center gap-3">
           <div class="seg" role="radiogroup" aria-label="Show">
-            {#each [["all", "All"], ["due", "Due"], ["tricky", "Tricky"], ["archived", "Archived"]] as [key, label] (key)}
+            {#each [["all", "All"], ["new", "New"], ["due", "To review"], ["tricky", "Tricky"], ["archived", "Archived"]] as [key, label] (key)}
               <button type="button" role="radio" aria-checked={show === key} onclick={() => (show = key as Show)}>{label} <span class="tabular-nums">{counts[key as Show]}</span></button>
             {/each}
           </div>
