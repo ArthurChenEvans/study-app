@@ -559,3 +559,14 @@ Waiting for a greenlight. One new screen, "Your data" (in the sidebar under Sear
 - Every state screenshotted in both themes at 1440 × 900: no console errors, no blocked requests, no horizontal scroll.
 - Audit (contrast, 24px targets, exactly one primary per view) passes everywhere.
 - Found while building: DaisyUI's own `status` and `diff` classes squashed the status card and the conflict text into one word per line (renamed). The set-up-sync state also said "Synced 2 minutes ago" behind the dialog (fixed to "Sync is off").
+
+## Backups built (4 Nov 2026)
+
+Backups are built from this design, test-first: requirements R101 to R108 in `specs/README.md`, with scenarios in `specs/features/backup.feature`. The ID change, export and import, and sync come next, in that order.
+
+Differences from the prototype:
+- **Your data only shows Backups for now.** Sync and export/import appear when they're built, rather than as buttons that don't work yet.
+- **The daily backup waits until there's something to back up.** A brand-new, empty database isn't backed up.
+- **"Open" the backups folder became "Copy path"**, and **"Also copy to" takes a typed full path.** Both avoid adding Tauri plugins (an opener and a folder picker) just for this. The folder picker comes with sync, which needs it anyway.
+- **What a restore undoes is counted, not listed as edits:** card reviews, quizzes, recall checks, drill runs, struggles, and questions, cards and topics added since. Edits to existing things aren't recorded yet, which the ID change for sync adds.
+

@@ -80,7 +80,8 @@ try:
 
     driver.execute_script("location.hash = '#recall'")
     button("Create your first checklist").click()
-    find("//select").send_keys("Computer Architecture")
+    find("//dialog//input[@aria-label='Find a module or topic']").send_keys("Computer Arch")
+    find("//dialog//label[contains(normalize-space(), 'Computer Architecture')]//input[@type='radio']").click()
     button("Create checklist").click()
     find("//h1[normalize-space()='Computer Architecture']")
     ok("checklist made about a module, opened in the editor (R52)")

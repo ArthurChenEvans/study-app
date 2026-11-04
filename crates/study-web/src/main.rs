@@ -36,13 +36,19 @@ async fn main() -> Result<(), String> {
     }
 
     let config = Config::from_env();
+    // An update that upgrades the database copies it first (R102).
+    study_api::backup::before_update(&config.db, &config.backups, study_web::clock()).map_err(|error| error.message)?;
     let mut app = open(&config.db)?;
+    app.set_backups(&config.backups);
     if config.seed {
         if app.topics().map_err(|error| error.message)?.is_empty() {
             seed(&mut app, config.large)?;
         } else {
             println!("the database already has data, so it wasn't seeded");
         }
+    }
+    if let Err(error) = app.daily_backup(study_web::clock()) {
+        println!("couldn't make today's backup: {}", error.message);
     }
     let listener = tokio::net::TcpListener::bind(&config.address).await.map_err(|error| format!("couldn't listen on {}: {error}", config.address))?;
     println!("Study App on http://{} (database {})", config.address, config.db.display());

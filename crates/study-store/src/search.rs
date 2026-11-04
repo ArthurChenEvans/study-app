@@ -193,7 +193,7 @@ impl Store {
                 let why: String = explanation.query_row([id.0], |row| row.get(0))?;
                 option
                     .map(Matched::Option)
-                    .or_else(|| contains(&why).then(|| Matched::Explanation(why)))
+                    .or_else(|| contains(&why).then_some(Matched::Explanation(why)))
                     .or_else(|| {
                         tags.iter()
                             .find(|tag| contains(tag))

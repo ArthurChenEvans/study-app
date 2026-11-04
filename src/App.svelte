@@ -22,6 +22,8 @@
   import Project from "./screens/Project.svelte";
   import SessionReview from "./screens/SessionReview.svelte";
   import DrillSession from "./screens/DrillSession.svelte";
+  import YourData from "./screens/YourData.svelte";
+  import { statusLine } from "./lib/backup";
   import { screenFromHash, type Screen } from "./lib/router";
   import { api, type Id, type QuizView, type Subject } from "./lib/api";
 
@@ -50,7 +52,7 @@
 
   function go(next: Route) {
     route = next;
-    if (["overview", "calendar", "topics", "cards", "recall", "projects", "bibliography", "history", "search", "setup"].includes(next.screen)) history.replaceState(null, "", `#${next.screen}`);
+    if (["overview", "calendar", "topics", "cards", "recall", "projects", "bibliography", "history", "search", "setup", "data"].includes(next.screen)) history.replaceState(null, "", `#${next.screen}`);
     window.scrollTo?.(0, 0);
     refreshDue();
   }
@@ -58,7 +60,21 @@
   // R58, R68, R100: the sidebar shows what's due today.
   type DueCounts = Partial<Record<Screen, number>>;
   let due = $state<DueCounts>({});
+  // R102, R108: the day's backup is made when you move between screens, and the sidebar says how it's going.
+  let backup = $state<{ safe: boolean; short: string } | null>(null);
+  async function refreshBackup() {
+    try {
+      await api.dailyBackup();
+    } catch { /* shown on Your data */ }
+    try {
+      const [status, today] = await Promise.all([api.backupStatus(), api.today()]);
+      backup = status && typeof status === "object" ? statusLine(status, today) : null;
+    } catch {
+      backup = null;
+    }
+  }
   async function refreshDue() {
+    refreshBackup();
     try {
       const today = await api.dueToday();
       due = today && typeof today === "object" ? { calendar: today.total, topics: today.quizzes, cards: today.cards, recall: today.checklists, projects: today.drills } : {};
@@ -103,7 +119,7 @@
 <svelte:window onhashchange={() => (route = { screen: screenFromHash(location.hash) })} onkeydown={shortcut} />
 
 <div class="flex min-h-screen">
-  {#if !["quiz", "recall-session", "card-review", "session-review", "drills"].includes(route.screen)}<Sidebar current={navScreen} {due} onNavigate={(screen) => go({ screen })} />{/if}
+  {#if !["quiz", "recall-session", "card-review", "session-review", "drills"].includes(route.screen)}<Sidebar current={navScreen} {due} {backup} onNavigate={(screen) => go({ screen })} />{/if}
   <main class="min-w-0 flex-1">
     {#if route.screen === "topics"}
       <Topics onEdit={(topic) => go({ screen: "editor", topic })} onQuiz={(topic) => go({ screen: "setup-for", topics: [topic] })} onQuizTopics={(topics) => go({ screen: "setup-for", topics })} />
@@ -141,6 +157,8 @@
     {:else if route.screen === "drills"}
       {@const back = route.back}
       {#key route.run}<DrillSession ids={route.ids} onLeave={() => go(back)} />{/key}
+    {:else if route.screen === "data"}
+      <YourData onRestored={refreshDue} />
     {:else if route.screen === "bibliography"}
       <Bibliography />
     {:else if route.screen === "history"}

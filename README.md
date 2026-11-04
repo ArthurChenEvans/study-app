@@ -49,6 +49,15 @@ pnpm dev
 
 The browser and desktop versions each have their own database. They don't sync.
 
+## Backups
+
+The app backs itself up once a day (once there's something in it), and before a restore or an update that upgrades the database. Backups are full copies, named like `study 2026-11-04 09-12 daily.sqlite`, in:
+
+- **Desktop:** `~/.local/share/com.arthurchenevans.studyapp/backups`
+- **Browser version:** `backups` next to its database, so `/data/backups` in the container's volume (`down -v` deletes them too). `STUDY_BACKUPS` points it somewhere else.
+
+"Your data" in the sidebar lists them, backs up by hand, restores, sets how many to keep (7 days, 4 weeks and 12 months to start with) and can copy every backup to a second folder, like a USB stick. Each backup is an ordinary SQLite file, so you can also copy one into place by hand while the app is closed.
+
 ## Install
 
 ### Nix (NixOS)

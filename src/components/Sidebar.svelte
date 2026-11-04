@@ -1,10 +1,10 @@
 <script lang="ts">
-  import { BookOpen, Brain, CalendarDays, Hammer, SquareStack, History, Layers, LayoutDashboard, Library, Moon, Play, Search, Sun, Volume2 } from "@lucide/svelte";
+  import { BookOpen, Brain, CalendarDays, Database, Hammer, SquareStack, History, Layers, LayoutDashboard, Library, Moon, Play, Search, ShieldAlert, ShieldCheck, Sun, Volume2 } from "@lucide/svelte";
   import { DARK, LIGHT, applyTheme, type Theme } from "../lib/theme";
   import { isSoundOn, setSoundOn } from "../lib/sound";
   import type { Screen } from "../lib/router";
 
-  let { current, onNavigate, due = {} }: { current: Screen; onNavigate: (screen: Screen) => void; due?: Partial<Record<Screen, number>> } = $props();
+  let { current, onNavigate, due = {}, backup = null }: { current: Screen; onNavigate: (screen: Screen) => void; due?: Partial<Record<Screen, number>>; backup?: { safe: boolean; short: string } | null } = $props();
 
   let theme = $state<Theme>((document.documentElement.dataset.theme as Theme) ?? DARK);
   let sound = $state(isSoundOn());
@@ -19,6 +19,7 @@
     { screen: "bibliography", label: "Bibliography", icon: BookOpen },
     { screen: "history", label: "History", icon: History },
     { screen: "search", label: "Search", icon: Search },
+    { screen: "data", label: "Your data", icon: Database },
   ];
 
   /** What a count means, said the same way on hover and to a screen reader. */
@@ -68,9 +69,15 @@
     >
   </div>
   <div class="mt-auto flex flex-col gap-3 px-3 pb-2">
+    {#if backup}
+      <!-- R108: the backup status in one line, linking to Your data -->
+      <a href="#data" class="-mx-2 flex items-center gap-2 rounded-md px-2 py-1.5 text-xs hover:bg-base-300 {backup.safe ? 'text-muted' : 'font-semibold'}" onclick={(event) => go(event, "data")}>
+        {#if backup.safe}<ShieldCheck class="size-4" />{:else}<ShieldAlert class="size-4" />{/if}<span>{backup.short}</span>
+      </a>
+    {/if}
     <label class="flex cursor-pointer items-center gap-3 text-sm text-muted">
       <Volume2 class="size-4" /><span class="flex-1">Sound</span>
-      <input type="checkbox" role="switch" class="toggle toggle-sm" checked={sound} onchange={toggleSound} />
+      <input type="checkbox" role="switch" class="toggle" checked={sound} onchange={toggleSound} />
     </label>
     <div class="seg w-full" role="radiogroup" aria-label="Theme">
       <button type="button" role="radio" class="flex flex-1 items-center justify-center gap-1.5" aria-checked={theme === DARK} onclick={() => choose(DARK)}><Moon class="size-3.5" />Dark</button>

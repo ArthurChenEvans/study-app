@@ -100,6 +100,8 @@ pub struct Config {
     pub db: PathBuf,
     pub dist: PathBuf,
     pub address: String,
+    /// Where backups go, `STUDY_BACKUPS`. Defaults to a `backups` folder beside the database.
+    pub backups: PathBuf,
     pub seed: bool,
     /// `STUDY_SEED=large` seeds the heavy profile for testing how screens cope with a lot of data.
     pub large: bool,
@@ -109,6 +111,10 @@ impl Config {
     pub fn from_env() -> Self {
         let var = |name: &str, default: &str| std::env::var(name).unwrap_or_else(|_| default.to_string());
         Self {
+            backups: std::env::var("STUDY_BACKUPS").map(PathBuf::from).unwrap_or_else(|_| {
+                let db = PathBuf::from(var("STUDY_DB", "study-web.sqlite"));
+                db.parent().filter(|parent| !parent.as_os_str().is_empty()).map_or_else(|| PathBuf::from("backups"), |parent| parent.join("backups"))
+            }),
             db: var("STUDY_DB", "study-web.sqlite").into(),
             dist: var("STUDY_DIST", "dist").into(),
             address: var("STUDY_ADDRESS", "127.0.0.1:7392"),

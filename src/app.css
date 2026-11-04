@@ -336,3 +336,4 @@
 .modal-box { border: 1px solid var(--color-base-300); }
 /* Schedule step names read as names until you point at or focus them */
 .step-name:not(:hover):not(:focus) { border-color: transparent; background: transparent; }
+.path { font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 13px; background: var(--color-base-200); border-radius: 4px; padding: 1px 6px; }

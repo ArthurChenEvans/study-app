@@ -86,7 +86,7 @@ try:
     shot("first-time")
     button("New project").click()
     find("//dialog//label[.//span[normalize-space()='Name']]//input").send_keys("Study app")
-    find("//dialog//input[@list='project-kinds']").send_keys("Coding")
+    find("//dialog//label[contains(@class, 'kind-chip') and normalize-space()='Coding']").click()
     button("Create project").click()
     find("//h1[normalize-space()='Study app']")
     button("Start a session").click()
@@ -187,7 +187,7 @@ try:
     shot("topics")
 
     nav("Cards")
-    find("//button[contains(normalize-space(), 'suggestion') or starts-with(normalize-space(), 'Look through them')]").click()
+    find("//button[contains(normalize-space(), 'suggestion') or starts-with(normalize-space(), 'Look through all')]").click()
     find("//button[@role='radio' and starts-with(normalize-space(), 'Project struggles')]")
     assert "Forgot how to slice a string from the end" in text()
     ok("the struggle waits in Suggestions as a card suggestion (R95)")

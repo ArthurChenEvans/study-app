@@ -90,4 +90,21 @@ describe("Sidebar", () => {
     expect(toggle).not.toBeChecked();
     expect(localStorage.getItem("studyapp-sound")).toBe("off");
   });
+
+  // backup.feature (R108)
+  it("shows the backup status in one line and links it to Your data", async () => {
+    const onNavigate = vi.fn();
+    const { rerender } = render(Sidebar, { current: "overview", onNavigate, backup: { safe: true, short: "Backed up today" } });
+    const line = screen.getByRole("link", { name: "Backed up today" });
+    await userEvent.click(line);
+    expect(onNavigate).toHaveBeenCalledWith("data");
+    expect(screen.getByRole("link", { name: /Your data/ })).toBeInTheDocument();
+    await rerender({ current: "overview", onNavigate, backup: { safe: false, short: "No backup yet" } });
+    expect(screen.getByRole("link", { name: "No backup yet" })).toHaveClass("font-semibold");
+  });
+
+  it("leaves the backup line out until the status has loaded", () => {
+    render(Sidebar, { current: "overview", onNavigate: vi.fn() });
+    expect(screen.queryByRole("link", { name: /Backed up|No backup/ })).not.toBeInTheDocument();
+  });
 });

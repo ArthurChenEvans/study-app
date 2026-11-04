@@ -131,6 +131,7 @@ try:
     find("//nav//*[self::a or self::button][normalize-space()='Topics']").click()
     find("//*[normalize-space()='OSI layers']/ancestor::*[.//button[normalize-space()='Quiz']][1]//button[normalize-space()='Quiz']").click()
     find("//label[contains(., 'OSI layers')][contains(., '1 MCQ · 2 short answer')]")
+    button("Change settings").click()
     radio("Short answer").click()
     summary = find("//*[@aria-label='Quiz summary']")
     wait.until(lambda _: "2 questions" in summary.text and "Short answer only" in summary.text)
@@ -164,7 +165,7 @@ try:
     driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ENTER)
 
     # ---------- Results ----------
-    find("//h1[normalize-space()='Results']")
+    find("//h1[normalize-space()='Results' or normalize-space()='Quiz finished']")
     wait.until(lambda _: "2 / 2" in text().replace("\n", " ") or "2/ 2" in text())
     first = find("//li[@aria-label='Question 1' or .//*[contains(., 'own port number')]][.//*[contains(., 'You overruled this')]]")
     assert "Your answer: network layer" in first.text and "Didn't match any accepted answer" in first.text, first.text

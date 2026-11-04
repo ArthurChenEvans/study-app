@@ -19,6 +19,7 @@ use study_core::cards::{CardSettings, Rating};
 use study_store::cards::{CardId, NoteId};
 use study_api::recall::{Candidate, CheckResult, ChecklistView, Item, PointInput, Preview, RecallHistory, RecallRow};
 use study_core::recall::Schedule;
+use study_api::backup::{BackupInfo, BackupSettings, BackupStatus, RestorePreview};
 use study_api::calendar::{CalendarDay, DayView, DueToday};
 use study_api::practice::{DrillView, IssueView, ProjectRow, ProjectView, ReviewChoice, StruggleInput, StruggleView, TopicQuizView};
 use study_core::practice::DrillRating;
@@ -464,18 +465,64 @@ fn due_today(state: AppState) -> ApiResult<DueToday> {
     with(state, |app| app.due_today(today()))
 }
 
+// ---------- Backups (R101 to R108) ----------
+
+#[tauri::command]
+fn backup_status(state: AppState) -> ApiResult<BackupStatus> {
+    with(state, |app| app.backup_status())
+}
+#[tauri::command]
+fn backups(state: AppState) -> ApiResult<Vec<BackupInfo>> {
+    with(state, |app| app.backups())
+}
+#[tauri::command]
+fn back_up_now(state: AppState) -> ApiResult<BackupInfo> {
+    with(state, |app| app.back_up_now(clock()))
+}
+#[tauri::command]
+fn daily_backup(state: AppState) -> ApiResult<Option<BackupInfo>> {
+    with(state, |app| app.daily_backup(clock()))
+}
+#[tauri::command]
+fn restore_preview(state: AppState, name: String) -> ApiResult<RestorePreview> {
+    with(state, |app| app.restore_preview(&name))
+}
+#[tauri::command]
+fn restore_backup(state: AppState, name: String) -> ApiResult<BackupInfo> {
+    with(state, |app| app.restore_backup(&name, clock()))
+}
+#[tauri::command]
+fn set_backup_settings(state: AppState, settings: BackupSettings) -> ApiResult<BackupStatus> {
+    with(state, |app| app.set_backup_settings(settings, clock()))
+}
+
 pub fn run() {
     tauri::Builder::default()
         .setup(|handle| {
             let dir = handle.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
-            let store =
-                Store::open(&dir.join("study.sqlite")).map_err(|error| error.to_string())?;
-            handle.manage(Mutex::new(App::new(store)));
+            let database = dir.join("study.sqlite");
+            let backups = dir.join("backups");
+            // An update that upgrades the database copies it first (R102).
+            study_api::backup::before_update(&database, &backups, clock()).map_err(|error| error.message)?;
+            let store = Store::open(&database).map_err(|error| error.to_string())?;
+            let mut app = App::new(store);
+            app.set_backups(backups);
+            if let Err(error) = app.daily_backup(clock()) {
+                eprintln!("couldn't make today's backup: {}", error.message);
+            }
+            handle.manage(Mutex::new(app));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             slides_to_pdf,
+            backup_status,
+            backups,
+            back_up_now,
+            daily_backup,
+            restore_preview,
+            restore_backup,
+            set_backup_settings,
             projects,
             create_project,
             delete_project,

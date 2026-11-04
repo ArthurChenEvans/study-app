@@ -5,8 +5,10 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+chrono = { version = "0.4", default-features = false, features = ["std"] }
 rand = "0.9"
 serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
 study-core = { path = "../study-core" }
 study-store = { path = "../study-store" }
 thiserror = "2.0.21"

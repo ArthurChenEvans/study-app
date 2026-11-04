@@ -321,6 +321,14 @@ export const api = {
   calendarMonth: (from: number, to: number) => invoke<CalendarDay[]>("calendar_month", { from, to }),
   calendarDay: (day: number) => invoke<DayView>("calendar_day", { day }),
   dueToday: () => invoke<DueToday>("due_today"),
+  // Backups (R101 to R108)
+  backupStatus: () => invoke<BackupStatus>("backup_status"),
+  backups: () => invoke<BackupInfo[]>("backups"),
+  backUpNow: () => invoke<BackupInfo>("back_up_now"),
+  dailyBackup: () => invoke<BackupInfo | null>("daily_backup"),
+  restorePreview: (name: string) => invoke<RestorePreview>("restore_preview", { name }),
+  restoreBackup: (name: string) => invoke<BackupInfo>("restore_backup", { name }),
+  setBackupSettings: (settings: BackupSettings) => invoke<BackupStatus>("set_backup_settings", { settings }),
   slidesToPdf: async (file: File) => {
     const pdf = await invoke<ArrayBuffer | number[]>("slides_to_pdf", { name: file.name, data: await toBase64(file) });
     return new Uint8Array(pdf);
@@ -336,3 +344,11 @@ function toBase64(file: Blob): Promise<string> {
     reader.readAsDataURL(file);
   });
 }
+
+// ---------- Backups (R101 to R108) ----------
+export type BackupReason = "Daily" | "ByHand" | "BeforeRestore" | "BeforeUpdate";
+export interface BackupInfo { name: string; day: number; minute: number; reason: BackupReason; bytes: number }
+export interface BackupSettings { keep_days: number; keep_weeks: number; keep_months: number; copy_to: string | null }
+export interface BackupStatus { latest: BackupInfo | null; count: number; bytes: number; folder: string; settings: BackupSettings; copy_problem: string | null; has_data: boolean }
+export interface Undone { count: number; one: string; many: string }
+export interface RestorePreview { backup: BackupInfo; undone: Undone[]; older: boolean }

@@ -17,11 +17,15 @@ use study_core::question::{
 };
 use study_core::results::{Reasons, Summary, reason_labels, summarise};
 
+pub mod backup;
 pub mod cards;
 pub mod practice;
 pub mod recall;
 mod schema;
 pub mod search;
+
+/// The newest database schema this version of the app knows.
+pub const LATEST_SCHEMA: i64 = schema::LATEST;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct ModuleId(pub i64);

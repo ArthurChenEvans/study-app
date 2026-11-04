@@ -4,6 +4,7 @@
 //! Security rule: a `QuizView` never says which options are correct. Correct answers
 //! only leave the backend in study-mode feedback after answering, and in results.
 
+pub mod backup;
 pub mod calendar;
 pub mod cards;
 pub mod convert;
@@ -246,6 +247,7 @@ pub struct App {
     rng: StdRng,
     active: Option<Attempt>,
     card_session: Option<cards::CardSession>,
+    backups: Option<backup::Backups>,
 }
 
 impl App {
@@ -255,6 +257,7 @@ impl App {
             rng: StdRng::from_os_rng(),
             active: None,
             card_session: None,
+            backups: None,
         }
     }
 
@@ -265,6 +268,7 @@ impl App {
             rng: StdRng::seed_from_u64(seed),
             active: None,
             card_session: None,
+            backups: None,
         }
     }
 

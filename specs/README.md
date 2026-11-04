@@ -215,3 +215,11 @@ Decided with the design: keywords are checked in any order, every answer is righ
 | R98 | The calendar's month view shows, for each day, what's due (cards, checklists, quizzes, drills) with counts and words. Past days show what was done and struggles logged. Today is outlined. Overdue things count as due today |
 | R99 | A day view lists everything due that day with a start button for each, or for a past day what was done and the struggles logged. Days can be stepped through |
 | R100 | The sidebar shows today's total next to Calendar, quizzes due next to Topics, and drills due next to Projects |
+| R101 | A backup is a full copy of the database, made while the app is open without interrupting study, and never left half-written |
+| R102 | Once the database has anything in it, a backup is made each day the app is used, plus one before every restore and before an app update changes the database |
+| R103 | Backups are kept for the last 7 days, 4 weeks and 12 months (each changeable). Anything made today is always kept |
+| R104 | "Your data" shows when the last backup was, in words, and lists the backups with when, why and size. "Back up now" makes one straight away |
+| R105 | Restoring a backup first shows what will be undone, backs up the data as it is now, then puts the backup back, upgrading it if it's from an older version |
+| R106 | Backups can also be copied to a second folder (another drive, a USB stick). If that folder can't be reached, the app says so and keeps backing up as normal |
+| R107 | Backup settings live with the backups, not in the database, so restoring a backup never changes them |
+| R108 | The sidebar shows the backup status in one line, and it links to Your data |
