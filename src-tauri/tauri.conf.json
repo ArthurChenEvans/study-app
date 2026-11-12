@@ -12,7 +12,7 @@
   "app": {
     "windows": [{ "title": "Study App", "width": 1280, "height": 840, "minWidth": 960, "minHeight": 640 }],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' asset: data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'; worker-src 'self' blob:"
+      "csp": "default-src 'self'; img-src 'self' asset: data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self'; worker-src 'self' blob:; object-src 'none'; form-action 'none'; base-uri 'none'"
     }
   },
   "bundle": { "active": true, "targets": ["deb", "appimage"], "icon": ["icons/icon.png"] }

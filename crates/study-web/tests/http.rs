@@ -205,3 +205,33 @@ async fn every_response_carries_the_security_headers() {
         assert_eq!(header("cross-origin-resource-policy"), "same-origin", "{path}");
     }
 }
+
+// ---------- Hazard 15: the desktop shell's own settings stay locked down ----------
+
+// The desktop shell can't be built in every test environment, but its settings are plain
+// JSON. Any script that got into the window could call every command, so the window must
+// stay unable to run script that isn't the app's, and hold no permission beyond its own
+// commands.
+#[test]
+fn the_desktop_app_keeps_its_policy_and_asks_for_no_extra_permissions() {
+    let read = |path: &str| -> Value { serde_json::from_str(&std::fs::read_to_string(format!("{}/../../src-tauri/{path}", env!("CARGO_MANIFEST_DIR"))).unwrap()).unwrap() };
+    let capabilities = read("capabilities/default.json");
+    assert_eq!(capabilities["permissions"], json!(["core:default"]), "a new permission is a decision, change this test with it");
+    assert_eq!(capabilities["windows"], json!(["main"]));
+    assert!(capabilities.get("remote").is_none(), "no website gets to call the app's commands");
+    let config = read("tauri.conf.json");
+    let security = &config["app"]["security"];
+    let policy = security["csp"].as_str().expect("a content security policy");
+    for part in ["default-src 'self'", "script-src 'self'", "object-src 'none'", "form-action 'none'", "base-uri 'none'"] {
+        assert!(policy.split(';').any(|directive| directive.trim() == part), "the policy lacks {part}: {policy}");
+    }
+    assert!(!policy.contains("unsafe-eval") && !policy.contains("http:") && !policy.contains("https:") && !policy.contains('*'), "{policy}");
+    assert!(!policy.split(';').any(|directive| directive.trim().starts_with("script-src") && directive.contains("unsafe-inline")), "{policy}");
+    for switch in ["dangerousDisableAssetCspModification", "freezePrototype", "assetProtocol"] {
+        assert!(security.get(switch).is_none() || switch == "freezePrototype", "{switch} is set");
+    }
+    // The browser version sends the same policy, plus what only a browser needs.
+    for directive in policy.split(';').map(str::trim).filter(|directive| !directive.starts_with("img-src")) {
+        assert!(study_web::CONTENT_SECURITY_POLICY.contains(directive), "the browser version lacks {directive}");
+    }
+}
