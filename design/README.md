@@ -627,3 +627,13 @@ Tests:
 - **In the real app:** the desktop app syncs with a browser-version server through one folder. Audit clean in both themes.
 - **Large profile:** the first sync takes 0.7 seconds to send and 1.2 to receive (10 MB of change files), a sync with nothing new 0.1 seconds.
 
+
+## Playful redesign (exploration)
+
+`playful-redesign/index.html` redraws all 22 screens in a chunky, game-like style and lets you flip each one against a screenshot of the current app (`playful-redesign/shots/`). It's a comparison piece, not the agreed design, and it doesn't follow `docs/design-rules.md` yet.
+
+- **Theme** switch: Gleam colours (faff pink, aged plastic yellow, underwater blue) or the current warm paper neutrals.
+- **Colours** switch: standard green/red for right and wrong, or the colour-blind safe blue/orange pair. Icon, word and the guessed hatch stay in both.
+- The page ends with what the style costs against the design rules (type, radii, density, red meaning both wrong and destructive).
+
+Fonts load from Google Fonts, so open it online.
