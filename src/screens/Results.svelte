@@ -1,6 +1,6 @@
 <script lang="ts">
   // results.feature, retry.feature, short-answer.feature (R24, R25, R26, R84)
-  import { ArrowDown, ArrowUp, Check, CircleCheck, CircleX, Flag, RotateCcw, Undo2, X } from "@lucide/svelte";
+  import { ArrowDown, ArrowUp, Check, CircleCheck, CircleX, Flag, RotateCcw, Star, Undo2, X } from "@lucide/svelte";
   import { api, errorMessage, type GivenReason, type Id, type QuizView, type ResultsView, type ShortFeedback, type Tally, type TopicRow } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
   import Rich from "../components/Rich.svelte";
@@ -87,71 +87,49 @@
 
 {#if results}
   {@const overall = results.summary.overall}
-  <div class="mx-auto max-w-6xl px-12 pb-24">
+  <div class="mx-auto max-w-7xl px-10 pb-24">
     <PageHeader title={fresh ? "Quiz finished" : "Results"} subtitle="{results.exam ? 'Exam' : 'Study'} mode · {total(overall)} questions{results.status === 'Incomplete' ? ' · Quit early' : ''}" />
 
-    <section class="panel rise p-8">
-      <div class="grid grid-cols-[auto_1fr_auto] items-center gap-12">
-        <div>
-          <p class="text-6xl font-semibold leading-none"><CountUp value={right(overall)} /> <span class="text-3xl font-normal text-muted">/ {total(overall)}</span></p>
-          <p class="mt-3 text-sm text-muted">{overall.right_guessed} of those guessed</p>
-        </div>
-        <div>
-          {@render bar(overall, 28, true)}
-          <div class="mt-3 flex items-center gap-4 text-xs text-muted">
-            <span class="flex items-center gap-1.5"><span class="swatch" style="background: var(--chart-right)"></span>Right, sure</span>
-            <span class="flex items-center gap-1.5"><span class="swatch" style="background: var(--guessed-fill)"></span>Right, guessed</span>
-            <span class="flex items-center gap-1.5"><span class="swatch" style="background: var(--chart-wrong)"></span>Wrong</span>
+    <div class="grid grid-cols-[minmax(0,1fr)_20rem] items-start gap-6">
+      <div class="flex min-w-0 flex-col gap-4">
+        <!-- The score splits into four framed tiles: score, right, guessed (hatched) and wrong -->
+        <section class="rise grid grid-cols-4 gap-3" aria-label="Score">
+          <div class="score-tile" style="--tile: var(--color-neutral); --tile-on: var(--color-neutral-content); --tile-ink: var(--color-base-content)" role="group" aria-labelledby="score-label">
+            <span id="score-label" class="score-label">Score</span>
+            <b><Star class="size-5 fill-current" aria-hidden="true" /><span><CountUp value={right(overall)} /></span>{" "}<span>/ {total(overall)}</span></b>
+            <span class="sr-only">{overall.right_guessed} of those guessed</span>
           </div>
-        </div>
-        <div class="text-right">
-          {#if results.retry_count > 0}
-            <button class="btn btn-primary" onclick={retry}><RotateCcw class="size-4" />Retry the {results.retry_count} wrong and guessed</button>
-            <p class="mt-2 text-xs text-muted">Same settings. Retries don't move the schedule.</p>
-          {:else}
-            <p class="max-w-48 text-sm text-muted">Nothing to retry. Every answer was right and none were guesses.</p>
-          {/if}
-        </div>
-      </div>
-      <div class="mt-8 border-t border-base-300 pt-6">
-        <p class="text-sm font-semibold">By topic</p>
-        <ul class="mt-3 max-w-xl space-y-3" aria-label="By topic">
-          {#each Object.entries(results.summary.per_topic) as [id, tally] (id)}
-            <li class="grid grid-cols-[120px_1fr_56px] items-center gap-3 text-sm"><span class="truncate">{topicName(id)}</span>{@render bar(tally, 8)}<span class="text-right tabular-nums text-muted">{right(tally)} / {total(tally)}</span></li>
-          {/each}
-        </ul>
-      </div>
-    </section>
+          <div class="score-tile" style="--tile: var(--chart-right); --tile-on: var(--on-right); --tile-ink: var(--right-ink)" role="group" aria-label="Right, sure">
+            <span class="score-label" aria-hidden="true">Right, sure</span>
+            <b><Check class="size-5" strokeWidth={3} aria-hidden="true" />{overall.right_sure}</b>
+          </div>
+          <div class="score-tile score-tile-guessed" role="group" aria-label="Right, guessed">
+            <span class="score-label" aria-hidden="true">Right, guessed</span>
+            <b><Flag class="size-5 fill-current" aria-hidden="true" />{overall.right_guessed}</b>
+          </div>
+          <div class="score-tile" style="--tile: var(--chart-wrong); --tile-on: var(--on-wrong); --tile-ink: var(--wrong-ink)" role="group" aria-label="Wrong">
+            <span class="score-label" aria-hidden="true">Wrong</span>
+            <b><X class="size-5" strokeWidth={3} aria-hidden="true" />{overall.wrong + overall.unanswered}</b>
+          </div>
+        </section>
 
-    {#if results.moves.length}
-      <section class="panel mt-6 p-6" aria-labelledby="schedule-h">
-        <h2 id="schedule-h" class="text-sm font-semibold">Quiz schedule</h2>
-        <ul class="mt-3 divide-y">
-          {#each results.moves as move (move.topic)}
-            <li class="grid grid-cols-[180px_1fr_auto] items-center gap-6 py-3">
-              <span class="font-semibold">{move.name}</span>
-              <span class="flex flex-wrap items-center gap-2 text-sm">
-                <span class="status-chip {move.passed ? 'status-pass' : 'status-under'}">{#if move.passed}<ArrowUp class="size-3.5" />Passed{:else}<ArrowDown class="size-3.5" />Under pass mark{/if}</span>
-                <span class="tabular-nums">{move.score}%</span>
-                <span class="text-muted">{move.from === null ? `Starts on ${move.to}` : move.passed ? (move.from === move.to ? `Stays on ${move.to}` : `Moves up to ${move.to}`) : move.from === move.to ? `Stays on ${move.to}` : `Back to ${move.to}`}</span>
-              </span>
-              <span class="text-sm text-muted">Next quiz {onDay(move.next_due, today)}</span>
-            </li>
-          {/each}
-        </ul>
-        <p class="mt-3 text-xs text-muted">Each topic is scored on its own questions in this quiz. Retries don't move the schedule.</p>
-      </section>
-    {/if}
+        <section class="panel rise rise-2 p-5">
+          <h2 class="text-[18px]">By topic</h2>
+          <ul class="mt-2 space-y-2" aria-label="By topic">
+            {#each Object.entries(results.summary.per_topic) as [id, tally] (id)}
+              <li class="grid grid-cols-[110px_1fr_56px] items-center gap-3 text-[15px]"><span class="truncate">{topicName(id)}</span>{@render bar(tally, 14, true)}<span class="text-right tabular-nums">{right(tally)} / {total(tally)}</span></li>
+            {/each}
+          </ul>
+        </section>
+        {#if error}<p role="alert" class="text-sm text-error">{error}</p>{/if}
 
-    {#if error}<p role="alert" class="mt-4 text-sm text-error">{error}</p>{/if}
-
-    <div class="mt-12 flex items-baseline justify-between"><h2 class="text-lg font-semibold">Review</h2><p class="text-sm text-muted">Wrong and guessed first</p></div>
-    <ul class="panel mt-4 divide-y">
+        <div class="mt-2 flex items-baseline justify-between"><h2 class="text-[20px]">Review</h2><p class="text-[13px] text-muted">Wrong and guessed first</p></div>
+        <ul class="flex flex-col gap-3">
       {#each results.review as item (item.index)}
-        <li class="flex items-start gap-8 p-6" aria-label="Question {item.index + 1}">
+        <li class="panel relative flex flex-col gap-1 p-5" aria-label="Question {item.index + 1}">
           <div class="max-w-prose flex-1">
-            <p class="eyebrow">{topicName(item.topic)}{item.short || (item.options.length === 0 && item.status === "Unanswered") ? " · Short answer" : ""}</p>
-            <Rich class="mt-1 font-semibold" text={item.text} />
+            <p><span class="chip">{topicName(item.topic)}{item.short || (item.options.length === 0 && item.status === "Unanswered") ? " · Short answer" : ""}</span></p>
+            <Rich class="mt-2 text-[18px] font-extrabold" text={item.text} />
             <dl class="mt-3 space-y-1 text-sm">
               {#if item.short}
                 <div><dt class="inline text-muted">Your answer:</dt>{" "}<dd class="inline whitespace-pre-line">{item.short.typed}</dd></div>
@@ -164,17 +142,17 @@
             </dl>
             {#if item.explanation}<Rich class="mt-3 text-sm leading-relaxed" text={item.explanation} />{/if}
           </div>
-          <div class="w-64 shrink-0">
-            {#if item.status === "Right"}<span class="flex items-center gap-1 text-sm font-semibold text-right-ink"><CircleCheck class="size-4" />{item.short && !item.short.overruled && typoIn(item.short) ? "Right, with a typo" : "Right"}</span>
-            {:else if item.status === "RightGuessed"}<span class="badge guessed-chip gap-1 font-semibold"><Flag class="size-3" />Right, guessed</span>
-            {:else}<span class="flex items-center gap-1 text-sm font-semibold text-wrong-ink"><CircleX class="size-4" />{item.status === "Unanswered" ? "Not answered" : "Wrong"}</span>{/if}
+          <div class="w-full">
+            <span class="absolute right-5 top-5">{#if item.status === "Right"}<span class="chip chip-right"><CircleCheck class="size-4" />{item.short && !item.short.overruled && typoIn(item.short) ? "Right, with a typo" : "Right"}</span>
+            {:else if item.status === "RightGuessed"}<span class="chip chip-guessed"><Flag class="size-3.5" />Right, guessed</span>
+            {:else}<span class="chip chip-wrong"><CircleX class="size-4" />{item.status === "Unanswered" ? "Not answered" : "Wrong"}</span>{/if}</span>
 
             {#if item.short?.overruled}<span class="overruled mt-1 inline-block">You overruled this</span>{/if}
             {#if item.short}
               {#if item.short.overruled}
                 <button class="btn btn-ghost btn-sm mt-3" onclick={() => overrule(item.index)}><Undo2 class="size-4" />Undo, count it as {item.short.marking.right ? "right" : "wrong"}</button>
               {:else if item.status === "Wrong"}
-                <button class="btn btn-outline btn-sm mt-3 w-full border-field-border" onclick={() => overrule(item.index)}><Check class="size-4" />Count it as right</button>
+                <button class="btn btn-outline btn-sm mt-3 w-full" onclick={() => overrule(item.index)}><Check class="size-4" />Count it as right</button>
               {:else}
                 <button class="btn btn-ghost btn-sm mt-3" onclick={() => overrule(item.index)}><X class="size-4" />Count it as wrong</button>
               {/if}
@@ -183,15 +161,16 @@
             {#if item.auto_reason}
               <p class="mt-3 text-sm">Reason: <b>{item.auto_reason === "Incomplete" ? "Incomplete" : "Timed out"}</b> <span class="text-muted">(recorded automatically)</span></p>
             {:else if item.status === "Wrong"}
-              <label class="mt-3 block">
-                <span class="text-sm text-muted">Why did you get it wrong? <span class="text-xs">(optional)</span></span>
-                <select class="select select-sm mt-1 w-full" value={presetValue(item.reason)} onchange={(event) => event.currentTarget.value && give(item.index, event.currentTarget.value as GivenReason)}>
-                  <option value="">Pick a reason…</option>
-                  {#each presets as preset (preset.value)}<option value={preset.value}>{preset.label}</option>{/each}
-                </select>
-              </label>
+              <!-- Reasons as tap chips, one picked at a time -->
+              <p id="why-{item.index}" class="mt-3 text-sm">Why did you get it wrong? <span class="text-muted">(optional)</span></p>
+              <div class="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-labelledby="why-{item.index}">
+                {#each presets as preset (preset.value)}
+                  {@const on = presetValue(item.reason) === preset.value}
+                  <button type="button" role="radio" aria-checked={on} class="word {on ? 'word-on' : ''}" onclick={() => give(item.index, preset.value)}>{preset.label}</button>
+                {/each}
+              </div>
               <input
-                class="input input-sm mt-2 w-full"
+                class="input input-sm mt-3 w-full max-w-md"
                 aria-label="Your own reason"
                 placeholder={item.reason && typeof item.reason === "object" ? item.reason.Other : "Or write your own reason…"}
                 bind:value={ownReason[item.index]}
@@ -201,6 +180,33 @@
           </div>
         </li>
       {/each}
-    </ul>
+        </ul>
+      </div>
+
+      <aside class="flex flex-col gap-4">
+        {#if results.retry_count > 0}
+          <div>
+            <button class="btn btn-primary btn-wrap w-full" onclick={retry}><RotateCcw class="size-4" />Retry the {results.retry_count} wrong and guessed</button>
+            <p class="mt-2 text-center text-[13px] text-muted">Same settings. Retries don't move the schedule.</p>
+          </div>
+        {:else}
+          <p class="panel p-5 text-sm text-muted">Nothing to retry. Every answer was right and none were guesses.</p>
+        {/if}
+        {#if results.moves.length}
+          <section class="panel p-5" aria-labelledby="schedule-h">
+            <h2 id="schedule-h" class="text-[18px]">Quiz schedule</h2>
+            <ul class="mt-1">
+              {#each results.moves as move (move.topic)}
+                <li class="border-t-2 border-base-300 py-2.5 first:border-t-0">
+                  <span class="flex items-center justify-between gap-2"><span class="flex flex-wrap items-center gap-2"><span class="font-extrabold">{move.name}</span>{" "}<span class="status-chip {move.passed ? 'status-pass' : 'status-under'}">{#if move.passed}<ArrowUp class="size-3.5" />Passed{:else}<ArrowDown class="size-3.5" />Under pass mark{/if}</span></span>{" "}<span class="tabular-nums">{move.score}%</span></span>{" "}
+                  <span class="mt-0.5 block text-[13px] text-muted">{move.from === null ? `Starts on ${move.to}` : move.passed ? (move.from === move.to ? `Stays on ${move.to}` : `Moves up to ${move.to}`) : move.from === move.to ? `Stays on ${move.to}` : `Back to ${move.to}`} · Next quiz {onDay(move.next_due, today)}</span>
+                </li>
+              {/each}
+            </ul>
+            <p class="mt-2 text-[13px] text-muted">Each topic is scored on its own questions in this quiz.</p>
+          </section>
+        {/if}
+      </aside>
+    </div>
   </div>
 {/if}

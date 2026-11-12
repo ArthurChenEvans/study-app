@@ -76,11 +76,11 @@
       <p class="mt-1 text-sm text-muted">Keeps your computers (and the browser version) in step through a folder you already keep in sync, like Syncthing. No account, no server, nothing to pay for.</p>
     </div>
     {#if !status.on}
-      <button class="btn btn-outline shrink-0 border-field-border" onclick={() => (setup = "setup")}><RefreshCw class="size-4" />Set up sync</button>
+      <button class="btn btn-outline shrink-0" onclick={() => (setup = "setup")}><RefreshCw class="size-4" />Set up sync</button>
     {:else if fix === "paused"}
       <button class="btn btn-primary shrink-0" disabled={busy} onclick={() => run(() => api.syncResume())}><RefreshCw class="size-4" />Turn sync back on</button>
     {:else}
-      <button class="btn btn-outline shrink-0 border-field-border" disabled={busy} onclick={() => run(() => api.syncNow(false))}><RefreshCw class="size-4" />{busy ? "Syncing…" : "Sync now"}</button>
+      <button class="btn btn-outline shrink-0" disabled={busy} onclick={() => run(() => api.syncNow(false))}><RefreshCw class="size-4" />{busy ? "Syncing…" : "Sync now"}</button>
     {/if}
   </div>
 
@@ -130,19 +130,19 @@
             {#if first.deleted}
               <p class="mt-2 text-[15px]">Deleted on {first.other_by}, but {first.kept_by} changed or added to it before it knew, so it's been kept.</p>
               <div class="mt-3 flex gap-2">
-                <button class="btn btn-outline btn-sm border-field-border" disabled={busy} onclick={() => settle(group, false)}><Check class="size-4" />Keep it</button>
+                <button class="btn btn-outline btn-sm" disabled={busy} onclick={() => settle(group, false)}><Check class="size-4" />Keep it</button>
                 <button class="btn btn-ghost btn-sm" disabled={busy} onclick={() => settle(group, true)}><Trash2 class="size-4" />Delete it after all</button>
               </div>
             {:else}
               {#each group.fields as field (field.n)}
                 {@const diff = wordDiff(field.other ?? "", field.kept ?? "")}
                 <div class="mt-3 grid grid-cols-2 gap-4">
-                  <div class="rounded-lg bg-base-200 p-4" role="group" aria-label="{field.kept_by}'s version, in use">
+                  <div class="note-box p-4" role="group" aria-label="{field.kept_by}'s version, in use">
                     <p class="flex items-center justify-between gap-2 text-xs text-muted"><span><b class="text-base-content">{field.kept_by}</b>, {whenLabel(field.kept_when, now())}</span><span class="kind">In use, newer</span></p>
                     <p class="mt-3 text-sm text-muted">{fieldLabel(field.field)}</p>
                     <p class="whitespace-pre-line text-[15px]">{#each diff.newer as piece, index (index)}{#if piece.kind === "added"}<ins class="chg">{piece.text}</ins>{:else}{piece.text}{/if}{:else}<span class="text-muted">(empty)</span>{/each}</p>
                   </div>
-                  <div class="rounded-lg bg-base-200 p-4" role="group" aria-label="{field.other_by}'s version">
+                  <div class="note-box p-4" role="group" aria-label="{field.other_by}'s version">
                     <p class="text-xs text-muted"><b class="text-base-content">{field.other_by}</b>, {whenLabel(field.other_when, now())}</p>
                     <p class="mt-3 text-sm text-muted">{fieldLabel(field.field)}</p>
                     <p class="whitespace-pre-line text-[15px]">{#each diff.older as piece, index (index)}{#if piece.kind === "removed"}<del class="chg">{piece.text}</del>{:else}{piece.text}{/if}{:else}<span class="text-muted">(empty)</span>{/each}</p>
@@ -151,7 +151,7 @@
               {/each}
               <p class="mt-2 text-xs text-muted">Underlined: only in the newer one. Struck through: only in the older one.</p>
               <div class="mt-3 flex gap-2">
-                <button class="btn btn-outline btn-sm border-field-border" disabled={busy} onclick={() => settle(group, false)}><Check class="size-4" />Keep {first.kept_by}'s</button>
+                <button class="btn btn-outline btn-sm" disabled={busy} onclick={() => settle(group, false)}><Check class="size-4" />Keep {first.kept_by}'s</button>
                 <button class="btn btn-ghost btn-sm" disabled={busy} onclick={() => settle(group, true)}>Use {first.other_by}'s instead</button>
               </div>
             {/if}

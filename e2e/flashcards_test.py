@@ -119,7 +119,7 @@ try:
     assert "Makes 2 cards" in preview.text and len(preview.find_elements(By.CSS_SELECTOR, ".cloze-gap")) == 2
     shot("editor-cloze")
     box.send_keys(Keys.CONTROL, "s")
-    wait.until(lambda _: "2 cards added" in text() and "Cloze 2 of 2" in text())
+    wait.until(lambda _: "2 cards added" in text() and "CLOZE 2 OF 2" in text().upper())
     rows = driver.execute_script("return document.querySelector('table[aria-label=\"Cards in Memory\"]').tBodies[0].rows.length")
     assert rows == 6, rows
     ok("cloze gaps from the selection and the shortcut, previewed, saved as 2 cards (R64)")

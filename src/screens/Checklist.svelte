@@ -154,7 +154,7 @@
 </script>
 
 <div class="mx-auto max-w-6xl px-12 pb-24">
-  <button class="mt-8 inline-flex items-center gap-1 py-1 text-sm text-muted hover:underline" onclick={onBack}><ArrowLeft class="size-4" />Recall</button>
+  <button class="mt-8 inline-flex items-center gap-1 py-1 text-xs font-extrabold uppercase tracking-wider text-muted hover:underline" onclick={onBack}><ArrowLeft class="size-4" />Recall</button>
   {#if view && schedule}
     <div class="flex items-end justify-between gap-6 pb-6 pt-4">
       <div>
@@ -168,8 +168,8 @@
     </div>
 
     <div class="flex items-center gap-1 border-b border-base-300" role="tablist" aria-label="Checklist views">
-      <button role="tab" aria-selected={tab === "points"} class="px-3 py-2 text-sm {tab === 'points' ? 'border-b-2 border-primary font-semibold' : 'text-muted'}" onclick={() => (tab = "points")}>Checklist <span class="ml-1 text-xs font-normal text-muted">{points.length}</span></button>
-      <button role="tab" aria-selected={tab === "history"} class="px-3 py-2 text-sm {tab === 'history' ? 'border-b-2 border-primary font-semibold' : 'text-muted'}" onclick={showHistory}>History</button>
+      <button role="tab" aria-selected={tab === "points"} class="px-3 py-2 text-sm {tab === 'points' ? 'border-b-2 border-primary-ink font-semibold' : 'text-muted'}" onclick={() => (tab = "points")}>Checklist <span class="ml-1 text-xs font-normal text-muted">{points.length}</span></button>
+      <button role="tab" aria-selected={tab === "history"} class="px-3 py-2 text-sm {tab === 'history' ? 'border-b-2 border-primary-ink font-semibold' : 'text-muted'}" onclick={showHistory}>History</button>
     </div>
 
     {#if tab === "points"}
@@ -185,20 +185,20 @@
               <p class="mt-1 text-sm text-muted">Write the main things you should be able to recall, one per point, or add them from your questions and flashcards.</p>
             </div>
           {:else}
-            <ol class="panel divide-y" aria-label="Points to recall">
+            <ol class="space-y-2" aria-label="Points to recall">
               {#each points as point, index (index)}
-                <li class="point-row flex min-h-11 items-center gap-3 px-4 py-2 {dragFrom === index ? 'opacity-50' : ''}" draggable="true"
+                <li class="point-row panel flex min-h-14 items-center gap-3 px-3 py-2 {dragFrom === index ? 'opacity-50' : ''}" draggable="true"
                   ondragstart={() => (dragFrom = index)} ondragend={() => (dragFrom = null)} ondragover={(event) => event.preventDefault()}
                   ondrop={() => { if (dragFrom !== null) move(dragFrom, index); dragFrom = null; }}>
                   <span class="point-grip cursor-grab text-muted" title="Drag to reorder, or Alt+Up and Alt+Down" aria-hidden="true"><GripVertical class="size-4" /></span>
-                  <span class="w-6 text-right text-xs tabular-nums text-muted">{index + 1}</span>
+                  <span class="num-box" aria-hidden="true">{index + 1}</span>
                   {#if editingIndex === index}
                     <!-- svelte-ignore a11y_autofocus -->
                     <input class="input input-sm flex-1" aria-label="Point {index + 1}" value={point.text} autofocus
                       onblur={(event) => finishEdit(index, event.currentTarget.value)}
                       onkeydown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); if (event.key === "Escape") editingIndex = null; }} />
                   {:else}
-                    <button class="min-w-0 flex-1 rounded px-2 py-1 text-left text-[15px] hover:bg-base-200" data-point={index} aria-label="Edit point {index + 1}: {point.text}" title="Click to edit, Alt+Up or Alt+Down to move"
+                    <button class="min-w-0 flex-1 rounded px-2 py-1 text-left text-[16px] font-extrabold hover:bg-base-200" data-point={index} aria-label="Edit point {index + 1}: {point.text}" title="Click to edit, Alt+Up or Alt+Down to move"
                       onclick={() => (editingIndex = index)} onkeydown={(event) => pointKeys(event, index)}><Rich inline text={point.text} /></button>
                   {/if}
                   {#if point.question !== null}<span class="badge-src" title="Added from an MCQ. Removing it here doesn't change the question.">From MCQ</span>
@@ -219,12 +219,13 @@
 
         <aside class="panel sticky top-8 p-6" aria-label="Schedule">
           <p class="eyebrow">Schedule</p>
-          <p class="mt-3 text-2xl font-semibold">{view.row.step ?? "Not started"}</p>
+          <p class="mt-2 text-[28px] font-black leading-tight">{view.row.step ?? "Not started"}</p>
           <p class="text-sm text-muted">Next check {onDay(view.row.due, today)}</p>
           <div class="mt-4"><Ladder steps={schedule.steps} position={view.row.position} step={view.row.step} next={view.row.next_step} /></div>
           <dl class="mt-6 space-y-3 text-sm">
-            <div class="flex justify-between"><dt class="text-muted">Last check</dt><dd class="tabular-nums">{view.row.last_score === null ? "None yet" : `${view.row.last_score}%`}</dd></div>
-            <div class="flex justify-between gap-4"><dt class="text-muted">Covers</dt><dd class="text-right">{view.topics.join(", ") || "No topics now"}</dd></div>
+            <div class="border-t-2 border-base-300 pt-3"><div class="flex justify-between"><dt class="font-extrabold">Last check</dt><dd class="font-extrabold tabular-nums">{view.row.last_score === null ? "None yet" : `${view.row.last_score}%`}</dd></div>
+              {#if view.row.last_score !== null}<div class="meter mt-2" aria-hidden="true"><span class="fill" style="width: {view.row.last_score}%"></span></div>{/if}</div>
+            <div class="flex items-center justify-between gap-4 border-t-2 border-base-300 pt-3"><dt class="font-extrabold">Covers</dt><dd class="flex flex-wrap justify-end gap-1.5">{#each view.topics as name (name)}<span class="chip">{name}</span>{:else}<span class="text-muted">No topics now</span>{/each}</dd></div>
           </dl>
           {#if points.length === 0}<p class="mt-6 text-sm text-muted">Needs at least one point to start.</p>{/if}
         </aside>

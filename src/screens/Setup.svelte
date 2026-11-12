@@ -121,16 +121,17 @@
       <section>
         <div class="mb-3 flex items-center justify-between">
           <h2 class="eyebrow">Topics</h2>
-          {#if dueIds.length && dueIds.some((id) => !chosen.includes(id))}<button class="btn btn-ghost btn-sm" onclick={pickDue}>Pick the {dueIds.length} due</button>{/if}
+          {#if dueIds.length && dueIds.some((id) => !chosen.includes(id))}<button class="btn btn-link btn-sm text-[13px]" onclick={pickDue}>Pick the {dueIds.length} due</button>{/if}
         </div>
-        <div class="panel divide-y">
+        <!-- Picking a topic lights up its whole row -->
+        <div class="flex flex-col gap-2">
           {#each topics as topic (topic.id)}
             {@const empty = countOf(topic) === 0}
-            <label class="flex items-center gap-4 px-6 py-3 {empty ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-base-100'}">
-              <input type="checkbox" class="checkbox checkbox-sm" checked={chosen.includes(topic.id)} disabled={empty} onchange={() => toggle(topic.id)} />
-              <span class="flex-1"><span class="text-sm font-semibold">{topic.name}</span> <span class="text-sm text-muted">· {moduleName(topic.module)}</span></span>
-              {#if isDue(topic)}<span class="flex items-center gap-1.5 text-sm font-semibold"><span class="due-dot" aria-hidden="true"></span>Due today</span>{/if}
-              <span class="text-xs tabular-nums text-muted">{countLabel(topic)}</span>
+            <label class="pick-row {chosen.includes(topic.id) ? 'pick-on' : ''} {empty ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}">
+              <input type="checkbox" class="checkbox" checked={chosen.includes(topic.id)} disabled={empty} onchange={() => toggle(topic.id)} />
+              <span class="flex-1"><span class="text-[16px] font-extrabold">{topic.name}</span> <span class="text-muted">· {moduleName(topic.module)}</span></span>
+              {#if isDue(topic)}<span class="chip chip-due">Due today</span>{/if}
+              <span class="text-[13px] tabular-nums text-muted">{countLabel(topic)}</span>
             </label>
           {:else}
             <p class="px-6 py-4 text-sm text-muted">Create a topic and write some questions first.</p>
@@ -142,7 +143,7 @@
         <h2 class="eyebrow mb-3">Settings</h2>
         <div class="panel flex flex-wrap items-center gap-2 px-6 py-4">
           <ul class="flex flex-1 flex-wrap gap-2" aria-label="Current settings">
-            {#each summary as item (item)}<li class="setting-chip">{item}</li>{/each}
+            {#each summary as item (item)}<li class="word">{item}</li>{/each}
           </ul>
           <button class="btn btn-ghost btn-sm" aria-expanded={showSettings} aria-controls="quiz-settings" onclick={() => (showSettings = !showSettings)}>
             {showSettings ? "Hide settings" : "Change settings"}<ChevronDown class="size-4 transition-transform {showSettings ? 'rotate-180' : ''}" />

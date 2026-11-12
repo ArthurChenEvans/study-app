@@ -31,6 +31,20 @@ describe("Sidebar", () => {
     expect(screen.getByRole("radio", { name: "Light" })).toHaveAttribute("aria-checked", "true");
   });
 
+  // appearance.feature: Colour-blind safe colours (R129)
+  it("switches right and wrong to the colour-blind safe colours", async () => {
+    localStorage.clear();
+    delete document.documentElement.dataset.palette;
+    const u = userEvent.setup();
+    render(Sidebar, { current: "overview", onNavigate: vi.fn() });
+    const toggle = screen.getByRole("switch", { name: "Colour-blind safe" });
+    expect(toggle).not.toBeChecked();
+    await u.click(toggle);
+    expect(document.documentElement.dataset.palette).toBe("cb");
+    await u.click(toggle);
+    expect(document.documentElement.dataset.palette).toBeUndefined();
+  });
+
   // free-recall.feature: Due checklists come first (the sidebar shows how many are due)
   it("shows how many checklists are due", () => {
     render(Sidebar, { current: "recall", onNavigate: vi.fn(), due: { recall: 2 } });
@@ -100,7 +114,7 @@ describe("Sidebar", () => {
     expect(onNavigate).toHaveBeenCalledWith("data");
     expect(screen.getByRole("link", { name: /Your data/ })).toBeInTheDocument();
     await rerender({ current: "overview", onNavigate, backup: { safe: false, short: "No backup yet" } });
-    expect(screen.getByRole("link", { name: "No backup yet" })).toHaveClass("font-semibold");
+    expect(screen.getByRole("link", { name: "No backup yet" })).toHaveClass("font-extrabold");
   });
 
   // sync.feature (R128): with sync on, the line says how sync is going, unless the backup needs attention
@@ -110,7 +124,7 @@ describe("Sidebar", () => {
     expect(screen.getByRole("link", { name: "Synced 2 minutes ago" })).toHaveClass("text-muted");
     expect(screen.queryByRole("link", { name: "Backed up today" })).not.toBeInTheDocument();
     await rerender({ current: "overview", onNavigate, backup: { safe: true, short: "Backed up today" }, sync: { ok: false, short: "Synced, 1 to check" } });
-    expect(screen.getByRole("link", { name: "Synced, 1 to check" })).toHaveClass("font-semibold");
+    expect(screen.getByRole("link", { name: "Synced, 1 to check" })).toHaveClass("font-extrabold");
     await rerender({ current: "overview", onNavigate, backup: { safe: false, short: "No backup yet" }, sync: { ok: true, short: "Synced just now" } });
     expect(screen.getByRole("link", { name: "No backup yet" })).toBeInTheDocument();
   });

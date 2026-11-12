@@ -36,12 +36,12 @@
   });
 </script>
 
-<div class="mx-auto max-w-6xl px-12 pb-24">
+<div class="mx-auto max-w-6xl px-10 pb-24">
   <PageHeader title="History" subtitle={rows.length ? `${rows.length} attempts` : ""} />
 
   {#if loaded && rows.length === 0}
     <div class="panel max-w-lg p-10">
-      <span class="grid size-10 place-items-center rounded-lg bg-base-200"><HistoryIcon class="size-5" /></span>
+      <span class="well" aria-hidden="true"><HistoryIcon class="size-5" /></span>
       <h2 class="mt-6 text-xl font-semibold">No quizzes yet</h2>
       <p class="mt-2 text-muted">Every quiz you finish or quit is saved here, with a chart of how your scores change.</p>
       <button class="btn btn-primary mt-6" onclick={onNewQuiz}><Play class="size-4" />Start a quiz</button>
@@ -60,13 +60,16 @@
           {#each rows as row (row.id)}
             <!-- The whole row opens the results: one button, stretched over the row. -->
             <tr class="link-row hover:bg-base-100" aria-label="Quiz {row.id}">
-              <td class="tabular-nums"><button class="row-link" onclick={() => onView(row.id)}><span class="sr-only">View results from</span>{" "}{dayLabel(row.day, today)}</button></td>
+              <td class="font-extrabold tabular-nums"><button class="row-link" onclick={() => onView(row.id)}><span class="sr-only">View results from</span>{" "}{dayLabel(row.day, today)}</button></td>
               <td>{names(row.topics)}</td>
-              <td><SegBar tally={row.summary.overall} height={6} /></td>
+              <td><SegBar tally={row.summary.overall} height={14} /></td>
               <td class="text-right font-semibold tabular-nums">{right(row.summary.overall)} / {total(row.summary.overall)}</td>
               <td>
-                {#if row.retry_of !== null}<span class="badge badge-ghost badge-sm gap-1"><RotateCcw class="size-3" />Retry</span>
-                {:else if row.status === "Incomplete"}<span class="badge badge-ghost badge-sm gap-1"><CirclePause class="size-3" />Incomplete</span>{/if}
+                <span class="flex items-center justify-end gap-3">
+                {#if row.retry_of !== null}<span class="chip"><RotateCcw class="size-3" />Retry</span>
+                {:else if row.status === "Incomplete"}<span class="chip"><CirclePause class="size-3" />Incomplete</span>{/if}
+                <span class="whitespace-nowrap text-[13px] font-extrabold uppercase tracking-[.06em] text-primary-ink" aria-hidden="true">View results</span>
+                </span>
               </td>
             </tr>
           {/each}

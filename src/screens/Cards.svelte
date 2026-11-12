@@ -84,39 +84,44 @@
 
   {#if home && home.total_cards === 0}
     <div class="panel max-w-xl p-10">
-      <span class="grid size-10 place-items-center rounded-lg bg-base-200"><SquareStack class="size-5" /></span>
+      <span class="well" aria-hidden="true"><SquareStack class="size-5" /></span>
       <h2 class="mt-6 text-xl font-semibold">No cards yet</h2>
       <p class="mt-2 max-w-prose text-muted">Cards are for the things you keep forgetting. Write them in a topic, or make them from what you missed in a recall or got wrong in a quiz. The app picks which ones to show each day, so you only see a card just before you'd forget it.</p>
       <div class="mt-6 flex gap-3">
         <button class="btn btn-primary" onclick={onNewCard}><Plus class="size-4" />Write your first card</button>
-        {#if home.suggestions}<button class="btn btn-outline border-field-border" onclick={onSuggestions}><Inbox class="size-4" />{home.suggestions} {home.suggestions === 1 ? "suggestion" : "suggestions"}</button>{/if}
+        {#if home.suggestions}<button class="btn btn-outline" onclick={onSuggestions}><Inbox class="size-4" />{home.suggestions} {home.suggestions === 1 ? "suggestion" : "suggestions"}</button>{/if}
       </div>
     </div>
   {:else if home}
-    <div class="grid grid-cols-[1fr_340px] items-start gap-8">
-      <section class="panel p-8" aria-labelledby="today-h">
+    <div class="grid grid-cols-[minmax(0,1fr)_20rem] items-start gap-6">
+      <div class="flex min-w-0 flex-col gap-4">
+      <section class="panel p-6" aria-labelledby="today-h">
         <h2 id="today-h" class="eyebrow">Today</h2>
         {#if total === 0}
           <div class="mt-4 flex items-center gap-4"><CircleCheck class="size-6" /><div><p class="text-2xl font-semibold">Done for today</p><p class="mt-1 text-muted">{home.forecast[1]} due tomorrow.</p></div></div>
         {:else}
-          <p class="mt-4 text-5xl font-semibold leading-none tabular-nums">{total} <span class="text-lg font-normal text-muted">{total === 1 ? "card" : "cards"}</span></p>
-          <p class="mt-4 flex flex-wrap items-center gap-3 text-sm" aria-label="{home.due.new} new, {home.due.learning} learning, {home.due.review} to review">
-            <span class="tabular-nums"><span class="font-semibold">{home.due.new}</span> <span class="text-muted">new</span></span><span class="text-muted" aria-hidden="true">·</span>
-            <span class="tabular-nums"><span class="font-semibold">{home.due.learning}</span> <span class="text-muted">learning</span></span><span class="text-muted" aria-hidden="true">·</span>
-            <span class="tabular-nums"><span class="font-semibold">{home.due.review}</span> <span class="text-muted">to review</span></span>
-          </p>
-          <p class="mt-2 text-sm text-muted">About {home.minutes} {home.minutes === 1 ? "minute" : "minutes"}.</p>
-          <div class="mt-8 flex items-center gap-3">
-            <button class="btn btn-primary btn-lg" onclick={start}><Play class="size-4" />Start review <kbd class="kbd kbd-xs">Enter</kbd></button>
-            <select class="select w-56" aria-label="Review which topics" bind:value={scope}>
+          <div class="mt-1 flex flex-wrap items-start justify-between gap-6">
+            <div>
+              <p class="text-[44px] font-black leading-none tabular-nums">{total} <span class="text-[18px] font-extrabold">{total === 1 ? "card" : "cards"}</span></p>
+              <p class="mt-3 flex flex-wrap items-center gap-2 text-sm" aria-label="{home.due.new} new, {home.due.learning} learning, {home.due.review} to review">
+                <span class="chip chip-info tabular-nums">{home.due.new} new</span>
+                <span class="chip tabular-nums">{home.due.learning} learning</span>
+                <span class="chip chip-primary tabular-nums">{home.due.review} to review</span>
+                <span class="ml-1 text-[13px] text-muted">About {home.minutes} {home.minutes === 1 ? "minute" : "minutes"}.</span>
+              </p>
+            </div>
+            <div class="flex w-64 flex-col gap-3">
+            <button class="btn btn-primary w-full" onclick={start}><Play class="size-4 fill-current" />Start review <kbd class="kbd kbd-xs">Enter</kbd></button>
+            <select class="select w-full" aria-label="Review which topics" bind:value={scope}>
               <option value="">All topics</option>
               {#if modules.length}<optgroup label="Modules">{#each modules as module (module.id)}<option value="module:{module.id}">{module.name}</option>{/each}</optgroup>{/if}
               <optgroup label="Topics">{#each home.per_topic as row (row.topic)}<option value="topic:{row.topic}">{row.name}</option>{/each}</optgroup>
             </select>
+            </div>
           </div>
         {/if}
-        <div class="mt-10">
-          <div class="flex items-baseline justify-between"><h3 class="text-sm font-semibold">Next 14 days</h3><span class="text-xs text-muted">cards due per day</span></div>
+        <div class="mt-6">
+          <div class="flex items-baseline justify-between"><h3 class="text-[16px]">Next 14 days</h3><span class="text-xs text-muted">cards due per day</span></div>
           <div class="forecast mt-3" role="img" aria-label="Cards due over the next 14 days: {home.forecast.join(', ')}">
             {#each home.forecast as count, index (index)}
               <span class="forecast-day" title="{dueLabel(today + index, today)}: {count} {count === 1 ? 'card' : 'cards'}">
@@ -138,32 +143,20 @@
           </details>
         </div>
       </section>
-      <aside class="space-y-6">
-        <section class="panel p-6" aria-labelledby="sugg-h">
-          <div class="flex items-center justify-between"><h2 id="sugg-h" class="flex items-center gap-2 text-sm font-semibold"><Inbox class="size-4" />Suggestions</h2><span class="text-sm tabular-nums text-muted">{home.suggestions}</span></div>
-          <p class="mt-2 text-sm text-muted">{home.suggestions ? "Points you missed in recalls and questions you got wrong or guessed could become cards." : "Nothing to suggest. Misses from recalls and quizzes show up here."}</p>
-          {#if home.suggestions}<button class="btn btn-outline btn-sm mt-4 border-field-border" onclick={onSuggestions}>Look through all {home.suggestions}</button>{/if}
-        </section>
-        <section class="panel p-6" aria-labelledby="ret-h">
-          <h2 id="ret-h" class="text-sm font-semibold">Retention, last 30 days</h2>
-          <p class="mt-2"><span class="text-3xl font-semibold tabular-nums">{home.retention === null ? "None yet" : `${home.retention}%`}</span> <span class="text-sm text-muted">aiming for {home.target}%</span></p>
-          <p class="mt-1 text-sm text-muted">Share of reviews you got without pressing Again.</p>
-        </section>
-      </aside>
-    </div>
 
-    <section class="mt-12" aria-labelledby="by-topic-h">
-      <h2 id="by-topic-h" class="eyebrow mb-3">By topic</h2>
+    <section aria-labelledby="by-topic-h">
+      <h2 id="by-topic-h" class="sr-only">By topic</h2>
       <div class="panel overflow-hidden">
         <table class="table table-fixed" aria-label="Cards by topic">
-          <colgroup><col class="w-[30%]" /><col class="w-[14%]" /><col class="w-[14%]" /><col class="w-[14%]" /><col class="w-[14%]" /><col class="w-[14%]" /></colgroup>
+          <colgroup><col class="w-[27%]" /><col class="w-[11%]" /><col class="w-[14%]" /><col class="w-[15%]" /><col class="w-[11%]" /><col class="w-[22%]" /></colgroup>
           <thead><tr class="text-muted"><th>Topic</th><th>New</th><th>Learning</th><th>To review</th><th>Cards</th><th>Retention</th></tr></thead>
           <tbody>
             {#each home.per_topic as row (row.topic)}
               <tr class="hover:bg-base-100">
                 <td><button class="py-0.5 text-left font-semibold hover:underline" onclick={() => onTopic(row.topic)}>{row.name}</button><div class="text-xs text-muted">{row.module ?? "No module"}</div></td>
                 <td class="tabular-nums">{row.due.new}</td><td class="tabular-nums">{row.due.learning}</td><td class="tabular-nums">{row.due.review}</td>
-                <td class="tabular-nums">{row.total}</td><td class="tabular-nums">{row.retention === null ? "None yet" : `${row.retention}%`}</td>
+                <td class="tabular-nums">{row.total}</td>
+                <td class="tabular-nums">{#if row.retention === null}<span class="text-muted">None yet</span>{:else}<span class="flex items-center gap-2"><span class="inline-block h-3 w-14 shrink-0 overflow-hidden rounded-full bg-base-300" aria-hidden="true"><span class="block h-full rounded-full" style="width: {row.retention}%; background: var(--chart-ink)"></span></span>{row.retention}%</span>{/if}</td>
               </tr>
             {/each}
           </tbody>
@@ -171,6 +164,24 @@
       </div>
       {#if topics.length > home.per_topic.length}<p class="mt-3 text-sm text-muted">Topics with no cards yet aren't listed. Open a topic from Topics to add cards to it.</p>{/if}
     </section>
+      </div>
+
+      <aside class="flex flex-col gap-4">
+        <section class="panel p-5" aria-labelledby="sugg-h">
+          <div class="flex items-center gap-3"><span class="well" style="--well: var(--color-accent); --well-ink: var(--accent-ink)" aria-hidden="true"><Inbox class="size-5" /></span><h2 id="sugg-h" class="flex-1 text-[18px]">Suggestions</h2><span class="chip chip-due tabular-nums">{home.suggestions}</span></div>
+          <p class="mt-3 text-sm text-muted">{home.suggestions ? "Points you missed in recalls and questions you got wrong or guessed could become cards." : "Nothing to suggest. Misses from recalls and quizzes show up here."}</p>
+          {#if home.suggestions}<button class="btn btn-ghost mt-4 w-full" onclick={onSuggestions}>Look through all {home.suggestions}</button>{/if}
+        </section>
+        <section class="panel p-5" aria-labelledby="ret-h">
+          <h2 id="ret-h" class="text-[18px]">Retention, last 30 days</h2>
+          <p class="mt-1"><span class="text-[32px] font-black tabular-nums">{home.retention === null ? "None yet" : `${home.retention}%`}</span> <span class="text-sm text-muted">aiming for {home.target}%</span></p>
+          {#if home.retention !== null}
+            <div class="meter mt-2" aria-hidden="true"><span class="fill" style="width: {home.retention}%; background: var(--chart-ink)"></span><span class="mark" style="left: {home.target}%"></span></div>
+          {/if}
+          <p class="mt-2 text-sm text-muted">Share of reviews you got without pressing Again.</p>
+        </section>
+      </aside>
+    </div>
   {/if}
 </div>
 
@@ -210,7 +221,7 @@
               <p class="mt-1 text-sm text-muted">Tunes FSRS to your own review history. Works better the more you've reviewed. {editing.parameters.length ? "Using your fitted settings." : "Using the defaults for now."}</p>
               {#if fitStatus}<p class="mt-2 text-sm" role="status">{fitStatus}</p>{/if}
             </div>
-            <button type="button" class="btn btn-outline btn-sm shrink-0 border-field-border" disabled={fitting} onclick={fit}><RefreshCw class="size-4" />{fitting ? "Fitting…" : "Run now"}</button>
+            <button type="button" class="btn btn-outline btn-sm shrink-0" disabled={fitting} onclick={fit}><RefreshCw class="size-4" />{fitting ? "Fitting…" : "Run now"}</button>
           </div>
         </div>
       </div>

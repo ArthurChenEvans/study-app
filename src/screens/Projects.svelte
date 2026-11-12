@@ -1,6 +1,6 @@
 <script lang="ts">
   // projects.feature (R87, R94): projects, and the issues every project shares.
-  import { Clock, Dumbbell, Hammer, Plus } from "@lucide/svelte";
+  import { Box, Clock, Code, Dumbbell, FileUp, Hammer, Play, Plus } from "@lucide/svelte";
   import { api, errorMessage, type Id, type IssueView, type ProjectRow } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
   import { dayLabel, dueLabel, pastOn } from "../lib/dates";
@@ -67,19 +67,27 @@
   const dueDrills = $derived(issues.flatMap((issue) => (issue.drill && issue.drill.due !== null && issue.drill.due <= today ? [issue.drill.id] : [])));
 
   load();
+  /** An icon for a project's kind, so the list reads at a glance. */
+  function kindIcon(kind: string | null) {
+    const name = (kind ?? "").toLowerCase();
+    if (name.includes("paper") || name.includes("exam")) return FileUp;
+    if (name.includes("cod") || name.includes("app") || name.includes("program")) return Code;
+    if (name.includes("blender") || name.includes("model") || name.includes("3d")) return Box;
+    return Hammer;
+  }
 </script>
 
 <div class="mx-auto max-w-6xl px-12 pb-24">
   <PageHeader title="Projects" subtitle={projects?.length ? "Log what trips you up while you work, then review it at the end of the session." : ""}>
     {#if projects?.length}
-      {#if dueDrills.length}<button class="btn btn-outline border-field-border" onclick={() => onDrills(dueDrills)}><Dumbbell class="size-4" />Do {dueDrills.length === 1 ? "today's drill" : `today's ${dueDrills.length} drills`}</button>{/if}
-      <button class="btn btn-primary" onclick={openCreate}><Plus class="size-4" />New project</button>
+      <button class="btn {dueDrills.length ? 'btn-ghost' : 'btn-primary'}" onclick={openCreate}><Plus class="size-4" />New project</button>
+      {#if dueDrills.length}<button class="btn btn-primary" onclick={() => onDrills(dueDrills)}><Play class="size-4 fill-current" />Do {dueDrills.length === 1 ? "today's drill" : `today's ${dueDrills.length} drills`}</button>{/if}
     {/if}
   </PageHeader>
 
   {#if projects && projects.length === 0}
     <div class="panel max-w-xl p-10">
-      <span class="grid size-10 place-items-center rounded-lg bg-base-200"><Hammer class="size-5" /></span>
+      <span class="well" aria-hidden="true"><Hammer class="size-5" /></span>
       <h2 class="mt-6 text-xl font-semibold">Log what trips you up while you work</h2>
       <p class="mt-2 max-w-prose text-muted">A project is anything applied: code, a Blender scene, a past paper. While you work, note each struggle and why it wasn't obvious. At the end of the session, review them: a missed fact can become a card, and something you couldn't apply can become a drill.</p>
       <button class="btn btn-primary mt-6" onclick={openCreate}><Plus class="size-4" />New project</button>
@@ -107,13 +115,14 @@
           <thead><tr class="text-muted"><th>Project</th><th aria-sort="descending">Last worked on</th><th>Struggles</th><th>To review</th><th>Drills due</th></tr></thead>
           <tbody>
             {#each shownProjects as project (project.id)}
+              {@const KindIcon = kindIcon(project.kind)}
               <!-- The whole row opens the project: one button, stretched over the row. -->
               <tr class="link-row hover:bg-base-100">
-                <td><button class="row-link py-1 font-semibold" onclick={() => onOpen(project.id)}>{project.name}</button>{#if project.kind}<div class="text-xs text-muted">{project.kind}</div>{/if}</td>
+                <td><span class="flex items-center gap-3"><span class="well" aria-hidden="true" style="--well: var(--color-info); --well-ink: var(--color-info)"><KindIcon class="size-5" /></span><span><button class="row-link py-1 text-[15.5px] font-extrabold" onclick={() => onOpen(project.id)}>{project.name}</button>{#if project.kind}<span class="block text-[13px] text-muted">{project.kind}</span>{/if}</span></span></td>
                 <td class="text-sm">{project.session ? "Session running" : project.last_day === null ? "Not yet" : dayLabel(project.last_day, today)}</td>
                 <td class="tabular-nums">{project.struggles}</td>
                 <td>{#if project.to_review}<span class="todo-chip"><Clock class="size-3.5" aria-hidden="true" />{project.to_review} to review</span>{:else}<span class="text-muted">None</span>{/if}</td>
-                <td>{#if project.drills_due}<span class="flex items-center gap-1.5 font-semibold"><span class="due-dot" aria-hidden="true"></span>{project.drills_due} today</span>{:else}<span class="text-muted">None</span>{/if}</td>
+                <td>{#if project.drills_due}<span class="chip chip-due">{project.drills_due} today</span>{:else}<span class="text-muted">None</span>{/if}</td>
               </tr>
             {/each}
           </tbody>
@@ -145,7 +154,7 @@
                   <td class="text-sm">{issue.last_seen === null ? "Never" : dayLabel(issue.last_seen, today)}</td>
                   <td class="text-sm">
                     {#if issueState(issue) === "due"}
-                      <span class="flex items-center gap-3"><span class="flex items-center gap-1.5 font-semibold"><span class="due-dot" aria-hidden="true"></span>{drillState(issue)}</span><button class="btn btn-outline btn-sm border-field-border" aria-label="Do the drill for {issue.name}" onclick={() => onDrills([issue.drill!.id])}>Do drill</button></span>
+                      <span class="flex items-center gap-3"><span class="flex items-center gap-1.5 font-semibold"><span class="due-dot" aria-hidden="true"></span>{drillState(issue)}</span><button class="btn btn-outline btn-sm" aria-label="Do the drill for {issue.name}" onclick={() => onDrills([issue.drill!.id])}>Do drill</button></span>
                     {:else}<span class={issue.drill ? "" : "text-muted"}>{drillState(issue)}</span>{/if}
                   </td>
                 </tr>

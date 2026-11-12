@@ -114,25 +114,25 @@
 {#snippet outcomeOf(struggle: StruggleView)}
   {@const value = struggle.outcome}
   {#if value === null}
-    <span class="todo-chip"><CircleDot class="size-3.5" aria-hidden="true" />{outcome(struggle)}</span>
+    <span class="chip chip-due"><CircleDot class="size-3.5" aria-hidden="true" />{outcome(struggle)}</span>
   {:else if typeof value === "object" && "Drill" in value && value.Drill.due !== null && value.Drill.due <= today}
-    <span class="text-muted">{struggle.issue ? `Issue: ${struggle.issue} · ` : ""}</span><span class="font-semibold text-base-content">drill {onDay(value.Drill.due, today)}</span>
+    <span class="chip chip-info whitespace-normal text-left leading-snug">{struggle.issue ? `Issue: ${struggle.issue} · ` : ""}drill {onDay(value.Drill.due, today)}</span>
   {:else}
-    <span class="text-muted">{outcome(struggle)}</span>
+    <span class="chip whitespace-normal text-left leading-snug">{outcome(struggle)}</span>
   {/if}
 {/snippet}
 
 <svelte:window onkeydown={keys} />
 
 <div class="mx-auto max-w-6xl px-12 pb-24">
-  <button class="mt-8 inline-flex items-center gap-1 py-1 text-sm text-muted hover:underline" onclick={onBack}><ArrowLeft class="size-4" />Projects</button>
+  <button class="mt-8 inline-flex items-center gap-1 py-1 text-xs font-extrabold uppercase tracking-wider text-muted hover:underline" onclick={onBack}><ArrowLeft class="size-4" />Projects</button>
   {#if view}
     <div class="flex items-end justify-between gap-6 pb-6 pt-4">
       <div><p class="text-sm text-muted">{view.row.kind ? `${view.row.kind} · ` : ""}started {pastOn(view.row.created, today).replace(/^on /, "")} · {view.row.struggles} {view.row.struggles === 1 ? "struggle" : "struggles"}</p><h1 class="mt-1 text-3xl font-semibold">{view.row.name}</h1></div>
       <div class="flex items-center gap-3">
         {#if session}
           <span class="timer-chip" role="timer" aria-label="Session time"><Timer class="size-4" />{clock(elapsed)}</span>
-          <button class="btn btn-outline border-field-border" onclick={end}><Square class="size-4" />End session{view.row.to_review ? " and review" : ""}</button>
+          <button class="btn btn-outline" onclick={end}><Square class="size-4" />End session{view.row.to_review ? " and review" : ""}</button>
         {:else}
           {#if view.row.to_review}<button class="btn btn-ghost" onclick={() => onReview(id)}><ListChecks class="size-4" />Review {view.row.to_review} {view.row.to_review === 1 ? "struggle" : "struggles"}</button>{/if}
           <button class="btn btn-primary" onclick={start}><Play class="size-4" />Start a session</button>
@@ -182,8 +182,8 @@
       <ul class="panel divide-y" aria-label="Struggles on {fullLabel(group.day, today)}">
         {#each group.struggles as struggle (struggle.id)}
           <li class="flex items-start gap-6 px-6 py-4">
-            <div class="flex-1"><p class="text-[15px]">{struggle.what}</p>{#if struggle.why}<p class="mt-1 text-sm text-muted">Why it wasn't obvious: {struggle.why}</p>{/if}
-              <div class="mt-2 flex flex-wrap items-center gap-2"><span class="kind">{kindLabel[struggle.kind]}</span>{#if struggle.topic_name}<span class="badge-src">{struggle.topic_name}</span>{/if}<span class="text-xs text-muted tabular-nums">{time(struggle.minute)}</span></div></div>
+            <div class="flex-1"><p class="text-[16px] font-extrabold">{struggle.what}</p>{#if struggle.why}<p class="mt-1 text-sm text-muted">Why it wasn't obvious: {struggle.why}</p>{/if}
+              <div class="mt-2 flex flex-wrap items-center gap-2"><span class="chip">{kindLabel[struggle.kind]}</span>{#if struggle.topic_name}<span class="chip chip-primary">{struggle.topic_name}</span>{/if}<span class="text-xs font-extrabold tabular-nums text-muted">{time(struggle.minute)}</span></div></div>
             <span class="max-w-72 text-right text-sm">{@render outcomeOf(struggle)}</span>
           </li>
         {/each}

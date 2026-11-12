@@ -53,7 +53,7 @@ describe("Recall list", () => {
     render(Recall, { onOpen: vi.fn(), onStart });
     const card = await screen.findByRole("article", { name: "OSI model" });
     expect(card).toHaveTextContent("Due 1 day ago");
-    expect(card).toHaveTextContent("Last check 74%");
+    expect(card).toHaveTextContent(/74%\s*Last check/);
     expect(screen.getByText("1 due today")).toBeInTheDocument();
     const table = screen.getByRole("table", { name: "Checklists" });
     const names = within(table).getAllByRole("row").slice(1).map((r) => r.textContent);

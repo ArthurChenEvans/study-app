@@ -156,7 +156,7 @@ try:
     find("//button[normalize-space()='Sync now']").click()
     status = find("//*[@role='status'][contains(., \"can't find the sync folder\")]")
     primaries = driver.find_elements(By.XPATH, "//main//button[contains(@class, 'btn-primary')]")
-    assert [button.text for button in primaries] == ["Change folder"], [button.text for button in primaries]
+    assert [button.text.lower() for button in primaries] == ["change folder"], [button.text for button in primaries]
     find("//nav//a[@href='#data'][normalize-space()='Sync paused']")
     ok("a missing folder is said in words (here and in the sidebar), changes are counted, and Change folder is the one primary (R127)")
     shot("missing")

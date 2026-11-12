@@ -65,8 +65,8 @@
 
 {#if tabs.length === 0}
   <div class="grid h-full place-items-center p-12">
-    <div class="panel max-w-sm p-8 text-center">
-      <span class="mx-auto grid size-10 place-items-center rounded-lg bg-base-200"><FileUp class="size-5" /></span>
+    <div class="drop max-w-sm p-8 text-center">
+      <span class="well mx-auto" aria-hidden="true"><FileUp class="size-5" /></span>
       <h2 class="mt-4 text-lg font-semibold">Read alongside as you write</h2>
       <p class="mt-2 text-sm text-muted">Markdown, txt, PDF, PowerPoint or EPUB. Files are only shown while you write, they aren't stored.</p>
       <button class="btn btn-outline btn-sm mt-5" onclick={() => input.click()}><FileUp class="size-4" />Open file</button>
@@ -78,7 +78,7 @@
     <div class="flex items-center gap-1 overflow-x-auto border-b border-base-300 px-3 pt-3" role="tablist" aria-label="Open files">
       {#each tabs as tab (tab.id)}
         {@const Icon = icon[tab.kind]}
-        <div class="flex items-center border-b-2 {tab.id === active ? 'border-primary' : 'border-transparent'}">
+        <div class="flex items-center border-b-2 {tab.id === active ? 'border-primary-ink' : 'border-transparent'}">
           <button role="tab" aria-selected={tab.id === active} class="flex max-w-56 items-center gap-2 py-2 pl-3 pr-1 text-sm {tab.id === active ? 'font-semibold' : 'text-muted'}" onclick={() => (active = tab.id)}>
             <Icon class="size-4 shrink-0" /><span class="truncate">{tab.name}</span>
           </button>

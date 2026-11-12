@@ -1,7 +1,7 @@
 <script lang="ts">
   // topics.feature (R1, R2, R3, R30, R43, R51)
   // calendar.feature (R96, R97): each topic's quiz step and next quiz, and the schedule.
-  import { CalendarCog, Folder, FolderOpen, FolderPlus, Library, Pencil, Play, Plus } from "@lucide/svelte";
+  import { CalendarCog, Check, Folder, FolderOpen, FolderPlus, Library, Pencil, Play, Plus, Star } from "@lucide/svelte";
   import RowMenu from "../components/RowMenu.svelte";
   import { api, errorMessage, type Id, type ModuleRow, type Schedule, type TopicQuizView, type TopicRow } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
@@ -117,45 +117,53 @@
 
   {#if loaded && topics.length === 0}
     <div class="panel max-w-lg p-10">
-      <span class="grid size-10 place-items-center rounded-lg bg-base-200"><Library class="size-5" /></span>
+      <span class="well" aria-hidden="true"><Library class="size-5" /></span>
       <h2 class="mt-6 text-xl font-semibold">No topics yet</h2>
       <p class="mt-2 text-muted">A topic holds your questions on one subject, like "CPU". You can group topics into modules later.</p>
       <button class="btn btn-primary mt-6" onclick={openCreate}><Plus class="size-4" />Create your first topic</button>
     </div>
   {/if}
 
-  {#each groups as group (group.key)}
-    <section class="mt-8" aria-labelledby="group-{group.key}">
-      <h2 id="group-{group.key}" class="mb-2 flex items-center gap-2 text-sm font-semibold text-muted">
-        {#if group.key === "none"}<FolderOpen class="size-4" />{:else}<Folder class="size-4" />{/if}{group.name}
+  <!-- Topics nest in their module as rows (design/playful-redesign: Topics). The chunky parts are
+       the status coin, the step pips and the Quiz button on each row. -->
+  {#each groups as group, index (group.key)}
+    {@const questions = group.topics.reduce((sum, topic) => sum + topic.question_count, 0)}
+    <section class="mt-4 panel overflow-hidden" aria-labelledby="group-{group.key}">
+      <div class="flex items-center gap-3 border-b-2 border-base-300 bg-base-200 px-5 py-2.5">
+        {#if group.key === "none"}<FolderOpen class="size-5" />{:else}<Folder class="size-5 fill-current" />{/if}
+        <h2 id="group-{group.key}" class="text-[17px] font-extrabold">{group.name}</h2>
+        <span class="text-[13px] text-muted">{group.topics.length} {group.topics.length === 1 ? "topic" : "topics"} · {questions} {questions === 1 ? "question" : "questions"}</span>
         {#if group.id !== null}
           {@const id = group.id}
-          <RowMenu small label="{group.name} module actions" items={[{ label: "Delete module…", danger: true, onSelect: () => (deletingModule = { id, name: group.name, count: group.topics.length }) }]} />
+          <span class="ml-auto"><RowMenu small label="{group.name} module actions" items={[{ label: "Delete module…", danger: true, onSelect: () => (deletingModule = { id, name: group.name, count: group.topics.length }) }]} /></span>
         {/if}
-      </h2>
+      </div>
       {#if group.topics.length === 0}
-        <p class="panel px-6 py-4 text-sm text-muted">No topics in this module yet.</p>
+        <p class="px-5 py-4 text-sm text-muted">No topics in this module yet.</p>
       {:else}
-      <div class="panel overflow-hidden">
         <table class="table table-fixed">
-          <colgroup><col class="w-[24%]" /><col class="w-[22%]" /><col class="w-[10%]" /><col class="w-[18%]" /><col class="w-[26%]" /></colgroup>
-          <thead><tr class="text-muted"><th>Topic</th><th>Tags</th><th class="text-right">Questions</th><th>Next quiz</th><th><span class="sr-only">Actions</span></th></tr></thead>
+          <colgroup><col class="w-14" /><col class="w-[20%]" /><col class="w-[18%]" /><col class="w-[10%]" /><col class="w-[25%]" /><col class="w-[11.5rem]" /></colgroup>
+          <thead class={index ? "sr-only" : ""}><tr><th><span class="sr-only">Status</span></th><th>Topic</th><th>Tags</th><th class="text-right">Questions</th><th>Next quiz</th><th><span class="sr-only">Actions</span></th></tr></thead>
           <tbody>
             {#each group.topics as topic (topic.id)}
-              <tr class="hover:bg-base-100">
-                <td class="font-semibold"><button type="button" class="text-left hover:underline" onclick={() => onEdit(topic.id)}>{topic.name}</button></td>
+              {@const quiz = quizOf(topic.id)}
+              <tr>
+                <td class="pr-0"><span class="coin {quiz?.due_today ? 'coin-due' : ''}" aria-hidden="true">{#if quiz?.due_today}<Star class="size-4 fill-current" />{:else if quiz}<Check class="size-4" strokeWidth={3} />{/if}</span></td>
+                <td class="text-[15.5px] font-extrabold"><button type="button" class="min-h-6 py-0.5 text-left hover:underline" onclick={() => onEdit(topic.id)}>{topic.name}</button></td>
                 <td>
-                  {#each topic.tags as tag (tag)}<span class="badge badge-ghost mr-1 rounded-full text-xs">{tag}</span>{:else}<span class="text-sm text-muted">None</span>{/each}
+                  <span class="flex flex-wrap gap-1.5">{#each topic.tags as tag (tag)}<span class="chip">{tag}</span>{:else}<span class="text-sm text-muted">None</span>{/each}</span>
                 </td>
                 <td class="text-right tabular-nums">{topic.question_count}</td>
                 <td>
-                  {#if quizOf(topic.id)}{@const quiz = quizOf(topic.id)!}{#if quiz.due_today}<span class="flex items-center gap-1.5 text-sm font-semibold"><span class="due-dot" aria-hidden="true"></span>Due today</span>{:else}<span class="block text-sm">{dueLabel(quiz.due, today)}</span>{/if}<span class="block text-xs text-muted">{quiz.step} step</span>
+                  {#if quiz}
+                    {#if quiz.due_today}<span class="block text-sm font-extrabold text-[var(--accent-ink)]">Due today</span>{:else}<span class="block text-sm">{dueLabel(quiz.due, today)}</span>{/if}
+                    <span class="flex items-center gap-1.5 whitespace-nowrap text-[13px] text-muted"><span class="pips" aria-hidden="true">{#each Array.from({ length: quiz.steps }) as _, step (step)}<i class:on={step <= quiz.position}></i>{/each}</span>{quiz.step} step</span>
                   {:else}<span class="text-sm text-muted">{topic.question_count ? "Quiz it to start" : "No questions yet"}</span>{/if}
                 </td>
                 <td class="whitespace-nowrap text-right">
-                  <span class="row-actions inline-flex items-center gap-1">
-                    <button class="btn btn-ghost btn-sm" aria-label="Quiz {topic.name}" onclick={() => onQuiz(topic.id)}><Play class="size-4" />Quiz</button>
-                    <button class="btn btn-ghost btn-sm" aria-label="Edit {topic.name}" onclick={() => onEdit(topic.id)}><Pencil class="size-4" />Edit</button>
+                  <span class="inline-flex items-center gap-2">
+                    <button class="btn btn-ghost btn-sm {quiz?.due_today ? 'text-primary-ink' : ''}" aria-label="Quiz {topic.name}" onclick={() => onQuiz(topic.id)}><Play class="size-4 fill-current" />Quiz</button>
+                    <button class="btn btn-ghost btn-sm btn-square" aria-label="Edit {topic.name}" title="Edit {topic.name}" onclick={() => onEdit(topic.id)}><Pencil class="size-4" /></button>
                     <RowMenu small label="More for {topic.name}" items={[
                       { label: "Edit tags", onSelect: () => openTags(topic) },
                       { label: "Delete topic…", danger: true, onSelect: () => (deleting = topic) },
@@ -166,7 +174,6 @@
             {/each}
           </tbody>
         </table>
-      </div>
       {/if}
     </section>
   {/each}

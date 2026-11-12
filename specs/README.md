@@ -243,3 +243,4 @@ Decided with the design: keywords are checked in any order, every answer is righ
 | R126 | Something that refers to a thing that hasn't arrived yet (a question whose topic is still on its way from a third computer) waits for it rather than being dropped or breaking the sync |
 | R127 | If the folder can't be found, changes are kept and counted, and go out once it's back. A change file that's half-written is read once it's complete. A computer on a newer version of the app is skipped with a message to update |
 | R128 | Restoring a backup pauses sync, since the other computers would bring the newer changes straight back. Your data and the sidebar say whether sync is on, paused or has things to check, in words |
+| R129 | Right, wrong and guessed use standard green and red by default, with a switch for colour-blind safe blue and orange, remembered on this device. Both always show an icon and a word, and guessed is always hatched |

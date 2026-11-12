@@ -127,18 +127,18 @@
   <div class="mx-auto max-w-6xl px-12 pb-24">
     <PageHeader title="Calendar" subtitle="Everything due, day by day. Past days show what you did.">
       <button class="btn btn-ghost btn-sm btn-square" aria-label="Previous month" onclick={() => shift(-1)}><ChevronLeft class="size-4" /></button>
-      <span class="w-40 text-center font-semibold" aria-live="polite">{year ? monthLabel(year, month) : ""}</span>
+      <span class="w-44 text-center text-[19px] font-extrabold" aria-live="polite">{year ? monthLabel(year, month) : ""}</span>
       <button class="btn btn-ghost btn-sm btn-square" aria-label="Next month" onclick={() => shift(1)}><ChevronRight class="size-4" /></button>
-      <button class="btn btn-outline btn-sm ml-2 border-field-border" onclick={() => { const now = dateOf(today); [year, month] = [now.year, now.month]; loadMonth(); }}>Today</button>
+      <button class="btn btn-outline btn-sm ml-2" onclick={() => { const now = dateOf(today); [year, month] = [now.year, now.month]; loadMonth(); }}>Today</button>
     </PageHeader>
-    <p class="mb-3 text-right text-xs text-muted">Future cards are a forecast and move as you review</p>
-    <div class="panel overflow-hidden">
-      <div bind:this={gridEl} role="grid" aria-label={monthLabel(year, month)}>
-        <div role="row" class="grid grid-cols-7 border-b border-base-300 text-xs font-semibold text-muted">
-          {#each WEEKDAYS as name, index (name)}<div role="columnheader" class="px-2 py-2"><abbr title={WEEKDAY_NAMES[index]} class="no-underline" aria-label={WEEKDAY_NAMES[index]}>{name}</abbr></div>{/each}
+    <!-- Each day is a tile, each kind of work a chip. Today stands on a pink ledge, past days sit flat. -->
+    <div>
+      <div bind:this={gridEl} role="grid" aria-label={monthLabel(year, month)} class="flex flex-col gap-2">
+        <div role="row" class="grid grid-cols-7 gap-2 text-xs font-extrabold uppercase tracking-[.07em] text-muted">
+          {#each WEEKDAYS as name, index (name)}<div role="columnheader" class="px-2.5"><abbr title={WEEKDAY_NAMES[index]} class="no-underline" aria-label={WEEKDAY_NAMES[index]}>{name}</abbr></div>{/each}
         </div>
         {#each weeks as week (week[0])}
-          <div role="row" class="grid grid-cols-7">
+          <div role="row" class="grid grid-cols-7 gap-2">
             {#each week as value (value)}
               {@const entry = days.find((d) => d.day === value)}
               {@const date = dateOf(value)}
@@ -149,8 +149,8 @@
                   aria-label="{longDate(value)}{items.length ? `: ${items.map((c) => `${c.count} ${c.count === 1 ? c.one : c.many}`).join(", ")}${entry?.when === 'Past' ? ' done' : ' due'}` : ''}"
                   onclick={() => open(value)} onkeydown={(event) => gridKeys(event, value)}>
                   <span class="flex items-center gap-2"><span class="num">{date.date}</span>{#if value === today}<span class="cal-today">Today</span>{/if}</span>
-                  {#each shown as item (item.key)}<span class="cal-row"><item.icon class="size-3.5" /><b>{item.count}</b> {item.count === 1 ? item.one : item.many}</span>{/each}
-                  {#if shown.length < items.length}<span class="cal-row">+{items.length - shown.length} more</span>{/if}
+                  {#each shown as item (item.key)}<span class="chip cal-chip {value < today ? '' : value === today ? 'chip-due' : `cal-${item.key}`}">{item.count} {item.count === 1 ? item.one : item.many}</span>{/each}
+                  {#if shown.length < items.length}<span class="chip cal-chip">+{items.length - shown.length} more</span>{/if}
                 </button>
               </div>
             {/each}
@@ -158,10 +158,11 @@
         {/each}
       </div>
     </div>
+    <p class="mt-3 text-[13px] text-muted">Future cards are a forecast and move as you review.</p>
   </div>
 {:else if day}
   <div class="mx-auto max-w-4xl px-12 pb-24">
-    <button class="mt-8 inline-flex items-center gap-1 py-1 text-sm text-muted hover:underline" onclick={back}><ArrowLeft class="size-4" />{monthLabel(year, month)}</button>
+    <button class="mt-8 inline-flex items-center gap-1 py-1 text-xs font-extrabold uppercase tracking-wider text-muted hover:underline" onclick={back}><ArrowLeft class="size-4" />{monthLabel(year, month)}</button>
     <div class="flex items-end justify-between gap-6 pb-8 pt-4">
       <div><h1 class="text-3xl font-semibold">{longDate(day.day)}</h1>
         <p class="mt-2 text-muted">{day.when === "Past" ? "What you did" : total ? `${total} ${total === 1 ? "thing" : "things"} due${day.when === "Today" && day.cards.minutes ? ` · about ${day.cards.minutes + day.drills.length * 10} minutes` : ""}` : "Nothing due"}</p></div>
@@ -180,53 +181,53 @@
 
     <div class="space-y-6">
       {#if day.drills.length || day.drill_runs.length}
-        <section class="panel p-6" aria-labelledby="h-drills"><h2 id="h-drills" class="flex items-center gap-2 text-sm font-semibold"><Dumbbell class="size-4" />Drills</h2>
+        <section class="panel p-6" aria-labelledby="h-drills"><h2 id="h-drills" class="flex items-center gap-3 text-lg font-black"><span class="well size-10" aria-hidden="true"><Dumbbell class="size-5" /></span>Drills</h2>
           <ul class="mt-3 divide-y">
             {#each day.drills as drill (drill.id)}
-              <li class="flex items-center justify-between gap-4 py-3"><div><p class="text-[15px]">{drill.task}</p><p class="text-sm text-muted">{drill.issue ? `Issue: ${drill.issue}` : "No issue"}{drill.from[0] ? ` · from ${drill.from[0].project_name}` : ""}{drill.last && drill.last.rating !== "Solid" ? ` · again, it was ${drill.last.rating}` : ""}{drill.due !== null && drill.due < day.day ? ` · was due ${dueLabel(drill.due, drill.due)}` : ""}</p></div>
+              <li class="flex items-center justify-between gap-4 py-3"><div><p class="text-[15px] font-extrabold">{drill.task}</p><p class="text-sm text-muted">{drill.issue ? `Issue: ${drill.issue}` : "No issue"}{drill.from[0] ? ` · from ${drill.from[0].project_name}` : ""}{drill.last && drill.last.rating !== "Solid" ? ` · again, it was ${drill.last.rating}` : ""}{drill.due !== null && drill.due < day.day ? ` · was due ${dueLabel(drill.due, drill.due)}` : ""}</p></div>
                 <div class="flex shrink-0 gap-2">
                   <button class="btn btn-ghost btn-sm" onclick={() => { error = ""; moving = drill; }}><CalendarArrowUp class="size-4" />Move</button>
-                  {#if day.when === "Today"}<button class="btn btn-outline btn-sm border-field-border" onclick={() => onDrills([drill.id])}><Play class="size-4" />Do drill</button>{/if}
+                  {#if day.when === "Today"}<button class="btn btn-outline btn-sm text-primary-ink" onclick={() => onDrills([drill.id])}><Play class="size-4" />Do drill</button>{/if}
                 </div></li>
             {/each}
-            {#each day.drill_runs as run, index (index)}<li class="py-3"><p class="text-[15px]">{run.task}</p><p class="text-sm text-muted">Rated {run.rating}{run.rating === "Solid" ? ", ticked off" : ", back the next day"}</p></li>{/each}
+            {#each day.drill_runs as run, index (index)}<li class="py-3"><p class="text-[15px] font-extrabold">{run.task}</p><p class="text-sm text-muted">Rated {run.rating}{run.rating === "Solid" ? ", ticked off" : ", back the next day"}</p></li>{/each}
           </ul></section>
       {/if}
 
       {#if day.when === "Past" ? day.cards.reviewed : day.cards.due.new + day.cards.due.learning + day.cards.due.review}
-        <section class="panel p-6" aria-labelledby="h-cards"><h2 id="h-cards" class="flex items-center gap-2 text-sm font-semibold"><SquareStack class="size-4" />Cards</h2>
+        <section class="panel p-6" aria-labelledby="h-cards"><h2 id="h-cards" class="flex items-center gap-3 text-lg font-black"><span class="well size-10" aria-hidden="true"><SquareStack class="size-5" /></span>Cards</h2>
           <div class="mt-3 flex items-center justify-between gap-4 py-2">
-            {#if day.when === "Past"}<div><p class="text-[15px]">{day.cards.reviewed} {day.cards.reviewed === 1 ? "card" : "cards"} reviewed</p><p class="text-sm text-muted">{day.cards.reviewed - day.cards.again} remembered · {day.cards.again} {day.cards.again === 1 ? "time" : "times"} Again · {Math.max(1, Math.round(day.cards.seconds / 60))} min</p></div>
-            {:else if day.when === "Today"}<div><p class="text-[15px]">{day.cards.due.new + day.cards.due.learning + day.cards.due.review} cards due</p><p class="text-sm text-muted">{day.cards.due.new} new · {day.cards.due.learning} learning · {day.cards.due.review} to review · about {day.cards.minutes} minutes</p></div>
-              <button class="btn btn-outline btn-sm border-field-border" onclick={onCards}><Play class="size-4" />Start review</button>
-            {:else}<div><p class="text-[15px]">About {day.cards.due.review} {day.cards.due.review === 1 ? "card" : "cards"}</p><p class="text-sm text-muted">A forecast, it changes as you review</p></div>{/if}
+            {#if day.when === "Past"}<div><p class="text-[15px] font-extrabold">{day.cards.reviewed} {day.cards.reviewed === 1 ? "card" : "cards"} reviewed</p><p class="text-sm text-muted">{day.cards.reviewed - day.cards.again} remembered · {day.cards.again} {day.cards.again === 1 ? "time" : "times"} Again · {Math.max(1, Math.round(day.cards.seconds / 60))} min</p></div>
+            {:else if day.when === "Today"}<div><p class="text-[15px] font-extrabold">{day.cards.due.new + day.cards.due.learning + day.cards.due.review} cards due</p><p class="text-sm text-muted">{day.cards.due.new} new · {day.cards.due.learning} learning · {day.cards.due.review} to review · about {day.cards.minutes} minutes</p></div>
+              <button class="btn btn-outline btn-sm text-primary-ink" onclick={onCards}><Play class="size-4" />Start review</button>
+            {:else}<div><p class="text-[15px] font-extrabold">About {day.cards.due.review} {day.cards.due.review === 1 ? "card" : "cards"}</p><p class="text-sm text-muted">A forecast, it changes as you review</p></div>{/if}
           </div></section>
       {/if}
 
       {#if day.checklists.length || day.checks.length}
-        <section class="panel p-6" aria-labelledby="h-recall"><h2 id="h-recall" class="flex items-center gap-2 text-sm font-semibold"><Brain class="size-4" />Recall</h2>
+        <section class="panel p-6" aria-labelledby="h-recall"><h2 id="h-recall" class="flex items-center gap-3 text-lg font-black"><span class="well size-10" aria-hidden="true"><Brain class="size-5" /></span>Recall</h2>
           <ul class="mt-3 divide-y">
-            {#each day.checklists as checklist (checklist.id)}<li class="flex items-center justify-between gap-4 py-3"><div><p class="text-[15px]">{checklist.name}</p><p class="text-sm text-muted">Checklist · {checklist.step ? `${checklist.step} step` : "first check"} · {checklist.points} points</p></div>
-              {#if day.when === "Today"}<button class="btn btn-outline btn-sm border-field-border" onclick={() => onRecall(checklist.id)}><Play class="size-4" />Start recall</button>{/if}</li>{/each}
-            {#each day.checks as check, index (index)}<li class="py-3"><p class="text-[15px]">{check.name}</p><p class="text-sm text-muted">{check.score}% · {check.passed ? "passed" : "under the pass mark"} · now on {check.to}</p></li>{/each}
+            {#each day.checklists as checklist (checklist.id)}<li class="flex items-center justify-between gap-4 py-3"><div><p class="text-[15px] font-extrabold">{checklist.name}</p><p class="text-sm text-muted">Checklist · {checklist.step ? `${checklist.step} step` : "first check"} · {checklist.points} points</p></div>
+              {#if day.when === "Today"}<button class="btn btn-outline btn-sm text-primary-ink" onclick={() => onRecall(checklist.id)}><Play class="size-4" />Start recall</button>{/if}</li>{/each}
+            {#each day.checks as check, index (index)}<li class="py-3"><p class="text-[15px] font-extrabold">{check.name}</p><p class="text-sm text-muted">{check.score}% · {check.passed ? "passed" : "under the pass mark"} · now on {check.to}</p></li>{/each}
           </ul></section>
       {/if}
 
       {#if day.quizzes.length || day.attempts.length}
-        <section class="panel p-6" aria-labelledby="h-quizzes"><h2 id="h-quizzes" class="flex items-center gap-2 text-sm font-semibold"><ListChecks class="size-4" />Quizzes</h2>
+        <section class="panel p-6" aria-labelledby="h-quizzes"><h2 id="h-quizzes" class="flex items-center gap-3 text-lg font-black"><span class="well size-10" aria-hidden="true"><ListChecks class="size-5" /></span>Quizzes</h2>
           <ul class="mt-3 divide-y">
-            {#each day.quizzes as quiz (quiz.topic)}<li class="flex items-center justify-between gap-4 py-3"><div><p class="text-[15px]">{quiz.name}</p><p class="text-sm text-muted">Quiz due · {quiz.step} step · {quiz.questions} {quiz.questions === 1 ? "question" : "questions"}</p></div>
-              {#if day.when === "Today"}<button class="btn btn-outline btn-sm border-field-border" onclick={() => onQuiz([quiz.topic])}><Play class="size-4" />Quiz</button>{/if}</li>{/each}
+            {#each day.quizzes as quiz (quiz.topic)}<li class="flex items-center justify-between gap-4 py-3"><div><p class="text-[15px] font-extrabold">{quiz.name}</p><p class="text-sm text-muted">Quiz due · {quiz.step} step · {quiz.questions} {quiz.questions === 1 ? "question" : "questions"}</p></div>
+              {#if day.when === "Today"}<button class="btn btn-outline btn-sm text-primary-ink" onclick={() => onQuiz([quiz.topic])}><Play class="size-4" />Quiz</button>{/if}</li>{/each}
             {#if day.when === "Today" && day.quizzes.length > 1}<li class="flex justify-end pt-3"><button class="btn btn-ghost btn-sm" onclick={() => onQuiz(day!.quizzes.map((q) => q.topic))}><Play class="size-4" />Quiz all {day.quizzes.length} together</button></li>{/if}
-            {#each day.attempts as attempt (attempt.attempt)}<li class="flex items-center justify-between gap-4 py-3"><div><p class="text-[15px]">Quiz: {attempt.topics.join(", ")}</p><p class="text-sm text-muted">{attempt.right} of {attempt.total} right{attempt.moves.length ? ` · ${attempt.moves.join(" · ")}` : ""}</p></div>
+            {#each day.attempts as attempt (attempt.attempt)}<li class="flex items-center justify-between gap-4 py-3"><div><p class="text-[15px] font-extrabold">Quiz: {attempt.topics.join(", ")}</p><p class="text-sm text-muted">{attempt.right} of {attempt.total} right{attempt.moves.length ? ` · ${attempt.moves.join(" · ")}` : ""}</p></div>
               <button class="btn btn-ghost btn-sm" onclick={() => onResults(attempt.attempt)}>View results</button></li>{/each}
           </ul></section>
       {/if}
 
       {#if day.struggles.length}
-        <section class="panel p-6" aria-labelledby="h-struggles"><h2 id="h-struggles" class="flex items-center gap-2 text-sm font-semibold"><TriangleAlert class="size-4" />Struggles logged</h2>
+        <section class="panel p-6" aria-labelledby="h-struggles"><h2 id="h-struggles" class="flex items-center gap-3 text-lg font-black"><span class="well size-10" aria-hidden="true"><TriangleAlert class="size-5" /></span>Struggles logged</h2>
           <ul class="mt-3 divide-y">
-            {#each day.struggles as struggle (struggle.id)}<li class="flex items-center justify-between gap-4 py-3"><div><p class="text-[15px]">{struggle.what}</p><p class="text-sm text-muted">{struggle.project_name} · {kindLabel[struggle.kind]} · {outcome(struggle)}</p></div>
+            {#each day.struggles as struggle (struggle.id)}<li class="flex items-center justify-between gap-4 py-3"><div><p class="text-[15px] font-extrabold">{struggle.what}</p><p class="text-sm text-muted">{struggle.project_name} · {kindLabel[struggle.kind]} · {outcome(struggle)}</p></div>
               <button class="btn btn-ghost btn-sm" onclick={() => onProject(struggle.project)}>Open project</button></li>{/each}
           </ul></section>
       {/if}

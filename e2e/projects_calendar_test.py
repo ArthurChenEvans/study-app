@@ -107,7 +107,7 @@ try:
     find("//button[@role='radio' and normalize-space()=\"Couldn't apply it\"]").click()
     button("Log it").click()
     wait.until(lambda _: "Loop ran one too many times" in text())
-    assert text().count("To review at the end of this session") == 2, text()
+    assert text().upper().count("TO REVIEW AT THE END OF THIS SESSION") == 2, text()
     ok("two struggles logged with Ctrl+Enter and the button, Ctrl+L focuses the log (R89)")
     shot("session")
 
@@ -131,7 +131,7 @@ try:
     ok("the review makes a card suggestion and schedules a drill for tomorrow (R90, R92, R95)")
     shot("review-done")
     button("Back to Study app").click()
-    wait.until(lambda _: "Card suggested" in text() and "Issue: Off-by-one in loops · drill tomorrow" in text())
+    wait.until(lambda _: "CARD SUGGESTED" in text().upper() and "ISSUE: OFF-BY-ONE IN LOOPS · DRILL TOMORROW" in text().upper())
     ok("the project shows what became of each struggle")
 
     nav("Projects")
@@ -148,7 +148,7 @@ try:
     nav("Calendar")
     grid = find("//div[@role='grid']")
     today_cell = grid.find_element(By.XPATH, ".//button[@aria-current='date']")
-    assert "1 drill" in today_cell.text, today_cell.text
+    assert "1 drill" in today_cell.text.lower(), today_cell.text
     assert find("//nav//a[contains(., 'Calendar')]").text.strip().endswith("1") or "1" in find("//nav//a[contains(., 'Projects')]").text
     ok("the calendar shows today's drill, and the sidebar counts it (R98, R100)")
     shot("month")

@@ -236,7 +236,7 @@
             <h2 id="backups-h" class="text-lg font-semibold">Backups</h2>
             <p class="mt-1 text-sm text-muted">A full copy of everything, made while the app is open. Your study isn't interrupted.</p>
           </div>
-          <button class="btn shrink-0 {syncFix ? 'btn-outline border-field-border' : 'btn-primary'}" disabled={busy} onclick={backUp}><HardDriveDownload class="size-4" />{busy ? "Backing up…" : "Back up now"}</button>
+          <button class="btn shrink-0 {syncFix ? 'btn-outline' : 'btn-primary'}" disabled={busy} onclick={backUp}><HardDriveDownload class="size-4" />{busy ? "Backing up…" : "Back up now"}</button>
         </div>
 
         {#if list.length}
@@ -279,8 +279,8 @@
         <h2 id="transfer-h" class="text-lg font-semibold">Export and import</h2>
         <p class="mt-1 text-sm text-muted">One <span class="path">.studyapp</span> file: readable JSON inside a zip, with images. Share topics with a friend, or move everything to another computer.</p>
         <div class="mt-5 flex gap-2">
-          <button class="btn btn-outline border-field-border" onclick={() => { notice = ""; exporting = true; }}><FileOutput class="size-4" />Export…</button>
-          <label class="btn btn-outline border-field-border file-button"><FileInput class="size-4" />Import…<input type="file" accept=".studyapp,application/zip" class="sr-only" aria-label="Import a .studyapp file" onchange={pickFile} /></label>
+          <button class="btn btn-outline" onclick={() => { notice = ""; exporting = true; }}><FileOutput class="size-4" />Export…</button>
+          <label class="btn btn-outline file-button"><FileInput class="size-4" />Import…<input type="file" accept=".studyapp,application/zip" class="sr-only" aria-label="Import a .studyapp file" onchange={pickFile} /></label>
         </div>
       </section>
     </div>
@@ -304,7 +304,7 @@
         <p class="mt-3 text-[15px]">Everything goes back to how it was then. Nothing you've done since then would be lost.</p>
       {/if}
       {#if restoring.older}<p class="mt-3 text-sm text-muted">It was made by an older version of the app, so it's upgraded as it comes back.</p>{/if}
-      <p class="mt-4 flex gap-2 rounded-lg bg-base-200 p-3 text-sm"><ShieldCheck class="mt-0.5 size-4 shrink-0" />Your data as it is now is backed up first, so you can undo this by restoring that one.</p>
+      <p class="mt-4 flex gap-2 note-box p-3 text-sm"><ShieldCheck class="mt-0.5 size-4 shrink-0" />Your data as it is now is backed up first, so you can undo this by restoring that one.</p>
       <div class="modal-action">
         <button id="restore-cancel" class="btn btn-ghost" onclick={() => (restoring = null)}>Cancel</button>
         <button class="btn btn-primary" disabled={busy} onclick={restore}><RotateCcw class="size-4" />Restore {madeDay(chosen, today) === "today" ? "today's" : madeDay(chosen, today)}</button>

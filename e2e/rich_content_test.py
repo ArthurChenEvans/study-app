@@ -101,7 +101,7 @@ try:
     button("New topic").click()
     find("//dialog//input").send_keys("CPU pipeline")
     button("Create topic").click()
-    find("//*[normalize-space()='CPU pipeline']/ancestor::*[.//button[normalize-space()='Edit']][1]//button[normalize-space()='Edit']").click()
+    find("//button[@aria-label='Edit CPU pipeline']").click()
     question = labelled("Question")
     step("opened the editor for a new topic")
 

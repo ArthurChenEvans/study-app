@@ -86,7 +86,7 @@ try:
     button("New topic").click()
     find("//dialog//input").send_keys("OSI layers")
     button("Create topic").click()
-    find("//*[normalize-space()='OSI layers']/ancestor::*[.//button[normalize-space()='Edit']][1]//button[normalize-space()='Edit']").click()
+    find("//button[@aria-label='Edit OSI layers']").click()
 
     # ---------- Accepted answers ----------
     radio("Short answer").click()
@@ -150,7 +150,7 @@ try:
     ok("a typed answer is marked, with the model answer and explanation (R83)")
     shot("quiz-wrong")
     driver.find_element(By.TAG_NAME, "body").send_keys("o")
-    wait.until(lambda _: "Counted as right" in status() and "You overruled this" in status())
+    wait.until(lambda _: "COUNTED AS RIGHT" in status().upper() and "YOU OVERRULED THIS" in status().upper())
     ok("O overrules the verdict (R84)")
     shot("quiz-overruled")
     driver.find_element(By.TAG_NAME, "body").send_keys(Keys.ENTER)

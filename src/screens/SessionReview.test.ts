@@ -87,7 +87,7 @@ describe("Session review", () => {
     const u = userEvent.setup();
     mocked.strugglesToReview.mockResolvedValue([struggle(1, { kind: "Apply" }), struggle(2, { kind: "Recall", topic: 3, topic_name: "Rust" })]);
     render(SessionReview, { project: 1 });
-    await screen.findByText("Struggle 1", { selector: "p.text-lg" });
+    await screen.findByText("Struggle 1", { selector: "section p" });
     await u.click(screen.getByRole("button", { name: /Schedule the drill/ }));
     expect(screen.getByRole("alert")).toHaveTextContent("Name the issue");
     await u.type(screen.getByLabelText("Issue"), "Borrowing in closures");
@@ -103,7 +103,7 @@ describe("Session review", () => {
     await u.click(within(dialog).getByRole("button", { name: "Schedule for Thu 5 Nov" }));
     expect(mocked.reviewStruggle).toHaveBeenLastCalledWith(1, { NewDrill: { issue: "Borrowing in closures", task: "Spawn 3 threads using a Vec without cloning it", hints: "move", topic: null, day: TODAY + 2 } });
 
-    await screen.findByText("Struggle 2", { selector: "p.text-lg" });
+    await screen.findByText("Struggle 2", { selector: "section p" });
     await u.click(screen.getByRole("radio", { name: /Add to a recall checklist/ }));
     expect(screen.getByLabelText("Checklist")).toHaveValue("4");
     await u.click(screen.getByRole("button", { name: /Finish review/ }));
@@ -187,7 +187,7 @@ describe("Drills", () => {
     const u = userEvent.setup();
     mocked.strugglesToReview.mockResolvedValue([struggle(1, { kind: "Unsure" })]);
     render(SessionReview, { project: 1 });
-    await screen.findByText("Struggle 1", { selector: "p.text-lg" });
+    await screen.findByText("Struggle 1", { selector: "section p" });
     await u.keyboard("2");
     expect(screen.getByRole("radio", { name: /Add to a recall checklist/ })).toBeChecked();
     await u.keyboard("3");

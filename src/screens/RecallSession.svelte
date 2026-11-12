@@ -1,6 +1,6 @@
 <script lang="ts">
   // free-recall.feature (R55 to R57, R61): dump, then tick the checklist, then the result.
-  import { ArrowDown, ArrowUp, ChevronRight, EyeOff, LogOut, Pencil, Play, Plus, Timer, X } from "@lucide/svelte";
+  import { ArrowDown, ArrowUp, Check, EyeOff, Pencil, Play, Plus, Timer, X } from "@lucide/svelte";
   import { onDestroy } from "svelte";
   import { api, errorMessage, type CheckResult, type ChecklistView, type Preview, type RecallRow, type Schedule } from "../lib/api";
   import Ladder from "../components/Ladder.svelte";
@@ -102,23 +102,23 @@
 <svelte:window onkeydown={keys} />
 
 {#if view && schedule}
-  <div class="sticky top-0 z-10 flex items-center justify-between gap-6 border-b border-base-300 bg-base-100 px-12 py-4">
-    <div class="flex items-center gap-3 text-sm"><span class="text-muted">Recall</span><ChevronRight class="size-3.5" /><span class="font-semibold">{view.row.subject_name}</span><span class="text-muted">· {view.row.step ?? "First check"}</span></div>
-    <ol class="flex items-center gap-2 text-sm" aria-label="Session steps">
+  <div class="sticky top-0 z-10 grid grid-cols-[1fr_auto_1fr] items-center gap-6 bg-base-100 px-12 py-4">
+    <div class="flex items-center gap-3"><button class="btn btn-quiet btn-sm btn-square" aria-label="Leave" title="Leave" onclick={leave}><X class="size-6" strokeWidth={2.6} /></button><span class="sr-only">Recall: {view.row.subject_name}</span></div>
+    <ol class="flex items-center gap-2" aria-label="Session steps">
       {#each steps as name, index (name)}
-        <li class="flex items-center gap-2 {index === stageIndex ? 'font-semibold' : 'text-muted'}" aria-current={index === stageIndex ? "step" : undefined}>
-          <span class="grid size-6 place-items-center rounded-full text-xs tabular-nums {index < stageIndex ? 'bg-neutral text-neutral-content' : index === stageIndex ? 'border-2 border-base-content' : 'border border-field-border'}">{index < stageIndex ? "✓" : index + 1}</span>{name}
+        <li class="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider {index <= stageIndex ? '' : 'text-muted'}" aria-current={index === stageIndex ? "step" : undefined}>
+          <span class="step-dot {index <= stageIndex ? 'done' : ''}">{#if index < stageIndex}<Check class="size-4" strokeWidth={3} /><span class="sr-only">Done:</span>{:else}{index + 1}{/if}</span>{name}
         </li>
-        {#if index < 2}<li aria-hidden="true" class="h-px w-6 bg-base-300"></li>{/if}
+        {#if index < 2}<li aria-hidden="true" class="h-1 w-6 rounded-full bg-base-300"></li>{/if}
       {/each}
     </ol>
-    <button class="btn btn-ghost btn-sm font-normal" onclick={leave}><LogOut class="size-4" />Leave</button>
+    <span class="justify-self-end"><span class="chip">{view.row.step ? `${view.row.step} step` : "First check"}</span></span>
   </div>
 
   {#if stage === "dump"}
     <div class="mx-auto max-w-3xl px-12 pb-24">
-      <div class="flex items-end justify-between gap-6 pt-12">
-        <div><p class="text-sm text-muted">Everything you remember about</p><h1 class="mt-1 text-3xl font-semibold">{view.row.subject_name}</h1></div>
+      <div class="flex items-end justify-between gap-6 pt-6">
+        <div><p class="text-sm text-muted">Everything you remember about</p><h1 class="mt-1 text-[30px] font-black">{view.row.subject_name}</h1></div>
         <!-- No ticking clock while you recall: it pulls attention away. The time shows on the result. -->
       </div>
       <div class="mt-8 flex items-center justify-between gap-4">
@@ -143,7 +143,7 @@
       </div>
     </div>
   {:else if stage === "check"}
-    <div class="grid h-[calc(100vh-65px)] grid-cols-2">
+    <div class="grid h-[calc(100vh-70px)] grid-cols-2">
       <section class="overflow-y-auto border-r border-base-300 bg-base-200 px-10 py-10" aria-labelledby="dump-h">
         <h2 id="dump-h" class="eyebrow">Your recall</h2>
         {#if outside || !dump.trim()}<p class="mt-4 text-muted">Done outside the app.</p>{:else}<div class="mt-4 max-w-prose whitespace-pre-line text-[15px] leading-relaxed">{dump}</div>{/if}

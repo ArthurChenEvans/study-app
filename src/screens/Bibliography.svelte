@@ -90,19 +90,20 @@
 
   {#if loaded && sources.length === 0}
     <div class="panel max-w-lg p-10">
-      <span class="grid size-10 place-items-center rounded-lg bg-base-200"><BookOpen class="size-5" /></span>
+      <span class="well" aria-hidden="true"><BookOpen class="size-5" /></span>
       <h2 class="mt-6 text-xl font-semibold">No sources yet</h2>
       <p class="mt-2 text-muted">Add the books, papers and lectures you write questions from, then cite them on each question.</p>
       <button class="btn btn-primary mt-6" onclick={open}><Plus class="size-4" />Add your first source</button>
     </div>
   {:else}
-    <ul class="panel divide-y">
+    <!-- Each source is a tile, its APA line exactly as it is, the topics citing it as chips -->
+    <ul class="flex flex-col gap-3">
       {#each sources as source (source.id)}
-        <li class="flex gap-10 p-6" aria-label={source.fields.authors}>
-          <p class="max-w-prose flex-1 pl-8 -indent-8 leading-relaxed"><Rich inline text={source.apa} /></p>
-          <div class="w-64 shrink-0 text-sm">
-            <p><span class="text-muted">Cited by</span> <span class="font-semibold tabular-nums">{source.cited_by_questions} {source.cited_by_questions === 1 ? "question" : "questions"}</span></p>
-            <p class="mt-3 flex flex-wrap gap-1">{#each source.used_by as id (id)}<span class="badge badge-ghost badge-sm">{topicName(id)}</span>{:else}<span class="text-muted">Not cited yet</span>{/each}</p>
+        <li class="panel flex items-start gap-4 px-5 py-4" aria-label={source.fields.authors}>
+          <span class="well" aria-hidden="true"><BookOpen class="size-5 fill-current" /></span>
+          <div class="min-w-0 flex-1">
+            <p class="pl-8 -indent-8 text-[15.5px] leading-relaxed"><Rich inline text={source.apa} /></p>
+            <p class="mt-1.5 flex flex-wrap items-center gap-1.5 text-[13px]"><span class="text-muted">Cited by <span class="tabular-nums">{source.cited_by_questions} {source.cited_by_questions === 1 ? "question" : "questions"}</span></span>{" "}{#each source.used_by as id (id)}<span class="chip">{topicName(id)}</span>{:else}<span class="text-muted">· not cited yet</span>{/each}</p>
           </div>
           <div class="shrink-0">
             <RowMenu small label="Source actions" items={[{ label: "Edit source", onSelect: () => edit(source) }, { label: "Delete source…", danger: true, onSelect: () => (deleting = source) }]} />

@@ -119,13 +119,13 @@
 <svelte:window onkeydown={keys} />
 
 <div class="mx-auto max-w-6xl px-12 pb-24">
-  <button class="mt-8 inline-flex items-center gap-1 py-1 text-sm text-muted hover:underline" onclick={() => (editing ? (editing = null) : onBack())}><ArrowLeft class="size-4" />{editing ? data?.name : "Cards"}</button>
+  <button class="mt-8 inline-flex items-center gap-1 py-1 text-xs font-extrabold uppercase tracking-wider text-muted hover:underline" onclick={() => (editing ? (editing = null) : onBack())}><ArrowLeft class="size-4" />{editing ? data?.name : "Cards"}</button>
   {#if data}
     <div class="flex items-end justify-between gap-6 pb-6 pt-4">
       <div><p class="text-sm text-muted">{data.module ?? "No module"} · {data.cards.length} {data.cards.length === 1 ? "card" : "cards"} · {data.due} due</p><h1 class="mt-1 text-3xl font-semibold">{data.name}</h1></div>
       <div class="flex items-center gap-2">
         {#if !editing}<button class="btn btn-ghost" onclick={() => open(null)}><Plus class="size-4" />New card</button>{/if}
-        <button class="btn {editing || !data.due ? 'btn-outline border-field-border' : 'btn-primary'}" disabled={!data.due} onclick={() => onReview({ Topic: topic })}><Play class="size-4" />{data.due && !editing ? `Review the ${data.due} due` : `Review ${data.name}`}</button>
+        <button class="btn {editing || !data.due ? 'btn-outline' : 'btn-primary'}" disabled={!data.due} onclick={() => onReview({ Topic: topic })}><Play class="size-4" />{data.due && !editing ? `Review the ${data.due} due` : `Review ${data.name}`}</button>
       </div>
     </div>
     {#if status && !editing}<p role="status" class="mb-4 text-sm text-muted">{status}</p>{/if}
@@ -151,10 +151,10 @@
               {#each listed as card (card.id)}
                 <tr class="hover:bg-base-100">
                   <td><button class="line-clamp-2 py-1 text-left hover:underline {card.archived ? 'text-muted' : ''}" onclick={() => open(card.note)}><Rich inline text={card.front} /></button></td>
-                  <td class="text-sm">{card.kind}</td>
+                  <td><span class="chip">{card.kind}</span></td>
                   <td>{#if card.source && card.source !== "Written"}<span class="badge-src">{card.source}</span>{:else}<span class="text-sm text-muted">Written</span>{/if}</td>
-                  <td class="text-sm tabular-nums">{#if card.archived}<span class="flex items-center gap-1 text-muted"><Archive class="size-3.5" />Archived</span>{:else if card.is_new}<span class="text-muted">New</span>{:else if isDue(card)}<span class="flex items-center gap-1.5 font-semibold"><span class="due-dot" aria-hidden="true"></span>Due today</span>{:else}{dueLabel(card.due, today)}{/if}</td>
-                  <td class="text-sm tabular-nums">{#if card.leech}<span class="flex items-center gap-1 font-semibold text-wrong-ink"><Flag class="size-3.5" />{card.lapses}×</span>{:else if card.lapses}{card.lapses}×{:else}<span class="text-muted">None</span>{/if}</td>
+                  <td class="text-sm tabular-nums">{#if card.archived}<span class="flex items-center gap-1 text-muted"><Archive class="size-3.5" />Archived</span>{:else if card.is_new}<span class="text-muted">New</span>{:else if isDue(card)}<span class="chip chip-due">Due today</span>{:else}{dueLabel(card.due, today)}{/if}</td>
+                  <td class="text-sm tabular-nums">{#if card.leech}<span class="chip chip-wrong" title="Tricky card"><Flag class="size-3.5" />{card.lapses}×</span>{:else if card.lapses}{card.lapses}×{:else}<span class="text-muted">None</span>{/if}</td>
                   <td class="text-right"><button class="row-actions btn btn-ghost btn-sm btn-square" aria-label="{card.archived ? 'Bring back' : 'Archive'} card" title={card.archived ? "Bring back" : "Archive"} onclick={() => toggleArchive(card.id, !card.archived)}>{#if card.archived}<ArchiveRestore class="size-4" />{:else}<Archive class="size-4" />{/if}</button></td>
                 </tr>
               {/each}
@@ -206,7 +206,7 @@
               <fieldset class="space-y-3">
                 {#if note.cues.length}<legend class="text-sm font-semibold">More cues for the same answer <span class="font-normal text-muted">(optional)</span></legend>{/if}
                 {#each note.cues as _, index (index)}
-                  <div class="flex items-center gap-2"><input class="input input-sm flex-1" aria-label="Extra cue {index + 1}" bind:value={note.cues[index]} /><button type="button" class="btn btn-ghost btn-sm btn-square" aria-label="Remove extra cue {index + 1}" onclick={() => note.cues.splice(index, 1)}><X class="size-4" /></button></div>
+                  <div class="flex items-center gap-2"><input class="input input-sm flex-1" aria-label="Extra cue {index + 1}" bind:value={note.cues[index]} /><button type="button" class="btn btn-quiet btn-sm btn-square" aria-label="Remove extra cue {index + 1}" onclick={() => note.cues.splice(index, 1)}><X class="size-4" /></button></div>
                 {/each}
                 <div class="flex flex-wrap items-center gap-3"><button type="button" class="btn btn-ghost btn-sm -ml-3" onclick={() => note.cues.push("")}><Plus class="size-4" />Add another cue for the same answer</button><span class="text-sm text-muted">Each cue becomes its own card.</span></div>
               </fieldset>

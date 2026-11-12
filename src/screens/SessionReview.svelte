@@ -134,29 +134,29 @@
 <svelte:window onkeydown={keys} />
 
 {#if queue}
-  <div class="sticky top-0 z-10 flex items-center justify-between gap-6 border-b border-base-300 bg-base-100 px-12 py-4">
-    <div class="flex items-center gap-3 text-sm"><span class="text-muted">{projectName}</span><span class="text-muted" aria-hidden="true">›</span><span class="font-semibold">Session review</span></div>
-    {#if current}<p class="text-sm tabular-nums" aria-live="polite">Struggle <b>{index + 1}</b> <span class="text-muted">of {queue.length}</span></p>{/if}
-    {#if current}<button class="btn btn-ghost btn-sm font-normal" onclick={onDone}><Clock class="size-4" />Finish later</button>{:else}<span></span>{/if}
+  <div class="mx-auto flex w-full max-w-5xl items-center gap-4 px-12 pt-7">
+    <div class="h-[18px] flex-1 overflow-hidden rounded-full bg-base-300" role="progressbar" aria-label="Struggles reviewed" aria-valuenow={Math.min(index, queue.length)} aria-valuemin={0} aria-valuemax={queue.length}><div class="lesson-fill h-full rounded-full" style="width: max(18px, {queue.length ? (Math.min(index, queue.length) / queue.length) * 100 : 0}%)"></div></div>
+    <span class="chip">{projectName}<span class="sr-only">, session review</span></span>
+    {#if current}<p class="text-sm font-extrabold tabular-nums" aria-live="polite">Struggle {index + 1} of {queue.length}</p>{/if}
   </div>
 
   {#if current}
-    <form class="mx-auto max-w-3xl px-12 pb-24 pt-8" onsubmit={next}>
-      <div class="space-y-6">
+    <form class="flex min-h-[calc(100vh-52px)] flex-col" onsubmit={next}>
+      <div class="mx-auto w-full max-w-[40rem] flex-1 space-y-6 px-6 pb-12 pt-8">
         <section class="panel p-6" aria-label="The struggle">
-          <div class="flex items-center gap-2"><span class="kind">{kindLabel[current.kind]}</span><span class="text-sm text-muted">Logged {current.day === today ? "" : `${pastOn(current.day, today).replace(/^on /, "")} `}at {time(current.minute)}</span>{#if current.topic_name}<span class="badge-src">{current.topic_name}</span>{/if}</div>
-          <p class="mt-3 text-lg">{current.what}</p>
+          <div class="flex flex-wrap items-center gap-2"><span class="chip">{kindLabel[current.kind]}</span>{#if current.topic_name}<span class="chip chip-primary">{current.topic_name}</span>{/if}<span class="ml-auto text-sm font-extrabold text-muted">Logged {current.day === today ? "" : `${pastOn(current.day, today).replace(/^on /, "")} `}at {time(current.minute)}</span></div>
+          <p class="mt-3 text-[22px] font-black leading-tight">{current.what}</p>
           {#if current.why}<p class="mt-1 text-muted">Why it wasn't obvious: {current.why}</p>{/if}
         </section>
 
         <fieldset>
-          <legend class="mb-3 text-sm font-semibold">What should happen with it?</legend>
-          <div class="grid grid-cols-2 gap-3">
+          <legend class="mb-3 font-extrabold">What should happen with it?</legend>
+          <div class="space-y-2.5">
             {#each choices as [key, Icon, title, sub], position (key)}
-              <label class="flex min-h-12 cursor-pointer items-start gap-3 rounded-lg border bg-surface px-4 py-3 {action === key ? 'border-2 border-primary bg-base-200' : 'border-field-border'}">
-                <input type="radio" name="action" class="radio radio-sm mt-0.5" checked={action === key} onchange={() => { action = key; error = ""; }} />
-                <span class="flex-1"><span class="flex items-center gap-2 font-semibold"><Icon class="size-4" />{title}</span><span class="mt-0.5 block text-sm text-muted">{sub}</span></span>
-                <kbd class="kbd kbd-xs" aria-hidden="true">{position + 1}</kbd>
+              <label class="option cursor-pointer {action === key ? 'option-picked' : ''}">
+                <input type="radio" name="action" class="sr-only" checked={action === key} onchange={() => { action = key; error = ""; }} />
+                <span class="option-key" aria-hidden="true">{position + 1}</span>
+                <span class="flex-1"><span class="flex items-center gap-2 text-[17px] font-extrabold"><Icon class="size-4" />{title}</span><span class="mt-0.5 block text-sm font-bold text-muted">{sub}</span></span>
               </label>
             {/each}
           </div>
@@ -180,8 +180,8 @@
               <div class="flex-1"><p class="font-semibold">You have a drill for this issue</p>
                 <p class="mt-1 text-sm text-muted">"{known.task}". {known.last ? `Last done ${pastOn(known.last.day, today)}, rated ${known.last.rating}.` : known.due !== null ? `Already due ${dueLabel(known.due, today)}.` : "Not done yet."}</p>
                 <div class="mt-4 flex flex-wrap gap-2">
-                  <button type="button" class="btn btn-sm {drillMode === 'again' ? 'btn-outline border-primary' : 'btn-ghost'}" aria-pressed={drillMode === "again"} onclick={() => (drillMode = "again")}><Repeat class="size-4" />Schedule this drill again</button>
-                  <button type="button" class="btn btn-sm {drillMode === 'new' ? 'btn-outline border-primary' : 'btn-ghost'}" aria-pressed={drillMode === "new"} onclick={() => (drillMode = "new")}><Plus class="size-4" />Do a different drill</button>
+                  <button type="button" class="btn btn-sm {drillMode === 'again' ? 'btn-outline border-primary-ink' : 'btn-ghost'}" aria-pressed={drillMode === "again"} onclick={() => (drillMode = "again")}><Repeat class="size-4" />Schedule this drill again</button>
+                  <button type="button" class="btn btn-sm {drillMode === 'new' ? 'btn-outline border-primary-ink' : 'btn-ghost'}" aria-pressed={drillMode === "new"} onclick={() => (drillMode = "new")}><Plus class="size-4" />Do a different drill</button>
                 </div></div></div>
           {/if}
           {#if drillMode === "new"}
@@ -198,12 +198,14 @@
             </div>
           {/if}
         {/if}
+        {#if error}<p role="alert" class="text-sm text-error">{error}</p>{/if}
       </div>
-      {#if error}<p role="alert" class="mt-6 text-sm text-error">{error}</p>{/if}
-      <div class="mt-10 flex items-center justify-between gap-3 border-t border-base-300 pt-6">
+      <div class="sheet-foot"><div class="mx-auto flex max-w-5xl items-center justify-between gap-3">
         <p class="text-sm text-muted">Each one is saved as you go.</p>
+        <span class="flex-1"></span>
+        <button type="button" class="btn btn-ghost" onclick={onDone}><Clock class="size-4" />Finish later</button>
         <button type="submit" class="btn btn-primary" disabled={!action}>{action === "drill" ? "Schedule the drill" : index + 1 === queue.length ? "Finish review" : "Next struggle"} <kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">Enter</kbd></button>
-      </div>
+      </div></div>
     </form>
 
     {#if asking}
@@ -212,8 +214,8 @@
           <h3 id="when-h" class="text-lg font-semibold">When do you want to do it?</h3>
           <p class="mt-2 text-sm text-muted">{drillMode === "again" && known ? known.task : task}</p>
           <div class="mt-5 space-y-3">
-            <label class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-4 py-2 {when === 'tomorrow' ? 'border-primary' : 'border-field-border'}"><input type="radio" name="when" class="radio radio-sm" checked={when === "tomorrow"} onchange={() => (when = "tomorrow")} /><span class="flex-1">Tomorrow, {fullLabel(today + 1, today)}</span></label>
-            <label class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-4 py-2 {when === 'other' ? 'border-primary' : 'border-field-border'}"><input type="radio" name="when" class="radio radio-sm" checked={when === "other"} onchange={() => (when = "other")} /><span>Another day</span>
+            <label class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-4 py-2 {when === 'tomorrow' ? 'border-primary-ink' : 'border-field-border'}"><input type="radio" name="when" class="radio radio-sm" checked={when === "tomorrow"} onchange={() => (when = "tomorrow")} /><span class="flex-1">Tomorrow, {fullLabel(today + 1, today)}</span></label>
+            <label class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-4 py-2 {when === 'other' ? 'border-primary-ink' : 'border-field-border'}"><input type="radio" name="when" class="radio radio-sm" checked={when === "other"} onchange={() => (when = "other")} /><span>Another day</span>
               <input type="date" class="input input-sm ml-auto w-40" aria-label="Pick a day" min={isoOf(today)} bind:value={otherDay} onfocus={() => (when = "other")} /></label>
           </div>
           <div class="modal-action">

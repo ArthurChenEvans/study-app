@@ -79,13 +79,13 @@ try:
     find("//h1[normalize-space()='Your data']")
     status = find("//*[@role='status']")
     assert "Backed up today at" in status.text, status.text
-    assert any("Daily" in row.text for row in rows()), [row.text for row in rows()]
+    assert any("DAILY" in row.text.upper() for row in rows()), [row.text for row in rows()]
     ok("Your data leads with when the last backup was, and lists it (R104)")
     shot("your-data")
 
     # ---------- By hand ----------
     find("//button[contains(normalize-space(), 'Back up now')]").click()
-    wait.until(lambda _: "By hand" in rows()[0].text)
+    wait.until(lambda _: "BY HAND" in rows()[0].text.upper())
     names = sorted(path.name for path in folder.glob("study *.sqlite"))
     assert any(name.endswith("by-hand.sqlite") for name in names) and any(name.endswith("daily.sqlite") for name in names), names
     assert not list(folder.glob("*.partial")), "nothing half-written"
@@ -97,13 +97,13 @@ try:
     dialog = find("//dialog[@open]")
     wait.until(lambda _: "topic added" in dialog.text)
     assert "1 topic added" in dialog.text and "topics added" not in dialog.text, dialog.text
-    assert driver.switch_to.active_element.text.strip() == "Cancel", "Cancel has the focus"
+    assert driver.switch_to.active_element.text.strip().lower() == "cancel", "Cancel has the focus"
     ok("restoring says what it undoes and starts on Cancel (R105)")
     shot("restore")
     dialog.find_element(By.XPATH, ".//button[contains(., 'Restore today')]").click()
     notice = find("//*[@role='alert' and starts-with(normalize-space(), 'Restored the backup')]")
     assert "restore that to undo this" in notice.text, notice.text
-    wait.until(lambda _: "Before restore" in rows()[0].text)
+    wait.until(lambda _: "BEFORE RESTORE" in rows()[0].text.upper())
     names = [topic["name"] for topic in ipc("topics", {})]
     assert "Kept by the backup" in names and "Made after the backup" not in names, names
     ok("the restore backs up first, then puts the data back (R105)")

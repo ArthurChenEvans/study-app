@@ -39,13 +39,13 @@
     <fieldset class="mt-5 space-y-2">
       <legend class="mb-2 text-sm font-semibold">Do it on</legend>
       {#each picks as pick (pick.day)}
-        <label class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-4 py-2 {chosen === pick.day ? 'border-2 border-primary bg-base-200' : 'border-field-border'}">
+        <label class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-4 py-2 {chosen === pick.day ? 'border-2 border-primary-ink bg-base-200' : 'border-field-border'}">
           <input type="radio" name="move-day" class="radio radio-sm" checked={chosen === pick.day} onchange={() => (chosen = pick.day)} />
           <span class="flex-1">{pick.label}</span>
           {#if pick.day === current}<span class="text-xs text-muted">where it is now</span>{/if}
         </label>
       {/each}
-      <label class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-4 py-2 {chosen === 'other' ? 'border-2 border-primary bg-base-200' : 'border-field-border'}">
+      <label class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-4 py-2 {chosen === 'other' ? 'border-2 border-primary-ink bg-base-200' : 'border-field-border'}">
         <input type="radio" name="move-day" class="radio radio-sm" checked={chosen === "other"} onchange={() => (chosen = "other")} />
         <span>Another day</span>
         <input type="date" class="input input-sm ml-auto w-40" aria-label="Pick a day" min={isoOf(today)} bind:value={other} onfocus={() => (chosen = "other")} />

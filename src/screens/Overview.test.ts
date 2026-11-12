@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../lib/api", async (original) => {
   const actual = await original<typeof import("../lib/api")>();
-  return { ...actual, api: { overview: vi.fn(), topics: vi.fn(), today: vi.fn() } };
+  return { ...actual, api: { overview: vi.fn(), topics: vi.fn(), today: vi.fn(), dueToday: vi.fn(), topicQuizzes: vi.fn() } };
 });
 
 import { api, type Progress } from "../lib/api";
@@ -45,6 +45,44 @@ describe("Overview", () => {
     expect(screen.queryByRole("img", { name: /Score per quiz/ })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Create topic" }));
     expect(onNavigate).toHaveBeenCalledWith("topics");
+  });
+
+  // overview.feature: What's due leads (design/playful-redesign: Overview)
+  it("leads with what's due today, and starts the due quizzes from it", async () => {
+    const u = userEvent.setup();
+    const onNavigate = vi.fn();
+    const onQuizTopics = vi.fn();
+    mocked.overview.mockResolvedValue({ Progress: progress() });
+    mocked.dueToday.mockResolvedValue({ cards: 4, checklists: 1, quizzes: 2, drills: 0, total: 7 });
+    mocked.topicQuizzes.mockResolvedValue([
+      { topic: 1, step: "Week", position: 1, steps: 7, due: TODAY, due_today: true },
+      { topic: 3, step: "Day", position: 0, steps: 7, due: TODAY - 1, due_today: true },
+      { topic: 4, step: "Day", position: 0, steps: 7, due: TODAY + 3, due_today: false },
+    ]);
+    render(Overview, { onNavigate, onQuizTopics });
+    const hero = await screen.findByRole("region", { name: "2 quizzes due today" });
+    expect(hero).toHaveTextContent("CPU and OSI model are ready");
+    // The pink banner is the one primary, so nothing else is pink
+    expect(document.querySelectorAll(".btn-primary, .hero")).toHaveLength(1);
+    await u.click(within(hero).getByRole("button", { name: "Start quiz" }));
+    expect(onQuizTopics).toHaveBeenCalledWith([1, 3]);
+    const due = screen.getByRole("list", { name: "Due today" });
+    expect(within(due).getAllByRole("listitem").map((item) => item.textContent?.trim())).toEqual(["Quiz 2 topics", "Review 4 cards", "Recall 1 checklist"]);
+    await u.click(within(due).getByRole("link", { name: "Review 4 cards" }));
+    expect(onNavigate).toHaveBeenCalledWith("cards");
+  });
+
+  it("offers a new quiz when nothing is due", async () => {
+    const u = userEvent.setup();
+    const onNavigate = vi.fn();
+    mocked.overview.mockResolvedValue({ Progress: progress() });
+    mocked.dueToday.mockResolvedValue({ cards: 0, checklists: 0, quizzes: 0, drills: 0, total: 0 });
+    mocked.topicQuizzes.mockResolvedValue([]);
+    render(Overview, { onNavigate });
+    const hero = await screen.findByRole("region", { name: "Nothing due today" });
+    await u.click(within(hero).getByRole("button", { name: "New quiz" }));
+    expect(onNavigate).toHaveBeenCalledWith("setup");
+    expect(screen.getByRole("list", { name: "Due today" })).toHaveTextContent("All done for today");
   });
 
   // overview.feature: Progress summary / Change from the previous week

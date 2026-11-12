@@ -99,7 +99,7 @@ try:
     shot("import")
     button("Add 2 points").click()
     wait.until(lambda _: "Which stage reads registers? → Decode" in text())
-    assert "From MCQ" in text() and "From card" in text()
+    assert "FROM MCQ" in text().upper() and "FROM CARD" in text().upper()
     assert driver.find_elements(By.XPATH, "//ol[@aria-label='Points to recall']//strong[normalize-space()='4']"), "cloze answer in bold"
     assert driver.find_elements(By.CSS_SELECTOR, "[data-point] .katex"), "maths rendered in a point"
     ok("points written, maths rendered, one added from an MCQ and one from a cloze card (R53, R54)")

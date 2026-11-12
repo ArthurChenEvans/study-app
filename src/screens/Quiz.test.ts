@@ -64,8 +64,8 @@ describe("Quiz", () => {
     await u.click(screen.getByRole("button", { name: "2 Fetch" }));
     await u.click(screen.getByRole("button", { name: /Submit/ }));
     await screen.findByRole("status");
-    expect(screen.getByRole("button", { name: /2 Fetch/ })).toHaveClass("row-wrong");
-    expect(screen.getByRole("button", { name: /3 Decode/ })).toHaveClass("row-right");
+    expect(screen.getByRole("button", { name: /2 Fetch/ })).toHaveClass("option-wrong");
+    expect(screen.getByRole("button", { name: /3 Decode/ })).toHaveClass("option-right");
     const other = screen.getByRole("button", { name: /1 Execute/ });
     expect(other).toHaveClass("text-muted");
     expect(other.className).not.toMatch(/opacity/);

@@ -48,7 +48,7 @@
     Wrong: "background: var(--chart-wrong)",
     Answered: "background: var(--chart-ink)",
     // Outlined, not filled: a solid near-white bar was the loudest thing on the dark theme.
-    Current: "background: transparent; box-shadow: inset 0 0 0 2px var(--color-base-content)",
+    Current: "background: transparent; box-shadow: inset 0 0 0 3px var(--primary-ink)",
     Upcoming: "",
   };
 
@@ -190,122 +190,126 @@
   }
 
   function optionState(index: number) {
-    if (!feedback) return picked.includes(index) ? "border-primary ring-1 ring-primary" : "border-base-300 hover:border-field-border";
-    if (feedback.correct.includes(index)) return "is-right row-right";
-    if (picked.includes(index)) return "is-wrong row-wrong";
-    return "border-base-300 text-muted";
+    if (!feedback) return picked.includes(index) ? "option-picked" : "";
+    if (feedback.correct.includes(index)) return "option-right";
+    if (picked.includes(index)) return "option-wrong";
+    return "text-muted";
   }
 </script>
 
 <svelte:window onkeydown={onKey} />
 
+<!-- The lesson shell (design/playful-redesign: Quiz): close, progress and count on top, one
+     question, and a band at the bottom that holds Submit, then becomes the feedback sheet. -->
 <div class="flex min-h-screen flex-col">
-  <div class="sticky top-0 z-10 border-b border-base-300 bg-base-100 px-12 pb-4 pt-5">
-    <div class="flex items-center gap-6">
-      <span class="badge {current.exam ? 'badge-neutral' : 'badge-ghost'}">{current.exam ? "Exam" : "Study"}</span>
-      <span class="text-sm tabular-nums"><b>{current.position}</b> <span class="text-muted">of {current.total}</span></span>
-      <span class="ml-auto flex items-center gap-4">
-        {#if totalLeft !== null}
-          <span role="timer" aria-label="Time left" class="flex items-center gap-2 font-semibold tabular-nums {low(totalLeft, initial.total_seconds) ? 'rounded-lg bg-warning px-3 py-1 text-warning-content' : ''}"><Timer class="size-4" />{clock(totalLeft)}</span>
-        {/if}
-        {#if questionLeft !== null && feedback === null}
-          <span role="timer" aria-label="Time for this question" class="flex items-center gap-2 font-semibold tabular-nums {low(questionLeft, current.per_question_seconds) ? 'rounded-lg bg-warning px-3 py-1 text-warning-content' : ''}"><Timer class="size-4" />{clock(questionLeft)}</span>
-        {/if}
-      </span>
-      <button class="btn btn-ghost btn-sm font-normal" onclick={quit} disabled={busy}><LogOut class="size-4" />Quit</button>
-    </div>
-    <div class="track mt-4" role="progressbar" aria-valuemin={1} aria-valuemax={current.total} aria-valuenow={current.position} aria-label="Progress" aria-valuetext="Question {current.position} of {current.total}">
-      {#each current.track as cell, index (index)}<span style={trackColour[cell]}></span>{/each}
+  <div class="sticky top-0 z-10 bg-base-100 px-12 pb-3 pt-6">
+    <div class="mx-auto flex max-w-5xl items-center gap-5">
+      <button class="btn btn-quiet btn-sm btn-square" aria-label="Quit" title="Quit" onclick={quit} disabled={busy}><X class="size-6" strokeWidth={2.6} /></button>
+      <div class="track flex-1" role="progressbar" aria-valuemin={1} aria-valuemax={current.total} aria-valuenow={current.position} aria-label="Progress" aria-valuetext="Question {current.position} of {current.total}">
+        {#each current.track as cell, index (index)}<span style={trackColour[cell]}></span>{/each}
+      </div>
+      {#if totalLeft !== null}
+        <span role="timer" aria-label="Time left" class="timer-chip {low(totalLeft, initial.total_seconds) ? 'timer-low' : ''}"><Timer class="size-4" />{clock(totalLeft)}</span>
+      {/if}
+      {#if questionLeft !== null && feedback === null}
+        <span role="timer" aria-label="Time for this question" class="timer-chip {low(questionLeft, current.per_question_seconds) ? 'timer-low' : ''}"><Timer class="size-4" />{clock(questionLeft)}</span>
+      {/if}
+      <span class="chip {current.exam ? 'chip-info' : ''}">{current.exam ? "Exam" : "Study"}</span>
+      <span class="whitespace-nowrap tabular-nums"><b>{current.position}</b> <span class="text-muted">of {current.total}</span></span>
     </div>
   </div>
 
-  <div class="flex-1 px-12 py-12">
-    <div class="mx-auto max-w-prose">
+  <div class="flex-1 px-12 pb-10 pt-8">
+    <div class="mx-auto max-w-[44rem]">
       {#key current.position}<div class="rise">
       {#if current.short}<p class="eyebrow">Short answer</p>
       {:else if current.multiple}<p class="eyebrow">Select all that apply{#if current.answers_to_pick} · <span>Pick {current.answers_to_pick}</span>{/if}</p>{/if}
-      <div role="heading" aria-level="1" class="mt-2 text-xl leading-snug"><Rich text={current.text} /></div>
+      <div role="heading" aria-level="1" class="mt-2 text-[28px] font-extrabold leading-tight"><Rich text={current.text} /></div>
 
       {#if current.short}
         <!-- svelte-ignore a11y_autofocus -->
         <textarea class="textarea answer-box mt-8 w-full {feedback && !feedback.short?.overruled ? (feedback.right ? 'is-right' : 'is-wrong') : ''}" rows="2" aria-label="Your answer" placeholder="Type your answer…" readonly={feedback !== null} autofocus bind:value={typed} onkeydown={answerKeys}></textarea>
-        {#if !feedback}<p class="mt-2 text-xs text-muted"><kbd class="kbd kbd-xs">Enter</kbd> submits, <kbd class="kbd kbd-xs">Shift</kbd><kbd class="kbd kbd-xs">Enter</kbd> adds a new line</p>{/if}
+        {#if !feedback}<p class="mt-3 text-[13px] text-muted"><kbd class="kbd kbd-xs">Enter</kbd> submits, <kbd class="kbd kbd-xs">Shift</kbd><kbd class="kbd kbd-xs">Enter</kbd> adds a new line, <kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">G</kbd> flags a guess</p>{/if}
       {:else}
-      <div class="mt-8 space-y-3" role={current.multiple ? "group" : "radiogroup"} aria-label="Answers">
+      <div class="mt-7 space-y-3" role={current.multiple ? "group" : "radiogroup"} aria-label="Answers">
         {#each current.options as option, position (option.index)}
           <button
-            class="flex min-h-12 w-full items-center gap-4 rounded-lg border bg-surface px-4 py-3 text-left transition-colors duration-150 {optionState(option.index)}"
+            class="option {optionState(option.index)}"
             aria-pressed={picked.includes(option.index)}
             onclick={() => pick(option.index)}
           >
-            {#if feedback?.correct.includes(option.index)}<span class="answer-mark answer-mark-right pop"><Check class="size-4" aria-hidden="true" /><span class="sr-only">{position + 1}</span></span>
-            {:else if feedback && picked.includes(option.index)}<span class="answer-mark answer-mark-wrong pop"><X class="size-4" aria-hidden="true" /><span class="sr-only">{position + 1}</span></span>
-            {:else}<kbd class="kbd kbd-sm tabular-nums">{position + 1}</kbd>{/if}
+            {#if feedback?.correct.includes(option.index)}<span class="option-key option-key-right pop"><Check class="size-4" strokeWidth={3.4} aria-hidden="true" /><span class="sr-only">{position + 1}</span></span>
+            {:else if feedback && picked.includes(option.index)}<span class="option-key option-key-wrong pop"><X class="size-4" strokeWidth={3.4} aria-hidden="true" /><span class="sr-only">{position + 1}</span></span>
+            {:else}<span class="option-key tabular-nums">{position + 1}</span>{/if}
             <Rich inline text={option.text} class="flex-1" />
-            {#if feedback?.correct.includes(option.index)}<span class="flex items-center gap-1 text-sm font-semibold text-right-ink"><Check class="size-4" />Correct</span>
-            {:else if feedback && picked.includes(option.index)}<span class="flex items-center gap-1 text-sm font-semibold text-wrong-ink"><X class="size-4" />Your pick</span>{/if}
+            {#if feedback?.correct.includes(option.index)}<span class="flex items-center gap-1.5 text-[13px] font-extrabold uppercase tracking-[.06em] text-right-ink"><Check class="size-4" strokeWidth={3} />Correct</span>
+            {:else if feedback && picked.includes(option.index)}<span class="flex items-center gap-1.5 text-[13px] font-extrabold uppercase tracking-[.06em] text-wrong-ink"><X class="size-4" strokeWidth={3} />Your pick</span>{/if}
           </button>
         {/each}
       </div>
+      {#if !feedback}<p class="mt-3 text-[13px] text-muted">Press <kbd class="kbd kbd-xs">1</kbd> to <kbd class="kbd kbd-xs">{current.options.length}</kbd> to answer, <kbd class="kbd kbd-xs">F</kbd> to flag a guess.</p>{/if}
       {/if}
-
-      {#if feedback?.short && verdict}
-        {@const short = feedback.short}
-        <div class="panel rise mt-8 p-6 {feedback.right ? 'feedback-right' : 'feedback-wrong'}" role="status">
-          <p class="flex flex-wrap items-center gap-2 text-lg font-semibold {feedback.right ? 'text-right-ink' : 'text-wrong-ink'}">
-            {#if feedback.right}<CircleCheck class="size-5" />{:else}<CircleX class="size-5" />{/if}{verdict.label}
-            {#if verdict.note}<span class="font-normal text-muted">{verdict.note}</span>{/if}
-            {#if short.overruled}<span class="overruled">You overruled this</span>{/if}
-            {#if current.flagged}<span class="badge guessed-chip"><Flag class="size-3" />Guessed</span>{/if}
-          </p>
-          {#if verdict.keywords}
-            <div class="mt-3 flex flex-wrap gap-2" aria-label="Keywords">
-              {#each verdict.keywords.hit as word (word)}<span class="kw kw-hit"><Check class="size-3" />{word}<span class="sr-only">, found</span></span>{/each}
-              {#each verdict.keywords.missed as word (word)}<span class="kw kw-miss"><X class="size-3" />{word}<span class="sr-only">, missed</span></span>{/each}
-            </div>
-          {/if}
-          <p class="mt-4 text-sm text-muted">Model answer</p>
-          <Rich class="mt-1" text={short.shown_answer} />
-          {#if !feedback.right && short.also_accepted.length}<p class="mt-3 text-sm text-muted">Also accepted: {short.also_accepted.join(", ")}</p>{/if}
-          {#if feedback.explanation}<Rich class="mt-4 leading-relaxed" text={feedback.explanation} />{/if}
-          {#each feedback.citations as citation, index (index)}<p class="mt-3 flex items-center gap-2 text-sm text-muted"><BookOpen class="size-4" />{citation.location}</p>{/each}
-          {#if short.overruled}
-            <button class="btn btn-ghost btn-sm mt-4" disabled={busy} onclick={overrule}><Undo2 class="size-4" />Undo, count it as {short.marking.right ? "right" : "wrong"} <kbd class="kbd kbd-xs">O</kbd></button>
-          {:else}
-            <div class="mt-5 flex items-center gap-3 border-t border-base-300 pt-4">
-              <span class="text-sm text-muted">{feedback.right ? "Marked right but shouldn't be?" : "Think you had it?"}</span>
-              <button class="btn btn-outline btn-sm border-field-border" disabled={busy} onclick={overrule}>{#if feedback.right}<X class="size-4" />{:else}<Check class="size-4" />{/if}Count it as {feedback.right ? "wrong" : "right"} <kbd class="kbd kbd-xs">O</kbd></button>
-            </div>
-          {/if}
-        </div>
-      {:else if feedback}
-        <div class="panel rise mt-8 p-6 {feedback.right ? 'feedback-right' : 'feedback-wrong'}" role="status">
-          <p class="flex items-center gap-2 text-lg font-semibold {feedback.right ? 'text-right-ink' : 'text-wrong-ink'}">
-            {#if feedback.right}<CircleCheck class="size-5" />Correct{:else}<CircleX class="size-5" />{feedback.auto_reason === "Incomplete" ? "Wrong: incomplete, you missed a correct option" : feedback.auto_reason === "TimedOut" ? "Wrong: time ran out" : "Wrong"}{/if}
-            {#if current.flagged}<span class="badge guessed-chip ml-2"><Flag class="size-3" />Guessed</span>{/if}
-          </p>
-          {#if feedback.explanation}<Rich class="mt-3 leading-relaxed" text={feedback.explanation} />{/if}
-          {#each feedback.citations as citation, index (index)}<p class="mt-3 flex items-center gap-2 text-sm text-muted"><BookOpen class="size-4" />{citation.location}</p>{/each}
-        </div>
-      {/if}
-
       </div>{/key}
-
       {#if error}<p role="alert" class="mt-6 text-sm text-error">{error}</p>{/if}
-
-      <div class="mt-8 flex items-center gap-3">
-        {#if feedback}
-          <button class="btn btn-primary" onclick={next}>Next question <kbd class="kbd kbd-xs">Enter</kbd></button>
-        {:else}
-          <button class="btn btn-primary" onclick={submit} disabled={(current.short ? !typed.trim() : picked.length === 0) || busy}>Submit <kbd class="kbd kbd-xs">Enter</kbd></button>
-          <button
-            class="btn {current.flagged ? '' : 'btn-ghost'}"
-            style={current.flagged ? "background: var(--guessed-tint); color: var(--guessed-ink); border-color: var(--chart-right)" : ""}
-            aria-pressed={current.flagged}
-            onclick={toggleFlag}><Flag class="size-4" />{current.flagged ? "Flagged as guessed" : "I guessed"} {#if current.short}<kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">G</kbd>{:else}<kbd class="kbd kbd-xs">F</kbd>{/if}</button>
-        {/if}
-        {#if current.exam}<span class="ml-auto text-sm text-muted">No going back in exam mode{current.short ? ". You can overrule the marking on the results page." : ""}</span>{/if}
-      </div>
     </div>
   </div>
+
+  {#if feedback}
+    {@const tone = feedback.right ? "right" : "wrong"}
+    <!-- Feedback sheet: verdict, explanation and Next share one band, with an icon and a word -->
+    <div class="sheet sheet-{tone} rise" role="status">
+      <div class="mx-auto flex max-w-5xl items-start gap-6">
+        <span class="sheet-icon" aria-hidden="true">{#if feedback.right}<Check class="size-8" strokeWidth={3.4} />{:else}<X class="size-8" strokeWidth={3.4} />{/if}</span>
+        <div class="min-w-0 flex-1">
+          {#if feedback.short && verdict}
+            {@const short = feedback.short}
+            <p class="flex flex-wrap items-center gap-2 text-[24px] font-black leading-tight sheet-ink">
+              {verdict.label}
+              {#if verdict.note}<span class="text-[15px] font-bold text-muted">{verdict.note}</span>{/if}
+              {#if short.overruled}<span class="overruled">You overruled this</span>{/if}
+              {#if current.flagged}<span class="chip chip-guessed"><Flag class="size-3" />Guessed</span>{/if}
+            </p>
+            {#if verdict.keywords}
+              <div class="mt-2 flex flex-wrap gap-2" aria-label="Keywords">
+                {#each verdict.keywords.hit as word (word)}<span class="kw kw-hit"><Check class="size-3" />{word}<span class="sr-only">, found</span></span>{/each}
+                {#each verdict.keywords.missed as word (word)}<span class="kw kw-miss"><X class="size-3" />{word}<span class="sr-only">, missed</span></span>{/each}
+              </div>
+            {/if}
+            <p class="mt-3 text-[13px] text-muted">Model answer</p>
+            <Rich class="mt-0.5" text={short.shown_answer} />
+            {#if !feedback.right && short.also_accepted.length}<p class="mt-2 text-sm text-muted">Also accepted: {short.also_accepted.join(", ")}</p>{/if}
+            {#if feedback.explanation}<Rich class="mt-3 leading-relaxed" text={feedback.explanation} />{/if}
+            {#each feedback.citations as citation, index (index)}<p class="mt-2 flex items-center gap-2 text-[13px] font-extrabold uppercase tracking-[.06em] sheet-ink"><BookOpen class="size-4" />{citation.location}</p>{/each}
+            {#if short.overruled}
+              <button class="btn btn-ghost btn-sm mt-3" disabled={busy} onclick={overrule}><Undo2 class="size-4" />Undo, count it as {short.marking.right ? "right" : "wrong"} <kbd class="kbd kbd-xs">O</kbd></button>
+            {:else}
+              <div class="mt-3 flex items-center gap-3">
+                <span class="text-sm text-muted">{feedback.right ? "Marked right but shouldn't be?" : "Think you had it?"}</span>
+                <button class="btn btn-ghost btn-sm" disabled={busy} onclick={overrule}>{#if feedback.right}<X class="size-4" />{:else}<Check class="size-4" />{/if}Count it as {feedback.right ? "wrong" : "right"} <kbd class="kbd kbd-xs">O</kbd></button>
+              </div>
+            {/if}
+          {:else}
+            <p class="flex flex-wrap items-center gap-2 text-[24px] font-black leading-tight sheet-ink">
+              {#if feedback.right}Correct{:else}{feedback.auto_reason === "Incomplete" ? "Wrong: incomplete, you missed a correct option" : feedback.auto_reason === "TimedOut" ? "Wrong: time ran out" : "Wrong"}{/if}
+              {#if current.flagged}<span class="chip chip-guessed"><Flag class="size-3" />Guessed</span>{/if}
+            </p>
+            {#if feedback.explanation}<Rich class="mt-1 max-w-prose leading-relaxed" text={feedback.explanation} />{/if}
+            {#each feedback.citations as citation, index (index)}<p class="mt-2 flex items-center gap-2 text-[13px] font-extrabold uppercase tracking-[.06em] sheet-ink"><BookOpen class="size-4" />{citation.location}</p>{/each}
+          {/if}
+        </div>
+        <button class="btn btn-{tone === 'right' ? 'success' : 'wrong'} min-w-48 self-center" onclick={next}>Next question <kbd class="kbd kbd-xs">Enter</kbd></button>
+      </div>
+    </div>
+  {:else}
+    <div class="sheet-foot">
+      <div class="mx-auto flex max-w-5xl items-center gap-3">
+        <button
+          class="btn {current.flagged ? 'btn-guessed' : 'btn-ghost'}"
+          aria-pressed={current.flagged}
+          onclick={toggleFlag}><Flag class="size-4" />{current.flagged ? "Flagged as guessed" : "I guessed"} {#if current.short}<kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">G</kbd>{:else}<kbd class="kbd kbd-xs">F</kbd>{/if}</button>
+        {#if current.exam}<span class="text-sm text-muted">No going back in exam mode{current.short ? ". You can overrule the marking on the results page." : ""}</span>{/if}
+        <button class="btn btn-primary ml-auto min-w-48" onclick={submit} disabled={(current.short ? !typed.trim() : picked.length === 0) || busy}>Submit <kbd class="kbd kbd-xs">Enter</kbd></button>
+      </div>
+    </div>
+  {/if}
 </div>

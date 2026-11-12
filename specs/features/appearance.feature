@@ -18,3 +18,10 @@ Feature: Light and dark theme
     Given I switched to the light theme
     When I close and reopen the app
     Then it is shown in the light theme
+
+  Scenario: Colour-blind safe colours (R129)
+    Given right answers are green and wrong ones red
+    When I turn on "Colour-blind safe" at the bottom of the sidebar
+    Then right answers are blue and wrong ones orange, everywhere
+    And every answer still shows an icon and a word, and guessed is still hatched
+    And the choice is remembered next time

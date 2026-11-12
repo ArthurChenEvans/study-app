@@ -1,13 +1,14 @@
 # Study App Design Rules
 
-The rules every screen follows. Built from Refactoring UI, Nielsen's 10 usability heuristics, Laws of UX, WCAG 2.2 and Butterick's Practical Typography. When a rule and a "looks nice" instinct disagree, the rule wins until the rule is changed here.
+The rules every screen follows. Since 12 Nov 2026 the look is the playful one from `design/playful-redesign/` (chunky, game-like, Gleam's colours). Built from Refactoring UI, Nielsen's 10 usability heuristics, Laws of UX, WCAG 2.2 and Butterick's Practical Typography. When a rule and a "looks nice" instinct disagree, the rule wins until the rule is changed here.
 
 ## 1. Core principles
 
 1. **Hierarchy before decoration.** Every screen has one primary thing. Make it obvious with size, weight and contrast, then de-emphasise everything else (Refactoring UI: emphasise by de-emphasising).
 2. **Design the feature, not the layout.** Start from the job (write a question, answer a question), not from a page shell with a navbar and a hero.
 3. **Constrained choices only.** Spacing, type sizes, colours, radii and shadows come from the scales below. No one-off values.
-4. **Colour is a shared resource.** Most of the UI is warm neutrals. Colour is spent on actions and states (primary action, correct, wrong, guessed), never on decoration.
+4. **Colour is a shared resource.** Most of the UI is Gleam's yellow (light) or underwater blue (dark) neutrals. Colour is spent on actions and states (the main action in faff pink, right, wrong, guessed, due in amber), never on decoration.
+7. **Chunky, not loud.** Thick 2px borders, big radii and a pressed-down ledge under buttons make things feel like they can be picked up. That's the whole playfulness budget: no confetti, no bounce, no mascots.
 5. **Group with space, not boxes.** Proximity and whitespace separate content first. Borders and cards are a last resort.
 6. **Keyboard first in the quiz.** The quiz is the most used screen and should be fully usable without the mouse.
 
@@ -18,14 +19,14 @@ The rules every screen follows. Built from Refactoring UI, Nielsen's 10 usabilit
 | Purple/indigo gradients, neon accents | Palette from section 5. Flat colour, no gradients |
 | Everything in a card, cards inside cards | Whitespace and headings to group. Cards only for things you act on as a unit (a topic in a list) |
 | Emojis as icons or bullets | One icon set (Lucide), used only where an icon adds meaning, always with a label or tooltip |
-| Glows, glassmorphism, heavy drop shadows | Depth from surface levels (base-100, 200, 300). One shadow level for floating things (menus, dialogs) |
+| Glows, glassmorphism, heavy drop shadows | Depth from surface levels and 2px borders. The only "shadow" on a button or tile is the solid ledge under it. One soft shadow for floating things (menus, dialogs) |
 | Centred hero, big tagline, three feature cards | It's a tool, open straight onto the work (topic list or last quiz) |
 | Every element the same weight and size | Clear type scale, at most 3 sizes on one screen plus headings |
 | Grey text on coloured backgrounds | Text on colour uses that colour's `-content` token |
 | Coloured side stripes on every block | Colour only where it marks a state |
 | Status dots and badges that mean nothing | Every badge maps to a real state and has a text label |
 | Default Inter/system font everywhere, 16px for everything | The type pairing and scale in section 4 |
-| Rounded-full pill buttons for everything | Radii from the tokens, pills only for tags |
+| Rounded-full pill buttons for everything | Radii from the tokens (14px buttons, 12px fields, 16px tiles), pills only for counts |
 | Placeholder text as the only label | Visible labels above every field |
 | "Lorem ipsum" density, giant padding | Padding from the spacing scale, sized to the content |
 
@@ -43,107 +44,80 @@ Tailwind classes: `1, 2, 3, 4, 6, 8, 12, 16, 24`.
 
 ## 4. Typography
 
-- **UI and body:** IBM Plex Sans. **Code:** IBM Plex Mono. **Maths:** KaTeX's own fonts. Same family for sans and mono keeps them matched.
-- **Scale (px):** 12, 14, 16, 18, 20, 24, 30, 36. Nothing else.
-  - 12: metadata only (timestamps, counts)
-  - 14: secondary text, table cells, labels
-  - 16: body, form inputs, options
-  - 18 to 20: question text in the quiz
-  - 24 to 36: page titles, the score on the results screen
-- **Weights:** 400 and 600 only. Use 600 sparingly.
-- **Line height:** 1.5 for body, 1.25 for headings and the big numbers.
+- **UI and body:** Nunito (rounded, friendly, very readable at heavy weights). **Code, key hints, file paths:** IBM Plex Mono. **Maths:** KaTeX's own fonts. Both fonts ship with the app (`@fontsource`), nothing loads from the internet.
+- **Scale (px):** 12, 13, 14, 15, 16, 18, 20, 24, 28, 30, 36. 13 is for uppercase labels, 15 for body inside tiles and rows.
+  - 12 to 13: uppercase labels (buttons, nav, tabs, chips, table headers) and metadata
+  - 14 to 15: secondary text, table cells, body inside tiles
+  - 16: body, form inputs
+  - 18: quiz options and card answers
+  - 24 to 30: question text in the quiz, page titles
+  - 36+: the score on Results, the one headline number on Overview
+- **Weights:** 500 for body, 700 for emphasis and rows, 800 for labels and headings, 900 for page titles and big numbers.
+- **Uppercase labels:** buttons, sidebar links, tabs, chips and table headers are uppercase with 0.05 to 0.08em tracking, done in CSS (`text-transform`), so the words in the page and for screen readers stay in sentence case.
+- **Line height:** 1.5 for body, 1.2 for headings and big numbers.
 - **Line length:** 45 to 90 characters (Practical Typography). Question and explanation text gets `max-w-prose`.
 - **Hierarchy with colour too:** primary text `base-content`, secondary text the muted shade (section 5). Not lighter font sizes alone.
 - Numbers in tables and timers use tabular figures (`tabular-nums`) so they don't jump.
 
 ## 5. Colour palette
 
-Warm paper-and-coffee neutrals with one primary and four state colours. Every text pairing below was checked against WCAG 2.2 AA (4.5:1 for text, 3:1 for UI component boundaries).
+Gleam's own colours for the general theme, one main-action colour, amber for anything due, and a right / wrong / guessed set with a colour-blind safe alternative. Every text pairing below was checked against WCAG 2.2 AA (4.5:1 for text, 3:1 for UI component boundaries).
 
-| Token | Value | Hex | Use | Contrast |
+### General theme (Gleam)
+
+| Token | Light | Dark | Use | Contrast (light / dark) |
 |---|---|---|---|---|
-| base-100 | oklch(97% 0.010 80) | #f9f4ee | Main background | |
-| base-200 | oklch(94% 0.014 78) | #f0eae1 | Sidebars, the preview pane, hover | |
-| base-300 | oklch(89% 0.018 75) | #e2d9ce | Dividers, selected rows | decorative only |
-| base-content | oklch(27% 0.025 60) | #30241a | Main text | 13.9 on base-100 |
-| muted (custom) | oklch(42% 0.022 65) | #564b41 | Secondary text | 7.8 on base-100, 7.1 on base-200 (AAA) |
-| field border (custom) | oklch(58% 0.02 65) | #83786e | Input and checkbox borders | 3.9 on base-100 |
-| primary | oklch(40% 0.065 50) | #643d26 | The one main action per screen, focus rings | 8.6 with its content |
-| neutral | oklch(32% 0.02 60) | #3b3129 | Secondary solid buttons, tooltips | 10.7 with its content |
-| accent / warning | oklch(78% 0.13 78) | #e5ac4c | "Guessed" flag, timer running low | 7.5 with dark content |
-| success | oklch(42% 0.11 145) | #1c5c23 | System success, score going up | 7.4 (AAA) |
-| error | oklch(44% 0.15 30) | #942318 | Validation errors, destructive actions | 7.7 (AAA) |
-| info | oklch(44% 0.07 235) | #265874 | Neutral notices, source/citation links | 7.0 (AAA) |
-| right (custom) | #025884, text #004d77 | | Quiz answer right | text 8.3 (AAA) |
-| wrong (custom) | #cc6c13, text #853900 | | Quiz answer wrong | text 7.5 (AAA) |
-| guessed (custom) | hatch of #025884 on #c1dcf0, text #013658 | | Right but guessed | text 8.9 on its tint |
+| base-100 | #fffbe8 aged plastic yellow | #292d3e underwater blue | Page | |
+| base-200 | #f6efd3 | #1f2230 | Sidebar, panes, hover | |
+| base-300 | #e6dcc0 | #474d66 | Borders, dividers, empty bar track | decorative only |
+| surface | #fefefc | #32374b | Tiles, rows, fields, dialogs | |
+| base-content | #1e1e1e | #fefefc | Main text | 16.5 / 11.7 on surface |
+| muted | #584355 | #c9cbd8 | Secondary text | 8.9 / 7.3 on surface |
+| field border | #8b7a88 | #7c829c | Input and checkbox borders | 4.0 / 3.1 on surface |
+| primary | #ffaff3 faff pink, #1e1e1e on it | same | The one main action, the logo, today's ledge | label 10.1 |
+| primary ink | #a3348e | #ffaff3 | Pink as text, links, tabs, focus rings, chart lines | 6.0 / 7.1 on surface |
+| accent (due) | oklch(78% 0.13 78), dark text | oklch(80% 0.13 80) | Due counts, due chips, "to review" | |
+| neutral | #2f2f2f, #fefefc on it | #fefefc, #1e1e1e on it | Selected segment, chosen chip | |
+| info | #1c6f80 | #a6f0fc | Neutral notices, links to sources | 5.7 / 9.2 on surface |
+
+Pale pink is too light to read as text on the yellow page (1.6:1), so light mode uses the darker primary ink for anything pink that has to be read or seen as a boundary. The pink button itself is told apart by its dark label and its darker ledge.
+
+### Right, wrong and guessed
+
+A setting in the sidebar switches between the standard pair and the colour-blind safe pair. The default is standard.
+
+| | Standard light | Standard dark | Colour-blind light | Colour-blind dark |
+|---|---|---|---|---|
+| Right fill / text on it | #0f7b55 / #fff | #35b37e / #06140d | #025884 / #fff | #0573aa / #fff |
+| Right ink | #0b6645 (6.9) | #7fe0b3 (7.4) | #004d77 (8.9) | #87c6f2 (6.4) |
+| Wrong fill / text on it | #c8321f / #fff | #e8604c / #1a0805 | #cc6c13 / #140d08 | #d67523 / #140d08 |
+| Wrong ink | #a32614 (7.3) | #ff9d8c (5.9) | #853900 (8.1) | #f9b379 (6.6) |
+| Guessed tint / ink | #c5e8d6 / #0a5238 (7.0) | #173d2e / #b6f0d4 (9.4) | #c1dcf0 / #013658 (8.8) | #163c54 / #bbddf6 (8.2) |
+
+Ink contrasts are on the surface. Fills carry their own text colour, at least 5.2:1.
 
 Rules:
-- Quiz outcomes use the blue / orange pair, not green / red, so they survive colour blindness. Green and red stay for system messages only.
-- Correct, wrong and guessed are **never shown by colour alone**. Always add an icon and a word ("Correct", "Wrong", "Guessed") for colour-blind use and the greyscale test.
-- Primary is not used for correct/wrong, so "this is the main button" and "you got it right" never get confused.
-- No gradients. No pure black or pure white.
-- Dark theme (`studyapp-dark`) is the default, with the same token names. See section 11.
-
-### DaisyUI theme
-
-```css
-@plugin "daisyui/theme" {
-  name: "studyapp";
-  default: true;
-  prefersdark: false;
-  color-scheme: light;
-
-  --color-base-100: oklch(97% 0.010 80);
-  --color-base-200: oklch(94% 0.014 78);
-  --color-base-300: oklch(89% 0.018 75);
-  --color-base-content: oklch(27% 0.025 60);
-  --color-primary: oklch(40% 0.065 50);
-  --color-primary-content: oklch(97% 0.010 80);
-  --color-secondary: oklch(32% 0.02 60);
-  --color-secondary-content: oklch(94% 0.014 78);
-  --color-accent: oklch(78% 0.13 78);
-  --color-accent-content: oklch(27% 0.025 60);
-  --color-neutral: oklch(32% 0.02 60);
-  --color-neutral-content: oklch(94% 0.014 78);
-  --color-info: oklch(44% 0.07 235);
-  --color-info-content: oklch(97% 0.010 80);
-  --color-success: oklch(42% 0.11 145);
-  --color-success-content: oklch(97% 0.010 80);
-  --color-warning: oklch(78% 0.13 78);
-  --color-warning-content: oklch(27% 0.025 60);
-  --color-error: oklch(44% 0.15 30);
-  --color-error-content: oklch(97% 0.010 80);
-
-  --radius-selector: 0.25rem;
-  --radius-field: 0.375rem;
-  --radius-box: 0.5rem;
-
-  --size-selector: 0.25rem;
-  --size-field: 0.25rem;
-
-  --border: 1px;
-
-  --depth: 0;
-  --noise: 0;
-}
-
-@theme {
-  --color-muted: oklch(42% 0.022 65);
-  --color-field-border: oklch(58% 0.02 65);
-  --font-sans: "IBM Plex Sans", ui-sans-serif, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
-}
-```
-
-`--depth: 0` turns off DaisyUI's built-in bevel shadows, which are one of the things that make DaisyUI apps look the same as each other.
+- Right, wrong and guessed are **never shown by colour alone**. Always an icon and a word ("Correct", "Wrong", "Guessed"), and guessed is always hatched. That's what makes the standard green and red acceptable: the greyscale test and the colour-blind switch both still work.
+- In the standard pair a wrong answer and a destructive action share red. Destructive actions only appear inside a confirmation dialog that names what goes, so the two never sit side by side.
+- Primary (pink) is never used for right or wrong, so "this is the main button" and "you got it right" can't be confused.
+- Amber means due and nothing else. It stays off decoration.
+- No gradients (the guessed hatch is a pattern, not a gradient). No pure black.
+- Dark is the default, with the same token names. See section 11.
 
 ## 6. Component rules
 
 **Buttons**
-- One primary (`btn-primary`) per screen or dialog. Everything else is `btn-ghost` or `btn-outline`.
+- Uppercase, 800 weight, 48px tall (38px small), 14px radius (12px small), with a solid 4px ledge underneath in the button's own colour mixed 70% with black. Pressing moves it down onto the ledge.
+- One primary (pink, `btn-primary`) per screen or dialog. Everything else is the ghost style: surface fill, a 2px border-coloured ring and a border-coloured ledge (`btn-ghost`, `btn-outline`). Quiet text buttons (`btn-link`, menu items) have no ledge.
+- Right and wrong coloured buttons are for answering only (Continue on the feedback sheet, card ratings).
 - Destructive actions are `btn-error` and only appear inside a confirmation dialog, never as the first button you see.
 - Labels are verbs ("Start quiz", "Save question"), never "OK" or "Submit".
+
+**Tiles, chips and rows**
+- A tile: surface fill, 2px base-300 border, 16px radius, no shadow. Something you press as a whole (a quiz option, a rating) also gets a 2px ledge.
+- A chip: uppercase 12px, 800 weight, 8px radius, a 16% tint of its colour with that colour's ink for text. Chips always say a word, and only state colours (due, right, wrong, guessed, info) or muted.
+- List rows are separated by 2px base-300 rules. Table headers are uppercase 12px muted labels.
+- Counts in the sidebar sit in an amber pill when something is due.
 
 **Forms (question editor)**
 - Visible label above every field, help text below in muted 14px.
@@ -152,7 +126,8 @@ Rules:
 
 **Quiz screen**
 - One question at a time, centred column at `max-w-prose`. Nothing else competes with it.
-- Options are large click targets (full row clickable, at least 44px tall, Fitts's law), numbered 1 to 5 to match the keyboard shortcuts.
+- Options are big tiles with a ledge (full row clickable, at least 60px tall, Fitts's law), numbered 1 to 5 in a key box to match the keyboard shortcuts.
+- Feedback is a bottom sheet: verdict, explanation and Continue share one band tinted in the right or wrong colour, with a big round icon and the word.
 - Timer top right in tabular figures, switches to warning colour in the last 20%.
 - Flag ("I guessed") sits next to the submit button, toggled with F.
 
@@ -170,13 +145,13 @@ Rules:
 - Search updates as you type, with category tabs and sortable column headers (SkyUI model).
 - Empty states say what to do next and have one button that does it ("No topics yet. Create your first topic").
 
-**Sliders:** a 6px track in base-300 with the filled part in primary, a 16px round thumb in primary with a surface ring, and a 24px tall hit area. Don't use DaisyUI's default `range`: its fill is as tall as the thumb, which reads as a heavy slab (near-white in the dark theme). Show the value as text next to the slider.
+**Sliders:** a 6px track in base-300 with the filled part in primary ink, a 16px round thumb in primary with a surface ring, and a 24px tall hit area. Don't use DaisyUI's default `range`: its fill is as tall as the thumb, which reads as a heavy slab (near-white in the dark theme). Show the value as text next to the slider.
 
 **Nothing bright and wide unless it's the point.** In the dark theme a full-width or long light shape (a filled bar, a light chip, a floating toolbar) pulls the eye more than anything else on the page. Reserve light fills for the one primary action and small marks. Current-position markers (like the quiz track) are outlined, not filled.
 
-**Icons:** Lucide, 16px inline with text, 20px standalone, always with a label or tooltip.
+**Icons:** Lucide at a heavier 2.4 stroke, 16px inline with text, 20 to 24px standalone and in nav, always with a label or tooltip. Section icons in the sidebar take that section's colour.
 
-**Motion:** 150ms ease-out for hovers and toggles, 200ms for dialogs. Nothing bounces. Respect `prefers-reduced-motion`.
+**Motion:** 150ms ease-out for hovers, toggles and the button press, 200ms for dialogs and the feedback sheet sliding up. Nothing bounces. Respect `prefers-reduced-motion`.
 
 ## 7. Reference apps
 
@@ -225,13 +200,13 @@ Charts show progress from saved attempts only. They never invent data the app do
 **Colours**
 | Token | Value | Job |
 |---|---|---|
-| `--chart-right` | #025884 | Right and sure |
-| `--guessed-fill` | 135° hatch, #025884 2px on #c1dcf0 4px | Right but flagged as guessed |
-| `--chart-wrong` | #cc6c13 | Wrong |
-| `--chart-ink` | #643d26 | Any single-series chart (score trend, reason counts) |
-| `--chart-grid` | oklch(91% 0.016 76) | Gridlines, hairline and solid |
+| `--chart-right` | the right fill (section 5) | Right and sure |
+| `--guessed-fill` | 135° hatch, right fill 2px on the guessed tint 4px | Right but flagged as guessed |
+| `--chart-wrong` | the wrong fill | Wrong |
+| `--chart-ink` | primary ink (#a3348e light, #ffaff3 dark) | Any single-series chart (score trend, reason counts, forecast) |
+| `--chart-grid` | base-300 | Gridlines, hairline and solid |
 
-Validator (all pairs): lightness band, chroma floor, CVD separation 22.1, normal-vision 31.5 and 3:1 on the surface all pass. Greyscale lightness: right 0.33, wrong 0.52, guessed tint 0.84 plus hatch, so the three separate without colour. Labels inside fills: white on right (7.7:1), near-black on wrong, and guessed counts sit on a small surface-coloured label because text over the hatch is hard to read.
+Both palettes keep right darker than wrong in greyscale, and guessed adds the hatch, so the three separate without colour. Labels inside fills use the fill's own text colour, and guessed counts sit on a small surface-coloured label because text over the hatch is hard to read.
 
 **Forms**
 - Score over time: one line, 2px, 8 to 10% area wash, filled dots with a 2px surface ring, hollow dots for retries. Only the latest point is labelled.
@@ -246,31 +221,14 @@ Validator (all pairs): lightness band, chroma floor, CVD separation 22.1, normal
 
 ## 10. Surfaces
 
-- Page: base-100. Sidebar: base-200.
-- Panel (`.panel`): one raised surface, oklch(99% 0.006 80), 1px base-300 border, 12px radius, two-layer soft shadow. Used for things read as a unit: charts, stat tiles, the quiz summary, grouped settings, tables.
-- Nested radii: things inside a panel use 8px or less.
+- Page: base-100. Sidebar: base-200, with a 2px base-300 border.
+- Tile (`.panel`): surface fill, 2px base-300 border, 16px radius, no shadow. Used for things read or pressed as a unit: charts, stat tiles, the quiz summary, grouped settings, tables.
+- Nested radii: things inside a tile use 12px or less.
+- The one hero on a screen (Overview's due banner) is a pink tile with a ledge.
 
 ## 11. Dark theme
 
-Dark is the default. A Dark / Light switch sits at the bottom of the sidebar and the choice is remembered on the device. Dark is its own palette, not an inversion: raised things get lighter.
-
-| Token | Value | Check |
-|---|---|---|
-| Sidebar (base-200) | oklch(16% 0.012 65) | Lowest surface |
-| Page (base-100) | oklch(19% 0.012 65) | |
-| Panel (`--surface`) | oklch(23% 0.014 65) | Raised, with a faint top highlight |
-| Borders (base-300) | oklch(32% 0.016 65) | Decorative only |
-| Text | oklch(93% 0.012 80) | 15.0 on page, 13.8 on panel |
-| Secondary text | oklch(78% 0.016 75) | 8.4 on panel (AAA) |
-| Field border | oklch(52% 0.018 70) | 3.1 on panel |
-| Primary (caramel) | oklch(74% 0.10 62), dark text on it | 7.8 on page, 8.0 for its label |
-| Success / error / info text | oklch(76%) steps | 8.3 / 7.5 / 8.0 on panel (AAA) |
-| Right | #0573aa, text #87c6f2 | text 9.2 |
-| Wrong | #d67523, text #f9b379 | text 9.5 |
-| Guessed | hatch #0573aa on #163c54, text #bbddf6 | text 7.6 on its tint |
-| Chart ink | the caramel primary | |
-
-The dark right / wrong pair was run through the validator against the dark panel: lightness band (0.48 to 0.67), chroma floor, CVD separation 21.4, normal-vision 30.0 and 3:1 all pass. Greyscale lightness: right 0.41, wrong 0.57, guessed darker plus hatch.
+Dark is the default. A Dark / Light switch sits at the bottom of the sidebar and the choice is remembered on the device. Dark is Gleam's underwater blue, not an inversion: raised things get lighter (sidebar #1f2230, page #292d3e, tiles #32374b). Values and contrasts are in section 5.
 
 Code blocks use Shiki's min-dark theme in dark and min-light in light. Some of their token colours are under 4.5:1 (light comments are 1.7:1), so `src/lib/markdown.ts` mixes any failing colour toward black (light) or white (dark), keeping its hue, until it clears 4.6:1 on base-100 in light and the panel in dark. Both themes ship as CSS variables, so the switch recolours code without rendering it again.
 
@@ -283,3 +241,5 @@ Code blocks use Shiki's min-dark theme in dark and min-light in light. Some of t
 - Butterick, M. *Practical Typography*. https://practicaltypography.com
 - The Fountain Institute. 7 Signs a UI Has Been Vibe Coded. https://www.thefountaininstitute.com/blog/signs-vibe-coded-ui
 - daisyUI theme reference. https://daisyui.com/SKILL.md
+- Gleam brand colours. https://gleam.run/branding/
+- Nunito. https://fonts.google.com/specimen/Nunito

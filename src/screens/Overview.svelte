@@ -1,7 +1,7 @@
 <script lang="ts">
   // overview.feature (R33): progress from saved attempts only.
-  import { Library, PencilLine, Play, TrendingDown, TrendingUp, ArrowRight } from "@lucide/svelte";
-  import { api, type Overview, type Tally, type TopicRow } from "../lib/api";
+  import { Brain, Flag, Hammer, Library, PencilLine, Play, SquareStack, Target, TrendingDown, TrendingUp, ArrowRight, Zap } from "@lucide/svelte";
+  import { api, type DueToday, type Id, type Overview, type Tally, type TopicQuizView, type TopicRow } from "../lib/api";
   import { dayLabel } from "../lib/dates";
   import type { Screen } from "../lib/router";
   import PageHeader from "../components/PageHeader.svelte";
@@ -9,11 +9,28 @@
   import SegBar from "../components/SegBar.svelte";
   import { WEEKLY_AFTER, weekly } from "../lib/weekly";
 
-  let { onNavigate }: { onNavigate: (screen: Screen) => void } = $props();
+  let { onNavigate, onQuizTopics = () => onNavigate("setup") }: { onNavigate: (screen: Screen) => void; onQuizTopics?: (topics: Id[]) => void } = $props();
 
   let overview = $state<Overview | null>(null);
   let topics = $state<TopicRow[]>([]);
   let today = $state(0);
+  // What's due leads (design/playful-redesign: Overview): a banner for due quizzes and a list
+  // of everything due, so the sidebar counts become the first thing you act on.
+  let due = $state<DueToday | null>(null);
+  let quizzes = $state<TopicQuizView[]>([]);
+  const dueTopics = $derived(quizzes.filter((quiz) => quiz.due_today && topics.some((topic) => topic.id === quiz.topic && topic.question_count > 0)).map((quiz) => quiz.topic));
+  const plural = (count: number, one: string, many = `${one}s`) => `${count} ${count === 1 ? one : many}`;
+  const together = (names: string[]) => (names.length <= 1 ? names.join("") : names.length === 2 ? `${names[0]} and ${names[1]}` : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`);
+  const dueRows = $derived(
+    due
+      ? ([
+          { count: due.quizzes, text: `Quiz ${plural(due.quizzes, "topic")}`, screen: "topics", icon: Library, tone: "info" },
+          { count: due.cards, text: `Review ${plural(due.cards, "card")}`, screen: "cards", icon: SquareStack, tone: "primary" },
+          { count: due.checklists, text: `Recall ${plural(due.checklists, "checklist")}`, screen: "recall", icon: Brain, tone: "due" },
+          { count: due.drills, text: `Do ${plural(due.drills, "project drill")}`, screen: "projects", icon: Hammer, tone: "info" },
+        ] as const).filter((row) => row.count > 0)
+      : [],
+  );
 
   const progress = $derived(overview && overview !== "FirstRun" ? overview.Progress : null);
   const right = (tally: Tally) => tally.right_sure + tally.right_guessed;
@@ -37,15 +54,19 @@
     topics = topicRows;
     today = day;
   });
+  Promise.all([api.dueToday(), api.topicQuizzes()]).then(([counts, rows]) => {
+    due = counts;
+    quizzes = rows ?? [];
+  }).catch(() => {});
 </script>
 
-<div class="mx-auto max-w-6xl px-12 pb-24">
+<div class="mx-auto max-w-7xl px-10 pb-24">
   {#if overview === "FirstRun"}
     <PageHeader title="Welcome" subtitle="Three steps to your first quiz" />
     <div class="grid grid-cols-3 gap-6">
       {#each steps as step, index (step.title)}
         <div class="panel rise p-6">
-          <span class="grid size-10 place-items-center rounded-lg bg-base-200"><step.icon class="size-5" /></span>
+          <span class="well" aria-hidden="true"><step.icon class="size-5" /></span>
           <p class="eyebrow mt-6">Step {index + 1}</p>
           <h2 class="mt-1 text-lg font-semibold">{step.title}</h2>
           <p class="mt-2 text-sm leading-relaxed text-muted">{step.text}</p>
@@ -55,84 +76,125 @@
     </div>
     <p class="mt-8 text-sm text-muted">Your progress charts appear here after your first quiz.</p>
   {:else if progress}
-    <PageHeader title="Overview" subtitle="Last 7 days, compared with the 7 days before">
-      <button class="btn btn-primary" onclick={() => onNavigate("setup")}><Play class="size-4" />New quiz</button>
-    </PageHeader>
+    <PageHeader title="Overview" subtitle="Last 7 days, compared with the 7 days before" />
 
-    <section class="grid grid-cols-[1.4fr_1fr_1fr] gap-6">
-      <div class="panel rise p-6" role="region" aria-labelledby="tile-accuracy">
-        <p id="tile-accuracy" class="text-sm text-muted">Accuracy</p>
-        {#if progress.accuracy === null}
-          <p class="mt-3 text-lg">No quizzes in the last 7 days</p>
+    <div class="grid grid-cols-[minmax(0,1fr)_20rem] items-start gap-6">
+      <div class="flex min-w-0 flex-col gap-4">
+        <!-- The one primary: start what's due, or a new quiz when nothing is -->
+        {#if dueTopics.length}
+          <section class="hero rise" aria-labelledby="hero-h">
+            <div>
+              <p id="hero-h" class="eyebrow hero-eyebrow">{plural(dueTopics.length, "quiz", "quizzes")} due today</p>
+              <h2 class="mt-1 text-[21px]">{together(dueTopics.map(name))} {dueTopics.length === 1 ? "is" : "are"} ready</h2>
+            </div>
+            <button class="btn hero-button" onclick={() => onQuizTopics(dueTopics)}><Play class="size-4 fill-current" />Start quiz</button>
+          </section>
         {:else}
-          <p class="mt-3 text-5xl font-semibold leading-none">{progress.accuracy}%</p>
-          {#if progress.change !== null}
-            <p class="mt-3 flex items-center gap-1 text-sm font-semibold {progress.change >= 0 ? 'text-success' : 'text-error'}">
-              {#if progress.change >= 0}<TrendingUp class="size-4" />{:else}<TrendingDown class="size-4" />{/if}
-              {progress.change >= 0 ? "+" : ""}{progress.change} points <span class="font-normal text-muted">vs previous 7 days</span>
-            </p>
-          {/if}
+          <section class="hero rise" aria-labelledby="hero-h">
+            <div>
+              <p id="hero-h" class="eyebrow hero-eyebrow">Nothing due today</p>
+              <h2 class="mt-1 text-[21px]">Quiz anything you like, or come back tomorrow</h2>
+            </div>
+            <button class="btn hero-button" onclick={() => onNavigate("setup")}><Play class="size-4 fill-current" />New quiz</button>
+          </section>
         {/if}
-      </div>
-      <div class="panel rise rise-2 p-6" role="region" aria-labelledby="tile-answered">
-        <p id="tile-answered" class="text-sm text-muted">Questions answered</p>
-        <p class="mt-3 text-3xl font-semibold leading-none">{progress.answered_last_7_days}</p>
-        <p class="mt-3 text-sm text-muted">across {progress.quizzes_last_7_days} quizzes</p>
-      </div>
-      <div class="panel rise rise-3 p-6" role="region" aria-labelledby="tile-guessed">
-        <p id="tile-guessed" class="text-sm text-muted">Right answers that were guesses</p>
-        <p class="mt-3 text-3xl font-semibold leading-none">{progress.guessed_share === null ? "None" : `${progress.guessed_share}%`}</p>
-        <p class="mt-3 text-sm text-muted">Lower means you really know it</p>
-      </div>
-    </section>
 
-    <section class="panel rise rise-2 mt-6 p-6">
-      <div class="flex items-baseline justify-between">
-        {#if byWeek}
-          <div><h2 class="font-semibold">Weekly average score</h2><p class="text-sm text-muted">{scores.length} quizzes since {dayLabel(scores[0].day, today)}, one point per week. Hollow is this week so far.</p></div>
-        {:else}
-          <div><h2 class="font-semibold">Score per quiz</h2><p class="text-sm text-muted">% right. Hollow points are retries.</p></div>
-        {/if}
-        <button class="btn btn-ghost btn-sm" onclick={() => onNavigate("history")}>History <ArrowRight class="size-4" /></button>
-      </div>
-      <div class="mt-4">{#if byWeek}<ScoreChart points={weekPoints} title="Weekly average score" detailLabel="Quizzes" />{:else}<ScoreChart points={quizPoints} />{/if}</div>
-    </section>
+        <section class="grid grid-cols-3 gap-4">
+          <div class="panel rise flex gap-3 p-4" role="region" aria-labelledby="tile-accuracy">
+            <span class="well" aria-hidden="true"><Target class="size-5" /></span>
+            <div>
+              {#if progress.accuracy === null}
+                <p class="text-[15px]">No quizzes in the last 7 days</p>
+              {:else}
+                <p class="text-[26px] font-black leading-none">{progress.accuracy}%</p>
+              {/if}
+              <p id="tile-accuracy" class="mt-1 text-[13px] text-muted">Accuracy</p>
+              {#if progress.accuracy !== null && progress.change !== null}
+                <p class="flex items-center gap-1 text-[13px] font-extrabold {progress.change >= 0 ? 'text-right-ink' : 'text-wrong-ink'}">
+                  {#if progress.change >= 0}<TrendingUp class="size-4" />{:else}<TrendingDown class="size-4" />{/if}
+                  {progress.change >= 0 ? "+" : ""}{progress.change} points <span class="sr-only">vs previous 7 days</span>
+                </p>
+              {/if}
+            </div>
+          </div>
+          <div class="panel rise rise-2 flex gap-3 p-4" role="region" aria-labelledby="tile-answered">
+            <span class="well" style="--well: var(--color-accent); --well-ink: var(--accent-ink)" aria-hidden="true"><Zap class="size-5 fill-current" /></span>
+            <div>
+              <p class="text-[26px] font-black leading-none">{progress.answered_last_7_days}</p>
+              <p id="tile-answered" class="mt-1 text-[13px] text-muted">Questions answered</p>
+              <p class="text-[13px] text-muted">across {plural(progress.quizzes_last_7_days, "quiz", "quizzes")}</p>
+            </div>
+          </div>
+          <div class="panel rise rise-3 flex gap-3 p-4" role="region" aria-labelledby="tile-guessed">
+            <span class="well" style="background: var(--guessed-tint); color: var(--guessed-ink)" aria-hidden="true"><Flag class="size-5 fill-current" /></span>
+            <div>
+              <p class="text-[26px] font-black leading-none">{progress.guessed_share === null ? "None" : `${progress.guessed_share}%`}</p>
+              <p id="tile-guessed" class="mt-1 text-[13px] text-muted" title="Lower means you really know it">Right answers that were guesses</p>
+            </div>
+          </div>
+        </section>
 
-    <section class="mt-6 grid grid-cols-2 gap-6">
-      <div class="panel rise rise-3 p-6">
-        <h2 id="weakest" class="font-semibold">Topics, weakest first</h2>
-        <p class="text-sm text-muted">Latest quiz on each topic</p>
-        <div class="mt-4 flex items-center gap-4 text-xs text-muted">
-          <span class="flex items-center gap-1.5"><span class="swatch" style="background: var(--chart-right)"></span>Right, sure</span>
-          <span class="flex items-center gap-1.5"><span class="swatch" style="background: var(--guessed-fill)"></span>Right, guessed</span>
-          <span class="flex items-center gap-1.5"><span class="swatch" style="background: var(--chart-wrong)"></span>Wrong</span>
-        </div>
-        <ul class="mt-5 space-y-5" aria-labelledby="weakest">
-          {#each progress.weakest_topics as [id, tally] (id)}
-            <li>
-              <div class="flex items-baseline justify-between text-sm"><span class="font-semibold">{name(id)}</span>{" "}<span class="tabular-nums text-muted">{Math.round((right(tally) / Math.max(1, total(tally))) * 100)}% right</span></div>
-              <div class="mt-2"><SegBar {tally} height={10} /></div>
-            </li>
-          {/each}
-        </ul>
-        {#if progress.never_quizzed.length}<p class="mt-5 text-sm text-muted">Not quizzed yet: {progress.never_quizzed.map(name).join(", ")}</p>{/if}
+        <section class="panel rise rise-2 p-5">
+          <div class="flex items-start justify-between gap-4">
+            {#if byWeek}
+              <div><h2 class="text-[18px]">Weekly average score</h2><p class="text-[13px] text-muted">{scores.length} quizzes since {dayLabel(scores[0].day, today)}, one point per week. Hollow is this week so far.</p></div>
+            {:else}
+              <div><h2 class="text-[18px]">Score per quiz</h2><p class="text-[13px] text-muted">% right. Hollow points are retries.</p></div>
+            {/if}
+            <button class="btn btn-link btn-sm text-[13px]" onclick={() => onNavigate("history")}>History <ArrowRight class="size-4" /></button>
+          </div>
+          <div class="mt-3">{#if byWeek}<ScoreChart points={weekPoints} title="Weekly average score" detailLabel="Quizzes" />{:else}<ScoreChart points={quizPoints} />{/if}</div>
+        </section>
       </div>
-      <div class="panel rise rise-4 p-6">
-        <h2 id="reasons" class="font-semibold">Why you got things wrong</h2>
-        <p class="text-sm text-muted">Reasons on wrong answers, last 30 days</p>
-        {#if progress.reasons.length === 0}
-          <p class="mt-5 text-sm text-muted">No reasons given yet. Add them on the results screen after a quiz.</p>
-        {:else}
-          <ul class="mt-5 space-y-3" aria-labelledby="reasons">
-            {#each progress.reasons as [reason, count] (reason)}
-              <li class="grid grid-cols-[220px_1fr] items-center gap-4 text-sm">
-                <span class="truncate">{reason}</span>{" "}
-                <span class="flex items-center gap-2"><span class="hbar" style="width: {Math.max((count / maxReason) * 100, 2)}%"></span><span class="text-xs tabular-nums text-muted">{count}</span></span>
+
+      <aside class="flex flex-col gap-4">
+        <section class="panel rise p-5">
+          <div class="flex items-center justify-between"><h2 id="due-h" class="text-[18px]">Due today</h2><button class="btn btn-link btn-sm text-[13px]" onclick={() => onNavigate("calendar")}>Calendar</button></div>
+          <ul class="mt-2" aria-labelledby="due-h">
+            {#each dueRows as row (row.screen)}
+              <li class="flex items-center gap-3 border-t-2 border-base-300 py-2.5 first:border-t-0"><span class="well chip-{row.tone}" style="--well: var(--chip); --well-ink: var(--chip-ink)" aria-hidden="true"><row.icon class="size-5" /></span><a href="#{row.screen}" class="font-extrabold hover:underline" onclick={(event) => { event.preventDefault(); onNavigate(row.screen); }}>{row.text}</a></li>
+            {:else}
+              <li class="py-2 text-sm text-muted">All done for today</li>
+            {/each}
+          </ul>
+        </section>
+
+        <section class="panel rise rise-3 p-5">
+          <h2 id="weakest" class="text-[18px]">Topics, weakest first</h2>
+          <p class="text-[13px] text-muted">Latest quiz on each topic</p>
+          <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+            <span class="flex items-center gap-1.5"><span class="swatch" style="background: var(--chart-right)"></span>Right, sure</span>
+            <span class="flex items-center gap-1.5"><span class="swatch" style="background: var(--guessed-fill)"></span>Guessed</span>
+            <span class="flex items-center gap-1.5"><span class="swatch" style="background: var(--chart-wrong)"></span>Wrong</span>
+          </div>
+          <ul class="mt-4 space-y-3" aria-labelledby="weakest">
+            {#each progress.weakest_topics as [id, tally] (id)}
+              <li>
+                <div class="flex items-baseline justify-between text-sm"><span class="font-extrabold">{name(id)}</span>{" "}<span class="tabular-nums">{Math.round((right(tally) / Math.max(1, total(tally))) * 100)}% right</span></div>
+                <div class="mt-1.5"><SegBar {tally} height={12} /></div>
               </li>
             {/each}
           </ul>
-        {/if}
-      </div>
-    </section>
+          {#if progress.never_quizzed.length}<p class="mt-4 text-[13px] text-muted">Not quizzed yet: {progress.never_quizzed.map(name).join(", ")}</p>{/if}
+        </section>
+
+        <section class="panel rise rise-4 p-5">
+          <h2 id="reasons" class="text-[18px]">Why you got things wrong</h2>
+          <p class="text-[13px] text-muted">Reasons on wrong answers, last 30 days</p>
+          {#if progress.reasons.length === 0}
+            <p class="mt-4 text-sm text-muted">No reasons given yet. Add them on the results screen after a quiz.</p>
+          {:else}
+            <ul class="mt-4 space-y-3" aria-labelledby="reasons">
+              {#each progress.reasons as [reason, count] (reason)}
+                <li class="text-sm">
+                  <span class="flex justify-between gap-2"><span class="truncate">{reason}</span>{" "}<span class="tabular-nums">{count}</span></span>
+                  <span class="mt-1 block h-3 overflow-hidden rounded-full bg-base-300"><span class="block h-full rounded-full" style="width: {Math.max((count / maxReason) * 100, 2)}%; background: var(--chart-ink)"></span></span>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+        </section>
+      </aside>
+    </div>
   {/if}
 </div>

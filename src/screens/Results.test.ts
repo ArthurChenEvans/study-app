@@ -47,8 +47,10 @@ describe("Results", () => {
   it("shows the score, guesses and each topic", async () => {
     mocked.results.mockResolvedValue(results());
     render(Results, { attempt: 3, onRetry: vi.fn() });
-    expect(await screen.findByText("2")).toBeInTheDocument();
-    expect(screen.getByText("/ 4")).toBeInTheDocument();
+    const score = await screen.findByRole("group", { name: "Score" });
+    expect(await within(score).findByText("2")).toBeInTheDocument();
+    expect(within(score).getByText("/ 4")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Right, guessed" })).toHaveTextContent("1");
     expect(screen.getByText("1 of those guessed")).toBeInTheDocument();
     const byTopic = screen.getByRole("list", { name: "By topic" });
     expect(within(byTopic).getByText("GPU")).toBeInTheDocument();
@@ -74,7 +76,7 @@ describe("Results", () => {
     mocked.giveReason.mockResolvedValue(results({ to_prompt: [] }));
     render(Results, { attempt: 3, onRetry: vi.fn() });
     const item = (await screen.findAllByRole("listitem", { name: "Question 3" }))[0];
-    await u.selectOptions(within(item).getByLabelText(/Why did you get it wrong/), "Misremembered");
+    await u.click(within(within(item).getByRole("radiogroup", { name: /Why did you get it wrong/ })).getByRole("radio", { name: "Misremembered" }));
     expect(mocked.giveReason).toHaveBeenCalledWith(3, 2, "Misremembered");
     await u.type(within(item).getByLabelText("Your own reason"), "mixed up units{Enter}");
     expect(mocked.giveReason).toHaveBeenCalledWith(3, 2, { Other: "mixed up units" });
@@ -155,7 +157,7 @@ describe("Results", () => {
     render(Results, { attempt: 3, onRetry: vi.fn() });
     const panel = await screen.findByRole("region", { name: "Quiz schedule" });
     const items = within(panel).getAllByRole("listitem");
-    expect(items[0]).toHaveTextContent("CPU Passed 86% Moves up to Fortnight Next quiz on Tue 17 Nov");
+    expect(items[0]).toHaveTextContent("CPU Passed 86% Moves up to Fortnight · Next quiz on Tue 17 Nov");
     expect(items[1]).toHaveTextContent("Under pass mark 50% Back to Day");
     expect(items[1]).toHaveTextContent("Next quiz tomorrow");
     expect(items[2]).toHaveTextContent("Passed 100% Starts on Day");

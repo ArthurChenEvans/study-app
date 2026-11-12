@@ -9,7 +9,7 @@
   const width = $derived(fixedWidth ?? (measured || 640));
   let selected = $state<number | null>(null);
 
-  const margin = { left: 40, right: 48, top: 16, bottom: 28 };
+  const margin = { left: 40, right: 48, top: 26, bottom: 28 };
   const x = (index: number) => margin.left + (points.length === 1 ? (width - margin.left - margin.right) / 2 : (index * (width - margin.left - margin.right)) / (points.length - 1));
   const y = (percent: number) => margin.top + (1 - percent / 100) * (height - margin.top - margin.bottom);
   const line = $derived(points.map((point, index) => `${index ? "L" : "M"}${x(index).toFixed(1)},${y(point.percent).toFixed(1)}`).join(""));
@@ -54,11 +54,11 @@
       onblur={() => (selected = null)}
     >
       {#each [0, 50, 100] as tick (tick)}
-        <line x1={margin.left} x2={width - margin.right} y1={y(tick)} y2={y(tick)} stroke="var(--chart-grid)" stroke-width="1" />
+        <line x1={margin.left} x2={width - margin.right} y1={y(tick)} y2={y(tick)} stroke="var(--chart-grid)" stroke-width="2" stroke-dasharray={tick ? "3 5" : undefined} />
         <text x={margin.left - 8} y={y(tick) + 4} text-anchor="end" font-size="12" fill="var(--muted)" class="tabular-nums">{tick}%</text>
       {/each}
-      <path d={area} fill="var(--chart-ink)" opacity="0.08" />
-      <path d={line} fill="none" stroke="var(--chart-ink)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+      <path d={area} fill="var(--chart-ink)" opacity="0.12" />
+      <path d={line} fill="none" stroke="var(--chart-ink)" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round" />
       {#each points as point, index (index)}
         {#if index % labelEvery === 0 || index === points.length - 1}
           <text x={x(index)} y={height - 8} text-anchor="middle" font-size="12" fill="var(--muted)">{point.label}</text>
@@ -72,14 +72,14 @@
           data-hollow={String(point.hollow ?? point.retry)}
           cx={x(index)}
           cy={y(point.percent)}
-          r={selected === index ? 6 : 4.5}
+          r={selected === index ? 7.5 : 5.5}
           fill={(point.hollow ?? point.retry) ? "var(--surface)" : "var(--chart-ink)"}
           stroke={(point.hollow ?? point.retry) ? "var(--chart-ink)" : "var(--surface)"}
-          stroke-width="2"
+          stroke-width="2.5"
         />
       {/each}
       {#if points.length}
-        <text x={x(points.length - 1) - 8} y={y(points.at(-1)!.percent) - 12} text-anchor="end" font-size="12" font-weight="600" fill="var(--color-base-content)">{points.at(-1)!.percent}%{points.at(-1)!.hollow ? " so far" : ""}</text>
+        <text x={x(points.length - 1) - 8} y={y(points.at(-1)!.percent) - 12} text-anchor="end" font-size="13" font-weight="800" fill="var(--color-base-content)">{points.at(-1)!.percent}%{points.at(-1)!.hollow ? " so far" : ""}</text>
       {/if}
     </svg>
     {#if selected !== null}

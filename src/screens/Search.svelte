@@ -81,7 +81,7 @@
 
 <div class="mx-auto max-w-6xl px-12 pb-24">
   <PageHeader title="Search" />
-  <label class="input input-lg flex w-full items-center gap-3">
+  <label class="input input-lg search-big flex w-full items-center gap-3">
     <SearchIcon class="size-5" />
     <!-- svelte-ignore a11y_autofocus -->
     <input type="search" class="grow" aria-label="Search" placeholder="Questions, options, explanations, tags, sources…" bind:value={text} autofocus onkeydown={(event) => moveFocus(event, null)} />
@@ -89,7 +89,7 @@
 
   <div class="mt-6 flex items-center gap-1 border-b border-base-300" role="tablist" aria-label="Categories">
     {#each tabs as name (name)}
-      <button role="tab" aria-selected={tab === name} class="px-3 py-2 text-sm {tab === name ? 'border-b-2 border-primary font-semibold' : 'text-muted'}" onclick={() => (tab = name)}>{name}</button>
+      <button role="tab" aria-selected={tab === name} onclick={() => (tab = name)}>{name}</button>
     {/each}
   </div>
 
@@ -134,9 +134,9 @@
             {#if question.matched}{@const [kind, value] = matchLabel(question.matched)}<span class="mt-1 block text-sm text-muted"><span class="font-semibold">{kind}:</span> <Highlight text={value} term={text} /></span>{/if}
           </button>
           <span id="where-{question.id}" class="search-meta">
-            {question.topic_name}
-            {#each question.tags as name (name)}<span class="badge badge-ghost badge-sm">{name}</span>{/each}
-            {#if sort === "Edited" && today}<span>· {dayLabel(dayFromUtc(question.edited), today)}</span>{/if}
+            <span class="chip">{question.topic_name}</span>
+            {#each question.tags as name (name)}<span class="chip chip-info">{name}</span>{/each}
+            {#if sort === "Edited" && today}<span class="font-bold">{dayLabel(dayFromUtc(question.edited), today)}</span>{/if}
           </span>
         </li>
       {/each}
@@ -148,7 +148,7 @@
     <ul class="panel mt-6 divide-y" aria-label="Other matches">
       {#each others as hit, index (index)}
         {@const item = otherLabel(hit)}
-        <li class="flex items-center gap-4 px-6 py-3 text-sm"><span class="badge badge-ghost badge-sm w-16 justify-center">{item.kind}</span>{" "}<span>{item.label}</span></li>
+        <li class="flex items-center gap-4 px-6 py-3 text-sm"><span class="chip w-20 justify-center">{item.kind}</span>{" "}<span>{item.label}</span></li>
       {/each}
     </ul>
   {/if}

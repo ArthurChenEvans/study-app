@@ -1,6 +1,6 @@
 <script lang="ts">
   // flashcards.feature (R65 to R69, R71): review the due cards, grade them, undo, leave.
-  import { ChevronRight, CircleCheck, Flag, LogOut, Pencil, Undo2 } from "@lucide/svelte";
+  import { CircleCheck, Flag, Pencil, Undo2, X } from "@lucide/svelte";
   import { onDestroy } from "svelte";
   import { api, errorMessage, type CardRating, type ReviewCard, type ReviewDone, type ReviewStep, type Subject } from "../lib/api";
   import Rich from "../components/Rich.svelte";
@@ -95,52 +95,62 @@
 <svelte:window onkeydown={keys} />
 
 {#if card}
-  <div class="sticky top-0 z-10 flex items-center justify-between gap-6 border-b border-base-300 bg-base-100 px-12 py-4">
-    <div class="flex items-center gap-3 text-sm"><span class="text-muted">Cards</span><ChevronRight class="size-3.5" /><span class="font-semibold">{scopeName}</span></div>
-    <p class="flex items-center gap-3 text-sm" aria-label="Left today: {card.left.new} new, {card.left.learning} learning, {card.left.review} to review. This card is {queueName[card.queue]}.">
-      <span class="tabular-nums"><span class="font-semibold {card.queue === 'new' ? 'queue-now' : ''}">{card.left.new}</span> <span class="text-muted">new</span></span><span class="text-muted" aria-hidden="true">·</span>
-      <span class="tabular-nums"><span class="font-semibold {card.queue === 'learning' ? 'queue-now' : ''}">{card.left.learning}</span> <span class="text-muted">learning</span></span><span class="text-muted" aria-hidden="true">·</span>
-      <span class="tabular-nums"><span class="font-semibold {card.queue === 'review' ? 'queue-now' : ''}">{card.left.review}</span> <span class="text-muted">to review</span></span>
-    </p>
-    <div class="flex items-center gap-1">
-      <button class="btn btn-ghost btn-sm font-normal" title="Edit this card (E)" onclick={edit}><Pencil class="size-4" />Edit</button>
-      <button class="btn btn-ghost btn-sm font-normal" title="Undo the last grade (Z)" disabled={!card.can_undo || busy} onclick={undo}><Undo2 class="size-4" />Undo</button>
-      <button class="btn btn-ghost btn-sm font-normal" onclick={leave}><LogOut class="size-4" />Leave</button>
+  <!-- The lesson shell (design/playful-redesign: Card review): leave, progress and what's left on
+       top, the card as one tile, and the four ratings as full-width buttons in a bottom band. -->
+  <div class="flex min-h-screen flex-col">
+  <div class="sticky top-0 z-10 bg-base-100 px-12 pb-3 pt-6">
+    <div class="mx-auto flex max-w-5xl items-center gap-5">
+      <button class="btn btn-quiet btn-sm btn-square" aria-label="Leave" title="Leave" onclick={leave}><X class="size-6" strokeWidth={2.6} /></button>
+      <div class="h-[18px] flex-1 overflow-hidden rounded-full bg-base-300" role="progressbar" aria-label="Session progress" aria-valuenow={card.done} aria-valuemin={0} aria-valuemax={card.total}><div class="lesson-fill h-full rounded-full" style="width: max(18px, {card.total ? (card.done / card.total) * 100 : 0}%)"></div></div>
+      <p class="flex items-center gap-1.5" aria-label="Left today: {card.left.new} new, {card.left.learning} learning, {card.left.review} to review. This card is {queueName[card.queue]}.">
+        <span class="chip chip-info tabular-nums {card.queue === 'new' ? 'chip-now' : ''}">{card.left.new} new</span>
+        <span class="chip tabular-nums {card.queue === 'learning' ? 'chip-now' : ''}">{card.left.learning} learning</span>
+        <span class="chip chip-primary tabular-nums {card.queue === 'review' ? 'chip-now' : ''}">{card.left.review} to review</span>
+      </p>
+      <button class="btn btn-quiet btn-sm" title="Edit this card (E)" onclick={edit}><Pencil class="size-4" />Edit</button>
+      <button class="btn btn-quiet btn-sm" title="Undo the last grade (Z)" disabled={!card.can_undo || busy} onclick={undo}><Undo2 class="size-4" />Undo</button>
     </div>
   </div>
-  <div class="px-12 pt-6"><div class="mx-auto max-w-prose"><div class="h-1 rounded-full bg-base-300" role="progressbar" aria-label="Session progress" aria-valuenow={card.done} aria-valuemin={0} aria-valuemax={card.total}><div class="h-full rounded-full" style="width: {card.total ? (card.done / card.total) * 100 : 0}%; background: var(--chart-ink)"></div></div></div></div>
 
-  <div class="mx-auto max-w-prose px-6 pb-24 pt-16">
-    <p class="text-sm text-muted">{card.topic_name}{card.source ? ` · ${card.source}` : cloze ? ` · ${card.kind}` : ""}</p>
-    {#if cloze}
-      <div class="mt-3 text-xl leading-relaxed" role="heading" aria-level="1" aria-live="polite"><Rich text={shown ? card.back : card.front} /></div>
-    {:else}
-      <div class="mt-3 text-xl leading-relaxed" role="heading" aria-level="1"><Rich text={card.front} /></div>
-      {#if shown}<hr class="my-8 border-base-300" /><div class="text-lg leading-relaxed" aria-live="polite"><Rich text={card.back} /></div>{/if}
-    {/if}
-    {#if error}<p role="alert" class="mt-6 text-sm text-error">{error}</p>{/if}
+  <div class="flex-1 px-12 pb-10 pt-6">
+    <div class="mx-auto max-w-[44rem]">
+      <div class="flashcard">
+        <p><span class="chip">{card.topic_name}{card.source ? ` · ${card.source}` : cloze ? ` · ${card.kind}` : ""}</span></p>
+        {#if cloze}
+          <div class="mt-3 text-[24px] font-extrabold leading-snug" role="heading" aria-level="1" aria-live="polite"><Rich text={shown ? card.back : card.front} /></div>
+        {:else}
+          <div class="mt-3 text-[24px] font-extrabold leading-snug" role="heading" aria-level="1"><Rich text={card.front} /></div>
+          {#if shown}<hr class="my-6 border-0 border-t-2 border-dashed border-base-300" /><div class="text-[19px] leading-relaxed" aria-live="polite"><Rich text={card.back} /></div>{/if}
+        {/if}
+      </div>
+      {#if error}<p role="alert" class="mt-6 text-sm text-error">{error}</p>{/if}
 
-    <!-- The grades sit right under the card, so your eyes don't travel to the bottom of the screen. -->
-    <div class="mt-12 flex flex-wrap items-center justify-center gap-3">
-      {#if shown}
-        {#each ratings as rating, index (rating)}
-          <button class="btn grade {rating === 'Good' ? 'btn-primary' : rating === 'Again' ? 'grade-again btn-outline' : 'btn-outline border-field-border'}" disabled={busy} onclick={() => grade(rating)}>
-            <span>{rating} <kbd class="kbd kbd-xs">{index + 1}</kbd></span><span class="when">{interval(card.intervals[index])}</span>
-          </button>
-        {/each}
-      {:else}
-        <button class="btn btn-primary btn-lg min-w-64" onclick={() => (shown = true)}>Show answer <kbd class="kbd kbd-xs">Space</kbd></button>
+      <!-- Only after you've tried it: seeing this first would tempt you to edit instead of recall. -->
+      {#if shown && card.leech}
+        <div class="tip mt-3" role="note"><Flag class="size-5 shrink-0 fill-current text-[var(--accent-ink)]" />
+          <p class="flex-1 text-[14.5px]"><b>This card has been tricky: Again {card.lapses} times.</b> A better cue usually helps.</p>
+          <button class="btn btn-ghost btn-sm shrink-0" onclick={edit}><Pencil class="size-4" />Rewrite it <kbd class="kbd kbd-xs">E</kbd></button>
+        </div>
       {/if}
     </div>
-    <p class="mt-3 text-center text-xs text-muted">{shown ? "Space picks Good. Again shows the card again later in this session." : "Say it in your head first, then check."}</p>
+  </div>
 
-    <!-- Only after you've tried it: seeing this first would tempt you to edit instead of recall. -->
-    {#if shown && card.leech}
-      <div class="mt-10 flex items-center gap-3 border-t border-base-300 pt-4 text-sm" role="note"><Flag class="size-4 shrink-0" />
-        <p class="flex-1">This card has been tricky: Again {card.lapses} times. <span class="text-muted">A better cue usually helps.</span></p>
-        <button class="btn btn-ghost btn-sm shrink-0" onclick={edit}><Pencil class="size-4" />Rewrite it <kbd class="kbd kbd-xs">E</kbd></button>
-      </div>
-    {/if}
+  <div class="sheet-foot">
+    <div class="mx-auto max-w-5xl">
+      {#if shown}
+        <div class="grid grid-cols-4 gap-3.5">
+          {#each ratings as rating, index (rating)}
+            <button class="btn grade grade-{rating.toLowerCase()} w-full" disabled={busy} onclick={() => grade(rating)}>
+              <span>{rating} <kbd class="kbd kbd-xs">{index + 1}</kbd></span><span class="when">{interval(card.intervals[index])}</span>
+            </button>
+          {/each}
+        </div>
+      {:else}
+        <div class="flex justify-center"><button class="btn btn-primary btn-lg min-w-80" onclick={() => (shown = true)}>Show answer <kbd class="kbd kbd-xs">Space</kbd></button></div>
+      {/if}
+      <p class="mt-3 text-center text-[13px] text-muted">{shown ? "Space picks Good. Again shows the card again later in this session." : "Say it in your head first, then check."}</p>
+    </div>
+  </div>
   </div>
 {:else if done}
   <div class="mx-auto max-w-3xl px-12 pb-24 pt-16">

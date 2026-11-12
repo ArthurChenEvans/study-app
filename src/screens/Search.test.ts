@@ -32,7 +32,7 @@ describe("Search", () => {
     expect(lastQuery()).toEqual({ text: "shad", tab: "All", module: null, tag: null, sort: "Edited", descending: true });
     const results = await screen.findByRole("list", { name: "Questions" });
     expect(within(results).getByRole("button", { name: "What is a shader core?" })).toBeInTheDocument();
-    expect(within(results).getByText("· Today")).toBeInTheDocument();
+    expect(within(results).getByText("Today")).toBeInTheDocument();
     expect(within(results).getByText("shad").tagName).toBe("MARK");
     expect(screen.getByRole("list", { name: "Other matches" })).toHaveTextContent("hardware");
   });

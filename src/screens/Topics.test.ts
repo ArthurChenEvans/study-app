@@ -167,7 +167,7 @@ describe("Topics screen", () => {
     render(Topics, { onQuizTopics });
     const row = (name: string) => screen.getByRole("cell", { name }).closest("tr")!;
     await screen.findByText("Fortnight step");
-    expect(row("CPU")).toHaveTextContent("Due todayWeek step");
+    expect(row("CPU")).toHaveTextContent(/Due today\s*Week step/);
     expect(row("OSI model")).toHaveTextContent("Due today", { normalizeWhitespace: true });
     expect(row("Memory")).toHaveTextContent("Mon 9 Nov");
     expect(row("TCP/IP")).toHaveTextContent("Quiz it to start");

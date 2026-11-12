@@ -1,6 +1,6 @@
 <script lang="ts">
   // projects.feature (R93): do the drills, then rate each one Struggled, Shaky or Solid.
-  import { CalendarArrowUp, ChevronRight, CircleCheck, LogOut, Repeat, Timer } from "@lucide/svelte";
+  import { CalendarArrowUp, CircleCheck, Repeat, Timer, X } from "@lucide/svelte";
   import MoveDrillDialog from "../components/MoveDrillDialog.svelte";
   import { onDestroy } from "svelte";
   import { api, errorMessage, type DrillRating, type DrillView, type Id } from "../lib/api";
@@ -90,11 +90,12 @@
 <svelte:window onkeydown={keys} />
 
 {#if current}
-  <div class="sticky top-0 z-10 flex items-center justify-between gap-6 border-b border-base-300 bg-base-100 px-12 py-4">
-    <div class="flex items-center gap-3 text-sm"><span class="text-muted">Drills</span><ChevronRight class="size-3.5" /><span class="font-semibold tabular-nums">{index + 1} of {drills.length}</span></div>
+  <div class="flex min-h-screen flex-col">
+  <div class="mx-auto flex w-full max-w-5xl items-center gap-4 px-12 pt-7">
+    <button class="btn btn-quiet btn-sm btn-square" aria-label="Leave" title="Leave" onclick={onLeave}><X class="size-6" strokeWidth={2.6} /></button>
+    <div class="h-[18px] flex-1 overflow-hidden rounded-full bg-base-300" role="progressbar" aria-label="Drills done" aria-valuenow={index + (rated ? 1 : 0)} aria-valuemin={0} aria-valuemax={drills.length}><div class="lesson-fill h-full rounded-full" style="width: max(18px, {((index + (rated ? 1 : 0)) / drills.length) * 100}%)"></div></div>
     <!-- No ticking clock while you work: the time is kept and shown once you've rated it. -->
-    <span></span>
-    <button class="btn btn-ghost btn-sm font-normal" onclick={onLeave}><LogOut class="size-4" />Leave</button>
+    <span class="text-sm font-extrabold tabular-nums">Drill {index + 1} of {drills.length}</span>
   </div>
 
   {#if rated}
@@ -112,32 +113,35 @@
       </div>
     </div>
   {:else}
-    <div class="mx-auto max-w-prose px-6 pb-24 pt-14">
-      <p class="text-sm text-muted">{[current.issue, current.topic_name, current.from[0] ? `from ${current.from[0].project_name}` : null].filter(Boolean).join(" · ")}</p>
-      <div class="mt-2 text-2xl font-semibold leading-snug" role="heading" aria-level="1">{current.task}</div>
+    <div class="mx-auto w-full max-w-[44rem] flex-1 px-6 pb-12 pt-10">
+      <p><span class="chip">{[current.issue, current.topic_name, current.from[0] ? `from ${current.from[0].project_name}` : null].filter(Boolean).join(" · ")}</span></p>
+      <div class="mt-3 text-[30px] font-black leading-tight" role="heading" aria-level="1">{current.task}</div>
       <p class="mt-3 text-muted">Do it outside the app, in your editor or on paper. Come back and rate it when you're done.</p>
       {#if current.hints}<details class="panel mt-8 p-5"><summary class="cursor-pointer text-sm font-semibold">Show the hints</summary><p class="mt-3 whitespace-pre-line text-sm">{current.hints}</p></details>{/if}
       {#if current.from.length}
-        <div class="panel mt-6 p-5"><p class="text-sm font-semibold">Why it was made</p>
-          <ul class="mt-2 space-y-2 text-sm">{#each reasons.slice(0, 5) as reason (reason.project + reason.what)}<li><span class="block">"{reason.what}"</span><span class="block text-muted">{reason.times > 1 ? `${reason.times} times in ${reason.project}, last ${lastSeen(reason.last)}` : `${dayLabel(reason.last, today)}, ${reason.project}`}</span></li>{/each}</ul></div>
+        <div class="panel mt-6 p-5"><p class="eyebrow">Why it was made</p>
+          <ul class="mt-2 divide-y text-sm">{#each reasons.slice(0, 5) as reason (reason.project + reason.what)}<li class="py-2.5 first:pt-0 last:pb-0"><span class="block text-[15px] font-extrabold">"{reason.what}"</span><span class="block text-xs text-muted">{reason.times > 1 ? `${reason.times} times in ${reason.project}, last ${lastSeen(reason.last)}` : `${dayLabel(reason.last, today)}, ${reason.project}`}</span></li>{/each}</ul></div>
       {/if}
       <label class="mt-6 block"><span class="text-sm font-semibold">Note <span class="font-normal text-muted">(optional)</span></span>
         <textarea class="textarea mt-1 w-full" rows="2" placeholder="What went wrong, or what made it click…" bind:value={note}></textarea></label>
       {#if error}<p role="alert" class="mt-4 text-sm text-error">{error}</p>{/if}
-      <!-- The ratings sit under the task, not on the bottom edge, so zoomed in you keep both in view. -->
-      <div class="mt-10 flex flex-col items-center gap-3">
-        <p id="how-h" class="font-semibold">How did it go?</p>
-        <div class="flex items-center justify-center gap-3" role="group" aria-labelledby="how-h">
+    </div>
+    <!-- The ratings stay on screen in a band at the bottom, like card review, so zoomed in you keep the task and the buttons both in reach. -->
+    <div class="sheet-foot">
+      <div class="mx-auto max-w-4xl">
+        <p id="how-h" class="sr-only">How did it go?</p>
+        <div class="grid grid-cols-3 gap-4" role="group" aria-labelledby="how-h">
           {#each ratings as option, position (option.rating)}
-            <button class="btn rate {option.rating === 'Solid' ? 'btn-primary' : 'btn-outline border-field-border'}" style={option.rating === "Struggled" ? "color: var(--wrong-ink)" : ""} disabled={busy} onclick={() => rate(option.rating)}>
+            <button class="btn rate w-full {option.rating === 'Struggled' ? 'grade-again' : option.rating === 'Shaky' ? 'grade-hard' : 'grade-easy'}" disabled={busy} onclick={() => rate(option.rating)}>
               <span>{option.rating} <kbd class="kbd kbd-xs">{position + 1}</kbd></span><span class="when">{option.when}</span>
             </button>
           {/each}
         </div>
-        <p class="text-xs text-muted">Press 1, 2 or 3. Your time is kept and shown after you rate.</p>
+        <p class="mt-3 text-center text-xs text-muted">Press 1, 2 or 3. Your time is kept and shown after you rate.</p>
       </div>
     </div>
   {/if}
+  </div>
 {:else if drills.length === 0 && today}
   <div class="mx-auto max-w-3xl px-12 pt-16"><h1 class="text-3xl font-semibold">No drills due</h1><button class="btn btn-primary mt-6" onclick={onLeave}>Back</button></div>
 {/if}

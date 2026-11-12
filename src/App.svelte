@@ -196,7 +196,7 @@
     {:else if route.screen === "search"}
       <Search onOpenTopic={(topic) => go({ screen: "editor", topic })} />
     {:else}
-      <Overview onNavigate={(screen) => go({ screen })} />
+      <Overview onNavigate={(screen) => go({ screen })} onQuizTopics={(topics) => go({ screen: "setup-for", topics })} />
     {/if}
     {/key}
   </main>

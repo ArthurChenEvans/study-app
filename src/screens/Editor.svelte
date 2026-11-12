@@ -271,7 +271,7 @@
           <div class="option-grid">
             <input class="input w-full {option.correct ? 'is-right' : ''}" aria-label="Option {index + 1}" placeholder="Option {index + 1}" data-rich="true" bind:value={option.text} />
             <input type="checkbox" class="checkbox checkbox-correct justify-self-center" aria-label="Option {index + 1} is correct" checked={option.correct} onchange={() => toggleCorrect(index)} />
-            <button type="button" class="btn btn-ghost btn-sm btn-square" aria-label="Remove option {index + 1}" disabled={draft.options.length <= MIN} onclick={() => (draft.options = draft.options.filter((_, position) => position !== index))}><X class="size-4" /></button>
+            <button type="button" class="btn btn-quiet btn-sm btn-square" aria-label="Remove option {index + 1}" disabled={draft.options.length <= MIN} onclick={() => (draft.options = draft.options.filter((_, position) => position !== index))}><X class="size-4" /></button>
           </div>
         {/each}
         <div class="flex items-center gap-3">
@@ -294,7 +294,7 @@
             {#each draft.accepted as _, index (index)}
               <div class="flex items-center gap-3">
                 <input class="input input-sm flex-1" aria-label="Accepted answer {index + 1}" placeholder="e.g. Transport layer…" bind:value={draft.accepted[index]} />
-                <button type="button" class="btn btn-ghost btn-sm btn-square" aria-label="Remove accepted answer {index + 1}" disabled={draft.accepted.length <= 1} onclick={() => draft.accepted.splice(index, 1)}><X class="size-4" /></button>
+                <button type="button" class="btn btn-quiet btn-sm btn-square" aria-label="Remove accepted answer {index + 1}" disabled={draft.accepted.length <= 1} onclick={() => draft.accepted.splice(index, 1)}><X class="size-4" /></button>
               </div>
             {/each}
             <div class="flex items-center justify-between gap-3">
@@ -308,7 +308,7 @@
               <div class="flex items-center gap-3">
                 <input class="input input-sm w-40" aria-label="Keyword {index + 1}" bind:value={keyword.word} />
                 <input class="input input-sm flex-1" aria-label="Other ways to write keyword {index + 1}" placeholder="Also accept…" bind:value={keyword.also} />
-                <button type="button" class="btn btn-ghost btn-sm btn-square" aria-label="Remove keyword {index + 1}" disabled={draft.keywords.length <= 1} onclick={() => draft.keywords.splice(index, 1)}><X class="size-4" /></button>
+                <button type="button" class="btn btn-quiet btn-sm btn-square" aria-label="Remove keyword {index + 1}" disabled={draft.keywords.length <= 1} onclick={() => draft.keywords.splice(index, 1)}><X class="size-4" /></button>
               </div>
             {/each}
             <div class="flex items-center justify-between gap-3">
@@ -361,7 +361,7 @@
               {#each sources as source (source.id)}<option value={String(source.id)}>{source.apa}</option>{/each}
             </select>
             <input class="input input-sm w-32" aria-label="Page, slide or line" placeholder="p. 42…" bind:value={citation.location} />
-            <button type="button" class="btn btn-ghost btn-sm btn-square" aria-label="Remove citation {index + 1}" onclick={() => (draft.citations = draft.citations.filter((_, position) => position !== index))}><X class="size-4" /></button>
+            <button type="button" class="btn btn-quiet btn-sm btn-square" aria-label="Remove citation {index + 1}" onclick={() => (draft.citations = draft.citations.filter((_, position) => position !== index))}><X class="size-4" /></button>
           </div>
         {/each}
         <button type="button" class="btn btn-ghost btn-sm" onclick={() => (draft.citations = [...draft.citations, { source: "", location: "" }])}><Plus class="size-4" />Cite a source</button>

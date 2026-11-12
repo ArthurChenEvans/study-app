@@ -630,10 +630,25 @@ Tests:
 
 ## Playful redesign (exploration)
 
-`playful-redesign/index.html` redraws all 22 screens in a chunky, game-like style and lets you flip each one against a screenshot of the current app (`playful-redesign/shots/`). It's a comparison piece, not the agreed design, and it doesn't follow `docs/design-rules.md` yet.
+`playful-redesign/index.html` redraws all 22 screens in a chunky, game-like style and lets you flip each one against a screenshot of the current app (`playful-redesign/shots/`). It started as a comparison piece. It's now the agreed design, and `docs/design-rules.md` was rewritten to match (see below).
 
 - **Theme** switch: Gleam colours (faff pink, aged plastic yellow, underwater blue) or the current warm paper neutrals.
 - **Colours** switch: standard green/red for right and wrong, or the colour-blind safe blue/orange pair. Icon, word and the guessed hatch stay in both.
 - The page ends with what the style costs against the design rules (type, radii, density, red meaning both wrong and destructive).
 
 Fonts load from Google Fonts, so open it online.
+
+## Playful redesign built (12 Nov 2026)
+
+The whole app now uses the playful style: Gleam colours, Nunito, chunky buttons standing on a ledge, tiles with 2px borders, uppercase chips, lesson-style shells for quizzes, card review, recall, drills and session review, and full-width rating bands at the bottom. `docs/design-rules.md` holds the rules it follows.
+
+What differs from the exploration page:
+
+- **Warm paper skin not shipped.** Gleam is the only skin, in light and dark.
+- **Colour-blind setting added** as a switch in the sidebar (R129). Standard green and red by default, blue and orange when it's on, remembered on this computer. The icon, the word and the guessed hatch stay either way.
+- **Overview's due list has no progress bars.** A row says what's due and links to it. Bars there would repeat the counts.
+- **Projects issue callout skipped.** Issues already show in their own tab and as chips on each struggle.
+- **Drill and session review ratings sit in a bottom band**, like card review, instead of under the task. The band stays in view when zoomed, and the page scrolls behind it.
+
+Checked: the accessibility audit (contrast, 24px targets, one primary per view) passes on every screen in light, dark and both colour sets. Unit tests and the end-to-end run pass. The end-to-end tests now compare chip and button text without caring about case, since labels are uppercased by CSS.
+

@@ -21,6 +21,7 @@
   const shown = $derived(matching.slice(0, limit));
   const usedTopics = $derived(topics.filter((topic) => (items ?? []).some((item) => item.topic === topic.id)));
   const kindLabel = { Recall: "Recall", Quiz: "Quiz", Struggle: "Project" } as const;
+  const kindChip = { Recall: "chip-due", Quiz: "chip-primary", Struggle: "chip-info" } as const;
   /** "Quiz: Caches" reads as a chip and "Caches", so the kind isn't only words in a small line. */
   const fromWhere = (item: Suggestion) => item.from.replace(/^[^:]+:\s*/, "");
   const count = (kind: Suggestion["kind"]) => (items ?? []).filter((item) => item.kind === kind).length;
@@ -66,7 +67,7 @@
 </script>
 
 <div class="mx-auto max-w-6xl px-12 pb-24">
-  <button class="mt-8 inline-flex items-center gap-1 py-1 text-sm text-muted hover:underline" onclick={onBack}><ArrowLeft class="size-4" />Cards</button>
+  <button class="mt-8 inline-flex items-center gap-1 py-1 text-xs font-extrabold uppercase tracking-wider text-muted hover:underline" onclick={onBack}><ArrowLeft class="size-4" />Cards</button>
   <div class="pb-6 pt-4">
     <h1 class="text-3xl font-semibold">Suggestions</h1>
     <p class="mt-1 text-sm text-muted">Things you missed in a recall or got wrong in a quiz. Make a card for the ones that matter, dismiss the rest.</p>
@@ -92,18 +93,17 @@
         <span class="flex-1"></span>
         <span class="text-sm text-muted">Nothing becomes a card until you say so</span>
       </div>
-      <ul class="panel divide-y" aria-label="Suggestions">
+      <ul class="space-y-3" aria-label="Suggestions">
         {#each shown as item (item.key)}
           {@const open = making?.key === item.key}
-          <li class="px-6 py-5">
-            <div class="flex items-start justify-between gap-6">
-              <div class="flex-1"><p class="flex flex-wrap items-center gap-2 text-xs text-muted"><span class="badge-src">{kindLabel[item.kind]}</span><span>{fromWhere(item)} · {item.note}</span></p>
-                <p class="mt-1 text-[15px]"><Rich inline text={item.text} /></p>
-                {#if item.answer}<p class="text-sm text-muted">→ <Rich inline text={item.answer} /></p>{/if}</div>
+          <li class="panel px-5 py-4">
+            <div class="flex items-center justify-between gap-6">
+              <div class="flex-1"><p class="flex flex-wrap items-center gap-2 text-xs text-muted"><span class="chip {kindChip[item.kind]}">{kindLabel[item.kind]}</span><span>{fromWhere(item)} · {item.note}</span></p>
+                <p class="mt-1.5 text-[17px] font-extrabold"><Rich inline text={item.text} />{#if item.answer}{" "}<span class="font-bold text-muted">→ <Rich inline text={item.answer} /></span>{/if}</p></div>
               {#if !open}
                 <div class="flex shrink-0 items-center gap-2">
                   <button class="btn btn-ghost btn-sm" aria-label="Dismiss: {item.text}" onclick={() => dismiss(item)}><X class="size-4" />Dismiss</button>
-                  <button class="btn btn-outline btn-sm border-field-border" onclick={() => make(item)}><Plus class="size-4" />Make a card</button>
+                  <button class="btn btn-outline btn-sm text-primary-ink" onclick={() => make(item)}><Plus class="size-4" />Make a card</button>
                 </div>
               {/if}
             </div>
@@ -139,7 +139,7 @@
       {#if matching.length > shown.length}
         <div class="mt-4 flex items-center justify-center gap-4">
           <span class="text-sm text-muted">Showing {shown.length} of {matching.length}</span>
-          <button class="btn btn-outline border-field-border" onclick={() => (limit += PAGE)}>Show {Math.min(PAGE, matching.length - shown.length)} more</button>
+          <button class="btn btn-outline" onclick={() => (limit += PAGE)}>Show {Math.min(PAGE, matching.length - shown.length)} more</button>
         </div>
       {/if}
     {/if}

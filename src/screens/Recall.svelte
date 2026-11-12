@@ -81,7 +81,7 @@
 
   {#if loaded && rows.length === 0}
     <div class="panel max-w-xl p-10">
-      <span class="grid size-10 place-items-center rounded-lg bg-base-200"><Brain class="size-5" /></span>
+      <span class="well" aria-hidden="true"><Brain class="size-5" /></span>
       <h2 class="mt-6 text-xl font-semibold">No checklists yet</h2>
       <p class="mt-2 max-w-prose text-muted">Free recall means writing or saying everything you remember about a module or topic, then ticking it off against a checklist. The app schedules the next one from how you did.</p>
       <button class="btn btn-primary mt-6" onclick={openCreate}><Plus class="size-4" />Create your first checklist</button>
@@ -91,25 +91,27 @@
   {#if due.length && schedule}
     <section aria-labelledby="due-h">
       <h2 id="due-h" class="eyebrow mb-3">Due today</h2>
-      <div class="grid grid-cols-2 gap-6">
+      <div class="flex flex-col gap-3">
         {#each due as row, index (row.id)}
-          <article class="panel flex flex-col gap-6 p-6" aria-label={row.subject_name}>
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <p class="text-sm text-muted">{row.module ? "Module" : "Topic"} · {row.points} {row.points === 1 ? "point" : "points"}</p>
-                <h3 class="mt-1 text-xl font-semibold"><button class="text-left hover:underline" onclick={() => onOpen(row.id)}>{row.subject_name}</button></h3>
-              </div>
-              {#if row.days_late}<span class="flex items-center gap-1 whitespace-nowrap text-sm text-muted"><Clock class="size-3.5" />Due {row.days_late} {row.days_late === 1 ? "day" : "days"} ago</span>{/if}
+          <!-- The due checklist is a raised hero tile, with its step pips and last score -->
+          <article class="due-tile flex items-center gap-6 px-6 py-5" aria-label={row.subject_name}>
+            <div class="min-w-0 flex-1">
+              <p><span class="chip">{row.module ? "Module" : "Topic"} · {row.points} {row.points === 1 ? "point" : "points"}</span></p>
+              <h3 class="mt-1.5 text-[26px] font-black leading-tight"><button class="text-left hover:underline" onclick={() => onOpen(row.id)}>{row.subject_name}</button></h3>
+              <p class="mt-1.5 flex flex-wrap items-center gap-3">
+                {#if row.days_late}<span class="chip chip-due"><Clock class="size-3.5" />Due {row.days_late} {row.days_late === 1 ? "day" : "days"} ago</span>{/if}
+                <span class="w-40"><Ladder compact steps={schedule.steps} position={row.position} step={row.step} next={row.next_step} /></span>
+                <span class="text-sm">{row.step ?? "Not started"}{#if row.next_step}{" "}<span class="text-muted">then {row.next_step}</span>{/if}</span>
+              </p>
             </div>
-            <div><Ladder steps={schedule.steps} position={row.position} step={row.step} next={row.next_step} /></div>
-            <div class="flex items-center justify-between gap-4">
-              <p class="text-sm text-muted">{#if row.last_score !== null}Last check <span class="font-semibold tabular-nums text-base-content">{row.last_score}%</span>{:else}First check{/if}</p>
-              {#if row.points}
-                <button class="btn {index === 0 ? 'btn-primary' : 'btn-outline border-field-border'}" onclick={() => onStart(row.id)}><Play class="size-4" />Start recall</button>
-              {:else}
-                <button class="btn btn-outline border-field-border" onclick={() => onOpen(row.id)}><Plus class="size-4" />Add points</button>
-              {/if}
+            <div class="text-center">
+              {#if row.last_score !== null}<p class="text-[30px] font-black leading-none tabular-nums">{row.last_score}%</p><p class="mt-1 text-[13px] text-muted">Last check</p>{:else}<p class="text-[15px] text-muted">First check</p>{/if}
             </div>
+            {#if row.points}
+              <button class="btn {index === 0 ? 'btn-primary' : 'btn-ghost'} min-w-48" onclick={() => onStart(row.id)}><Play class="size-4 fill-current" />Start recall</button>
+            {:else}
+              <button class="btn btn-ghost" onclick={() => onOpen(row.id)}><Plus class="size-4" />Add points</button>
+            {/if}
           </article>
         {/each}
       </div>
@@ -134,7 +136,7 @@
                 <td><button class="py-0.5 text-left font-semibold hover:underline" onclick={() => onOpen(row.id)}>{row.subject_name}</button><div class="text-xs text-muted">{row.module ? "Module" : "Topic"}{row.subject_exists ? "" : " (deleted)"}</div></td>
                 <td class="tabular-nums">{row.points}</td>
                 <td><div class="flex items-center gap-3"><div class="w-28"><Ladder compact steps={schedule.steps} position={row.position} step={row.step} next={row.next_step} /></div><span class="text-sm">{row.step ?? "Not started"}</span></div></td>
-                <td class="tabular-nums">{row.last_score === null ? "None yet" : `${row.last_score}%`}</td>
+                <td class="tabular-nums">{#if row.last_score === null}<span class="text-muted">None yet</span>{:else}<span class="flex items-center gap-2"><span class="inline-block h-3 w-24 shrink-0 overflow-hidden rounded-full bg-base-300" aria-hidden="true"><span class="block h-full rounded-full" style="width: {row.last_score}%; background: var(--chart-right)"></span></span>{row.last_score}%</span>{/if}</td>
                 <td class="tabular-nums">{dueLabel(row.due, today)}</td>
               </tr>
             {/each}
@@ -160,7 +162,7 @@
               <p class="eyebrow px-4 pb-1 pt-3" aria-hidden="true">{group}</p>
               {#each options as option (option.id)}
                 {@const value = `${kind}:${option.id}`}
-                <label class="flex cursor-pointer items-center gap-3 px-4 py-2 hover:bg-base-200 {subject === value ? 'bg-base-200 shadow-[inset_3px_0_0_var(--color-primary)]' : ''}">
+                <label class="flex cursor-pointer items-center gap-3 px-4 py-2 hover:bg-base-200 {subject === value ? 'bg-base-200 shadow-[inset_3px_0_0_var(--primary-ink)]' : ''}">
                   <input type="radio" name="recall-about" class="radio radio-sm" checked={subject === value} onchange={() => (subject = value)} />
                   <span class="flex-1"><span class="block">{option.name}</span><span class="block text-xs text-muted">{kind === "module" ? topicCount(option.id) : moduleName((option as TopicRow).module)}</span></span>
                   {#if hasChecklist(option.name, kind === "module")}<span class="text-xs text-muted">Has a checklist</span>{/if}

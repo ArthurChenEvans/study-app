@@ -61,7 +61,7 @@
         </div>
       </li>
     </ol>
-    <p class="mt-6 flex gap-2 rounded-lg bg-base-200 p-3 text-sm"><Info class="mt-0.5 size-4 shrink-0" /><span>The app never puts its database in the folder, only small files of changes, one per computer. Syncing a database file itself corrupts it.</span></p>
+    <p class="mt-6 flex gap-2 note-box p-3 text-sm"><Info class="mt-0.5 size-4 shrink-0" /><span>The app never puts its database in the folder, only small files of changes, one per computer. Syncing a database file itself corrupts it.</span></p>
     {#if !moving}<p class="mt-3 text-sm text-muted">A backup is made first.</p>{/if}
     {#if error}<p role="alert" class="mt-3 text-sm text-error">{error}</p>{/if}
     <div class="modal-action">
