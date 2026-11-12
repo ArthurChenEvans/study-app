@@ -1,0 +1,20 @@
+# cargo deny check advisories bans sources
+# Known vulnerabilities, where crates come from, and duplicate versions. Licences aren't
+# checked here.
+
+[advisories]
+ignore = [
+    # Comes in through Tauri's GTK bindings (the Linux desktop shell) and has no fixed
+    # version Tauri 2 can use. It only runs at build time.
+    { id = "RUSTSEC-2024-0370", reason = "proc-macro-error is unmaintained, a build-time dependency of the GTK bindings" },
+]
+
+[bans]
+multiple-versions = "allow"
+# The workspace's own crates depend on each other by path, which cargo deny counts as
+# wildcards, so those aren't denied.
+wildcards = "allow"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
