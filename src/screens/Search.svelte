@@ -6,10 +6,11 @@
   import PageHeader from "../components/PageHeader.svelte";
   import { dayFromUtc, dayLabel } from "../lib/dates";
 
-  let { onOpenTopic }: { onOpenTopic: (topic: Id) => void } = $props();
+  let { onOpenTopic, initialText = "" }: { onOpenTopic: (topic: Id) => void; initialText?: string } = $props();
 
   const tabs: SearchQuery["tab"][] = ["All", "Questions", "Modules", "Topics", "Tags", "Sources"];
-  let text = $state("");
+  // svelte-ignore state_referenced_locally
+  let text = $state(initialText);
   let tab = $state<SearchQuery["tab"]>("All");
   let module = $state("");
   let tag = $state("");

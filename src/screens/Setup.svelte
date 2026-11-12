@@ -4,6 +4,8 @@
   import { api, errorMessage, type Id, type ModuleRow, type QuestionTypes, type QuizView, type TopicQuizView, type TopicRow } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
   import Seg from "../components/Seg.svelte";
+  import TopicPicker from "../components/list/TopicPicker.svelte";
+  import { X } from "@lucide/svelte";
 
   let { preselected = [], onStarted }: { preselected?: Id[]; onStarted: (view: QuizView) => void } = $props();
 
@@ -114,7 +116,7 @@
   </div>
 {/snippet}
 
-<div class="mx-auto max-w-6xl px-12 pb-24">
+<div class="mx-auto max-w-[96rem] px-10 pb-24">
   <PageHeader title="New quiz" subtitle="Pick what to practise and how" />
   <div class="grid grid-cols-[1fr_320px] items-start gap-8">
     <div class="space-y-8">
@@ -123,20 +125,11 @@
           <h2 class="eyebrow">Topics</h2>
           {#if dueIds.length && dueIds.some((id) => !chosen.includes(id))}<button class="btn btn-link btn-sm text-[13px]" onclick={pickDue}>Pick the {dueIds.length} due</button>{/if}
         </div>
-        <!-- Picking a topic lights up its whole row -->
-        <div class="flex flex-col gap-2">
-          {#each topics as topic (topic.id)}
-            {@const empty = countOf(topic) === 0}
-            <label class="pick-row {chosen.includes(topic.id) ? 'pick-on' : ''} {empty ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}">
-              <input type="checkbox" class="checkbox" checked={chosen.includes(topic.id)} disabled={empty} onchange={() => toggle(topic.id)} />
-              <span class="flex-1"><span class="text-[16px] font-extrabold">{topic.name}</span> <span class="text-muted">· {moduleName(topic.module)}</span></span>
-              {#if isDue(topic)}<span class="chip chip-due">Due today</span>{/if}
-              <span class="text-[13px] tabular-nums text-muted">{countLabel(topic)}</span>
-            </label>
-          {:else}
-            <p class="px-6 py-4 text-sm text-muted">Create a topic and write some questions first.</p>
-          {/each}
-        </div>
+        {#snippet rowEnd(topic: TopicRow)}
+          {#if isDue(topic)}<span class="chip chip-due">Due today</span>{/if}
+          <span class="shrink-0 text-[13px] tabular-nums text-muted">{countLabel(topic)}</span>
+        {/snippet}
+        <TopicPicker {topics} {modules} bind:chosen label="Topics to quiz" disabled={(topic) => countOf(topic) === 0} extra={rowEnd} />
       </section>
 
       <section>
@@ -205,6 +198,12 @@
         <p class="mt-4 text-sm text-muted">No topics picked yet.</p>
       {:else}
         <p class="mt-3 text-4xl font-semibold leading-none">{questionCount} <span class="text-base font-normal text-muted">questions</span></p>
+        <p class="mt-1 text-sm text-muted">from {chosen.length} {chosen.length === 1 ? "topic" : "topics"}</p>
+        <ul class="mt-3 flex max-h-40 flex-wrap gap-1.5 overflow-y-auto" aria-label="Picked topics">
+          {#each topics.filter((t) => chosen.includes(t.id)) as topic (topic.id)}
+            <li><button type="button" class="chip chip-primary min-h-6" aria-label="Untick {topic.name}" onclick={() => toggle(topic.id)}>{topic.name}<X class="size-3" aria-hidden="true" /></button></li>
+          {/each}
+        </ul>
         <dl class="mt-6 space-y-3 text-sm">
           {#if anyShort}<div class="flex justify-between"><dt class="text-muted">Types</dt><dd>{types === "Both" ? "MCQ and short answer" : types === "Mcq" ? "MCQ only" : "Short answer only"}</dd></div>{/if}
           <div class="flex justify-between"><dt class="text-muted">Mode</dt><dd>{exam ? "Exam" : "Study"}</dd></div>

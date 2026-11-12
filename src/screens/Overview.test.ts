@@ -55,9 +55,9 @@ describe("Overview", () => {
     mocked.overview.mockResolvedValue({ Progress: progress() });
     mocked.dueToday.mockResolvedValue({ cards: 4, checklists: 1, quizzes: 2, drills: 0, total: 7 });
     mocked.topicQuizzes.mockResolvedValue([
-      { topic: 1, step: "Week", position: 1, steps: 7, due: TODAY, due_today: true, normal_due: TODAY, tightened_for: null },
-      { topic: 3, step: "Day", position: 0, steps: 7, due: TODAY - 1, due_today: true, normal_due: TODAY - 1, tightened_for: null },
-      { topic: 4, step: "Day", position: 0, steps: 7, due: TODAY + 3, due_today: false, normal_due: TODAY + 3, tightened_for: null },
+      { topic: 1, step: "Week", position: 1, steps: 7, due: TODAY, due_today: true, normal_due: TODAY, tightened_for: null, waiting: false },
+      { topic: 3, step: "Day", position: 0, steps: 7, due: TODAY - 1, due_today: true, normal_due: TODAY - 1, tightened_for: null, waiting: false },
+      { topic: 4, step: "Day", position: 0, steps: 7, due: TODAY + 3, due_today: false, normal_due: TODAY + 3, tightened_for: null, waiting: false },
     ]);
     render(Overview, { onNavigate, onQuizTopics });
     const hero = await screen.findByRole("region", { name: "2 quizzes due today" });

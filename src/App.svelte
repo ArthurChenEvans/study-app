@@ -42,7 +42,8 @@
     | { screen: "calendar-day"; day: number }
     | { screen: "project"; id: Id }
     | { screen: "session-review"; project: Id; run: number }
-    | { screen: "drills"; ids: Id[]; back: Route; run: number };
+    | { screen: "drills"; ids: Id[]; back: Route; run: number }
+    | { screen: "search"; text: string };
 
   let route = $state<Route>({ screen: screenFromHash(location.hash) });
   let runs = 0;
@@ -137,6 +138,9 @@
     const target = event.target as HTMLElement | null;
     if (target && (target.closest("input, textarea, select, [contenteditable='true']"))) return;
     event.preventDefault();
+    // A long list's own filter comes first (R139).
+    const filter = document.querySelector<HTMLInputElement>("input[data-list-filter]");
+    if (filter && !document.querySelector("dialog[open]")) return filter.focus();
     if (route.screen !== "search") go({ screen: "search" });
     await tick();
     document.querySelector<HTMLInputElement>('input[type="search"]')?.focus();
@@ -152,7 +156,7 @@
   <main class="min-w-0 flex-1">
     {#key dataVersion}
     {#if route.screen === "topics"}
-      <Topics onEdit={(topic) => go({ screen: "editor", topic })} onQuiz={(topic) => go({ screen: "setup-for", topics: [topic] })} onQuizTopics={(topics) => go({ screen: "setup-for", topics })} />
+      <Topics onCards={(topic) => go({ screen: "topic-cards", topic, note: null })} onSearch={(text) => go({ screen: "search", text })} onEdit={(topic) => go({ screen: "editor", topic })} onQuiz={(topic) => go({ screen: "setup-for", topics: [topic] })} onQuizTopics={(topics) => go({ screen: "setup-for", topics })} />
     {:else if route.screen === "editor"}
       {#key route.topic}<Editor topic={route.topic} />{/key}
     {:else if route.screen === "setup" || route.screen === "setup-for"}
@@ -194,7 +198,7 @@
     {:else if route.screen === "history"}
       <History onView={(attempt) => go({ screen: "results", attempt })} onNewQuiz={() => go({ screen: "setup" })} />
     {:else if route.screen === "search"}
-      <Search onOpenTopic={(topic) => go({ screen: "editor", topic })} />
+      <Search initialText={"text" in route ? route.text : ""} onOpenTopic={(topic) => go({ screen: "editor", topic })} />
     {:else}
       <Overview onNavigate={(screen) => go({ screen })} onQuizTopics={(topics) => go({ screen: "setup-for", topics })} />
     {/if}

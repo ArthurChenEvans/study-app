@@ -24,7 +24,7 @@ use study_api::calendar::{CalendarDay, DayView, DueToday};
 use study_api::dates::{DatePanel, DatePreview, DateSave, DateView};
 use study_store::dates::DateId;
 use study_api::transfer::{ExportFile, ExportRequest, ExportSummary, ImportChoice, ImportPreview, ImportResult};
-use study_api::practice::{DrillView, IssueView, ProjectRow, ProjectView, ReviewChoice, StruggleInput, StruggleView, TopicQuizView};
+use study_api::practice::{DrillView, IssueView, ProjectRow, ProjectView, QuizQueue, ReviewChoice, StruggleInput, StruggleView, TopicQuizView};
 use study_core::practice::DrillRating;
 use study_store::practice::{DrillId, ProjectId, SessionId, StruggleId};
 use study_store::recall::{ChecklistId, Point, Subject};
@@ -468,6 +468,19 @@ fn due_today(state: AppState) -> ApiResult<DueToday> {
     with(state, |app| app.due_today(today()))
 }
 
+#[tauri::command]
+fn quiz_queue(state: AppState) -> ApiResult<QuizQueue> {
+    with(state, |app| app.quiz_queue(today()))
+}
+#[tauri::command]
+fn quizzes_a_day(state: AppState) -> ApiResult<usize> {
+    with(state, |app| app.quizzes_a_day())
+}
+#[tauri::command]
+fn set_quizzes_a_day(state: AppState, count: usize) -> ApiResult<()> {
+    with(state, |app| app.set_quizzes_a_day(count))
+}
+
 // ---------- Dates on the calendar (R130 to R137) ----------
 
 #[tauri::command]
@@ -664,6 +677,9 @@ pub fn run() {
             calendar_month,
             calendar_day,
             due_today,
+            quiz_queue,
+            quizzes_a_day,
+            set_quizzes_a_day,
             dates,
             add_date,
             update_date,

@@ -284,3 +284,36 @@ fn the_calendar_shows_whats_due_and_what_was_done() {
     assert_eq!((future.when, future.drills.len(), future.drills[0].task.as_str()), (When::Future, 1, "Loop over a slice"));
     assert!(future.struggles.is_empty());
 }
+
+// lists.feature: Quizzes are capped a day (R146)
+#[test]
+fn topic_quizzes_are_capped_a_day_most_overdue_first() {
+    use study_core::recall::Position;
+    use study_store::practice::QuizMove;
+    let mut app = app();
+    let mut topics = vec![];
+    for index in 0..8 {
+        let topic = app.create_topic(&format!("Topic {index}"), None).unwrap();
+        // Topic 0 is the most overdue.
+        app.store.save_quiz_move(&QuizMove { attempt: AttemptId(index + 1), topic, day: TODAY - 30, from: None, score: 90, passed: true, to: Position { step: 3, rep: 0 }, next_due: TODAY - 10 + index }).unwrap();
+        topics.push(topic);
+    }
+    let queue = app.quiz_queue(TODAY).unwrap();
+    assert_eq!(queue.daily, 5);
+    assert_eq!(queue.today, topics[..5].to_vec());
+    assert_eq!(queue.waiting, topics[5..].to_vec());
+    assert_eq!(queue.clears_by, Some(TODAY + 1));
+    assert_eq!(app.due_today(TODAY).unwrap().quizzes, 5);
+    let views = app.topic_quizzes(TODAY).unwrap();
+    let waiting: Vec<TopicId> = views.iter().filter(|v| v.waiting).map(|v| v.topic).collect();
+    assert_eq!(waiting, topics[5..].to_vec());
+    assert!(views.iter().filter(|v| v.waiting).all(|v| !v.due_today && v.step == views[0].step), "waiting keeps its step");
+    let day = app.calendar_day(TODAY, TODAY).unwrap();
+    assert_eq!((day.quizzes.len(), day.waiting.len(), day.clears_by), (5, 3, Some(TODAY + 1)));
+    assert_eq!(day.quizzes[0].topic, topics[0]);
+
+    app.set_quizzes_a_day(2).unwrap();
+    let queue = app.quiz_queue(TODAY).unwrap();
+    assert_eq!((queue.today.len(), queue.waiting.len(), queue.clears_by), (2, 6, Some(TODAY + 3)));
+    assert!(app.set_quizzes_a_day(0).is_err());
+}

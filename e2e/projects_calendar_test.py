@@ -173,7 +173,7 @@ try:
             "options": [{"text": "Right", "correct": True}, {"text": "Wrong", "correct": False}, {"text": "Also wrong", "correct": False}],
             "explanation": "", "tags": [], "citations": [], "short": None}})
     nav("Topics")
-    find("//tr[.//td[normalize-space()='Pipeline hazards']]//*[normalize-space()='Quiz it to start']")
+    find("//tr[.//button[normalize-space()='Pipeline hazards']]//*[normalize-space()='Quiz it to start']")
     ipc("start_quiz", {"setup": {"topics": [topic], "count": None, "even": False, "shuffle_questions": False, "shuffle_options": False, "exam": True, "total_minutes": None, "per_question_seconds": None, "easy": False, "types": "Both"}})
     ipc("answer", {"picked": [0]})
     attempt = ipc("answer", {"picked": [0]})["next"]["Finished"]
@@ -181,8 +181,8 @@ try:
     assert [(m["name"], m["passed"], m["to"]) for m in results["moves"]] == [("Pipeline hazards", True, "Day")], results["moves"]
     nav("Calendar")
     nav("Topics")
-    row = find("//tr[.//td[normalize-space()='Pipeline hazards']]")
-    wait.until(lambda _: "Tomorrow" in row.text and "Day step" in row.text)
+    row = find("//tr[.//button[normalize-space()='Pipeline hazards']]")
+    wait.until(lambda _: "Tomorrow" in row.text and "Day" in row.text)
     ok("a finished quiz starts the topic's quiz schedule, due tomorrow (R96, R97)")
     shot("topics")
 

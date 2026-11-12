@@ -147,6 +147,23 @@ pub struct TopicQuizView {
     /// Its next quiz without the date.
     pub normal_due: i64,
     pub tightened_for: Option<String>,
+    /// Overdue, but past the day's limit, so it waits its turn (R146).
+    pub waiting: bool,
+}
+
+/// Today's topic quizzes under the daily limit (R146).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct QuizQueue {
+    pub daily: usize,
+    /// Due today, most overdue first, at most `daily`.
+    pub today: Vec<TopicId>,
+    /// Overdue ones waiting their turn, most overdue first.
+    pub waiting: Vec<TopicId>,
+    /// The day the last waiting one comes in, at `daily` a day.
+    pub clears_by: Option<i64>,
+    /// How many come due over the next four weeks, to warn when that's more than the
+    /// limit can keep up with.
+    pub next_four_weeks: usize,
 }
 
 /// Where a quiz moved one topic (R97).
@@ -478,9 +495,36 @@ impl App {
         self.quiz_schedule()
     }
 
+    pub fn quizzes_a_day(&self) -> ApiResult<usize> {
+        Ok(self.store.quizzes_a_day()?)
+    }
+
+    pub fn set_quizzes_a_day(&mut self, count: usize) -> ApiResult<()> {
+        Ok(self.store.set_quizzes_a_day(count)?)
+    }
+
+    /// Overdue topic quizzes split into today's (at most the daily limit, most overdue
+    /// first) and the ones waiting (R146). Waiting doesn't move a topic down its ladder.
+    pub fn quiz_queue(&self, today: i64) -> ApiResult<QuizQueue> {
+        let daily = self.store.quizzes_a_day()?;
+        let mut quizzes = self.quizzes_now(&self.now(today)?)?;
+        quizzes.sort_by_key(|quiz| (quiz.due, quiz.topic));
+        let overdue: Vec<TopicId> = quizzes.iter().filter(|quiz| quiz.due <= today).map(|quiz| quiz.topic).collect();
+        let (first, rest) = overdue.split_at(overdue.len().min(daily));
+        let coming = quizzes.iter().filter(|quiz| quiz.due > today && quiz.due <= today + 28).count();
+        Ok(QuizQueue {
+            daily,
+            today: first.to_vec(),
+            waiting: rest.to_vec(),
+            clears_by: (!rest.is_empty()).then(|| today + rest.len().div_ceil(daily) as i64),
+            next_four_weeks: coming,
+        })
+    }
+
     pub fn topic_quizzes(&self, today: i64) -> ApiResult<Vec<TopicQuizView>> {
         let schedule = self.store.quiz_schedule()?;
         let now = self.now(today)?;
+        let queue = self.quiz_queue(today)?;
         Ok(self
             .store
             .topic_quizzes()?
@@ -494,9 +538,10 @@ impl App {
                     position: position.step,
                     steps: schedule.steps.len(),
                     due: due.day,
-                    due_today: due.day <= today,
+                    due_today: queue.today.contains(&quiz.topic),
                     normal_due: quiz.due,
                     tightened_for: now.tightened_for(&due),
+                    waiting: queue.waiting.contains(&quiz.topic),
                 }
             })
             .collect())

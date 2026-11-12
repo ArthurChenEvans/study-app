@@ -112,6 +112,10 @@ pub struct DayView {
     pub dates: Vec<DatePanel>,
     /// Dates covering something in the two weeks after this day, soonest first.
     pub soon: Vec<DateView>,
+    /// Today only: overdue quizzes past the daily limit, and when the last comes in (R146).
+    pub waiting: Vec<DayTopic>,
+    pub clears_by: Option<i64>,
+    pub daily: usize,
 }
 
 fn when(day: i64, today: i64) -> When {
@@ -174,7 +178,7 @@ impl App {
         let cards = self.cards_due_count(today)?;
         let checklists = self.store.checklists()?.iter().filter(|c| c.points > 0 && c.due <= today).count();
         let now = self.now(today)?;
-        let quizzes = self.quizzes_now(&now)?.iter().filter(|q| q.due <= today).count();
+        let quizzes = self.quiz_queue(today)?.today.len();
         let drills = self.drills_now(&now)?.iter().filter(|d| d.due.is_some_and(|due| due <= today)).count();
         Ok(DueToday { cards, checklists, quizzes, drills, total: cards + checklists + quizzes + drills })
     }
@@ -240,9 +244,12 @@ impl App {
                 });
             }
         } else {
+            let queue = self.quiz_queue(today)?;
             for quiz in self.store.topic_quizzes()? {
                 let due = now.quiz(&quiz);
-                if !due_on(due.day) {
+                // Today only takes the day's share, most overdue first (R146).
+                let take = if when == When::Today { queue.today.contains(&quiz.topic) } else { due_on(due.day) };
+                if !take {
                     continue;
                 }
                 if let Some(topic) = topics.iter().find(|t| t.id == quiz.topic) {
@@ -281,6 +288,17 @@ impl App {
         let dates = all_dates.iter().filter(|d| d.day == day).map(|d| self.date_panel(d.id, today)).collect::<ApiResult<_>>()?;
         let soon = all_dates.into_iter().filter(|d| d.day > day && d.day <= day + 14 && !d.topics.is_empty()).collect();
 
-        Ok(DayView { day, when, cards, checklists, checks, quizzes, attempts, drills, drill_runs, struggles, dates, soon })
+        let queue = self.quiz_queue(today)?;
+        let mut waiting = vec![];
+        if when == When::Today {
+            for id in &queue.waiting {
+                if let (Some(topic), Some(quiz)) = (topics.iter().find(|t| t.id == *id), self.store.topic_quiz(*id)?) {
+                    waiting.push(DayTopic { topic: *id, name: topic.name.clone(), step: quiz_schedule.label(quiz_schedule.clamp(quiz.position)), questions: topic.question_count, tightened_for: None });
+                }
+            }
+        }
+        // Most overdue first.
+        quizzes.sort_by_key(|q| queue.today.iter().position(|id| *id == q.topic).unwrap_or(usize::MAX));
+        Ok(DayView { day, when, cards, checklists, checks, quizzes, attempts, drills, drill_runs, struggles, dates, soon, waiting, clears_by: if when == When::Today { queue.clears_by } else { None }, daily: queue.daily })
     }
 }

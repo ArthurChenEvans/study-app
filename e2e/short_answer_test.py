@@ -86,7 +86,7 @@ try:
     button("New topic").click()
     find("//dialog//input").send_keys("OSI layers")
     button("Create topic").click()
-    find("//button[@aria-label='Edit OSI layers']").click()
+    (find("//table//button[normalize-space()='OSI layers']").click(), find("//button[@aria-label='Edit OSI layers']"))[1].click()
 
     # ---------- Accepted answers ----------
     radio("Short answer").click()
@@ -129,7 +129,8 @@ try:
 
     # ---------- Quiz ----------
     find("//nav//*[self::a or self::button][normalize-space()='Topics']").click()
-    find("//*[normalize-space()='OSI layers']/ancestor::*[.//button[normalize-space()='Quiz']][1]//button[normalize-space()='Quiz']").click()
+    find("//table//button[normalize-space()='OSI layers']").click()
+    find("//button[@aria-label='Quiz OSI layers']").click()
     find("//label[contains(., 'OSI layers')][contains(., '1 MCQ · 2 short answer')]")
     button("Change settings").click()
     radio("Short answer").click()

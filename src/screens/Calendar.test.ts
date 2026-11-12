@@ -18,7 +18,7 @@ const exam: DateView = { id: 2, name: "Networks exam", day: TODAY + 20, kind: "E
 const writeUp: DateView = { id: 1, name: "Study app write-up", day: TODAY + 10, kind: "Deadline", covers: "Nothing", covers_label: "", topics: [], tighten: false, days_left: 10 };
 const emptyDay = (day: number, when: DayView["when"]): DayView => ({
   day, when, cards: { due: { new: 0, learning: 0, review: 0 }, minutes: 0, reviewed: 0, again: 0, seconds: 0 },
-  checklists: [], checks: [], quizzes: [], attempts: [], drills: [], drill_runs: [], struggles: [], dates: [], soon: [],
+  checklists: [], checks: [], quizzes: [], attempts: [], drills: [], drill_runs: [], struggles: [], dates: [], soon: [], waiting: [], clears_by: null, daily: 5,
 });
 
 beforeEach(() => {
@@ -222,6 +222,16 @@ describe("Calendar", () => {
     await u.click(screen.getByRole("button", { name: "Previous day" }));
     expect(await screen.findByRole("region", { name: "Networks exam coming up" })).toHaveTextContent("Networks exam in 1 day, on Mon 23 Nov. Reviews for it are tightened");
     expect(screen.getByText(/tightened for the Networks exam/)).toBeInTheDocument();
+  });
+
+  // lists.feature: Quizzes are capped a day
+  it("says how many quizzes are waiting today and when the last comes in", async () => {
+    mocked.calendarDay.mockResolvedValue({ ...emptyDay(TODAY, "Today"), quizzes: [{ topic: 1, name: "CPU", step: "Week", questions: 4, tightened_for: null }], waiting: [{ topic: 2, name: "GPU", step: "Week", questions: 3, tightened_for: null }, { topic: 3, name: "RAM", step: "Day", questions: 3, tightened_for: null }], clears_by: TODAY + 1, daily: 1 });
+    const u = userEvent.setup();
+    render(Calendar, {});
+    await u.click(await screen.findByRole("button", { name: /^Today, Tue 3 Nov/ }));
+    expect(await screen.findByText("2 more waiting")).toBeInTheDocument();
+    expect(screen.getByText(/Only 1 topic quizzes come due a day, most overdue first. They keep their step, and the last comes in tomorrow./)).toBeInTheDocument();
   });
 });
 

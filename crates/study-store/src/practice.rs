@@ -14,6 +14,9 @@ use crate::recall::ChecklistId;
 use crate::{AttemptId, Result, Store, StoreError};
 
 const QUIZ_SCHEDULE_KEY: &str = "quiz_schedule";
+const QUIZZES_A_DAY_KEY: &str = "quizzes_a_day";
+/// Topic quizzes due a day unless changed (R146).
+pub const DEFAULT_QUIZZES_A_DAY: usize = 5;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct ProjectId(pub i64);
@@ -202,6 +205,23 @@ impl Store {
         self.connection.execute(
             "INSERT INTO settings (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
             params![QUIZ_SCHEDULE_KEY, serde_json::to_string(schedule)?],
+        )?;
+        Ok(())
+    }
+
+    /// How many topic quizzes can be due on one day (R146).
+    pub fn quizzes_a_day(&self) -> Result<usize> {
+        let saved: Option<String> = self.connection.query_row("SELECT value FROM settings WHERE key = ?1", [QUIZZES_A_DAY_KEY], |row| row.get(0)).optional()?;
+        Ok(saved.and_then(|value| value.parse().ok()).filter(|n: &usize| *n > 0).unwrap_or(DEFAULT_QUIZZES_A_DAY))
+    }
+
+    pub fn set_quizzes_a_day(&mut self, count: usize) -> Result<()> {
+        if count == 0 || count > 200 {
+            return Err(StoreError::Invalid("quizzes a day has to be between 1 and 200"));
+        }
+        self.connection.execute(
+            "INSERT INTO settings (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![QUIZZES_A_DAY_KEY, count.to_string()],
         )?;
         Ok(())
     }

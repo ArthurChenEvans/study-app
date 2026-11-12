@@ -5,11 +5,14 @@
   import { errorMessage, type Schedule, type Unit } from "../lib/api";
 
   let {
-    title, intro, passWhat, applies, schedule, onSave, onReset, onClose,
+    title, intro, passWhat, applies, schedule, daily, onSave, onReset, onClose,
   }: {
     title: string; intro: string; passWhat: string; applies: string; schedule: Schedule;
-    onSave: (schedule: Schedule) => Promise<void>; onReset: () => Promise<Schedule>; onClose: () => void;
+    /** The quiz schedule's daily limit (R146), and how many come due in the next four weeks. */
+    daily?: { value: number; coming: number };
+    onSave: (schedule: Schedule, daily?: number) => Promise<void>; onReset: () => Promise<Schedule>; onClose: () => void;
   } = $props();
+  let perDay = $state(untrack(() => daily?.value ?? 5));
 
   let editing = $state<Schedule>(untrack(() => structuredClone($state.snapshot(schedule)))); // edited as a copy, saved on submit
   let error = $state("");
@@ -18,7 +21,7 @@
   async function save(event: SubmitEvent) {
     event.preventDefault();
     try {
-      await onSave($state.snapshot(editing));
+      await onSave($state.snapshot(editing), daily ? Number(perDay) : undefined);
     } catch (failure) {
       error = errorMessage(failure);
     }
@@ -88,6 +91,11 @@
       <label class="block"><span class="block text-sm font-semibold">Under the pass mark</span>
         <select class="select mt-1 w-full" bind:value={editing.under_pass}><option value="BackOneStep">Go back one step</option><option value="Stay">Stay on the same step</option></select></label>
     </div>
+    {#if daily}
+      <label class="mt-6 flex items-center justify-between gap-4"><span><span class="block text-sm font-semibold">Topics to quiz a day</span><span class="block text-sm text-muted">More than this wait their turn, most overdue first, keeping their step.</span></span>
+        <input type="number" min="1" max="200" class="input input-sm w-20 tabular-nums" bind:value={perDay} /></label>
+      {#if daily.coming / 28 > Number(perDay)}<p class="note-box mt-2 p-2 text-xs">About {Math.round(daily.coming / 28)} come due a day over the next four weeks, more than {perDay}. Some will wait longer than their step says.</p>{/if}
+    {/if}
     <p class="mt-6 text-sm text-muted">{applies}</p>
     {#if error}<p role="alert" class="mt-4 text-sm text-error">{error}</p>{/if}
     <div class="modal-action">

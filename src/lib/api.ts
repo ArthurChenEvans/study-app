@@ -198,7 +198,8 @@ export type ReviewChoice =
   | { Checklist: { checklist: Id } }
   | { NewDrill: { issue: string; task: string; hints: string; topic: Id | null; day: number } }
   | { DrillAgain: { issue: string; drill: Id; day: number } };
-export interface TopicQuizView { topic: Id; step: string; position: number; steps: number; due: number; due_today: boolean; normal_due: number; tightened_for: string | null }
+export interface TopicQuizView { topic: Id; step: string; position: number; steps: number; due: number; due_today: boolean; normal_due: number; tightened_for: string | null; waiting: boolean }
+export interface QuizQueue { daily: number; today: Id[]; waiting: Id[]; clears_by: number | null; next_four_weeks: number }
 // Dates on the calendar (R130 to R137)
 export type Covers = "Nothing" | { Module: Id } | { Topics: Id[] };
 export interface DateView { id: Id; name: string; day: number; kind: string; covers: Covers; covers_label: string; topics: Id[]; tighten: boolean; days_left: number }
@@ -222,6 +223,9 @@ export interface DayView {
   struggles: StruggleView[];
   dates: DatePanel[];
   soon: DateView[];
+  waiting: DayView["quizzes"];
+  clears_by: number | null;
+  daily: number;
 }
 
 /** Errors from the backend arrive as { message }. */
@@ -328,6 +332,9 @@ export const api = {
   setQuizSchedule: (schedule: Schedule) => invoke<void>("set_quiz_schedule", { schedule }),
   resetQuizSchedule: () => invoke<Schedule>("reset_quiz_schedule"),
   topicQuizzes: () => invoke<TopicQuizView[]>("topic_quizzes"),
+  quizQueue: () => invoke<QuizQueue>("quiz_queue"),
+  quizzesADay: () => invoke<number>("quizzes_a_day"),
+  setQuizzesADay: (count: number) => invoke<void>("set_quizzes_a_day", { count }),
   calendarMonth: (from: number, to: number) => invoke<CalendarDay[]>("calendar_month", { from, to }),
   calendarDay: (day: number) => invoke<DayView>("calendar_day", { day }),
   dates: () => invoke<DateView[]>("dates"),

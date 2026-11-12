@@ -155,8 +155,8 @@ describe("Quiz setup", () => {
   it("marks topics due today and picks them in one go", async () => {
     const u = userEvent.setup();
     mocked.topicQuizzes.mockResolvedValue([
-      { topic: 1, step: "Week", position: 2, steps: 6, due: 0, due_today: false, normal_due: 0, tightened_for: null },
-      { topic: 2, step: "Day", position: 1, steps: 6, due: 0, due_today: true, normal_due: 0, tightened_for: null },
+      { topic: 1, step: "Week", position: 2, steps: 6, due: 0, due_today: false, normal_due: 0, tightened_for: null, waiting: false },
+      { topic: 2, step: "Day", position: 1, steps: 6, due: 0, due_today: true, normal_due: 0, tightened_for: null, waiting: false },
     ]);
     render(Setup, { onStarted: vi.fn() });
     const gpu = await screen.findByRole("checkbox", { name: /GPU/ });
@@ -165,5 +165,23 @@ describe("Quiz setup", () => {
     await u.click(screen.getByRole("button", { name: "Pick the 1 due" }));
     expect(gpu).toBeChecked();
     expect(screen.queryByRole("button", { name: "Pick the 1 due" })).toBeNull();
+  });
+
+  // lists.feature: Pick a whole module for a quiz
+  it("ticks a whole module from the rail and unticks from the chips", async () => {
+    const u = userEvent.setup();
+    mocked.topicQuizzes.mockResolvedValue([]);
+    render(Setup, { onStarted: vi.fn() });
+    await u.click(await screen.findByRole("button", { name: /^Computer Architecture 2 topics/ }));
+    await u.click(screen.getByRole("button", { name: "Tick all 2 in Computer Architecture" }));
+    const picked = screen.getByRole("list", { name: "Picked topics" });
+    expect(picked).toHaveTextContent("CPU");
+    expect(picked).toHaveTextContent("GPU");
+    expect(screen.getByLabelText("Quiz summary")).toHaveTextContent("from 2 topics");
+    await u.click(screen.getByRole("button", { name: "Untick GPU" }));
+    expect(screen.getByRole("checkbox", { name: /GPU/ })).not.toBeChecked();
+    await u.type(screen.getByRole("searchbox", { name: "Filter" }), "gp");
+    expect(screen.queryByRole("checkbox", { name: /CPU/ })).toBeNull();
+    expect(screen.getByText(/1 of 2/)).toBeInTheDocument();
   });
 });

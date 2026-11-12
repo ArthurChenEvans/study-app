@@ -101,7 +101,7 @@ try:
     button("New topic").click()
     find("//dialog//input").send_keys("CPU pipeline")
     button("Create topic").click()
-    find("//button[@aria-label='Edit CPU pipeline']").click()
+    (find("//table//button[normalize-space()='CPU pipeline']").click(), find("//button[@aria-label='Edit CPU pipeline']"))[1].click()
     question = labelled("Question")
     step("opened the editor for a new topic")
 
@@ -166,7 +166,8 @@ try:
 
     # ---------- Take the quiz ----------
     find("//nav//*[self::a or self::button][normalize-space()='Topics']").click()
-    find("//*[normalize-space()='CPU pipeline']/ancestor::*[.//button[normalize-space()='Quiz']][1]//button[normalize-space()='Quiz']").click()
+    find("//table//button[normalize-space()='CPU pipeline']").click()
+    find("//button[@aria-label='Quiz CPU pipeline']").click()
     button("Start quiz").click()
     find("//*[@aria-label='Answers']")
     wait.until(lambda _: image_loaded("main [role='heading']"))

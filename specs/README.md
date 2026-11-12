@@ -257,3 +257,20 @@ Decided with the design: keywords are checked in any order, every answer is righ
 | R135 | The day view shows a date's own panel: how many days are left, what it covers, each covered topic's next quiz and where it was pulled in from, how many of its cards are due before it and how many were pulled in, and the never-quizzed topics with a Quiz button. A day before a covering date says how many days are left, and a tightened quiz says which date it's tightened for |
 | R136 | Adding or editing a date previews what moves before saving: each topic quiz moving from one day to another, topics with no schedule to tighten, and how many cards come in before it |
 | R137 | Topics show "Tightened for" a date under a tightened next quiz, and results show what the next quiz date would have been without it. Dates sync and go into full exports like everything else |
+
+## Lists at scale (approved 12 Nov 2026)
+
+| ID | Requirement |
+|---|---|
+| R138 | Long lists (Topics, the topic pickers in New quiz and the date dialog, Cards by topic) have a module rail with All, every module and No module, each with its count. Picking one narrows the list |
+| R139 | A filter box narrows the list as you type, on names, modules and tags, with the match marked and "9 of 171" beside it. `/` jumps to it and `Esc` clears it. When nothing matches, it says so and offers to clear the filter, look in all modules or search inside questions |
+| R140 | A status filter shows the states that matter on the screen, with counts (Topics: All, Due, Tightened, Not started) |
+| R141 | Clicking a column header sorts by it, again flips it, and says which way in words. "Columns" shows or hides the optional ones (Topics: tags, questions, short answers, quiz step, next quiz), remembered on this device |
+| R142 | The list scrolls in its own pane with the headers staying put, so the page is never much taller than the window and the filter, rail and item card stay in view |
+| R143 | Picking a row shows its details and actions in an item card beside the list, so rows don't each carry their own buttons. `↑` `↓` move, `Enter` edits, `Space` ticks, double-click edits |
+| R144 | Rows can be ticked one by one, all shown at once, or a whole module, for "Quiz them", "Move to module" or "Tag" from a bar under the list |
+| R145 | New quiz picks topics with the same rail, filter and ticks, with "Tick all N in a module". Your quiz lists the ticked topics as chips that can be removed |
+| R146 | At most a set number of topic quizzes are due a day (5 by default, changed in Quiz schedule), most overdue first. The rest wait, keeping their step, and Today says how many are waiting and when the last comes in. Quiz schedule warns when more come due a day than the limit |
+| R147 | Search shows recent searches and recently edited questions until you type, then results 50 at a time with "Show 50 more" |
+| R148 | History's chart shows the last 30 quizzes by default (90 days and All one click away), and the table is grouped by month, folded after the first two, with a filter |
+| R149 | Suggestions are grouped by topic, biggest groups first and folded after the first, with "Dismiss these N" per group and a filter. Bibliography is one compact sortable row per source with a filter, the full reference in the item card. Overview shows the 8 weakest topics with a module picker |
