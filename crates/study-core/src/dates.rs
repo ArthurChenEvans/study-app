@@ -30,11 +30,12 @@ fn pulled_in(last: i64, normal: i64, today: i64, date: i64) -> Option<i64> {
         return None;
     }
     // The day before (or on) the date there's nothing left to halve.
-    let left = date - last;
+    // Saturating: day numbers from a damaged import can be anything, and must not panic.
+    let left = date.saturating_sub(last);
     if left < 2 {
         return None;
     }
-    let day = last + left / 2;
+    let day = last.saturating_add(left / 2);
     (day < normal).then_some(day)
 }
 

@@ -336,7 +336,7 @@ impl CardSettings {
         });
         let elapsed = schedule
             .last_review
-            .map_or(0, |last| (today - last).max(0) as u32);
+            .map_or(0, |last| today.saturating_sub(last).clamp(0, i64::from(u32::MAX)) as u32);
         self.model()?
             .next_states(memory, self.desired_retention, elapsed)
             .map_err(|e| SchedulerError::Fsrs(e.to_string()))
@@ -350,7 +350,7 @@ impl CardSettings {
         let (hard, good, easy) = (days(&states.hard), days(&states.good), days(&states.easy));
         // Keep the buttons in order even when FSRS rounds two of them to the same day.
         let good = good.max(hard);
-        let easy = easy.max(good + 1);
+        let easy = easy.max(good.saturating_add(1));
         Ok([0, hard, good, easy])
     }
 
@@ -365,9 +365,9 @@ impl CardSettings {
         let [_, hard, good, easy] = self.preview(schedule, today)?;
         let (state, due) = match rating {
             Rating::Again => (states.again, today),
-            Rating::Hard => (states.hard, today + hard),
-            Rating::Good => (states.good, today + good),
-            Rating::Easy => (states.easy, today + easy),
+            Rating::Hard => (states.hard, today.saturating_add(hard)),
+            Rating::Good => (states.good, today.saturating_add(good)),
+            Rating::Easy => (states.easy, today.saturating_add(easy)),
         };
         let lapsed =
             rating == Rating::Again && !schedule.is_new() && schedule.last_review != Some(today);
@@ -387,7 +387,7 @@ impl CardSettings {
 /// Chance of remembering the card right now, for the card details panel.
 pub fn retrievability(settings: &CardSettings, schedule: &Schedule, today: i64) -> Option<f32> {
     let memory = schedule.memory?;
-    let elapsed = (today - schedule.last_review?).max(0) as f32;
+    let elapsed = today.saturating_sub(schedule.last_review?).max(0) as f32;
     let decay = settings
         .parameters
         .get(20)

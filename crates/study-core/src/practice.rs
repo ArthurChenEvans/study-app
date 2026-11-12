@@ -65,7 +65,7 @@ impl DrillRating {
     pub fn next_due(self, day: i64) -> Option<i64> {
         match self {
             Self::Solid => None,
-            Self::Struggled | Self::Shaky => Some(day + 1),
+            Self::Struggled | Self::Shaky => Some(day.saturating_add(1)),
         }
     }
 }
