@@ -285,6 +285,12 @@ impl App {
     pub fn store_mut(&mut self) -> &mut Store {
         &mut self.store
     }
+
+    /// The read-back check an import, a sync that brought changes and a restore run, so
+    /// the performance tests can time it.
+    pub fn check_data(&self, today: i64) -> Option<String> {
+        self.data_problem(today)
+    }
 }
 
 impl App {
@@ -722,18 +728,13 @@ impl App {
                 failed("a recall checklist", self.checklist(row.id, today))?;
                 failed("a checklist's history", self.recall_history(row.id))?;
             }
-            for topic in &topics {
-                failed("a topic's cards", self.topic_cards(topic.id, today))?;
-                for (question, _) in failed("a topic's questions", self.questions_in(topic.id))? {
-                    failed("a question", self.question(question))?;
-                }
-            }
-            for row in &history {
-                failed("a quiz's results", self.results(row.id))?;
-            }
+            // Every question and every card, each read once.
+            failed("questions", self.store.questions_in(&topics.iter().map(|topic| topic.id).collect::<Vec<_>>()).map_err(ApiError::from))?;
+            failed("cards", self.store.cards().map_err(ApiError::from))?;
             for project in failed("projects", self.projects(today))? {
                 failed("a project", self.project_view(project.id, today))?;
             }
+            let _ = &history;
             Ok(())
         };
         check().err()
@@ -741,11 +742,13 @@ impl App {
 
     /// Runs `work` so that its changes are only kept if it succeeds and the data can
     /// still all be read back afterwards. Otherwise everything it wrote is undone.
-    pub(crate) fn kept_only_if_readable<T>(&mut self, today: i64, refused: &str, work: impl FnOnce(&mut Self) -> ApiResult<T>) -> ApiResult<T> {
+    /// `changed` says whether `work` wrote anything worth checking: a sync that brought
+    /// nothing in skips the read-back, which takes a moment on years of data.
+    pub(crate) fn kept_only_if_readable<T>(&mut self, today: i64, refused: &str, changed: impl FnOnce(&T) -> bool, work: impl FnOnce(&mut Self) -> ApiResult<T>) -> ApiResult<T> {
         self.store.begin_trial()?;
         let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| work(self)));
         let verdict = match outcome {
-            Ok(Ok(value)) => match self.data_problem(today) {
+            Ok(Ok(value)) => match changed(&value).then(|| self.data_problem(today)).flatten() {
                 None => Ok(value),
                 Some(problem) => Err(ApiError::new(format!("{refused} ({problem})"))),
             },

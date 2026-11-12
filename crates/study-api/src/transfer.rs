@@ -512,7 +512,7 @@ impl App {
             None => None,
         };
         let plan = Plan { theirs, today: clock.day, history_edits: false };
-        let added = self.kept_only_if_readable(clock.day, "that file has something in it this version of the app can't read, so nothing was imported", |app| Ok(app.store.apply(&pending.snapshot, &plan)?))?;
+        let added = self.kept_only_if_readable(clock.day, "that file has something in it this version of the app can't read, so nothing was imported", |_| true, |app| Ok(app.store.apply(&pending.snapshot, &plan)?))?;
         self.forget_running_quiz()?;
         self.card_session = None;
         Ok(ImportResult { added: added.counts.into_iter().map(|(what, count)| Count { what, count }).collect(), replaced: added.replaced, backup })

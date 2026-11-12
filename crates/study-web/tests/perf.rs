@@ -64,6 +64,10 @@ fn screens_on_years_of_use() {
     println!("{} topics, {} quizzes in history", topic_ids.len(), history.as_array().unwrap().len());
     Store::take_trace();
 
+    let sync_folder = std::env::temp_dir().join(format!("study-perf-sync-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&sync_folder);
+    std::fs::create_dir_all(&sync_folder).unwrap();
+    let sync_folder = sync_folder.display().to_string();
     let search = |text: &str, tab: &str| json!({"query": {"text": text, "tab": tab, "module": null, "tag": null, "sort": "Question", "descending": false}});
     let calls: Vec<(&str, &str, Value)> = vec![
         ("Topics", "topics", json!({})),
@@ -100,6 +104,11 @@ fn screens_on_years_of_use() {
         ("Your data", "export_summary", json!({"request": {"topics": null, "history": true}})),
         ("Your data", "export_file", json!({"request": {"topics": null, "history": true}})),
         ("Your data", "sync_status", json!({})),
+        // Turning sync on writes everything out once. After that each sync reads the
+        // folder, merges, and reads every screen's data back before keeping the merge.
+        ("Review", "leave_review", json!({})),
+        ("Your data", "sync_setup", json!({"setup": {"folder": sync_folder, "name": "Perf"}})),
+        ("Your data", "sync_now", json!({"auto": false})),
     ];
     let mut plans: BTreeMap<String, (Vec<String>, Duration, usize, Vec<String>)> = BTreeMap::new();
     println!("\n{:<13}{:<20}{:>10}{:>12}{:>8}", "screen", "command", "ms", "bytes", "stmts");
@@ -108,14 +117,14 @@ fn screens_on_years_of_use() {
     let mut over: Vec<String> = vec![];
     for (screen, command, args) in calls {
         // Commands that change something run once. The rest are timed three times.
-        let once = ["start_quiz", "quit_quiz", "start_review", "grade_card", "back_up_now"].contains(&command);
+        let once = ["start_quiz", "quit_quiz", "start_review", "grade_card", "back_up_now", "sync_setup"].contains(&command);
         let (mut took, bytes, _) = run(&mut app, command, args.clone());
         let statements = Store::take_trace();
         for _ in 0..if once { 0 } else { 2 } {
             took = took.min(run(&mut app, command, args.clone()).0);
             Store::take_trace();
         }
-        let allowed = if ["start_quiz", "back_up_now", "export_summary", "export_file"].contains(&command) { action_budget } else { screen_budget };
+        let allowed = if command == "sync_setup" { Duration::from_secs(60) } else if ["start_quiz", "back_up_now", "export_summary", "export_file", "sync_now"].contains(&command) { action_budget } else { screen_budget };
         println!("{screen:<13}{command:<20}{:>10.1}{bytes:>12}{:>8}", took.as_secs_f64() * 1000.0, statements.len());
         if took > allowed {
             over.push(format!("{screen}: {command} took {:.0} ms, over its {} ms", took.as_secs_f64() * 1000.0, allowed.as_millis()));
@@ -131,6 +140,14 @@ fn screens_on_years_of_use() {
                 entry.0 = app.store_mut().query_plan(&sql).unwrap_or_else(|error| vec![format!("(no plan: {error})")]);
             }
         }
+    }
+    // The read-back check that guards imports, syncs that bring changes, and restores.
+    let started = Instant::now();
+    assert_eq!(app.check_data(TODAY), None);
+    let took = started.elapsed();
+    println!("{:<13}{:<20}{:>10.1}", "Your data", "read-back check", took.as_secs_f64() * 1000.0);
+    if took > action_budget {
+        over.push(format!("the read-back check took {:.0} ms, over its {} ms", took.as_secs_f64() * 1000.0, action_budget.as_millis()));
     }
     println!("\nover budget: {over:?}");
     let mut ranked: Vec<_> = plans.iter().collect();
