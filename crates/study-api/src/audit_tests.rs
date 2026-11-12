@@ -201,24 +201,44 @@ fn two_copies_of_the_app_on_one_database_lose_nothing() {
 }
 
 
+// ---------- Hazard 18: converting slides leaves nothing running and nothing readable ----------
+
+// sources.feature: PowerPoint previews (R11). LibreOffice's launcher is a shell script
+// that starts the real program as a child. Killing only the launcher on a timeout left
+// the child running, and the folder holding the slides was readable by other users.
 #[cfg(unix)]
 #[test]
-#[ignore]
-fn probe_slide_conversion_leftovers() {
+fn a_stuck_slide_conversion_leaves_no_process_and_keeps_the_slides_private() {
     use std::os::unix::fs::PermissionsExt;
     let dir = scratch("slides");
     let program = dir.join("soffice");
-    // Like the real launcher: a shell script that starts the real program as a child.
-    std::fs::write(&program, format!("#!/bin/sh\nfor a in \"$@\"; do last=\"$a\"; done\nstat -c '%a' \"$(dirname \"$last\")\" > {}/mode.txt\nsleep 31337 &\nwait\n", dir.display())).unwrap();
+    let marker = format!("31{}", std::process::id());
+    std::fs::write(&program, format!("#!/bin/sh\nfor a in \"$@\"; do last=\"$a\"; done\nstat -c '%a' \"$(dirname \"$last\")\" > {}/mode.txt\nsleep {marker} &\nwait\n", dir.display())).unwrap();
     std::fs::set_permissions(&program, std::fs::Permissions::from_mode(0o755)).unwrap();
     let result = crate::convert::slides_to_pdf(b"PK", "deck.pptx", Some(&program), std::time::Duration::from_millis(600));
+    assert_eq!(result, Err(crate::convert::ConvertError::TimedOut));
     std::thread::sleep(std::time::Duration::from_millis(300));
-    let survivors = std::process::Command::new("pgrep").args(["-f", "sleep 31337"]).output().unwrap();
+    let survivors = std::process::Command::new("pgrep").args(["-f", &format!("sleep {marker}")]).output().unwrap();
     let survivors = String::from_utf8_lossy(&survivors.stdout).lines().count();
-    let mode = std::fs::read_to_string(dir.join("mode.txt")).unwrap_or_default();
-    let left: Vec<String> = std::fs::read_dir(std::env::temp_dir()).unwrap().flatten().map(|entry| entry.file_name().to_string_lossy().to_string()).filter(|name| name.starts_with("study-app-convert-")).collect();
-    println!("\n== slides: result {result:?}, {survivors} child process(es) still running, temp folder mode {}, folders left behind: {left:?}", mode.trim());
-    let _ = std::process::Command::new("pkill").args(["-f", "sleep 31337"]).status();
+    let _ = std::process::Command::new("pkill").args(["-f", &format!("sleep {marker}")]).status();
+    assert_eq!(survivors, 0, "the converter's child process was left running");
+    assert_eq!(std::fs::read_to_string(dir.join("mode.txt")).unwrap().trim(), "700", "only you can read the folder the slides are converted in");
+}
+
+// A converter that fails says why, whatever it wrote before failing.
+#[cfg(unix)]
+#[test]
+fn a_failed_slide_conversion_reports_the_converters_own_message() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = scratch("slides-fail");
+    let program = dir.join("soffice");
+    // More output than a pipe holds, which used to block the converter until the timeout.
+    std::fs::write(&program, "#!/bin/sh\ni=0; while [ $i -lt 3000 ]; do echo 'Error: source file could not be loaded, line of noise to fill the pipe' >&2; i=$((i+1)); done\nexit 1\n").unwrap();
+    std::fs::set_permissions(&program, std::fs::Permissions::from_mode(0o755)).unwrap();
+    let started = std::time::Instant::now();
+    let result = crate::convert::slides_to_pdf(b"PK", "deck.pptx", Some(&program), std::time::Duration::from_secs(20));
+    assert_eq!(result, Err(crate::convert::ConvertError::Failed("Error: source file could not be loaded, line of noise to fill the pipe".into())));
+    assert!(started.elapsed() < std::time::Duration::from_secs(10), "it failed straight away instead of waiting for the timeout");
 }
 
 // ---------- Hazard 1: a quiz in progress is saved as you go ----------

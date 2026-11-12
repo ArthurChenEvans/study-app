@@ -14,5 +14,8 @@ study-core = { path = "../study-core" }
 study-store = { path = "../study-store" }
 thiserror = "2.0.21"
 
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [features]
 trace = ["study-store/trace"]

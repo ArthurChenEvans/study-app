@@ -39,16 +39,36 @@ pub fn find_libreoffice() -> Option<PathBuf> {
 struct Scratch(PathBuf);
 
 impl Scratch {
+    /// A new folder only this user can open, under a name nobody can guess. It must not
+    /// exist yet: taking over a folder (or a link) someone else put there would hand them
+    /// the slides, so that's an error, not a fallback.
     fn new() -> std::io::Result<Self> {
-        let nanos = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_nanos())
-            .unwrap_or(0);
-        let dir =
-            std::env::temp_dir().join(format!("study-app-convert-{}-{nanos}", std::process::id()));
-        std::fs::create_dir_all(&dir)?;
+        let dir = std::env::temp_dir().join(format!("study-app-convert-{}-{:032x}", std::process::id(), rand::random::<u128>()));
+        let mut builder = std::fs::DirBuilder::new();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::DirBuilderExt;
+            builder.mode(0o700);
+        }
+        builder.create(&dir)?;
         Ok(Self(dir))
     }
+}
+
+/// Stops the converter and everything it started. LibreOffice's launcher is a shell
+/// script that runs the real program as a child, so killing the launcher alone leaves
+/// that running. The converter is started in its own process group, and the group goes.
+fn stop(child: &mut std::process::Child) {
+    #[cfg(unix)]
+    {
+        // SAFETY: kill only sends a signal. The negative ID means the process group, which
+        // is this child's own (see process_group(0) where it's started), never ours.
+        unsafe {
+            libc::kill(-(child.id() as i32), libc::SIGKILL);
+        }
+    }
+    let _ = child.kill();
+    let _ = child.wait();
 }
 
 impl Drop for Scratch {
@@ -87,7 +107,16 @@ pub fn slides_to_pdf(
     std::fs::write(&input, bytes).map_err(failed)?;
     let profile = scratch.0.join("profile");
 
-    let mut child = std::process::Command::new(&program)
+    // What the converter says goes to a file, not a pipe: a pipe holds 64 KB, and a
+    // converter that wrote more than that stopped dead until the timeout.
+    let said = scratch.0.join("converter-output.txt");
+    let mut command = std::process::Command::new(&program);
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        command.process_group(0);
+    }
+    let mut child = command
         .arg(format!(
             "-env:UserInstallation=file://{}",
             profile.display()
@@ -103,7 +132,7 @@ pub fn slides_to_pdf(
         .arg(&input)
         .stdin(std::process::Stdio::null())
         .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::piped())
+        .stderr(std::fs::File::create(&said).map_err(failed)?)
         .spawn()
         .map_err(failed)?;
 
@@ -113,22 +142,19 @@ pub fn slides_to_pdf(
             break status;
         }
         if std::time::Instant::now() >= deadline {
-            let _ = child.kill();
-            let _ = child.wait();
+            stop(&mut child);
             return Err(ConvertError::TimedOut);
         }
         std::thread::sleep(Duration::from_millis(50));
     };
 
+    // Anything the converter left running goes too, before its folder is deleted.
+    stop(&mut child);
     let output = scratch.0.join("slides.pdf");
     match std::fs::read(&output) {
         Ok(pdf) if status.success() && pdf.starts_with(b"%PDF") => Ok(pdf),
         _ => {
-            let mut stderr = String::new();
-            if let Some(mut pipe) = child.stderr.take() {
-                use std::io::Read;
-                let _ = pipe.read_to_string(&mut stderr);
-            }
+            let stderr = std::fs::read(&said).map(|bytes| String::from_utf8_lossy(&bytes[..bytes.len().min(64 * 1024)]).to_string()).unwrap_or_default();
             let reason = stderr
                 .lines()
                 .find(|line| !line.trim().is_empty())
@@ -218,7 +244,14 @@ mod tests {
             Some(&program),
             TIMEOUT,
         );
-        assert!(matches!(result, Err(ConvertError::Failed(_))), "{result:?}");
+        // Older LibreOffice refuses a text file named .pptx. Newer ones open it as text and
+        // convert that. Either is fine, as long as it's an answer and not a hang or a
+        // crash. A converter that fails is covered in audit_tests with a stand-in.
+        match result {
+            Err(ConvertError::Failed(reason)) => assert!(!reason.is_empty()),
+            Ok(pdf) => assert!(pdf.starts_with(b"%PDF")),
+            other => panic!("{other:?}"),
+        }
     }
 
     #[cfg(unix)]
