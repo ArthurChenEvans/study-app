@@ -229,17 +229,23 @@ impl Schedule {
 
 /// `day` plus an interval, with months and years on the calendar (31 Jan + 1 month is 28 Feb).
 pub fn add(day: i64, interval: Interval) -> i64 {
-    use chrono::{Days, Months, NaiveDate};
-    let epoch = NaiveDate::from_ymd_opt(1970, 1, 1).expect("valid date");
-    let date = epoch + Days::new(day as u64);
+    use chrono::{Months, NaiveDate, TimeDelta};
     let count = interval.count;
-    let next = match interval.unit {
-        Unit::Days => date + Days::new(count as u64),
-        Unit::Weeks => date + Days::new(7 * count as u64),
-        Unit::Months => date + Months::new(count),
-        Unit::Years => date + Months::new(12 * count),
+    // Days and weeks are plain sums. Nothing here may panic, whatever the day: a clock
+    // reset to before 1970 gives a negative one, and a damaged file can hold any number.
+    let months = match interval.unit {
+        Unit::Days => return day.saturating_add(i64::from(count)),
+        Unit::Weeks => return day.saturating_add(7 * i64::from(count)),
+        Unit::Months => count,
+        Unit::Years => count.saturating_mul(12),
     };
-    (next - epoch).num_days()
+    let epoch = NaiveDate::from_ymd_opt(1970, 1, 1).expect("valid date");
+    TimeDelta::try_days(day)
+        .and_then(|since| epoch.checked_add_signed(since))
+        .and_then(|date| date.checked_add_months(Months::new(months)))
+        .map(|next| (next - epoch).num_days())
+        // Further than any calendar goes: count a month as 30 days.
+        .unwrap_or_else(|| day.saturating_add(30 * i64::from(months)))
 }
 
 #[cfg(test)]

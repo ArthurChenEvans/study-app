@@ -33,7 +33,7 @@ use study_core::progress::{Overview, overview};
 use study_core::question::{
     AnswerKind, AnswerOption, Citation, Question, QuestionDraft, QuestionId, SourceId, TopicId,
 };
-use study_core::results::{GivenReason, Reasons, Summary, review_order, summarise};
+use study_core::results::{GivenReason, Summary, review_order, summarise};
 use study_store::search::{Hit, SearchQuery};
 use study_store::{AttemptId, HistoryRow, ModuleId, ModuleRow, SourceRow, Store, TopicRow};
 
@@ -255,6 +255,30 @@ pub struct App {
     sync: sync::Sync,
 }
 
+/// No quiz timer runs longer than a week. Keeps the arithmetic on timers from overflowing.
+const MAX_TIMER_SECONDS: u64 = 7 * 24 * 60 * 60;
+
+/// The furthest day the app accepts for anything put on the calendar: 1 January 2300.
+/// Day numbers count from 1 January 1970.
+pub const LAST_DAY: i64 = 120_529;
+
+/// Refuses a day no one means (before 1970 or centuries away), which would otherwise
+/// overflow date arithmetic further on.
+pub(crate) fn check_day(day: i64) -> ApiResult<i64> {
+    if (0..=LAST_DAY).contains(&day) { Ok(day) } else { Err(ApiError::new("pick a date between 1970 and 2300")) }
+}
+
+/// The app behind its lock, for the shells' commands. If an earlier command panicked while
+/// holding the lock, Rust marks it poisoned and `lock()` fails from then on, which used to
+/// leave every later command failing until a restart. Everything saved is in SQLite, where
+/// a half-done change was rolled back, so carrying on is safe.
+pub fn locked(state: &std::sync::Mutex<App>) -> std::sync::MutexGuard<'_, App> {
+    state.lock().unwrap_or_else(|poisoned| {
+        state.clear_poison();
+        poisoned.into_inner()
+    })
+}
+
 #[cfg(feature = "trace")]
 impl App {
     /// The store itself, for the performance tests to trace statements and read query plans.
@@ -432,10 +456,12 @@ impl App {
             mode: if setup.exam { Mode::Exam } else { Mode::Study },
             total_timer: setup
                 .total_minutes
-                .map(|minutes| std::time::Duration::from_secs(minutes * 60)),
+                .map(|minutes| minutes.checked_mul(60).filter(|seconds| *seconds <= MAX_TIMER_SECONDS).map(std::time::Duration::from_secs).ok_or_else(|| ApiError::new("that timer is longer than a week, pick a shorter one")))
+                .transpose()?,
             per_question_timer: setup
                 .per_question_seconds
-                .map(std::time::Duration::from_secs),
+                .map(|seconds| if seconds <= MAX_TIMER_SECONDS { Ok(std::time::Duration::from_secs(seconds)) } else { Err(ApiError::new("that timer is longer than a week, pick a shorter one")) })
+                .transpose()?,
             difficulty: if setup.easy {
                 Difficulty::Easy
             } else {

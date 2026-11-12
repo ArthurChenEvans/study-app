@@ -64,9 +64,8 @@ fn clock() -> study_api::practice::Clock {
 }
 
 fn with<T>(state: AppState, action: impl FnOnce(&mut App) -> ApiResult<T>) -> ApiResult<T> {
-    let mut app = state.lock().map_err(|_| ApiError {
-        message: "the app hit an internal error, please restart it".into(),
-    })?;
+    // A panic in an earlier command doesn't lock the app for good (see study_api::locked).
+    let mut app = study_api::locked(&state);
     action(&mut app)
 }
 

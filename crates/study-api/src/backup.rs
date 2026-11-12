@@ -105,7 +105,8 @@ fn epoch() -> NaiveDate {
 }
 
 fn date_of(day: i64) -> NaiveDate {
-    epoch() + Days::new(day.max(0) as u64)
+    // Clamped to years chrono can name, so a wild clock can't panic here.
+    epoch() + Days::new(day.clamp(0, 3_000_000) as u64)
 }
 
 /// "2026-11-04", for file names.

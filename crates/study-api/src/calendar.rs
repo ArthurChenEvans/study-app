@@ -126,6 +126,9 @@ fn when(day: i64, today: i64) -> When {
     }
 }
 
+/// The longest stretch of days `calendar_month` will list.
+pub const MAX_CALENDAR_DAYS: i64 = 400;
+
 impl App {
     /// Reviewed cards (not new, not archived) due on exactly this day, for the forecast.
     fn cards_forecast(&self, day: i64, today: i64) -> ApiResult<usize> {
@@ -138,6 +141,11 @@ impl App {
 
     /// Counts for the month view, from `from` to `to` inclusive (R98).
     pub fn calendar_month(&self, from: i64, to: i64, today: i64) -> ApiResult<Vec<CalendarDay>> {
+        // A month view asks for six weeks. Anything much longer is a mistake, and an
+        // unbounded range used to build a list as long as it was told to.
+        if to < from || to.saturating_sub(from) > MAX_CALENDAR_DAYS {
+            return Err(crate::ApiError::new("the calendar shows up to a year at a time"));
+        }
         let done = self.store.done_counts(from, to.min(today))?;
         let now = self.now(today)?;
         let cards = self.cards_now(self.store.cards()?, &now);

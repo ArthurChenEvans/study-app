@@ -205,7 +205,7 @@ impl App {
                 topic_list(&names)
             }
         };
-        Ok(DateView { id: date.id, name: date.name.clone(), day: date.day, kind: date.kind.clone(), covers: date.covers.clone(), covers_label, topics: covered, tighten: date.tighten, days_left: date.day - today })
+        Ok(DateView { id: date.id, name: date.name.clone(), day: date.day, kind: date.kind.clone(), covers: date.covers.clone(), covers_label, topics: covered, tighten: date.tighten, days_left: date.day.saturating_sub(today) })
     }
 
     /// Every date, soonest first (R130, R134).
@@ -215,10 +215,12 @@ impl App {
     }
 
     pub fn add_date(&mut self, date: DateSave) -> ApiResult<DateId> {
+        crate::check_day(date.day)?;
         Ok(self.store.add_date(&date.input())?)
     }
 
     pub fn update_date(&mut self, id: DateId, date: DateSave) -> ApiResult<()> {
+        crate::check_day(date.day)?;
         Ok(self.store.update_date(id, &date.input())?)
     }
 
@@ -229,6 +231,7 @@ impl App {
     /// What saving `date` would move, compared with how things are without it (R136).
     /// `id` is the date being edited, left out of the "before".
     pub fn preview_date(&self, id: Option<DateId>, date: DateSave, today: i64) -> ApiResult<DatePreview> {
+        crate::check_day(date.day)?;
         let saved = self.store.dates()?;
         let without: Vec<DateRecord> = saved.iter().filter(|d| Some(d.id) != id).cloned().collect();
         let input = date.input();

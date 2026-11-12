@@ -19,3 +19,10 @@ study-api = { path = "../study-api" }
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"
+
+[features]
+trace = ["study-api/trace"]
+
+[[test]]
+name = "perf"
+required-features = ["trace"]

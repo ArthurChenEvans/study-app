@@ -16,7 +16,7 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::post;
 use chrono::{Local, NaiveDate};
 use serde_json::{Value, json};
-use study_api::{ApiError, App};
+use study_api::App;
 use tower_http::services::{ServeDir, ServeFile};
 
 pub use dispatch::{Reply, dispatch};
@@ -69,7 +69,8 @@ async fn command(State(shared): State<Shared>, UrlPath(name): UrlPath<String>, b
     }
     let today = (shared.today)();
     let result = tokio::task::spawn_blocking(move || {
-        let mut app = shared.app.lock().map_err(|_| ApiError::new("the app hit an internal error, please restart it"))?;
+        // A panic in an earlier command doesn't lock the app for good (see study_api::locked).
+        let mut app = study_api::locked(&shared.app);
         dispatch(&mut app, &name, &args, today)
     })
     .await;
@@ -77,7 +78,7 @@ async fn command(State(shared): State<Shared>, UrlPath(name): UrlPath<String>, b
         Ok(Ok(Reply::Json(value))) => axum::Json(value).into_response(),
         Ok(Ok(Reply::Bytes(bytes))) => ([(header::CONTENT_TYPE, "application/octet-stream")], bytes).into_response(),
         Ok(Err(failure)) => error(StatusCode::BAD_REQUEST, failure.message),
-        Err(_) => error(StatusCode::INTERNAL_SERVER_ERROR, "the app hit an internal error, please restart it"),
+        Err(_) => error(StatusCode::INTERNAL_SERVER_ERROR, "the app hit an internal error. Nothing was lost, try that again"),
     }
 }
 

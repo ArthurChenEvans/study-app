@@ -472,3 +472,73 @@ fn a_running_quiz_stays_on_this_computer() {
     let (_, snapshot) = unpack(&app.export(&ExportRequest { topics: None, history: true }, TODAY).unwrap().1).unwrap();
     assert_eq!(serde_json::to_value(&snapshot).unwrap(), serde_json::to_value(&unpack(&before).unwrap().1).unwrap(), "an export is the same with or without a quiz running");
 }
+
+// ---------- Hazard 2: nothing a command is given makes it panic ----------
+
+fn no_panic<T>(what: &str, run: impl FnOnce() -> T) -> T {
+    catch_unwind(AssertUnwindSafe(run)).unwrap_or_else(|_| panic!("{what} panicked"))
+}
+
+#[test]
+fn a_date_absurdly_far_away_is_refused_instead_of_breaking_the_calendar() {
+    let mut app = seeded(1);
+    let topic = app.topics().unwrap()[0].id;
+    let date = |day: i64| crate::dates::DateSave { name: "Exam".into(), day, kind: "Exam".into(), module: None, topics: vec![topic], tighten: true };
+    for day in [i64::MIN, i64::MAX, -1, TODAY + 400_000] {
+        assert!(no_panic("add_date", || app.add_date(date(day))).is_err(), "day {day} is not a date anyone means");
+        assert!(no_panic("preview_date", || app.preview_date(None, date(day), TODAY)).is_err());
+    }
+    let id = app.add_date(date(TODAY + 30)).unwrap();
+    assert!(no_panic("update_date", || app.update_date(id, date(i64::MIN))).is_err());
+    no_panic("dates", || app.dates(TODAY)).unwrap();
+    no_panic("calendar_day", || app.calendar_day(TODAY, TODAY)).unwrap();
+}
+
+#[test]
+fn a_quiz_timer_longer_than_time_itself_is_refused() {
+    let mut app = seeded(1);
+    let topic = app.topics().unwrap()[0].id;
+    let setup = |total: Option<u64>, each: Option<u64>| QuizSetupInput { topics: vec![topic], count: None, even: false, shuffle_questions: false, shuffle_options: false, exam: true, total_minutes: total, per_question_seconds: each, easy: false, types: QuestionTypes::Both };
+    assert!(no_panic("start_quiz", || app.start_quiz(setup(Some(u64::MAX), None))).is_err());
+    assert!(no_panic("start_quiz", || app.start_quiz(setup(None, Some(u64::MAX)))).is_err());
+    assert!(no_panic("start_quiz", || app.start_quiz(setup(Some(20_000), None))).is_err(), "over a week");
+    assert!(app.start_quiz(setup(Some(90), Some(30))).is_ok());
+}
+
+#[test]
+fn a_clock_set_before_1970_doesnt_break_finishing_a_quiz_or_a_recall_check() {
+    let mut app = seeded(1);
+    let topic = app.topics().unwrap()[0].id;
+    for day in [-1, -400] {
+        app.start_quiz(QuizSetupInput { topics: vec![topic], count: Some(1), even: false, shuffle_questions: false, shuffle_options: false, exam: false, total_minutes: None, per_question_seconds: None, easy: false, types: QuestionTypes::Mcq }).unwrap();
+        no_panic("quit_quiz", || app.quit_quiz(day)).unwrap();
+        let checklist = app.recall_list(TODAY).unwrap()[0].id;
+        let _ = no_panic("finish_check", || app.finish_check(checklist, None, vec![0], day));
+        let _ = no_panic("preview_check", || app.preview_check(checklist, 1, day));
+    }
+}
+
+#[test]
+fn the_calendar_refuses_a_range_no_screen_would_ask_for() {
+    let app = seeded(1);
+    assert_eq!(app.calendar_month(TODAY - 14, TODAY + 27, TODAY).unwrap().len(), 42, "six weeks, as the month view asks");
+    let started = std::time::Instant::now();
+    for (from, to) in [(0, 9_000_000_000_000_000_000), (i64::MIN, i64::MAX), (TODAY, TODAY + 3_000_000), (TODAY, TODAY - 1)] {
+        assert!(no_panic("calendar_month", || app.calendar_month(from, to, TODAY)).is_err(), "{from} to {to}");
+    }
+    assert!(started.elapsed() < std::time::Duration::from_secs(1), "refused straight away, not after building the list");
+}
+
+#[test]
+fn a_panic_in_one_command_doesnt_lock_the_app_for_good() {
+    let state = std::sync::Arc::new(std::sync::Mutex::new(seeded(1)));
+    let held = state.clone();
+    let _ = std::thread::spawn(move || {
+        let _app = held.lock().unwrap();
+        panic!("a bug in some command");
+    })
+    .join();
+    assert!(state.lock().is_err(), "the lock is poisoned, which used to fail every later command");
+    let app = crate::locked(&state);
+    assert!(!app.topics().unwrap().is_empty(), "the app still answers");
+}
