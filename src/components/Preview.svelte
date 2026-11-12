@@ -4,6 +4,7 @@
   import { api, errorMessage } from "../lib/api";
   import { closeTab, kindOf, numberLines, openTab, type Tab } from "../lib/preview";
   import { readEpub, type Epub } from "../lib/epub";
+  import { safeLinks } from "../lib/links";
   import PdfView from "./PdfView.svelte";
 
   type Content =
@@ -110,7 +111,7 @@
               <article class="rich mx-auto max-w-prose rounded-lg bg-surface p-8" aria-label={content.epub.title}>
                 <p class="eyebrow">{content.epub.title}</p>
                 {#each content.epub.chapters as chapter, index (index)}
-                  <section class="epub-chapter" aria-label={chapter.title}>{@html chapter.html}</section>
+                  <section class="epub-chapter" aria-label={chapter.title} use:safeLinks>{@html chapter.html}</section>
                 {/each}
               </article>
             </div>

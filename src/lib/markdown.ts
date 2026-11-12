@@ -2,7 +2,7 @@
 // question text can be pasted from anywhere and is shown inside the app's window.
 import MarkdownIt from "markdown-it";
 import katex from "katex";
-import DOMPurify from "dompurify";
+import { escapeHtml, sanitiseRendered, trusted, trustedAttribute } from "./sanitise";
 import { createHighlighterCoreSync, type HighlighterCore } from "shiki/core";
 import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
 import minDark from "shiki/themes/min-dark.mjs";
@@ -126,7 +126,8 @@ function highlight(code: string, language: string): string {
   }
   const out = highlighter.codeToHtml(code.replace(/\n$/, ""), { lang: name, themes: { light: "min-light", dark: "min-dark" }, defaultColor: false });
   // Keep the language people wrote, for screen readers and the copy of the source.
-  return out.replace("<pre ", `<pre data-language="${escapeAttribute(language)}" `);
+  // Marked as the app's own output, so its colours (style and class) survive sanitising.
+  return out.replace("<pre ", `<pre ${trustedAttribute} data-language="${escapeAttribute(language)}" `);
 }
 
 const markdown = new MarkdownIt({ html: true, linkify: false, breaks: false, highlight });
@@ -143,7 +144,7 @@ markdown.inline.ruler.after("escape", "math_inline", (state, silent) => {
   state.pos = end + 1;
   return true;
 });
-markdown.renderer.rules.math_inline = (tokens, index) => katex.renderToString(tokens[index].content, { throwOnError: false, output: "html" });
+markdown.renderer.rules.math_inline = (tokens, index) => trusted(katex.renderToString(tokens[index].content, { throwOnError: false, output: "html" }));
 
 // Images pasted into the app are stored with the questions and written as ![alt](image:12).
 // They render as a placeholder that Rich.svelte fills from the database.
@@ -157,13 +158,20 @@ markdown.renderer.rules.image = (tokens, index, options, env, self) => {
   return `<img data-image-id="${stored[1]}" alt="${alt}">`;
 };
 
-const allowedSchemes = /^(?:(?:https?|asset|data|blob):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i;
+/** Rendering never fails the screen it's on: text the renderer chokes on shows as plain text. */
+function safely(render: () => string, text: string): string {
+  try {
+    return render();
+  } catch {
+    return escapeHtml(text);
+  }
+}
 
 export function renderMarkdown(text: string): string {
-  return DOMPurify.sanitize(markdown.render(text), { ALLOWED_URI_REGEXP: allowedSchemes });
+  return safely(() => sanitiseRendered(markdown.render(text)), text);
 }
 
 /** For short one-line content like answer options: no wrapping paragraph. */
 export function renderInlineMarkdown(text: string): string {
-  return DOMPurify.sanitize(markdown.renderInline(text), { ALLOWED_URI_REGEXP: allowedSchemes });
+  return safely(() => sanitiseRendered(markdown.renderInline(text)), text);
 }
