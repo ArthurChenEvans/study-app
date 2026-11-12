@@ -12,3 +12,7 @@ serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 study-core = { path = "../study-core" }
 thiserror = "2.0.21"
+
+[features]
+# Records every SQL statement and its time, and explains query plans. For the performance tests only.
+trace = ["rusqlite/trace"]

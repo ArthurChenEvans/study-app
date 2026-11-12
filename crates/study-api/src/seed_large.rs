@@ -59,12 +59,17 @@ fn topic_name(index: usize) -> String {
 
 /// Fills an empty database with the large profile.
 pub fn seed_large(app: &mut App, today: i64) -> ApiResult<SeedSummary> {
+    seed_large_over(app, today, LARGE_DAYS)
+}
+
+/// The heavy profile with its history spread over `days`, for testing years of use.
+pub fn seed_large_over(app: &mut App, today: i64, days: i64) -> ApiResult<SeedSummary> {
     if !app.topics()?.is_empty() || !app.modules()?.is_empty() {
         return Err(ApiError::new("the database already has data, so it wasn't seeded. Start from an empty one"));
     }
     let mut rng = StdRng::seed_from_u64(20_261_103);
     let mut summary = SeedSummary::default();
-    let start = today - LARGE_DAYS;
+    let start = today - days;
 
     let mut sources = vec![];
     for index in 0..60 {
@@ -138,7 +143,7 @@ pub fn seed_large(app: &mut App, today: i64) -> ApiResult<SeedSummary> {
             } else {
                 Note { topic, kind: if number % 9 == 4 { NoteKind::Reversed } else { NoteKind::Basic }, front: format!("{} card {number}: what does this term mean?", names[topic_index]), back: "Its generated definition.".into(), cues: vec![], text: String::new(), extra: String::new() }
             };
-            let day = start + rng.random_range(0..LARGE_DAYS);
+            let day = start + rng.random_range(0..days);
             app.save_note(None, NoteInput { note, suggestion: None }, day)?;
             summary.notes += 1;
         }
@@ -183,7 +188,7 @@ pub fn seed_large(app: &mut App, today: i64) -> ApiResult<SeedSummary> {
     let mut next = vec![0usize; projects.len()];
 
     for day in start..today {
-        let progress = (day - start) as f64 / LARGE_DAYS as f64;
+        let progress = (day - start) as f64 / days as f64;
         for drill in app.drills_due(day)? {
             let rating = if drill.runs == 0 && rng.random_bool(0.5) { DrillRating::Shaky } else { DrillRating::Solid };
             app.rate_drill(drill.id, rating, rng.random_range(240..1200), "", day)?;

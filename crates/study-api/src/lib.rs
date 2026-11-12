@@ -255,6 +255,14 @@ pub struct App {
     sync: sync::Sync,
 }
 
+#[cfg(feature = "trace")]
+impl App {
+    /// The store itself, for the performance tests to trace statements and read query plans.
+    pub fn store_mut(&mut self) -> &mut Store {
+        &mut self.store
+    }
+}
+
 impl App {
     pub fn new(store: Store) -> Self {
         Self {
@@ -787,3 +795,5 @@ mod transfer_tests;
 mod sync_tests;
 #[cfg(test)]
 mod dates_tests;
+#[cfg(test)]
+mod audit_tests;

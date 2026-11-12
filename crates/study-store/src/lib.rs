@@ -27,6 +27,8 @@ pub mod recall;
 mod schema;
 pub mod search;
 pub mod sync;
+#[cfg(feature = "trace")]
+pub mod trace;
 
 /// The newest database schema this version of the app knows.
 pub const LATEST_SCHEMA: i64 = schema::LATEST;
@@ -125,6 +127,22 @@ impl Store {
     /// This computer's ID, which ends every change stamp made here (R110).
     pub fn device_id(&self) -> String {
         self.clock.lock().map(|clock| clock.device().to_string()).unwrap_or_default()
+    }
+
+    /// What SQLite's own checks find wrong with the database: damaged pages or indexes
+    /// (`integrity_check`) and rows pointing at rows that don't exist (`foreign_key_check`).
+    /// Empty means sound.
+    pub fn health(&self) -> Result<Vec<String>> {
+        let mut problems: Vec<String> = self
+            .connection
+            .prepare("PRAGMA integrity_check")?
+            .query_map([], |row| row.get::<_, String>(0))?
+            .collect::<rusqlite::Result<_>>()?;
+        problems.retain(|line| line != "ok");
+        let mut statement = self.connection.prepare("SELECT \"table\", rowid, parent FROM pragma_foreign_key_check")?;
+        let broken = statement.query_map([], |row| Ok(format!("{} row {} points at a missing row in {}", row.get::<_, String>(0)?, row.get::<_, Option<i64>>(1)?.unwrap_or(0), row.get::<_, String>(2)?)))?;
+        problems.extend(broken.collect::<rusqlite::Result<Vec<_>>>()?);
+        Ok(problems)
     }
 
     pub fn schema_version(&self) -> Result<i64> {
@@ -606,6 +624,8 @@ fn write_question_parts(
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod upgrade_tests;
 
 /// R46: a source needs a title. Every other field is optional.
 fn check_source(fields: &SourceFields) -> Result<()> {
