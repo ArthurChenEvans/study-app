@@ -328,12 +328,16 @@ impl App {
         }
         let mut sent = self.push(&folder, clock)?;
         let read = self.read_folder(&folder)?;
-        let merged = self.store.sync_merge(&read.lines, &read.cursors, clock.day)?;
-        if !merged.replay.is_empty() {
-            self.store.sync_replay(&merged.replay)?;
-        }
-        // What the merge changed (a card worked out again, say) goes straight out.
-        self.store.sync_collect()?;
+        // Another computer's lines are only kept if everything can still be read afterwards.
+        let merged = self.kept_only_if_readable(clock.day, "a change from another computer can't be read by this version of the app, so nothing was taken in. Your data here is as it was", |app| {
+            let merged = app.store.sync_merge(&read.lines, &read.cursors, clock.day)?;
+            if !merged.replay.is_empty() {
+                app.store.sync_replay(&merged.replay)?;
+            }
+            // What the merge changed (a card worked out again, say) goes straight out.
+            app.store.sync_collect()?;
+            Ok(merged)
+        })?;
         sent += self.push(&folder, clock)?;
         let mut problems = vec![];
         for device in &read.newer {

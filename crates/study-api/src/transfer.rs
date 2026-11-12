@@ -511,7 +511,8 @@ impl App {
             Some(_) => Some(self.make_backup(clock, Reason::BeforeImport)?),
             None => None,
         };
-        let added = self.store.apply(&pending.snapshot, &Plan { theirs, today: clock.day, history_edits: false })?;
+        let plan = Plan { theirs, today: clock.day, history_edits: false };
+        let added = self.kept_only_if_readable(clock.day, "that file has something in it this version of the app can't read, so nothing was imported", |app| Ok(app.store.apply(&pending.snapshot, &plan)?))?;
         self.forget_running_quiz()?;
         self.card_session = None;
         Ok(ImportResult { added: added.counts.into_iter().map(|(what, count)| Count { what, count }).collect(), replaced: added.replaced, backup })

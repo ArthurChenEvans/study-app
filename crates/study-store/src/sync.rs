@@ -20,7 +20,7 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use base64::Engine;
-use rusqlite::{Connection, OptionalExtension, Transaction, params};
+use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use study_core::cards::Schedule;
@@ -162,7 +162,7 @@ fn load_shadow(connection: &Connection) -> Result<HashMap<Key, Row>> {
     Ok(shadow)
 }
 
-fn save_shadow(tx: &Transaction, shadow: &HashMap<Key, Row>) -> Result<()> {
+fn save_shadow(tx: &Connection, shadow: &HashMap<Key, Row>) -> Result<()> {
     let mut statement = tx.prepare("INSERT OR REPLACE INTO sync_shadow (kind, uid, body, clocks, state) VALUES (?1, ?2, ?3, ?4, ?5)")?;
     for ((kind, uid), row) in shadow.iter().filter(|(_, row)| row.dirty) {
         let body = row.body.as_ref().map(serde_json::to_string).transpose()?;
@@ -192,7 +192,7 @@ fn applied(connection: &Connection) -> Result<HashMap<String, u64>> {
     Ok(rows.collect::<rusqlite::Result<_>>()?)
 }
 
-fn save_applied(tx: &Transaction, device: &str, seq: u64) -> Result<()> {
+fn save_applied(tx: &Connection, device: &str, seq: u64) -> Result<()> {
     tx.execute("INSERT INTO sync_peers (device, seq) VALUES (?1, ?2) ON CONFLICT(device) DO UPDATE SET seq = excluded.seq", params![device, seq as i64])?;
     Ok(())
 }
@@ -606,7 +606,7 @@ impl Merge<'_> {
 }
 
 /// Deletes a record here, with what goes with it.
-fn delete_here(tx: &Transaction, kind: &str, uid: &str) -> Result<()> {
+fn delete_here(tx: &Connection, kind: &str, uid: &str) -> Result<()> {
     match kind {
         "settings" => {
             tx.execute("DELETE FROM settings WHERE key = ?1", [uid])?;
@@ -640,7 +640,7 @@ fn complete(kind: &str, uid: &str, body: &Map<String, Value>) -> bool {
 
 /// Writes records from the shadow into the database: each card with its note and all the
 /// note's other cards, since the writer puts a note's cards back as a set.
-fn write_records(tx: &Transaction, shadow: &HashMap<Key, Row>, keys: &HashSet<Key>, today: i64) -> Result<()> {
+fn write_records(tx: &Connection, shadow: &HashMap<Key, Row>, keys: &HashSet<Key>, today: i64) -> Result<()> {
     if keys.is_empty() {
         return Ok(());
     }
@@ -711,7 +711,7 @@ fn write_records(tx: &Transaction, shadow: &HashMap<Key, Row>, keys: &HashSet<Ke
     Ok(())
 }
 
-fn is_here(tx: &Transaction, kind: &str, uid: &str) -> Result<bool> {
+fn is_here(tx: &Connection, kind: &str, uid: &str) -> Result<bool> {
     let Some(table) = table_of(kind) else { return Ok(true) };
     Ok(tx.query_row(&format!("SELECT COUNT(*) FROM {table} WHERE uid = ?1"), [uid], |row| row.get::<_, i64>(0))? > 0)
 }
@@ -799,7 +799,7 @@ impl Store {
         let me = self.device_id();
         let clock = std::sync::Arc::clone(&self.clock);
         let stamp = move || clock.lock().map(|mut clock| clock.stamp()).unwrap_or_default();
-        let tx = self.connection.transaction()?;
+        let tx = self.connection.savepoint()?;
         let mut shadow = load_shadow(&tx)?;
         let mut seen: Seen = applied(&tx)?.into_iter().filter(|(device, seq)| *device != me && *seq > 0).collect();
         seen.remove(&me);
@@ -892,7 +892,7 @@ impl Store {
     pub fn sync_merge(&mut self, incoming: &[(String, Line)], cursors: &[Cursor], today: i64) -> Result<Merged> {
         let me = self.device_id();
         let clock = std::sync::Arc::clone(&self.clock);
-        let tx = self.connection.transaction()?;
+        let tx = self.connection.savepoint()?;
         let mut done = applied(&tx)?;
         let mut merged = Merged::default();
         let shadow = load_shadow(&tx)?;
@@ -1059,7 +1059,7 @@ impl Store {
     /// Works out each card's schedule again from all its reviews, oldest first (R125).
     pub fn sync_replay(&mut self, cards: &[String]) -> Result<()> {
         let settings = self.card_settings()?;
-        let tx = self.connection.transaction()?;
+        let tx = self.connection.savepoint()?;
         for uid in cards {
             let reviews: Vec<(i64, i64)> = tx
                 .prepare("SELECT r.day, r.rating FROM card_reviews r JOIN cards c ON c.id = r.card_id WHERE c.uid = ?1 ORDER BY r.day, r.changed, r.uid")?
@@ -1121,7 +1121,7 @@ impl Store {
     pub fn sync_take_other(&mut self, n: i64, today: i64) -> Result<()> {
         let conflict = self.sync_conflicts()?.into_iter().find(|conflict| conflict.n == n).ok_or(StoreError::NotFound("thing to check"))?;
         let stamp = self.fresh_stamp();
-        let tx = self.connection.transaction()?;
+        let tx = self.connection.savepoint()?;
         if conflict.field == DELETED {
             delete_here(&tx, &conflict.kind, &conflict.uid)?;
         } else {
@@ -1157,7 +1157,7 @@ impl Store {
 }
 
 /// Clashes that a later change settled: a field, or every field of a deleted record.
-fn settle(tx: &Transaction, settled: &[(String, String, Option<String>)]) -> Result<()> {
+fn settle(tx: &Connection, settled: &[(String, String, Option<String>)]) -> Result<()> {
     let mut one = tx.prepare("DELETE FROM sync_conflicts WHERE kind = ?1 AND uid = ?2 AND field = ?3")?;
     let mut all = tx.prepare("DELETE FROM sync_conflicts WHERE kind = ?1 AND uid = ?2")?;
     for (kind, uid, field) in settled {

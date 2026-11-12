@@ -7,3 +7,8 @@ default-members = ["crates/study-core", "crates/study-store", "crates/study-api"
 [workspace.package]
 edition = "2024"
 version = "0.1.0"
+
+# Tests still check for arithmetic overflow, but run several times faster. The fuzz and
+# damaged-file tests make thousands of calls each.
+[profile.test]
+opt-level = 1

@@ -123,59 +123,6 @@ fn exercise(app: &mut App, today: i64) -> Option<String> {
 
 #[test]
 #[ignore]
-fn probe_hostile_imports() {
-    let rounds: usize = std::env::var("ROUNDS").ok().and_then(|n| n.parse().ok()).unwrap_or(300);
-    let (_, file) = seeded(1).export(&ExportRequest { topics: None, history: true }, TODAY).unwrap();
-    let (manifest, snapshot) = unpack(&file).unwrap();
-    let clean = serde_json::to_value(&snapshot).unwrap();
-    let mut rng = Rng(0xA5A5_1234_5678_9ABC);
-    std::panic::set_hook(Box::new(|_| {}));
-    let (mut refused, mut accepted) = (0, 0);
-    let mut findings: std::collections::BTreeMap<String, (usize, String)> = Default::default();
-    for round in 0..rounds {
-        let mut value = clean.clone();
-        let changes = 1 + rng.below(6);
-        corrupt(&mut value, &mut rng, changes);
-        let Ok(snapshot) = serde_json::from_value::<study_store::portable::Snapshot>(value) else { refused += 1; continue };
-        let Ok(bytes) = pack(&snapshot, &manifest) else { continue };
-        // Into an empty app and into one that already has the same data
-        for (kind, mut app) in [("empty", App::with_seed(Store::in_memory().unwrap(), 2)), ("same data", seeded(1))] {
-            let rule = [ClashRule::KeepMine, ClashRule::TakeTheirs, ClashRule::Newer][rng.below(3)];
-            let outcome = catch_unwind(AssertUnwindSafe(|| app.import_preview(&bytes, "x.studyapp").and_then(|_| app.import_apply(ImportChoice { rule, theirs: vec![] }, at(TODAY, 600)))));
-            let mut note = |what: String| {
-                let what: String = what.split(" at line ").next().unwrap().split('`').enumerate().map(|(i, part)| if i % 2 == 1 && i == 1 { "…" } else { part }).collect::<Vec<_>>().join("`").chars().filter(|c| !c.is_ascii_digit()).take(120).collect();
-                let entry = findings.entry(what).or_insert((0, format!("round {round}, into {kind}")));
-                entry.0 += 1;
-            };
-            match outcome {
-                Err(_) => note("PANIC while importing".into()),
-                Ok(Err(_)) => refused += 1,
-                Ok(Ok(_)) => {
-                    accepted += 1;
-                    for problem in app.store.health().unwrap() {
-                        note(format!("after import: {}", problem.split(" row ").next().unwrap_or(&problem).to_string() + " … " + problem.rsplit(' ').next().unwrap_or("")));
-                    }
-                    if let Some(panic) = exercise(&mut app, TODAY) {
-                        note(format!("PANIC on a screen after import: {}", panic.chars().take(140).collect::<String>()));
-                    }
-                    for (what, result) in [("topics", app.topics().map(|_| ())), ("history", app.history().map(|_| ())), ("cards", app.cards_home(TODAY).map(|_| ())), ("recall", app.recall_list(TODAY).map(|_| ())), ("overview", app.overview(TODAY).map(|_| ())), ("projects", app.projects(TODAY).map(|_| ())), ("calendar", app.calendar_day(TODAY, TODAY).map(|_| ())), ("search", app.search(study_store::search::SearchQuery { text: String::new(), tab: study_store::search::Tab::All, module: None, tag: None, sort: study_store::search::SortBy::Question, descending: false }).map(|_| ()))] {
-                        if let Err(error) = result {
-                            note(format!("screen '{what}' fails after import: {}", error.message.chars().take(110).collect::<String>()));
-                        }
-                    }
-                }
-            }
-        }
-    }
-    let _ = std::panic::take_hook();
-    println!("\n== hostile imports: {rounds} files, {accepted} imports accepted, {refused} refused");
-    for (what, (count, example)) in &findings {
-        println!("   [{count}x] {what}   ({example})");
-    }
-}
-
-#[test]
-#[ignore]
 fn probe_damaged_backup_settings() {
     let dir = scratch("settings");
     let mut app = App::with_seed(Store::in_memory().unwrap(), 1);
@@ -190,38 +137,6 @@ fn probe_damaged_backup_settings() {
     app.back_up_now(at(TODAY, 600)).unwrap();
     let after = app.backups().unwrap().len();
     println!("\n== damaged settings.json: {before} backups before, {after} after one more backup (settings now read as {:?})", app.backup_status().unwrap().settings);
-}
-
-#[test]
-#[ignore]
-fn probe_restore_of_a_bad_backup() {
-    let dir = scratch("restore");
-    let mut app = App::with_seed(Store::open(&dir.join("study.sqlite")).unwrap(), 1);
-    app.set_backups(dir.join("backups"));
-    crate::seed::seed_profile(&mut app, TODAY).unwrap();
-    let good = app.back_up_now(at(TODAY, 600)).unwrap();
-    let topics = app.topics().unwrap().len();
-    // 1: a real database that isn't this app's, claiming an old schema version
-    let alien = dir.join("backups").join("study 2026-11-01 09-00 daily.sqlite");
-    {
-        let connection = study_store::backup::open_at_version(&alien, 3).unwrap();
-        connection.execute_batch("DROP TABLE topics; CREATE TABLE topics (junk TEXT);").unwrap();
-    }
-    let outcome = catch_unwind(AssertUnwindSafe(|| app.restore_backup("study 2026-11-01 09-00 daily.sqlite", at(TODAY, 601))));
-    println!("\n== restore of a damaged old backup: {:?}", outcome.as_ref().map(|result| result.as_ref().map(|info| info.name.clone()).map_err(|error| error.message.clone())).map_err(|_| "PANIC"));
-    println!("   afterwards: topics() = {:?}, schema = {:?}, health = {:?}", app.topics().map(|topics| topics.len()).map_err(|error| error.message), app.store.schema_version().ok(), app.store.health().map(|problems| problems.len()).map_err(|error| error.to_string()));
-    println!("   (had {topics} topics before; good backup is {})", good.name);
-    // 2: a backup with rows pointing nowhere
-    let orphaned = dir.join("backups").join("study 2026-11-02 09-00 daily.sqlite");
-    std::fs::copy(dir.join("backups").join(&good.name), &orphaned).unwrap();
-    {
-        let connection = study_store::backup::open_at_version(&orphaned, study_store::LATEST_SCHEMA).unwrap();
-        connection.execute_batch("PRAGMA foreign_keys = OFF; DELETE FROM topics;").unwrap_or_else(|error| println!("   (couldn't orphan rows: {error})"));
-    }
-    let mut second = App::with_seed(Store::open(&dir.join("second.sqlite")).unwrap(), 1);
-    second.set_backups(dir.join("backups"));
-    let outcome = second.restore_backup("study 2026-11-02 09-00 daily.sqlite", at(TODAY, 602));
-    println!("== restore of a backup with orphaned rows: {:?}, health problems after: {}", outcome.map(|info| info.name).map_err(|error| error.message), second.store.health().unwrap().len());
 }
 
 // Hazard 6: the desktop app and the browser version (or two windows) on one database.
@@ -272,110 +187,6 @@ fn two_copies_of_the_app_on_one_database_lose_nothing() {
     assert_eq!(app.store.health().unwrap(), Vec::<String>::new());
 }
 
-#[test]
-#[ignore]
-fn probe_hostile_sync_folder() {
-    let rounds: usize = std::env::var("ROUNDS").ok().and_then(|n| n.parse().ok()).unwrap_or(150);
-    let mut rng = Rng(0x1357_9BDF_2468_ACE0);
-    std::panic::set_hook(Box::new(|_| {}));
-    let mut findings: std::collections::BTreeMap<String, (usize, String)> = Default::default();
-    // One honest computer writes a folder full of real changes.
-    let folder = scratch("sync-folder");
-    let home = scratch("sync-a");
-    let mut honest = App::with_seed(Store::in_memory().unwrap(), 1);
-    honest.set_backups(home.join("backups"));
-    honest.set_sync_home(&home);
-    crate::seed::seed_profile(&mut honest, TODAY).unwrap();
-    honest.sync_setup(SyncSetup { folder: folder.display().to_string(), name: "A".into() }, at(TODAY, 600)).unwrap();
-    let change_dir = std::fs::read_dir(folder.join("changes")).unwrap().flatten().next().unwrap().path();
-    let change_file = std::fs::read_dir(&change_dir).unwrap().flatten().next().unwrap().path();
-    let clean = std::fs::read_to_string(&change_file).unwrap();
-    let lines: Vec<&str> = clean.lines().collect();
-    println!("\n== hostile sync folder: {} honest lines", lines.len());
-    for round in 0..rounds {
-        let mut changed: Vec<String> = lines.iter().map(|line| line.to_string()).collect();
-        let kind = rng.below(6);
-        match kind {
-            0 => {
-                for _ in 0..1 + rng.below(8) {
-                    let index = rng.below(changed.len());
-                    let mut value: Value = serde_json::from_str(&changed[index]).unwrap();
-                    let count = 1 + rng.below(3);
-                    corrupt(&mut value, &mut rng, count);
-                    changed[index] = value.to_string();
-                }
-            }
-            1 => {
-                let cut = rng.below(clean.len());
-                changed = clean.as_bytes()[..cut].split(|byte| *byte == b'\n').map(|line| String::from_utf8_lossy(line).to_string()).collect();
-            }
-            2 => {
-                let index = rng.below(changed.len());
-                changed.insert(index, "{not json at all".into());
-                changed.insert(index, "\u{0}\u{0}\u{0}".into());
-            }
-            3 => {
-                let copy = changed.clone();
-                changed.extend(copy); // everything twice
-            }
-            4 => {
-                let index = rng.below(changed.len());
-                changed.swap(0, index);
-                changed.reverse();
-            }
-            _ => {
-                let drop = rng.below(changed.len());
-                changed.remove(drop); // a line lost in the middle
-            }
-        }
-        std::fs::write(&change_file, changed.join("\n") + "\n").unwrap();
-        let home_b = scratch("sync-b");
-        let mut other = App::with_seed(Store::in_memory().unwrap(), 2);
-        other.set_backups(home_b.join("backups"));
-        other.set_sync_home(&home_b);
-        let mut note = |what: String| {
-            let what: String = what.split(" at line ").next().unwrap().split('`').enumerate().map(|(i, part)| if i % 2 == 1 && i == 1 { "…" } else { part }).collect::<Vec<_>>().join("`").chars().filter(|c| !c.is_ascii_digit()).take(120).collect();
-            let entry = findings.entry(what).or_insert((0, format!("round {round}, damage kind {kind}")));
-            entry.0 += 1;
-        };
-        let outcome = catch_unwind(AssertUnwindSafe(|| {
-            let first = other.sync_setup(SyncSetup { folder: folder.display().to_string(), name: "B".into() }, at(TODAY, 601));
-            let second = other.sync_now(false, at(TODAY, 602));
-            (first.map(|_| ()), second.map(|_| ()))
-        }));
-        match outcome {
-            Err(_) => note("PANIC while syncing".into()),
-            Ok((first, second)) => {
-                for result in [first, second] {
-                    if let Err(error) = result {
-                        note(format!("sync refused: {}", error.message.chars().take(90).collect::<String>()));
-                    }
-                }
-                for problem in other.store.health().unwrap() {
-                    note(format!("after sync: {} … {}", problem.split(" row ").next().unwrap_or(&problem), problem.rsplit(' ').next().unwrap_or("")));
-                }
-                if let Some(panic) = exercise(&mut other, TODAY) {
-                    note(format!("PANIC on a screen after sync: {}", panic.chars().take(140).collect::<String>()));
-                }
-                for (what, result) in [("topics", other.topics().map(|_| ())), ("history", other.history().map(|_| ())), ("cards", other.cards_home(TODAY).map(|_| ())), ("recall", other.recall_list(TODAY).map(|_| ())), ("overview", other.overview(TODAY).map(|_| ())), ("calendar", other.calendar_day(TODAY, TODAY).map(|_| ()))] {
-                    if let Err(error) = result {
-                        note(format!("screen '{what}' fails after sync: {}", error.message.chars().take(110).collect::<String>()));
-                    }
-                }
-            }
-        }
-        // Clean up what B wrote so the next round starts from A's folder alone.
-        for entry in std::fs::read_dir(folder.join("changes")).unwrap().flatten() {
-            if entry.path() != change_dir {
-                let _ = std::fs::remove_dir_all(entry.path());
-            }
-        }
-    }
-    let _ = std::panic::take_hook();
-    for (what, (count, example)) in &findings {
-        println!("   [{count}x] {what}   ({example})");
-    }
-}
 
 #[cfg(unix)]
 #[test]
@@ -542,3 +353,192 @@ fn a_panic_in_one_command_doesnt_lock_the_app_for_good() {
     let app = crate::locked(&state);
     assert!(!app.topics().unwrap().is_empty(), "the app still answers");
 }
+
+// ---------- Hazard 10: a file with data the app can't read back is refused whole ----------
+
+/// Every screen's list still loads. Returns what failed.
+fn broken_screens(app: &mut App) -> Vec<String> {
+    let mut broken = vec![];
+    if let Some(panic) = exercise(app, TODAY) {
+        broken.push(format!("PANIC: {}", panic.chars().take(140).collect::<String>()));
+    }
+    let all = study_store::search::SearchQuery { text: String::new(), tab: study_store::search::Tab::All, module: None, tag: None, sort: study_store::search::SortBy::Question, descending: false };
+    for (what, result) in [("topics", app.topics().map(|_| ())), ("history", app.history().map(|_| ())), ("cards", app.cards_home(TODAY).map(|_| ())), ("recall", app.recall_list(TODAY).map(|_| ())), ("overview", app.overview(TODAY).map(|_| ())), ("projects", app.projects(TODAY).map(|_| ())), ("calendar", app.calendar_day(TODAY, TODAY).map(|_| ())), ("search", app.search(all).map(|_| ())), ("export", app.export(&ExportRequest { topics: None, history: true }, TODAY).map(|_| ()))] {
+        if let Err(error) = result {
+            broken.push(format!("{what}: {}", error.message.chars().take(110).collect::<String>()));
+        }
+    }
+    broken
+}
+
+// transfer.feature: Files that can't be trusted (R118). Real exports with a few values
+// damaged: wrong words where the app expects one of a set, negative counts, absurd days,
+// text where a number goes. Whatever comes in, the app either refuses the file and keeps
+// what it had, or imports it and every screen still works.
+#[test]
+fn a_damaged_import_is_refused_whole_or_leaves_every_screen_working() {
+    let rounds: usize = std::env::var("ROUNDS").ok().and_then(|n| n.parse().ok()).unwrap_or(80);
+    let (_, file) = seeded(1).export(&ExportRequest { topics: None, history: true }, TODAY).unwrap();
+    let (manifest, snapshot) = unpack(&file).unwrap();
+    let clean = serde_json::to_value(&snapshot).unwrap();
+    let mut rng = Rng(0xA5A5_1234_5678_9ABC);
+    let (mut refused, mut accepted) = (0, 0);
+    let mut findings: std::collections::BTreeMap<String, (usize, String)> = Default::default();
+    for round in 0..rounds {
+        let mut value = clean.clone();
+        let changes = 1 + rng.below(6);
+        corrupt(&mut value, &mut rng, changes);
+        let Ok(snapshot) = serde_json::from_value::<study_store::portable::Snapshot>(value) else { refused += 1; continue };
+        let Ok(bytes) = pack(&snapshot, &manifest) else { continue };
+        // Into an empty app and into one that already has the same data
+        for (kind, mut app) in [("empty", App::with_seed(Store::in_memory().unwrap(), 2)), ("same data", seeded(1))] {
+            let rule = [ClashRule::KeepMine, ClashRule::TakeTheirs, ClashRule::Newer][rng.below(3)];
+            let outcome = catch_unwind(AssertUnwindSafe(|| app.import_preview(&bytes, "x.studyapp").and_then(|_| app.import_apply(ImportChoice { rule, theirs: vec![] }, at(TODAY, 600)))));
+            let mut note = |what: String| {
+                let what: String = what.split(" at line ").next().unwrap().split('`').enumerate().map(|(i, part)| if i % 2 == 1 && i == 1 { "…" } else { part }).collect::<Vec<_>>().join("`").chars().filter(|c| !c.is_ascii_digit()).take(120).collect();
+                let entry = findings.entry(what).or_insert((0, format!("round {round}, into {kind}")));
+                entry.0 += 1;
+            };
+            match outcome {
+                Err(_) => note("PANIC while importing".into()),
+                Ok(Err(_)) => refused += 1,
+                Ok(Ok(_)) => accepted += 1,
+            }
+            for problem in app.store.health().unwrap() {
+                note(format!("database: {problem}"));
+            }
+            for problem in broken_screens(&mut app) {
+                note(format!("a screen fails afterwards, {problem}"));
+            }
+            if kind == "same data" && app.topics().map(|topics| topics.len()).unwrap_or(0) < 5 {
+                note("topics that were there before are gone".into());
+            }
+        }
+    }
+    assert!(accepted > 20 && refused > 0, "the damage should hit both paths: {accepted} accepted, {refused} refused");
+    assert!(findings.is_empty(), "{findings:#?}");
+}
+
+// ---------- Hazard 9: damaged lines in the sync folder never break this computer ----------
+
+// sync.feature: lines another computer wrote arrive damaged, cut short, doubled, shuffled
+// or with a line missing. Syncing may refuse them, but this computer's data stays sound
+// and every screen still works.
+#[test]
+fn damaged_lines_in_the_sync_folder_never_break_this_computer() {
+    let rounds: usize = std::env::var("ROUNDS").ok().and_then(|n| n.parse().ok()).unwrap_or(40);
+    let mut rng = Rng(0x1357_9BDF_2468_ACE0);
+    let mut findings: std::collections::BTreeMap<String, (usize, String)> = Default::default();
+    // One honest computer writes a folder full of real changes.
+    let folder = scratch("sync-folder");
+    let home = scratch("sync-a");
+    let mut honest = App::with_seed(Store::in_memory().unwrap(), 1);
+    honest.set_backups(home.join("backups"));
+    honest.set_sync_home(&home);
+    crate::seed::seed_profile(&mut honest, TODAY).unwrap();
+    honest.sync_setup(SyncSetup { folder: folder.display().to_string(), name: "A".into() }, at(TODAY, 600)).unwrap();
+    let change_dir = std::fs::read_dir(folder.join("changes")).unwrap().flatten().next().unwrap().path();
+    let change_file = std::fs::read_dir(&change_dir).unwrap().flatten().next().unwrap().path();
+    let clean = std::fs::read_to_string(&change_file).unwrap();
+    let lines: Vec<&str> = clean.lines().collect();
+    for round in 0..rounds {
+        let mut changed: Vec<String> = lines.iter().map(|line| line.to_string()).collect();
+        let kind = rng.below(6);
+        match kind {
+            0 => {
+                for _ in 0..1 + rng.below(8) {
+                    let index = rng.below(changed.len());
+                    let mut value: Value = serde_json::from_str(&changed[index]).unwrap();
+                    let count = 1 + rng.below(3);
+                    corrupt(&mut value, &mut rng, count);
+                    changed[index] = value.to_string();
+                }
+            }
+            1 => {
+                let cut = rng.below(clean.len());
+                changed = clean.as_bytes()[..cut].split(|byte| *byte == b'\n').map(|line| String::from_utf8_lossy(line).to_string()).collect();
+            }
+            2 => {
+                let index = rng.below(changed.len());
+                changed.insert(index, "{not json at all".into());
+                changed.insert(index, "\u{0}\u{0}\u{0}".into());
+            }
+            3 => {
+                let copy = changed.clone();
+                changed.extend(copy); // everything twice
+            }
+            4 => {
+                let index = rng.below(changed.len());
+                changed.swap(0, index);
+                changed.reverse();
+            }
+            _ => {
+                let drop = rng.below(changed.len());
+                changed.remove(drop); // a line lost in the middle
+            }
+        }
+        std::fs::write(&change_file, changed.join("\n") + "\n").unwrap();
+        let home_b = scratch("sync-b");
+        let mut other = App::with_seed(Store::in_memory().unwrap(), 2);
+        other.set_backups(home_b.join("backups"));
+        other.set_sync_home(&home_b);
+        let mut note = |what: String| {
+            let what: String = what.split(" at line ").next().unwrap().split('`').enumerate().map(|(i, part)| if i % 2 == 1 && i == 1 { "…" } else { part }).collect::<Vec<_>>().join("`").chars().filter(|c| !c.is_ascii_digit()).take(120).collect();
+            let entry = findings.entry(what).or_insert((0, format!("round {round}, damage kind {kind}")));
+            entry.0 += 1;
+        };
+        let outcome = catch_unwind(AssertUnwindSafe(|| {
+            let first = other.sync_setup(SyncSetup { folder: folder.display().to_string(), name: "B".into() }, at(TODAY, 601));
+            let second = other.sync_now(false, at(TODAY, 602));
+            (first.map(|_| ()), second.map(|_| ()))
+        }));
+        match outcome {
+            Err(_) => note("PANIC while syncing".into()),
+            Ok(_) => {}
+        }
+        for problem in other.store.health().unwrap() {
+            note(format!("database: {problem}"));
+        }
+        for problem in broken_screens(&mut other) {
+            note(format!("a screen fails afterwards, {problem}"));
+        }
+        // Clean up what B wrote so the next round starts from A's folder alone.
+        for entry in std::fs::read_dir(folder.join("changes")).unwrap().flatten() {
+            if entry.path() != change_dir {
+                let _ = std::fs::remove_dir_all(entry.path());
+            }
+        }
+    }
+    assert!(findings.is_empty(), "{findings:#?}");
+}
+
+// ---------- Hazard 3: a backup that doesn't restore cleanly is undone ----------
+
+// backup.feature: Restoring keeps a way back (R105). A backup file that is a database but
+// not a sound one of this app's (damaged, or edited by hand) used to be reported as
+// restored, leaving an app whose screens all failed.
+#[test]
+fn a_backup_that_doesnt_restore_cleanly_is_undone() {
+    let dir = scratch("restore");
+    let mut app = App::with_seed(Store::open(&dir.join("study.sqlite")).unwrap(), 1);
+    app.set_backups(dir.join("backups"));
+    crate::seed::seed_profile(&mut app, TODAY).unwrap();
+    let before = serde_json::to_value(app.topics().unwrap()).unwrap();
+    // A real SQLite file claiming an old version of this app, with a table that isn't ours.
+    let bad = "study 2026-11-01 09-00 daily.sqlite";
+    std::fs::create_dir_all(dir.join("backups")).unwrap();
+    {
+        let connection = study_store::backup::open_at_version(&dir.join("backups").join(bad), 3).unwrap();
+        connection.execute_batch("DROP TABLE topics; CREATE TABLE topics (junk TEXT);").unwrap();
+    }
+    let error = app.restore_backup(bad, at(TODAY, 601)).expect_err("a backup that can't be used isn't reported as restored").message;
+    assert!(error.contains("put back"), "{error}");
+    assert_eq!(serde_json::to_value(app.topics().unwrap()).unwrap(), before, "everything is as it was");
+    assert_eq!(app.store.health().unwrap(), Vec::<String>::new());
+    assert_eq!(broken_screens(&mut app), Vec::<String>::new());
+    // And a good backup still restores.
+    let good = app.backups().unwrap().into_iter().find(|backup| backup.reason == crate::backup::Reason::BeforeRestore).expect("the copy made before the failed restore");
+    app.restore_backup(&good.name, at(TODAY, 602)).unwrap();
+    assert_eq!(serde_json::to_value(app.topics().unwrap()).unwrap(), before);
+}
+

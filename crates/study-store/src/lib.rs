@@ -145,6 +145,19 @@ impl Store {
         Ok(problems)
     }
 
+    /// Starts changes that can still be taken back: everything written until `end_trial`
+    /// is kept or undone together. Imports and sync merges run inside one, so their result
+    /// can be read back and checked before it's kept. (Those use savepoints, which nest
+    /// inside this one, where a plain transaction couldn't.)
+    pub fn begin_trial(&mut self) -> Result<()> {
+        Ok(self.connection.execute_batch("SAVEPOINT trial")?)
+    }
+
+    /// Keeps or undoes everything since `begin_trial`.
+    pub fn end_trial(&mut self, keep: bool) -> Result<()> {
+        Ok(self.connection.execute_batch(if keep { "RELEASE trial" } else { "ROLLBACK TO trial; RELEASE trial" })?)
+    }
+
     pub fn schema_version(&self) -> Result<i64> {
         Ok(self
             .connection

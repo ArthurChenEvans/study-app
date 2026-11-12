@@ -5,7 +5,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use rusqlite::{Connection, OptionalExtension, Transaction, params};
+use rusqlite::{Connection, OptionalExtension, params};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -815,7 +815,7 @@ impl Store {
     /// to R117). Records here that the file doesn't have are left alone, and nothing is
     /// deleted.
     pub fn apply(&mut self, snapshot: &Snapshot, plan: &Plan) -> Result<Added> {
-        let transaction = self.connection.transaction()?;
+        let transaction = self.connection.savepoint()?;
         let added = write(&transaction, snapshot, plan)?;
         transaction.commit()?;
         crate::ids::catch_up(&self.connection, &self.clock)?;
@@ -824,7 +824,7 @@ impl Store {
 }
 
 struct Writer<'a> {
-    tx: &'a Transaction<'a>,
+    tx: &'a Connection,
     plan: &'a Plan,
     local: ToLocal,
     added: HashMap<&'static str, usize>,
@@ -866,7 +866,7 @@ impl Writer<'_> {
     }
 }
 
-pub(crate) fn write(tx: &Transaction, snapshot: &Snapshot, plan: &Plan) -> Result<Added> {
+pub(crate) fn write(tx: &Connection, snapshot: &Snapshot, plan: &Plan) -> Result<Added> {
     let mut writer = Writer { tx, plan, local: ToLocal::read(tx)?, added: HashMap::new(), replaced: 0 };
 
     // Images first, so references to them in text can be put back as row numbers. An
@@ -1265,7 +1265,7 @@ pub(crate) fn write(tx: &Transaction, snapshot: &Snapshot, plan: &Plan) -> Resul
 }
 
 /// A topic both sides have: the side quizzed more recently keeps its quiz step (R117).
-fn later_quiz_step(tx: &Transaction, id: i64, theirs: Option<&QuizStep>) -> Result<()> {
+fn later_quiz_step(tx: &Connection, id: i64, theirs: Option<&QuizStep>) -> Result<()> {
     let Some(theirs) = theirs else { return Ok(()) };
     let mine: Option<i64> = tx.query_row("SELECT due FROM topic_schedule WHERE topic_id = ?1", [id], |row| row.get(0)).optional()?;
     if mine.is_none_or(|mine| theirs.due > mine) {
@@ -1275,7 +1275,7 @@ fn later_quiz_step(tx: &Transaction, id: i64, theirs: Option<&QuizStep>) -> Resu
 }
 
 /// A checklist both sides have: the side checked more recently keeps its step (R117).
-fn later_checklist_step(tx: &Transaction, id: i64, uid: &str, snapshot: &Snapshot, theirs: Option<&ChecklistStep>) -> Result<()> {
+fn later_checklist_step(tx: &Connection, id: i64, uid: &str, snapshot: &Snapshot, theirs: Option<&ChecklistStep>) -> Result<()> {
     let Some(theirs) = theirs else { return Ok(()) };
     let mine_last: Option<i64> = tx.query_row("SELECT MAX(day) FROM recall_checks WHERE checklist_id = ?1", [id], |row| row.get(0))?;
     let theirs_last = snapshot.checks.iter().filter(|check| check.checklist == uid).map(|check| check.day).max();

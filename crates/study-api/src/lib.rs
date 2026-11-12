@@ -688,6 +688,77 @@ impl App {
         }
     }
 
+    /// Why the data can't all be read back, if it can't: SQLite's own checks, then every
+    /// list and detail the screens load. A file from outside (an import, another
+    /// computer's sync lines, a backup) can hold values this version doesn't understand,
+    /// and one such row used to fail whole screens. So what comes from outside is checked
+    /// with this before it's kept.
+    pub(crate) fn data_problem(&self, today: i64) -> Option<String> {
+        fn failed<T>(what: &str, result: ApiResult<T>) -> Result<T, String> {
+            result.map_err(|error| format!("{what}: {}", error.message))
+        }
+        let check = || -> Result<(), String> {
+            if let Some(problem) = self.store.health().map_err(|error| error.to_string())?.into_iter().next() {
+                return Err(problem);
+            }
+            let topics = failed("topics", self.topics())?;
+            failed("modules", self.modules())?;
+            let history = failed("history", self.history())?;
+            failed("overview", self.overview(today))?;
+            failed("sources", self.sources())?;
+            failed("cards", self.cards_home(today))?;
+            failed("card suggestions", self.card_suggestions(today))?;
+            failed("card settings", self.card_settings())?;
+            failed("projects", self.projects(today))?;
+            failed("issues", self.issues())?;
+            failed("drills", self.drills_due(today))?;
+            failed("quiz schedules", self.topic_quizzes(today))?;
+            failed("quiz queue", self.quiz_queue(today))?;
+            failed("what's due", self.due_today(today))?;
+            failed("dates", self.dates(today))?;
+            failed("calendar", self.calendar_day(today, today))?;
+            failed("recall schedule", self.schedule())?;
+            for row in failed("recall", self.recall_list(today))? {
+                failed("a recall checklist", self.checklist(row.id, today))?;
+                failed("a checklist's history", self.recall_history(row.id))?;
+            }
+            for topic in &topics {
+                failed("a topic's cards", self.topic_cards(topic.id, today))?;
+                for (question, _) in failed("a topic's questions", self.questions_in(topic.id))? {
+                    failed("a question", self.question(question))?;
+                }
+            }
+            for row in &history {
+                failed("a quiz's results", self.results(row.id))?;
+            }
+            for project in failed("projects", self.projects(today))? {
+                failed("a project", self.project_view(project.id, today))?;
+            }
+            Ok(())
+        };
+        check().err()
+    }
+
+    /// Runs `work` so that its changes are only kept if it succeeds and the data can
+    /// still all be read back afterwards. Otherwise everything it wrote is undone.
+    pub(crate) fn kept_only_if_readable<T>(&mut self, today: i64, refused: &str, work: impl FnOnce(&mut Self) -> ApiResult<T>) -> ApiResult<T> {
+        self.store.begin_trial()?;
+        let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| work(self)));
+        let verdict = match outcome {
+            Ok(Ok(value)) => match self.data_problem(today) {
+                None => Ok(value),
+                Some(problem) => Err(ApiError::new(format!("{refused} ({problem})"))),
+            },
+            Ok(Err(error)) => Err(error),
+            Err(panic) => {
+                let _ = self.store.end_trial(false);
+                std::panic::resume_unwind(panic);
+            }
+        };
+        self.store.end_trial(verdict.is_ok())?;
+        verdict
+    }
+
     /// Saves the running quiz as it stands, so closing the app, a crash or a power cut
     /// loses nothing: the next start picks it up at the same question.
     fn keep_running(&mut self) -> ApiResult<()> {

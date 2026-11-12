@@ -371,7 +371,19 @@ impl App {
         };
         schema_version_of(&path)?;
         let safety = self.make_backup(clock, Reason::BeforeRestore)?;
-        self.store.restore_from(&path)?;
+        // A backup that doesn't come back sound and readable isn't kept: the copy just
+        // made goes straight back in, so a bad file can't leave the app unusable.
+        let problem = match self.store.restore_from(&path) {
+            Ok(()) => self.data_problem(clock.day),
+            Err(error) => Some(error.to_string()),
+        };
+        if let Some(problem) = problem {
+            let back = self.backups_folder()?.dir().join(&safety.name);
+            return Err(match self.store.restore_from(&back) {
+                Ok(()) => ApiError::new(format!("that backup couldn't be restored ({problem}), so your data was put back as it was")),
+                Err(error) => ApiError::new(format!("that backup couldn't be restored ({problem}), and putting your data back failed too ({error}). It's safe in the backup \"{}\", restore that one", safety.name)),
+            });
+        }
         self.forget_running_quiz()?;
         self.card_session = None;
         self.pause_sync_after_restore();
