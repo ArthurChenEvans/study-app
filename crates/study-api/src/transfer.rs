@@ -158,6 +158,7 @@ const KINDS: &[(&str, &str, &str, bool)] = &[
     ("drills", "Drills", "drills", true),
     ("drill_runs", "Drill runs", "drill_runs", false),
     ("struggles", "Struggles", "struggles", true),
+    ("dates", "Dates", "dates", true),
     ("settings", "Settings", "settings", true),
     ("suggestions_done", "Dismissed suggestions", "card_suggestions_done", false),
 ];
@@ -200,6 +201,7 @@ fn entries(snapshot: &Snapshot, kind: &str) -> Vec<Entry> {
         "drills" => snapshot.drills.iter().map(|record| entry(&record.uid, &record.changed, short(&record.task))).collect(),
         "drill_runs" => snapshot.drill_runs.iter().map(|record| entry(&record.uid, &record.changed, String::new())).collect(),
         "struggles" => snapshot.struggles.iter().map(|record| entry(&record.uid, &record.changed, short(&record.what))).collect(),
+        "dates" => snapshot.dates.iter().map(|record| entry(&record.uid, &record.changed, record.name.clone())).collect(),
         "settings" => snapshot.settings.iter().map(|record| entry(&format!("settings:{}", record.key), &record.changed, setting_name(&record.key))).collect(),
         "suggestions_done" => snapshot.suggestions_done.iter().map(|record| entry(&format!("suggestion:{}", record.key), &record.changed, String::new())).collect(),
         _ => vec![],
@@ -274,6 +276,7 @@ pub fn pack(snapshot: &Snapshot, manifest: &Manifest) -> ApiResult<Vec<u8>> {
     write_lines(&mut zip, "drills", &snapshot.drills)?;
     write_lines(&mut zip, "drill_runs", &snapshot.drill_runs)?;
     write_lines(&mut zip, "struggles", &snapshot.struggles)?;
+    write_lines(&mut zip, "dates", &snapshot.dates)?;
     write_lines(&mut zip, "settings", &snapshot.settings)?;
     write_lines(&mut zip, "suggestions_done", &snapshot.suggestions_done)?;
     // Images are already compressed, so they're stored as they are.
@@ -344,6 +347,7 @@ pub fn unpack(bytes: &[u8]) -> ApiResult<(Manifest, Snapshot)> {
         drills: read_lines(&mut archive, "drills", &mut limit)?,
         drill_runs: read_lines(&mut archive, "drill_runs", &mut limit)?,
         struggles: read_lines(&mut archive, "struggles", &mut limit)?,
+        dates: read_lines(&mut archive, "dates", &mut limit)?,
         settings: read_lines(&mut archive, "settings", &mut limit)?,
         suggestions_done: read_lines(&mut archive, "suggestions_done", &mut limit)?,
     };

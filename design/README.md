@@ -409,7 +409,7 @@ Found while building, all fixed: dates mid-sentence kept their capital ("started
 
 # Dates on the calendar (exam-dates.html)
 
-Waiting for a greenlight. Open `design/exam-dates.html`, the strip at the top switches screens and states.
+Built (12 Nov 2026), see "Built" at the end of this section. Open `design/exam-dates.html`, the strip at the top switches screens and states.
 
 | Screen | States |
 |---|---|
@@ -435,6 +435,17 @@ Waiting for a greenlight. Open `design/exam-dates.html`, the strip at the top sw
 - **Cards:** only the due date is pulled in. FSRS sees an early review and handles it as it normally does, its memory model isn't changed.
 - **Drills** count when their topic is covered. Not-Solid drills are back tomorrow anyway, so this only matters for a drill moved far out.
 - **Never-quizzed topics** aren't made due automatically, they're flagged on the date's panel instead.
+
+## Built (12 Nov 2026)
+
+Built test-first in the playful style, with requirements R130 to R137 in `specs/README.md` and scenarios in `specs/features/dates.feature`. Every call above was kept as designed.
+
+- **The rule** lives in `study-core/src/dates.rs`: the earlier of the normal due day and "last done + half the days that were left", only until the date, never the day before it, the tighter date winning. "Last done" is the topic's latest quiz, the card's last review, or the drill's last run (or the day it was made).
+- **Dates are their own records**, with an ID, a stamp and a deletion marker like everything else, so they go into full exports and sync. A date covering picked topics keeps them in their own table, so deleting a topic takes it out of the date on every computer.
+- **Everything that reads a due day uses the tightened one:** the sidebar counts, Overview, Topics, quiz setup, the month and day views, card reviews and drills. Saving a review or a drill run still starts from the stored schedule, so the squeeze is never written back.
+- **Differences from the prototype:** the day view's countdown line names the date and says whether its reviews are tightened, a date covering nothing says nothing is tightened for it, the topics list in the dialog has a filter once there are more than 8, and deleting a date asks first. Never-quizzed topics only get a Quiz button when they have questions.
+
+Checked in the real app (`e2e/dates_test.py`): adds an exam covering a module, sees the preview, the chip and Coming up, opens its day and panel, renames it and deletes it. The accessibility audit passes on the month view, the exam's day, the week before and both dialog states, in light, dark and both colour sets.
 
 # Lists at scale (lists-at-scale.html)
 

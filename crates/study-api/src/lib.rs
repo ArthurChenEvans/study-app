@@ -8,6 +8,7 @@ pub mod backup;
 pub mod calendar;
 pub mod cards;
 pub mod convert;
+pub mod dates;
 pub mod practice;
 pub mod recall;
 pub mod seed;
@@ -784,3 +785,5 @@ mod ids_tests;
 mod transfer_tests;
 #[cfg(test)]
 mod sync_tests;
+#[cfg(test)]
+mod dates_tests;

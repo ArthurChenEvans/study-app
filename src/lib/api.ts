@@ -94,7 +94,7 @@ export interface ReviewItem {
   reason: GivenReason | null;
   short: ShortFeedback | null;
 }
-export interface MoveView { topic: Id; name: string; score: number; passed: boolean; from: string | null; to: string; next_due: number }
+export interface MoveView { topic: Id; name: string; score: number; passed: boolean; from: string | null; to: string; next_due: number; tightened_due: number | null; tightened_for: string | null }
 export interface ResultsView { attempt: Id; status: Status; exam: boolean; summary: Summary; review: ReviewItem[]; to_prompt: number[]; retry_count: number; moves: MoveView[] }
 export interface HistoryRow { id: Id; day: number; status: Status; retry_of: Id | null; topics: Id[]; summary: Summary }
 
@@ -198,7 +198,15 @@ export type ReviewChoice =
   | { Checklist: { checklist: Id } }
   | { NewDrill: { issue: string; task: string; hints: string; topic: Id | null; day: number } }
   | { DrillAgain: { issue: string; drill: Id; day: number } };
-export interface TopicQuizView { topic: Id; step: string; position: number; steps: number; due: number; due_today: boolean }
+export interface TopicQuizView { topic: Id; step: string; position: number; steps: number; due: number; due_today: boolean; normal_due: number; tightened_for: string | null }
+// Dates on the calendar (R130 to R137)
+export type Covers = "Nothing" | { Module: Id } | { Topics: Id[] };
+export interface DateView { id: Id; name: string; day: number; kind: string; covers: Covers; covers_label: string; topics: Id[]; tighten: boolean; days_left: number }
+export interface DateSave { name: string; day: number; kind: string; module: Id | null; topics: Id[]; tighten: boolean }
+export interface DateMove { topic: Id; name: string; step: string; from: number; to: number }
+export interface UnquizzedTopic { topic: Id; name: string; questions: number }
+export interface DatePreview { quizzes: DateMove[]; unquizzed: UnquizzedTopic[]; cards: number; drills: number }
+export interface DatePanel { date: DateView; quizzes: DateMove[]; unquizzed: UnquizzedTopic[]; cards_before: number; cards_pulled: number }
 export type When = "Past" | "Today" | "Future";
 export interface CalendarDay { day: number; when: When; cards: number; checklists: number; quizzes: number; drills: number; struggles: number }
 export interface DueToday { cards: number; checklists: number; quizzes: number; drills: number; total: number }
@@ -207,11 +215,13 @@ export interface DayView {
   cards: { due: DueCounts; minutes: number; reviewed: number; again: number; seconds: number };
   checklists: { id: Id; name: string; step: string | null; points: number }[];
   checks: { id: Id; name: string; score: number; passed: boolean; to: string }[];
-  quizzes: { topic: Id; name: string; step: string; questions: number }[];
+  quizzes: { topic: Id; name: string; step: string; questions: number; tightened_for: string | null }[];
   attempts: { attempt: Id; topics: string[]; right: number; total: number; moves: string[] }[];
   drills: DrillView[];
   drill_runs: { task: string; rating: DrillRating }[];
   struggles: StruggleView[];
+  dates: DatePanel[];
+  soon: DateView[];
 }
 
 /** Errors from the backend arrive as { message }. */
@@ -320,6 +330,12 @@ export const api = {
   topicQuizzes: () => invoke<TopicQuizView[]>("topic_quizzes"),
   calendarMonth: (from: number, to: number) => invoke<CalendarDay[]>("calendar_month", { from, to }),
   calendarDay: (day: number) => invoke<DayView>("calendar_day", { day }),
+  dates: () => invoke<DateView[]>("dates"),
+  addDate: (date: DateSave) => invoke<Id>("add_date", { date }),
+  updateDate: (id: Id, date: DateSave) => invoke<void>("update_date", { id, date }),
+  deleteDate: (id: Id) => invoke<void>("delete_date", { id }),
+  previewDate: (id: Id | null, date: DateSave) => invoke<DatePreview>("preview_date", { id, date }),
+  datePanel: (id: Id) => invoke<DatePanel>("date_panel", { id }),
   dueToday: () => invoke<DueToday>("due_today"),
   // Backups (R101 to R108)
   backupStatus: () => invoke<BackupStatus>("backup_status"),

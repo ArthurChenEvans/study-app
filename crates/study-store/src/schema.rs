@@ -621,6 +621,43 @@ const MIGRATIONS: &[&str] = &[
         value TEXT NOT NULL
     );
     ",
+    // 10: dates on the calendar (R130 to R137). A date covers a module, picked topics or
+    // nothing. Tightening is worked out when it's read, so nothing else is stored.
+    "
+    CREATE TABLE dates (
+        id        INTEGER PRIMARY KEY,
+        name      TEXT NOT NULL,
+        day       INTEGER NOT NULL,
+        kind      TEXT NOT NULL DEFAULT '',
+        module_id INTEGER REFERENCES modules(id) ON DELETE SET NULL,
+        tighten   INTEGER NOT NULL DEFAULT 0,
+        uid       TEXT,
+        changed   TEXT
+    );
+    CREATE UNIQUE INDEX dates_by_uid ON dates(uid);
+    CREATE INDEX dates_by_day ON dates(day);
+    CREATE TABLE date_topics (
+        date_id  INTEGER NOT NULL REFERENCES dates(id) ON DELETE CASCADE,
+        topic_id INTEGER NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+        PRIMARY KEY (date_id, topic_id)
+    ) WITHOUT ROWID;
+    CREATE TRIGGER dates_added AFTER INSERT ON dates WHEN NEW.uid IS NULL OR NEW.changed IS NULL BEGIN
+        UPDATE dates SET uid = coalesce(NEW.uid, new_uid()), changed = coalesce(NEW.changed, stamp_now()) WHERE id = NEW.id;
+    END;
+    CREATE TRIGGER dates_edited AFTER UPDATE ON dates WHEN NEW.changed IS OLD.changed BEGIN
+        UPDATE dates SET changed = stamp_now() WHERE id = NEW.id;
+    END;
+    CREATE TRIGGER dates_deleted AFTER DELETE ON dates WHEN OLD.uid IS NOT NULL BEGIN
+        INSERT OR REPLACE INTO deleted (uid, kind, at) VALUES (OLD.uid, 'dates', stamp_now());
+    END;
+    -- Changing the topics a date covers, or deleting one of them, changes the date.
+    CREATE TRIGGER date_topics_insert_touches AFTER INSERT ON date_topics BEGIN
+        UPDATE dates SET changed = stamp_now() WHERE id = NEW.date_id;
+    END;
+    CREATE TRIGGER date_topics_delete_touches AFTER DELETE ON date_topics BEGIN
+        UPDATE dates SET changed = stamp_now() WHERE id = OLD.date_id;
+    END;
+    ",
 ];
 
 pub const LATEST: i64 = MIGRATIONS.len() as i64;

@@ -270,6 +270,20 @@ pub struct Struggle {
     pub outcome: Option<Value>,
 }
 
+/// A date on the calendar (R130 to R132). `topics` is only set when it covers picked
+/// topics, `module` only when it covers a module.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Date {
+    pub uid: String,
+    pub changed: String,
+    pub name: String,
+    pub day: i64,
+    pub kind: String,
+    pub module: Option<String>,
+    pub topics: Vec<String>,
+    pub tighten: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Setting {
     pub key: String,
@@ -303,6 +317,9 @@ pub struct Snapshot {
     pub drills: Vec<Drill>,
     pub drill_runs: Vec<DrillRun>,
     pub struggles: Vec<Struggle>,
+    /// Files and changes from before dates have none.
+    #[serde(default)]
+    pub dates: Vec<Date>,
     pub settings: Vec<Setting>,
     pub suggestions_done: Vec<SuggestionDone>,
 }
@@ -721,6 +738,16 @@ impl Store {
                 outcome
             });
             snapshot.struggles.push(Struggle { outcome, ..struggle });
+        }
+        let mut statement = connection.prepare("SELECT id, uid, changed, name, day, kind, module_id, tighten FROM dates ORDER BY id")?;
+        let dates: Vec<(i64, Date, Option<i64>)> = statement
+            .query_map([], |row| Ok((row.get(0)?, Date { uid: row.get(1)?, changed: row.get(2)?, name: row.get(3)?, day: row.get(4)?, kind: row.get(5)?, module: None, topics: vec![], tighten: row.get(7)? }, row.get(6)?)))?
+            .collect::<rusqlite::Result<_>>()?;
+        for (id, date, module) in dates {
+            // By topic ID, so the order is the same on every computer.
+            let mut topics: Vec<String> = connection.prepare("SELECT topic_id FROM date_topics WHERE date_id = ?1")?.query_map([id], |row| row.get::<_, i64>(0))?.collect::<rusqlite::Result<Vec<_>>>()?.into_iter().filter_map(|topic| uids.of("topics", topic)).collect();
+            topics.sort();
+            snapshot.dates.push(Date { module: uids.opt("modules", module), topics, ..date });
         }
         let mut statement = connection.prepare("SELECT key, value, changed FROM settings ORDER BY key")?;
         snapshot.settings = statement.query_map([], |row| Ok(Setting { key: row.get(0)?, value: row.get(1)?, changed: row.get::<_, Option<String>>(2)?.unwrap_or_default() }))?.collect::<rusqlite::Result<_>>()?;
@@ -1194,6 +1221,28 @@ pub(crate) fn write(tx: &Transaction, snapshot: &Snapshot, plan: &Plan) -> Resul
         }
     }
 
+    for date in &snapshot.dates {
+        let module = writer.local.opt("modules", date.module.as_deref());
+        let topics: Vec<i64> = date.topics.iter().filter_map(|topic| writer.local.of("topics", topic)).collect();
+        let id = match writer.fate("dates", &date.uid) {
+            Fate::New => {
+                tx.execute("INSERT INTO dates (name, day, kind, module_id, tighten, uid, changed) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)", params![date.name, date.day, date.kind, module, date.tighten, date.uid, date.changed])?;
+                writer.inserted("dates", "dates", &date.uid)
+            }
+            Fate::Replace(id) => {
+                tx.execute("UPDATE dates SET name = ?2, day = ?3, kind = ?4, module_id = ?5, tighten = ?6 WHERE id = ?1", params![id, date.name, date.day, date.kind, module, date.tighten])?;
+                tx.execute("DELETE FROM date_topics WHERE date_id = ?1", [id])?;
+                writer.replaced += 1;
+                id
+            }
+            Fate::Keep(_) => continue,
+        };
+        for topic in topics {
+            tx.execute("INSERT OR IGNORE INTO date_topics (date_id, topic_id) VALUES (?1, ?2)", params![id, topic])?;
+        }
+        writer.stamp("dates", id, &date.changed)?;
+    }
+
     for setting in &snapshot.settings {
         let here: Option<String> = tx.query_row("SELECT changed FROM settings WHERE key = ?1", [&setting.key], |row| row.get(0)).optional()?.flatten();
         let take = here.is_none() || plan.theirs.contains(&format!("settings:{}", setting.key));
@@ -1211,7 +1260,7 @@ pub(crate) fn write(tx: &Transaction, snapshot: &Snapshot, plan: &Plan) -> Resul
         tx.execute("INSERT OR IGNORE INTO card_suggestions_done (key, status, changed) VALUES (?1, ?2, ?3)", params![key, done.status, done.changed])?;
     }
 
-    let order = ["modules", "topics", "sources", "images", "questions", "notes", "cards", "card reviews", "checklists", "recall checks", "quizzes", "projects", "sessions", "issues", "drills", "drill runs", "struggles", "settings"];
+    let order = ["modules", "topics", "sources", "images", "questions", "notes", "cards", "card reviews", "checklists", "recall checks", "quizzes", "projects", "sessions", "issues", "drills", "drill runs", "struggles", "dates", "settings"];
     Ok(Added { counts: order.iter().filter_map(|kind| writer.added.get(kind).map(|count| (kind.to_string(), *count))).collect(), replaced: writer.replaced })
 }
 

@@ -3,6 +3,7 @@ pub mod assembly;
 pub mod attempt;
 pub mod bibliography;
 pub mod cards;
+pub mod dates;
 pub mod image;
 pub mod practice;
 pub mod progress;

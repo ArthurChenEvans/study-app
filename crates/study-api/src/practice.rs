@@ -10,7 +10,7 @@ use study_core::recall::Schedule;
 use study_store::AttemptId;
 use study_store::practice::{
     DrillId, DrillRecord, DrillRun, IssueId, NewStruggle, ProjectId, ProjectRecord, QuizMove, SessionId, SessionRecord,
-    StruggleId, StruggleOutcome, StruggleRecord,
+    StruggleId, StruggleOutcome, StruggleRecord, TopicQuiz,
 };
 use study_store::recall::ChecklistId;
 
@@ -141,8 +141,12 @@ pub struct TopicQuizView {
     /// Index of the current step, and how many steps the ladder has, for drawing it.
     pub position: usize,
     pub steps: usize,
+    /// Tightened for a date when one covers it (R132).
     pub due: i64,
     pub due_today: bool,
+    /// Its next quiz without the date.
+    pub normal_due: i64,
+    pub tightened_for: Option<String>,
 }
 
 /// Where a quiz moved one topic (R97).
@@ -154,7 +158,11 @@ pub struct MoveView {
     pub passed: bool,
     pub from: Option<String>,
     pub to: String,
+    /// The next quiz on the schedule. `tightened_due` is earlier when a date pulls it in,
+    /// so results can show both (R137).
     pub next_due: i64,
+    pub tightened_due: Option<i64>,
+    pub tightened_for: Option<String>,
 }
 
 impl App {
@@ -168,7 +176,7 @@ impl App {
     fn project_row(&self, project: ProjectRecord, today: i64) -> ApiResult<ProjectRow> {
         let struggles = self.store.struggles(project.id)?;
         let sessions = self.store.sessions(project.id)?;
-        let drills = self.drills_of(&struggles)?;
+        let drills = self.drills_of(&struggles, today)?;
         let last_day = struggles.iter().map(|s| s.day).chain(sessions.iter().map(|s| s.day)).max();
         Ok(ProjectRow {
             id: project.id,
@@ -184,7 +192,7 @@ impl App {
     }
 
     /// The drills a project's struggles were reviewed into.
-    fn drills_of(&self, struggles: &[StruggleRecord]) -> ApiResult<Vec<DrillRecord>> {
+    fn drills_of(&self, struggles: &[StruggleRecord], today: i64) -> ApiResult<Vec<DrillRecord>> {
         let mut ids: Vec<DrillId> = struggles
             .iter()
             .filter_map(|s| match s.outcome {
@@ -194,7 +202,7 @@ impl App {
             .collect();
         ids.sort();
         ids.dedup();
-        Ok(self.store.drills()?.into_iter().filter(|d| ids.contains(&d.id)).collect())
+        Ok(self.drills_now(&self.now(today)?)?.into_iter().filter(|d| ids.contains(&d.id)).collect())
     }
 
     pub fn create_project(&mut self, name: &str, kind: &str, today: i64) -> ApiResult<ProjectId> {
@@ -434,8 +442,7 @@ impl App {
 
     /// Drills due today or overdue, oldest first (R98: overdue counts as today).
     pub fn drills_due(&self, today: i64) -> ApiResult<Vec<DrillView>> {
-        self.store
-            .drills()?
+        self.drills_now(&self.now(today)?)?
             .into_iter()
             .filter(|d| d.due.is_some_and(|due| due <= today))
             .map(|d| self.drill_view_of(d))
@@ -473,19 +480,23 @@ impl App {
 
     pub fn topic_quizzes(&self, today: i64) -> ApiResult<Vec<TopicQuizView>> {
         let schedule = self.store.quiz_schedule()?;
+        let now = self.now(today)?;
         Ok(self
             .store
             .topic_quizzes()?
             .into_iter()
             .map(|quiz| {
                 let position = schedule.clamp(quiz.position);
+                let due = now.quiz(&quiz);
                 TopicQuizView {
                     topic: quiz.topic,
                     step: schedule.label(position),
                     position: position.step,
                     steps: schedule.steps.len(),
-                    due: quiz.due,
-                    due_today: quiz.due <= today,
+                    due: due.day,
+                    due_today: due.day <= today,
+                    normal_due: quiz.due,
+                    tightened_for: now.tightened_for(&due),
                 }
             })
             .collect())
@@ -531,11 +542,16 @@ impl App {
     pub(crate) fn move_views(&self, attempt: AttemptId) -> ApiResult<Vec<MoveView>> {
         let schedule = self.store.quiz_schedule()?;
         let topics = self.store.topics()?;
-        Ok(self
-            .store
-            .quiz_moves(attempt)?
+        let moves = self.store.quiz_moves(attempt)?;
+        // As of the quiz day, so the results say what the date did then.
+        let now = self.now(moves.first().map_or(0, |m| m.day))?;
+        let latest = |m: &QuizMove| self.store.latest_quiz_move(m.topic).ok().flatten() == Some(m.attempt);
+        Ok(moves
             .into_iter()
-            .map(|m| MoveView {
+            .map(|m| {
+                // Only the topic's latest quiz still sets its schedule.
+                let due = latest(&m).then(|| now.quiz(&TopicQuiz { topic: m.topic, position: m.to, due: m.next_due })).filter(|due| due.tightened_by.is_some());
+                MoveView {
                 topic: m.topic,
                 name: topics.iter().find(|t| t.id == m.topic).map(|t| t.name.clone()).unwrap_or_default(),
                 score: m.score,
@@ -543,7 +559,9 @@ impl App {
                 from: m.from.map(|(position, _)| schedule.label(schedule.clamp(position))),
                 to: schedule.label(schedule.clamp(m.to)),
                 next_due: m.next_due,
-            })
+                tightened_due: due.map(|due| due.day),
+                tightened_for: due.and_then(|due| now.tightened_for(&due)),
+            }})
             .collect())
     }
 }

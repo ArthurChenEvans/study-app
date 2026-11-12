@@ -1,7 +1,7 @@
 <script lang="ts">
   // topics.feature (R1, R2, R3, R30, R43, R51)
   // calendar.feature (R96, R97): each topic's quiz step and next quiz, and the schedule.
-  import { CalendarCog, Check, Folder, FolderOpen, FolderPlus, Library, Pencil, Play, Plus, Star } from "@lucide/svelte";
+  import { CalendarCog, Check, Folder, FolderOpen, FolderPlus, GraduationCap, Library, Pencil, Play, Plus, Star } from "@lucide/svelte";
   import RowMenu from "../components/RowMenu.svelte";
   import { api, errorMessage, type Id, type ModuleRow, type Schedule, type TopicQuizView, type TopicRow } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
@@ -157,6 +157,7 @@
                 <td>
                   {#if quiz}
                     {#if quiz.due_today}<span class="block text-sm font-extrabold text-[var(--accent-ink)]">Due today</span>{:else}<span class="block text-sm">{dueLabel(quiz.due, today)}</span>{/if}
+                    {#if quiz.tightened_for}<span class="flex items-center gap-1 text-[13px] text-muted"><GraduationCap class="size-3.5 shrink-0" aria-hidden="true" />Tightened for {quiz.tightened_for}</span>{/if}
                     <span class="flex items-center gap-1.5 whitespace-nowrap text-[13px] text-muted"><span class="pips" aria-hidden="true">{#each Array.from({ length: quiz.steps }) as _, step (step)}<i class:on={step <= quiz.position}></i>{/each}</span>{quiz.step} step</span>
                   {:else}<span class="text-sm text-muted">{topic.question_count ? "Quiz it to start" : "No questions yet"}</span>{/if}
                 </td>

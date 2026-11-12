@@ -4,24 +4,27 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../lib/api", async (original) => {
   const actual = await original<typeof import("../lib/api")>();
-  return { ...actual, api: { today: vi.fn(), calendarMonth: vi.fn(), calendarDay: vi.fn(), moveDrill: vi.fn() } };
+  return { ...actual, api: { today: vi.fn(), calendarMonth: vi.fn(), calendarDay: vi.fn(), moveDrill: vi.fn(), dates: vi.fn(), modules: vi.fn(), topics: vi.fn(), topicQuizzes: vi.fn(), previewDate: vi.fn(), addDate: vi.fn(), updateDate: vi.fn(), deleteDate: vi.fn() } };
 });
 
-import { api, type CalendarDay, type DayView, type DrillView } from "../lib/api";
+import { api, type CalendarDay, type DateView, type DayView, type DrillView } from "../lib/api";
 import Calendar from "./Calendar.svelte";
 
 const mocked = vi.mocked(api);
 const TODAY = 20_760; // Tue 3 Nov 2026
 const blank = (day: number, when: CalendarDay["when"]): CalendarDay => ({ day, when, cards: 0, checklists: 0, quizzes: 0, drills: 0, struggles: 0 });
 const drill: DrillView = { id: 5, task: "Write a loop over a slice without an off-by-one", hints: "", issue: "Off-by-one in loops", topic: null, topic_name: null, created: TODAY - 1, due: TODAY, last: null, runs: 0, from: [{ day: TODAY - 1, project_name: "Study app", what: "Loop ran once too often" }] };
+const exam: DateView = { id: 2, name: "Networks exam", day: TODAY + 20, kind: "Exam", covers: { Module: 1 }, covers_label: "Networks module", topics: [10, 11, 12], tighten: true, days_left: 20 };
+const writeUp: DateView = { id: 1, name: "Study app write-up", day: TODAY + 10, kind: "Deadline", covers: "Nothing", covers_label: "", topics: [], tighten: false, days_left: 10 };
 const emptyDay = (day: number, when: DayView["when"]): DayView => ({
   day, when, cards: { due: { new: 0, learning: 0, review: 0 }, minutes: 0, reviewed: 0, again: 0, seconds: 0 },
-  checklists: [], checks: [], quizzes: [], attempts: [], drills: [], drill_runs: [], struggles: [],
+  checklists: [], checks: [], quizzes: [], attempts: [], drills: [], drill_runs: [], struggles: [], dates: [], soon: [],
 });
 
 beforeEach(() => {
   vi.resetAllMocks();
   mocked.today.mockResolvedValue(TODAY);
+  mocked.dates.mockResolvedValue([]);
   mocked.calendarMonth.mockImplementation(async (from, to) => Array.from({ length: to - from + 1 }, (_, index) => {
     const day = from + index;
     const entry = blank(day, day < TODAY ? "Past" : day === TODAY ? "Today" : "Future");
@@ -83,7 +86,7 @@ describe("Calendar", () => {
       ...emptyDay(TODAY, "Today"),
       cards: { due: { new: 3, learning: 0, review: 9 }, minutes: 6, reviewed: 0, again: 0, seconds: 0 },
       checklists: [{ id: 4, name: "Computer Architecture", step: "Week", points: 8 }],
-      quizzes: [{ topic: 1, name: "CPU", step: "Week", questions: 7 }, { topic: 2, name: "OSI model", step: "Day", questions: 6 }],
+      quizzes: [{ topic: 1, name: "CPU", step: "Week", questions: 7, tightened_for: null }, { topic: 2, name: "OSI model", step: "Day", questions: 6, tightened_for: null }],
       drills: [drill],
     });
     render(Calendar, handlers);
@@ -161,4 +164,64 @@ describe("Calendar", () => {
     await u.click(screen.getByRole("button", { name: /November 2026/ }));
     expect(onOpenDay).toHaveBeenLastCalledWith(null);
   });
+
+  // dates.feature: Dates on the month view
+  it("shows dates as chips on their day and the next ones coming up", async () => {
+    const u = userEvent.setup();
+    mocked.dates.mockResolvedValue([writeUp, exam]);
+    mocked.calendarDay.mockResolvedValue(emptyDay(TODAY + 10, "Future"));
+    render(Calendar, {});
+    const coming = await screen.findByRole("region", { name: "Coming up" });
+    expect(coming).toHaveTextContent("Study app write-up Fri 13 Nov, in 10 days");
+    expect(coming).toHaveTextContent("Networks exam Mon 23 Nov, in 20 days Reviews tightened");
+    const grid = screen.getByRole("grid", { name: "November 2026" });
+    expect(within(grid).getByRole("button", { name: /^Mon 23 Nov, Networks exam$/ })).toHaveTextContent("Networks exam");
+    await u.click(within(coming).getByRole("button", { name: /Study app write-up/ }));
+    expect(mocked.calendarDay).toHaveBeenCalledWith(TODAY + 10);
+  });
+
+  // dates.feature: Add a date
+  it("adds a date from the primary button", async () => {
+    const u = userEvent.setup();
+    mocked.modules.mockResolvedValue([]);
+    mocked.topics.mockResolvedValue([]);
+    mocked.topicQuizzes.mockResolvedValue([]);
+    mocked.addDate.mockResolvedValue(7);
+    render(Calendar, {});
+    await screen.findByRole("grid");
+    expect(document.querySelectorAll(".btn-primary")).toHaveLength(1);
+    await u.click(screen.getByRole("button", { name: "Add a date" }));
+    const dialog = await screen.findByRole("dialog");
+    await u.type(within(dialog).getByLabelText("Name"), "Study app write-up");
+    mocked.dates.mockResolvedValue([writeUp]);
+    await u.click(within(dialog).getByRole("button", { name: "Add date" }));
+    expect(mocked.addDate).toHaveBeenCalled();
+    expect(await screen.findByRole("region", { name: "Coming up" })).toHaveTextContent("Study app write-up");
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  // dates.feature: The exam's day, The week before
+  it("gives a date its own panel on its day, and counts down to it the days before", async () => {
+    const u = userEvent.setup();
+    mocked.dates.mockResolvedValue([exam]);
+    mocked.calendarDay.mockImplementation(async (value) => value === TODAY + 20
+      ? { ...emptyDay(value, "Future"), dates: [{ date: exam, quizzes: [{ topic: 11, name: "TCP/IP", step: "Month", from: TODAY + 25, to: TODAY + 10 }], unquizzed: [{ topic: 12, name: "Subnetting", questions: 5 }], cards_before: 21, cards_pulled: 9 }] }
+      : { ...emptyDay(value, "Future"), soon: [exam], quizzes: [{ topic: 11, name: "TCP/IP", step: "Month", questions: 4, tightened_for: "Networks exam" }] });
+    const onQuiz = vi.fn();
+    render(Calendar, { onQuiz });
+    await u.click(await screen.findByRole("button", { name: /^Mon 23 Nov, Networks exam/ }));
+    const panel = await screen.findByRole("region", { name: "Networks exam" });
+    expect(panel).toHaveTextContent("Exam · Networks module · in 20 days");
+    expect(panel).toHaveTextContent("Before it, with reviews tightened");
+    expect(panel).toHaveTextContent("Month step · next quiz Fri 13 Nov, pulled in from Sat 28 Nov");
+    expect(panel).toHaveTextContent("Not quizzed yet, so nothing to tighten");
+    expect(panel).toHaveTextContent("21 cards due before it9 of them pulled in from after it");
+    await u.click(within(panel).getByRole("button", { name: /Quiz it/ }));
+    expect(onQuiz).toHaveBeenCalledWith([12]);
+
+    await u.click(screen.getByRole("button", { name: "Previous day" }));
+    expect(await screen.findByRole("region", { name: "Networks exam coming up" })).toHaveTextContent("Networks exam in 1 day, on Mon 23 Nov. Reviews for it are tightened");
+    expect(screen.getByText(/tightened for the Networks exam/)).toBeInTheDocument();
+  });
 });
+

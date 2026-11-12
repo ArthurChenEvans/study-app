@@ -155,8 +155,8 @@ describe("Quiz setup", () => {
   it("marks topics due today and picks them in one go", async () => {
     const u = userEvent.setup();
     mocked.topicQuizzes.mockResolvedValue([
-      { topic: 1, step: "Week", position: 2, steps: 6, due: 0, due_today: false },
-      { topic: 2, step: "Day", position: 1, steps: 6, due: 0, due_today: true },
+      { topic: 1, step: "Week", position: 2, steps: 6, due: 0, due_today: false, normal_due: 0, tightened_for: null },
+      { topic: 2, step: "Day", position: 1, steps: 6, due: 0, due_today: true, normal_due: 0, tightened_for: null },
     ]);
     render(Setup, { onStarted: vi.fn() });
     const gpu = await screen.findByRole("checkbox", { name: /GPU/ });

@@ -296,6 +296,40 @@ fn deleting_a_topic_deletes_it_and_what_belongs_to_it_everywhere() {
     assert!(laptop.sync_to_check().unwrap().is_empty());
 }
 
+// dates.feature: Dates sync (R137), and a deleted topic drops out of a date on both
+#[test]
+fn dates_sync_and_deleted_topics_drop_out_everywhere() {
+    let shared = folder("dates");
+    let mut desktop = computer("dates", "desktop", 1);
+    let (caches, _) = small_profile(&mut desktop);
+    let cpu = desktop.create_topic("CPU", None).unwrap();
+    join(&mut desktop, &shared, "Desktop", at(TODAY, 600));
+    let mut laptop = computer("dates", "laptop", 2);
+    join(&mut laptop, &shared, "Laptop", at(TODAY, 601));
+
+    let mock = crate::dates::DateSave { name: "Architecture mock".into(), day: TODAY + 20, kind: "Mock exam".into(), module: None, topics: vec![caches, cpu], tighten: true };
+    desktop.add_date(mock).unwrap();
+    sync(&mut desktop, at(TODAY, 700));
+    sync(&mut laptop, at(TODAY, 701));
+    let dates = laptop.dates(TODAY).unwrap();
+    assert_eq!(dates.iter().map(|d| (d.name.as_str(), d.covers_label.as_str(), d.tighten)).collect::<Vec<_>>(), vec![("Architecture mock", "Caches and CPU", true)]);
+    assert_same(&desktop, &laptop);
+
+    let cpu_here = laptop.topics().unwrap().into_iter().find(|t| t.name == "CPU").unwrap().id;
+    laptop.delete_topic(cpu_here).unwrap();
+    sync(&mut laptop, at(TODAY, 800));
+    sync(&mut desktop, at(TODAY, 801));
+    assert_eq!(desktop.dates(TODAY).unwrap()[0].covers_label, "Caches");
+    assert_same(&desktop, &laptop);
+    assert!(desktop.sync_to_check().unwrap().is_empty(), "{:?}", desktop.sync_to_check().unwrap());
+    let date = desktop.dates(TODAY).unwrap()[0].id;
+    desktop.delete_date(date).unwrap();
+    sync(&mut desktop, at(TODAY, 900));
+    sync(&mut laptop, at(TODAY, 901));
+    assert!(laptop.dates(TODAY).unwrap().is_empty());
+    assert_same(&desktop, &laptop);
+}
+
 // sync.feature: Deleting something the other computer changed (R124)
 #[test]
 fn a_delete_loses_to_something_added_on_the_other_computer_and_both_keep_it() {

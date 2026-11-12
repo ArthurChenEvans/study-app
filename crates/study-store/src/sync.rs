@@ -32,8 +32,8 @@ use crate::{Result, Store, StoreError};
 pub type Seen = BTreeMap<String, u64>;
 
 /// Every kind of record, in the order they have to be written (parents first).
-pub const KINDS: [&str; 19] = [
-    "modules", "topics", "sources", "images", "questions", "notes", "cards", "reviews", "checklists", "checks", "attempts", "projects", "sessions", "issues", "drills", "drill_runs", "struggles", "settings", "suggestions_done",
+pub const KINDS: [&str; 20] = [
+    "modules", "topics", "sources", "images", "questions", "notes", "cards", "reviews", "checklists", "checks", "attempts", "projects", "sessions", "issues", "drills", "drill_runs", "struggles", "dates", "settings", "suggestions_done",
 ];
 
 /// Fields worked out from history. The newer one is used without being listed to check,
@@ -344,6 +344,12 @@ fn refs_of(kind: &str, body: &Map<String, Value>) -> Vec<(&'static str, String, 
             one("topic", "topics", false, &mut refs);
         }
         "drill_runs" => one("drill", "drills", true, &mut refs),
+        "dates" => {
+            one("module", "modules", false, &mut refs);
+            if let Some(Value::Array(topics)) = body.get("topics") {
+                refs.extend(topics.iter().filter_map(Value::as_str).map(|uid| ("topics", uid.to_string(), false)));
+            }
+        }
         "struggles" => {
             one("project", "projects", true, &mut refs);
             one("session", "sessions", false, &mut refs);

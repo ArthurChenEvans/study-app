@@ -21,6 +21,8 @@ use study_api::recall::{Candidate, CheckResult, ChecklistView, Item, PointInput,
 use study_core::recall::Schedule;
 use study_api::backup::{BackupInfo, BackupSettings, BackupStatus, RestorePreview};
 use study_api::calendar::{CalendarDay, DayView, DueToday};
+use study_api::dates::{DatePanel, DatePreview, DateSave, DateView};
+use study_store::dates::DateId;
 use study_api::transfer::{ExportFile, ExportRequest, ExportSummary, ImportChoice, ImportPreview, ImportResult};
 use study_api::practice::{DrillView, IssueView, ProjectRow, ProjectView, ReviewChoice, StruggleInput, StruggleView, TopicQuizView};
 use study_core::practice::DrillRating;
@@ -466,6 +468,33 @@ fn due_today(state: AppState) -> ApiResult<DueToday> {
     with(state, |app| app.due_today(today()))
 }
 
+// ---------- Dates on the calendar (R130 to R137) ----------
+
+#[tauri::command]
+fn dates(state: AppState) -> ApiResult<Vec<DateView>> {
+    with(state, |app| app.dates(today()))
+}
+#[tauri::command]
+fn add_date(state: AppState, date: DateSave) -> ApiResult<DateId> {
+    with(state, |app| app.add_date(date))
+}
+#[tauri::command]
+fn update_date(state: AppState, id: DateId, date: DateSave) -> ApiResult<()> {
+    with(state, |app| app.update_date(id, date))
+}
+#[tauri::command]
+fn delete_date(state: AppState, id: DateId) -> ApiResult<()> {
+    with(state, |app| app.delete_date(id))
+}
+#[tauri::command]
+fn preview_date(state: AppState, id: Option<DateId>, date: DateSave) -> ApiResult<DatePreview> {
+    with(state, |app| app.preview_date(id, date, today()))
+}
+#[tauri::command]
+fn date_panel(state: AppState, id: DateId) -> ApiResult<DatePanel> {
+    with(state, |app| app.date_panel(id, today()))
+}
+
 // ---------- Backups (R101 to R108) ----------
 
 #[tauri::command]
@@ -635,6 +664,12 @@ pub fn run() {
             calendar_month,
             calendar_day,
             due_today,
+            dates,
+            add_date,
+            update_date,
+            delete_date,
+            preview_date,
+            date_panel,
             cards_home,
             cards_due_count,
             topic_cards,

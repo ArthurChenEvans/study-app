@@ -386,6 +386,12 @@ pub fn seed_profile(app: &mut App, today: i64) -> ApiResult<SeedSummary> {
     app.end_session(projects[0], at(today - 1, 21 * 60 + 45))?;
     summary.sessions += 1;
     summary.struggles += 1;
+
+    // Two dates ahead: an exam that tightens Networks, and a deadline that covers nothing.
+    if let Subject::Module(networks) = names["Networks"] {
+        app.add_date(crate::dates::DateSave { name: "Networks exam".into(), day: today + 20, kind: "Exam".into(), module: Some(networks), topics: vec![], tighten: true })?;
+    }
+    app.add_date(crate::dates::DateSave { name: "Study app write-up".into(), day: today + 10, kind: "Deadline".into(), module: None, topics: vec![], tighten: false })?;
     Ok(summary)
 }
 

@@ -19,6 +19,7 @@ use study_core::results::{Reasons, Summary, reason_labels, summarise};
 
 pub mod backup;
 pub mod cards;
+pub mod dates;
 pub mod ids;
 pub mod portable;
 pub mod practice;

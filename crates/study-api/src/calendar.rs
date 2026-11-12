@@ -8,6 +8,7 @@ use study_store::AttemptId;
 use study_store::recall::ChecklistId;
 
 use crate::cards::DueCounts;
+use crate::dates::{DatePanel, DateView};
 use crate::practice::{DrillView, StruggleView};
 use crate::{ApiResult, App};
 
@@ -75,6 +76,8 @@ pub struct DayTopic {
     pub name: String,
     pub step: String,
     pub questions: usize,
+    /// The date its quiz was pulled in for (R135).
+    pub tightened_for: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -105,6 +108,10 @@ pub struct DayView {
     pub drills: Vec<DrillView>,
     pub drill_runs: Vec<DayDrillRun>,
     pub struggles: Vec<StruggleView>,
+    /// Dates on this day, each with its own panel (R135).
+    pub dates: Vec<DatePanel>,
+    /// Dates covering something in the two weeks after this day, soonest first.
+    pub soon: Vec<DateView>,
 }
 
 fn when(day: i64, today: i64) -> When {
@@ -117,10 +124,9 @@ fn when(day: i64, today: i64) -> When {
 
 impl App {
     /// Reviewed cards (not new, not archived) due on exactly this day, for the forecast.
-    fn cards_forecast(&self, day: i64) -> ApiResult<usize> {
+    fn cards_forecast(&self, day: i64, today: i64) -> ApiResult<usize> {
         Ok(self
-            .store
-            .cards()?
+            .cards_now(self.store.cards()?, &self.now(today)?)
             .iter()
             .filter(|c| !c.archived && !c.schedule.is_new() && c.schedule.due == day)
             .count())
@@ -129,10 +135,11 @@ impl App {
     /// Counts for the month view, from `from` to `to` inclusive (R98).
     pub fn calendar_month(&self, from: i64, to: i64, today: i64) -> ApiResult<Vec<CalendarDay>> {
         let done = self.store.done_counts(from, to.min(today))?;
-        let cards = self.store.cards()?;
+        let now = self.now(today)?;
+        let cards = self.cards_now(self.store.cards()?, &now);
         let checklists = self.store.checklists()?;
-        let quizzes = self.store.topic_quizzes()?;
-        let drills = self.store.drills()?;
+        let quizzes = self.quizzes_now(&now)?;
+        let drills = self.drills_now(&now)?;
         let due_today = self.due_today(today)?;
         Ok((from..=to)
             .map(|day| match when(day, today) {
@@ -166,8 +173,9 @@ impl App {
     pub fn due_today(&self, today: i64) -> ApiResult<DueToday> {
         let cards = self.cards_due_count(today)?;
         let checklists = self.store.checklists()?.iter().filter(|c| c.points > 0 && c.due <= today).count();
-        let quizzes = self.store.topic_quizzes()?.iter().filter(|q| q.due <= today).count();
-        let drills = self.store.drills()?.iter().filter(|d| d.due.is_some_and(|due| due <= today)).count();
+        let now = self.now(today)?;
+        let quizzes = self.quizzes_now(&now)?.iter().filter(|q| q.due <= today).count();
+        let drills = self.drills_now(&now)?.iter().filter(|d| d.due.is_some_and(|due| due <= today)).count();
         Ok(DueToday { cards, checklists, quizzes, drills, total: cards + checklists + quizzes + drills })
     }
 
@@ -178,6 +186,7 @@ impl App {
         let quiz_schedule = self.store.quiz_schedule()?;
         let topics = self.store.topics()?;
         let due_on = |due: i64| if when == When::Today { due <= today } else { due == day };
+        let now = self.now(today)?;
 
         let mut cards = DayCards { due: DueCounts { new: 0, learning: 0, review: 0 }, minutes: 0, reviewed: 0, again: 0, seconds: 0 };
         match when {
@@ -186,7 +195,7 @@ impl App {
                 cards.due = home.due;
                 cards.minutes = home.minutes;
             }
-            When::Future => cards.due.review = self.cards_forecast(day)?,
+            When::Future => cards.due.review = self.cards_forecast(day, today)?,
             When::Past => {
                 for review in self.store.reviews_since(day)?.into_iter().filter(|r| r.day == day) {
                     cards.reviewed += 1;
@@ -231,13 +240,18 @@ impl App {
                 });
             }
         } else {
-            for quiz in self.store.topic_quizzes()?.into_iter().filter(|q| due_on(q.due)) {
+            for quiz in self.store.topic_quizzes()? {
+                let due = now.quiz(&quiz);
+                if !due_on(due.day) {
+                    continue;
+                }
                 if let Some(topic) = topics.iter().find(|t| t.id == quiz.topic) {
                     quizzes.push(DayTopic {
                         topic: quiz.topic,
                         name: topic.name.clone(),
                         step: quiz_schedule.label(quiz_schedule.clamp(quiz.position)),
                         questions: topic.question_count,
+                        tightened_for: now.tightened_for(&due),
                     });
                 }
             }
@@ -252,7 +266,7 @@ impl App {
                 drill_runs.push(DayDrillRun { task, rating: run.rating });
             }
         } else {
-            for drill in self.store.drills()?.into_iter().filter(|d| d.due.is_some_and(due_on)) {
+            for drill in self.drills_now(&now)?.into_iter().filter(|d| d.due.is_some_and(due_on)) {
                 drills.push(self.drill_view_of(drill)?);
             }
         }
@@ -263,6 +277,10 @@ impl App {
             self.store.struggles_on(day)?.into_iter().map(|s| self.struggle_view(s)).collect::<ApiResult<_>>()?
         };
 
-        Ok(DayView { day, when, cards, checklists, checks, quizzes, attempts, drills, drill_runs, struggles })
+        let all_dates = self.dates(today)?;
+        let dates = all_dates.iter().filter(|d| d.day == day).map(|d| self.date_panel(d.id, today)).collect::<ApiResult<_>>()?;
+        let soon = all_dates.into_iter().filter(|d| d.day > day && d.day <= day + 14 && !d.topics.is_empty()).collect();
+
+        Ok(DayView { day, when, cards, checklists, checks, quizzes, attempts, drills, drill_runs, struggles, dates, soon })
     }
 }

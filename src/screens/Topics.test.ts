@@ -160,9 +160,9 @@ describe("Topics screen", () => {
       { id: 4, name: "TCP/IP", module: 1, tags: [], question_count: 5, short_count: 0 },
     ]);
     mocked.topicQuizzes.mockResolvedValue([
-      { topic: 1, step: "Week", position: 1, steps: 7, due: 20_760, due_today: true },
-      { topic: 2, step: "Day", position: 0, steps: 7, due: 20_755, due_today: true },
-      { topic: 3, step: "Fortnight", position: 2, steps: 7, due: 20_766, due_today: false },
+      { topic: 1, step: "Week", position: 1, steps: 7, due: 20_760, due_today: true, normal_due: 20_760, tightened_for: null },
+      { topic: 2, step: "Day", position: 0, steps: 7, due: 20_755, due_today: true, normal_due: 20_755, tightened_for: null },
+      { topic: 3, step: "Fortnight", position: 2, steps: 7, due: 20_766, due_today: false, normal_due: 20_780, tightened_for: "Networks exam" },
     ]);
     render(Topics, { onQuizTopics });
     const row = (name: string) => screen.getByRole("cell", { name }).closest("tr")!;
@@ -170,6 +170,9 @@ describe("Topics screen", () => {
     expect(row("CPU")).toHaveTextContent(/Due today\s*Week step/);
     expect(row("OSI model")).toHaveTextContent("Due today", { normalizeWhitespace: true });
     expect(row("Memory")).toHaveTextContent("Mon 9 Nov");
+    // dates.feature: Tightened next quizzes are labelled
+    expect(row("Memory")).toHaveTextContent("Tightened for Networks exam");
+    expect(row("CPU")).not.toHaveTextContent("Tightened");
     expect(row("TCP/IP")).toHaveTextContent("Quiz it to start");
     expect(screen.getByText(/2 quizzes due today/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /New topic/ })).not.toHaveClass("btn-primary");

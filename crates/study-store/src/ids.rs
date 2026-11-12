@@ -95,7 +95,7 @@ pub type SharedClock = Arc<Mutex<Clock>>;
 /// Tables whose records carry a `uid` and a `changed` stamp.
 pub const STAMPED: &[&str] = &[
     "modules", "topics", "questions", "sources", "attempts", "images", "recall_checklists", "recall_checks", "notes", "cards",
-    "card_reviews", "projects", "project_sessions", "issues", "drills", "drill_runs", "struggles",
+    "card_reviews", "projects", "project_sessions", "issues", "drills", "drill_runs", "struggles", "dates",
 ];
 
 /// This computer's ID if the database already has one, otherwise a new one.

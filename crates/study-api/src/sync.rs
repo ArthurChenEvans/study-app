@@ -531,6 +531,7 @@ impl App {
             "drills" => ("Drill", text("task")),
             "drill_runs" => ("Drill run", String::new()),
             "struggles" => ("Struggle", text("what")),
+            "dates" => ("Date", text("name")),
             "settings" => ("Setting", record.get("value").map(|_| String::new()).unwrap_or_default()),
             _ => ("Suggestion", String::new()),
         }
@@ -583,6 +584,7 @@ impl App {
             Value::Array(items) => items
                 .iter()
                 .map(|item| match item {
+                    Value::String(text) if kind == "dates" && field == "topics" => self.name_by_uid("topics", text).unwrap_or_else(|| text.clone()),
                     Value::String(text) => text.clone(),
                     Value::Object(fields) if fields.contains_key("correct") => {
                         let text = fields.get("text").and_then(Value::as_str).unwrap_or_default();

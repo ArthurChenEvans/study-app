@@ -1,11 +1,11 @@
 <script lang="ts">
   // results.feature, retry.feature, short-answer.feature (R24, R25, R26, R84)
-  import { ArrowDown, ArrowUp, Check, CircleCheck, CircleX, Flag, RotateCcw, Star, Undo2, X } from "@lucide/svelte";
+  import { ArrowDown, ArrowUp, Check, CircleCheck, CircleX, Flag, GraduationCap, RotateCcw, Star, Undo2, X } from "@lucide/svelte";
   import { api, errorMessage, type GivenReason, type Id, type QuizView, type ResultsView, type ShortFeedback, type Tally, type TopicRow } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
   import Rich from "../components/Rich.svelte";
   import CountUp from "../components/CountUp.svelte";
-  import { onDay } from "../lib/dates";
+  import { fullLabel, onDay } from "../lib/dates";
   import { play } from "../lib/sound";
 
   // `fresh` is true when you've just finished the quiz, false when reopening it from History.
@@ -199,7 +199,8 @@
               {#each results.moves as move (move.topic)}
                 <li class="border-t-2 border-base-300 py-2.5 first:border-t-0">
                   <span class="flex items-center justify-between gap-2"><span class="flex flex-wrap items-center gap-2"><span class="font-extrabold">{move.name}</span>{" "}<span class="status-chip {move.passed ? 'status-pass' : 'status-under'}">{#if move.passed}<ArrowUp class="size-3.5" />Passed{:else}<ArrowDown class="size-3.5" />Under pass mark{/if}</span></span>{" "}<span class="tabular-nums">{move.score}%</span></span>{" "}
-                  <span class="mt-0.5 block text-[13px] text-muted">{move.from === null ? `Starts on ${move.to}` : move.passed ? (move.from === move.to ? `Stays on ${move.to}` : `Moves up to ${move.to}`) : move.from === move.to ? `Stays on ${move.to}` : `Back to ${move.to}`} · Next quiz {onDay(move.next_due, today)}</span>
+                  <span class="mt-0.5 block text-[13px] text-muted">{move.from === null ? `Starts on ${move.to}` : move.passed ? (move.from === move.to ? `Stays on ${move.to}` : `Moves up to ${move.to}`) : move.from === move.to ? `Stays on ${move.to}` : `Back to ${move.to}`} · Next quiz {onDay(move.tightened_due ?? move.next_due, today)}{move.tightened_due !== null ? `, tightened for the ${move.tightened_for} (would be ${fullLabel(move.next_due, today)})` : ""}</span>
+                  {#if move.tightened_due !== null}<span class="chip chip-primary mt-1.5"><GraduationCap class="size-3.5" aria-hidden="true" />Tightened</span>{/if}
                 </li>
               {/each}
             </ul>

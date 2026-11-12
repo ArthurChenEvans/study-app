@@ -150,14 +150,15 @@ describe("Results", () => {
   it("shows where the quiz moved each topic's schedule", async () => {
     mocked.today.mockResolvedValue(20_760);
     mocked.results.mockResolvedValue(results({ moves: [
-      { topic: 1, name: "CPU", score: 86, passed: true, from: "Week", to: "Fortnight", next_due: 20_774 },
-      { topic: 2, name: "OSI model", score: 50, passed: false, from: "Week", to: "Day", next_due: 20_761 },
-      { topic: 3, name: "Memory", score: 100, passed: true, from: null, to: "Day", next_due: 20_761 },
+      { topic: 1, name: "CPU", score: 86, passed: true, from: "Week", to: "Fortnight", next_due: 20_774, tightened_due: 20_765, tightened_for: "Architecture mock" },
+      { topic: 2, name: "OSI model", score: 50, passed: false, from: "Week", to: "Day", next_due: 20_761, tightened_due: null, tightened_for: null },
+      { topic: 3, name: "Memory", score: 100, passed: true, from: null, to: "Day", next_due: 20_761, tightened_due: null, tightened_for: null },
     ] }));
     render(Results, { attempt: 3, onRetry: vi.fn() });
     const panel = await screen.findByRole("region", { name: "Quiz schedule" });
     const items = within(panel).getAllByRole("listitem");
-    expect(items[0]).toHaveTextContent("CPU Passed 86% Moves up to Fortnight · Next quiz on Tue 17 Nov");
+    // dates.feature: results show the tightened next quiz and what it would have been
+    expect(items[0]).toHaveTextContent("CPU Passed 86% Moves up to Fortnight · Next quiz on Sun 8 Nov, tightened for the Architecture mock (would be Tue 17 Nov) Tightened");
     expect(items[1]).toHaveTextContent("Under pass mark 50% Back to Day");
     expect(items[1]).toHaveTextContent("Next quiz tomorrow");
     expect(items[2]).toHaveTextContent("Passed 100% Starts on Day");

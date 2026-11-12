@@ -1,8 +1,10 @@
 <script lang="ts">
   // calendar.feature (R98, R99): what's due each day, and what was done on past days.
-  import { ArrowLeft, Brain, CalendarArrowUp, ChevronLeft, ChevronRight, Dumbbell, ListChecks, Play, SquareStack, TriangleAlert } from "@lucide/svelte";
+  // dates.feature (R130 to R137): exams, deadlines and other dates, and what they tighten.
+  import { ArrowLeft, Brain, CalendarArrowUp, ChevronLeft, ChevronRight, Dumbbell, Flag, GraduationCap, ListChecks, Pencil, Play, Plus, SquareStack, TriangleAlert } from "@lucide/svelte";
   import { untrack } from "svelte";
-  import { api, errorMessage, type CalendarDay, type DayView, type DrillView, type Id, type StruggleView } from "../lib/api";
+  import { api, errorMessage, type CalendarDay, type DateView, type DayView, type DrillView, type Id, type ModuleRow, type StruggleView, type TopicQuizView, type TopicRow } from "../lib/api";
+  import DateDialog from "../components/DateDialog.svelte";
   import MoveDrillDialog from "../components/MoveDrillDialog.svelte";
   import PageHeader from "../components/PageHeader.svelte";
   import { dateOf, dueLabel, fullLabel, monthGrid, monthLabel, onDay } from "../lib/dates";
@@ -25,6 +27,10 @@
   let day = $state<DayView | null>(null);
   let moving = $state<DrillView | null>(null);
   let error = $state("");
+  let dates = $state<DateView[]>([]);
+  /** The date dialog: "new" to add one, a date to edit it. */
+  let editing = $state<DateView | "new" | null>(null);
+  let dialogData = $state<{ modules: ModuleRow[]; topics: TopicRow[]; quizzes: TopicQuizView[] } | null>(null);
 
   const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -51,6 +57,10 @@
     { key: "struggles", icon: TriangleAlert, count: entry.struggles, one: "struggle", many: "struggles" },
   ].filter((item) => item.count > 0);
   const longDate = (value: number) => (value === today ? `Today, ${fullLabel(value, today)}` : fullLabel(value, today));
+  const isExam = (date: DateView) => /exam/i.test(date.kind);
+  /** "today", "tomorrow", "in 10 days", "3 days ago". */
+  const inDays = (left: number) => (left === 0 ? "today" : left === 1 ? "tomorrow" : left > 0 ? `in ${left} days` : left === -1 ? "yesterday" : `${-left} days ago`);
+  const comingUp = $derived(dates.filter((d) => d.days_left >= 0).slice(0, 3));
 
   async function load() {
     today = await api.today();
@@ -63,7 +73,23 @@
 
   async function loadMonth() {
     if (!grid.length) return;
-    days = await api.calendarMonth(grid[0], grid[grid.length - 1]);
+    [days, dates] = await Promise.all([api.calendarMonth(grid[0], grid[grid.length - 1]), api.dates()]);
+  }
+
+  async function openDialog(date: DateView | "new") {
+    error = "";
+    if (!dialogData) {
+      const [modules, topics, quizzes] = await Promise.all([api.modules(), api.topics(), api.topicQuizzes()]);
+      dialogData = { modules, topics, quizzes };
+    }
+    editing = date;
+  }
+
+  async function dateSaved() {
+    editing = null;
+    dialogData = null;
+    if (selected !== null) await open(selected);
+    await loadMonth();
   }
 
   function shift(by: number) {
@@ -130,7 +156,20 @@
       <span class="w-44 text-center text-[19px] font-extrabold" aria-live="polite">{year ? monthLabel(year, month) : ""}</span>
       <button class="btn btn-ghost btn-sm btn-square" aria-label="Next month" onclick={() => shift(1)}><ChevronRight class="size-4" /></button>
       <button class="btn btn-outline btn-sm ml-2" onclick={() => { const now = dateOf(today); [year, month] = [now.year, now.month]; loadMonth(); }}>Today</button>
+      <button class="btn btn-primary btn-sm ml-2" onclick={() => openDialog("new")}><Plus class="size-4" />Add a date</button>
     </PageHeader>
+    {#if comingUp.length}
+      <section class="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2" aria-label="Coming up">
+        <span class="eyebrow">Coming up</span>
+        {#each comingUp as date (date.id)}
+          <button class="flex min-h-6 items-center gap-2 py-1 text-sm hover:underline" onclick={() => open(date.day)}>
+            {#if isExam(date)}<GraduationCap class="size-4 text-primary-ink" aria-hidden="true" />{:else}<Flag class="size-4 text-primary-ink" aria-hidden="true" />{/if}
+            <b class="font-extrabold">{date.name}</b>{" "}<span class="text-muted">{fullLabel(date.day, today)}, {inDays(date.days_left)}</span>
+            {#if date.tighten}{" "}<span class="chip chip-primary">Reviews tightened</span>{/if}
+          </button>
+        {/each}
+      </section>
+    {/if}
     <!-- Each day is a tile, each kind of work a chip. Today stands on a pink ledge, past days sit flat. -->
     <div>
       <div bind:this={gridEl} role="grid" aria-label={monthLabel(year, month)} class="flex flex-col gap-2">
@@ -143,12 +182,15 @@
               {@const entry = days.find((d) => d.day === value)}
               {@const date = dateOf(value)}
               {@const items = entry ? counts(entry) : []}
-              {@const shown = items.length > MAX_LINES ? items.slice(0, MAX_LINES - 1) : items}
+              {@const onThisDay = dates.filter((d) => d.day === value)}
+              {@const room = Math.max(1, MAX_LINES - onThisDay.length)}
+              {@const shown = items.length > room ? items.slice(0, room - 1) : items}
               <div role="gridcell" class="cal-cell">
                 <button class="cal-day {date.month !== month ? 'other' : ''} {value < today ? 'past' : ''}" data-day={value} tabindex={value === (selected ?? today) ? 0 : -1} aria-current={value === today ? "date" : undefined}
-                  aria-label="{longDate(value)}{items.length ? `: ${items.map((c) => `${c.count} ${c.count === 1 ? c.one : c.many}`).join(", ")}${entry?.when === 'Past' ? ' done' : ' due'}` : ''}"
+                  aria-label="{longDate(value)}{onThisDay.map((d) => `, ${d.name}`).join('')}{items.length ? `: ${items.map((c) => `${c.count} ${c.count === 1 ? c.one : c.many}`).join(", ")}${entry?.when === 'Past' ? ' done' : ' due'}` : ''}"
                   onclick={() => open(value)} onkeydown={(event) => gridKeys(event, value)}>
                   <span class="flex items-center gap-2"><span class="num">{date.date}</span>{#if value === today}<span class="cal-today">Today</span>{/if}</span>
+                  {#each onThisDay as marked (marked.id)}<span class="date-chip {isExam(marked) ? 'exam' : ''}">{#if isExam(marked)}<GraduationCap class="size-3.5 shrink-0" aria-hidden="true" />{:else}<Flag class="size-3.5 shrink-0" aria-hidden="true" />{/if}<span class="truncate">{marked.name}</span></span>{/each}
                   {#each shown as item (item.key)}<span class="chip cal-chip {value < today ? '' : value === today ? 'chip-due' : `cal-${item.key}`}">{item.count} {item.count === 1 ? item.one : item.many}</span>{/each}
                   {#if shown.length < items.length}<span class="chip cal-chip">+{items.length - shown.length} more</span>{/if}
                 </button>
@@ -180,6 +222,38 @@
     {#if error}<p role="alert" class="mb-4 text-sm text-error">{error}</p>{/if}
 
     <div class="space-y-6">
+      {#each day.soon as date (date.id)}
+        <section class="panel flex items-center gap-3 p-5" aria-label="{date.name} coming up">
+          <span class="well size-10" aria-hidden="true">{#if isExam(date)}<GraduationCap class="size-5" />{:else}<Flag class="size-5" />{/if}</span>
+          <p class="text-[15px]"><b class="font-extrabold">{date.name}</b> in {date.day - day.day} {date.day - day.day === 1 ? "day" : "days"}, on {fullLabel(date.day, today)}{date.tighten ? ". Reviews for it are tightened" : ""}</p>
+        </section>
+      {/each}
+      {#each day.dates as panel (panel.date.id)}
+        <section class="panel p-6" aria-labelledby="h-date-{panel.date.id}">
+          <div class="flex items-start justify-between gap-4">
+            <div class="flex items-center gap-3"><span class="well size-10" aria-hidden="true">{#if isExam(panel.date)}<GraduationCap class="size-5" />{:else}<Flag class="size-5" />{/if}</span>
+              <div><h2 id="h-date-{panel.date.id}" class="text-lg font-black">{panel.date.name}</h2>
+                <p class="text-sm text-muted">{[panel.date.kind, panel.date.covers_label, inDays(panel.date.days_left)].filter(Boolean).join(" · ")}</p></div></div>
+            <button class="btn btn-ghost btn-sm" onclick={() => openDialog(panel.date)}><Pencil class="size-4" />Edit</button>
+          </div>
+          {#if panel.quizzes.length || panel.unquizzed.length || panel.cards_before}
+            <h3 class="mt-5 text-sm font-extrabold">{panel.date.tighten ? "Before it, with reviews tightened" : "Before it"}</h3>
+            <ul class="mt-2 divide-y">
+              {#each panel.quizzes as quiz (quiz.topic)}
+                <li class="py-3"><p class="text-[15px] font-extrabold">{quiz.name}</p><p class="text-sm text-muted">{quiz.step} step · next quiz {fullLabel(quiz.to, today)}{quiz.to < quiz.from ? `, pulled in from ${fullLabel(quiz.from, today)}` : ""}</p></li>
+              {/each}
+              {#each panel.unquizzed as topic (topic.topic)}
+                <li class="flex items-center justify-between gap-4 py-3"><div><p class="text-[15px] font-extrabold">{topic.name}</p><p class="text-sm text-muted">Not quizzed yet, so nothing to tighten</p></div>
+                  {#if topic.questions}<button class="btn btn-outline btn-sm text-primary-ink" onclick={() => onQuiz([topic.topic])}><Play class="size-4" />Quiz it</button>{/if}</li>
+              {/each}
+              {#if panel.cards_before}<li class="py-3"><p class="text-[15px] font-extrabold">{panel.cards_before} {panel.cards_before === 1 ? "card" : "cards"} due before it</p>{#if panel.cards_pulled}<p class="text-sm text-muted">{panel.cards_pulled} of them pulled in from after it</p>{/if}</li>{/if}
+            </ul>
+            {#if panel.date.tighten}<p class="mt-4 text-sm text-muted">From the day after, these go back to their normal schedules.</p>{/if}
+          {:else if !panel.date.topics.length}
+            <p class="mt-3 text-sm text-muted">It doesn't cover any topics, so nothing is tightened for it.</p>
+          {/if}
+        </section>
+      {/each}
       {#if day.drills.length || day.drill_runs.length}
         <section class="panel p-6" aria-labelledby="h-drills"><h2 id="h-drills" class="flex items-center gap-3 text-lg font-black"><span class="well size-10" aria-hidden="true"><Dumbbell class="size-5" /></span>Drills</h2>
           <ul class="mt-3 divide-y">
@@ -216,7 +290,7 @@
       {#if day.quizzes.length || day.attempts.length}
         <section class="panel p-6" aria-labelledby="h-quizzes"><h2 id="h-quizzes" class="flex items-center gap-3 text-lg font-black"><span class="well size-10" aria-hidden="true"><ListChecks class="size-5" /></span>Quizzes</h2>
           <ul class="mt-3 divide-y">
-            {#each day.quizzes as quiz (quiz.topic)}<li class="flex items-center justify-between gap-4 py-3"><div><p class="text-[15px] font-extrabold">{quiz.name}</p><p class="text-sm text-muted">Quiz due · {quiz.step} step · {quiz.questions} {quiz.questions === 1 ? "question" : "questions"}</p></div>
+            {#each day.quizzes as quiz (quiz.topic)}<li class="flex items-center justify-between gap-4 py-3"><div><p class="text-[15px] font-extrabold">{quiz.name}</p><p class="text-sm text-muted">Quiz due · {quiz.step} step · {quiz.questions} {quiz.questions === 1 ? "question" : "questions"}{quiz.tightened_for ? ` · tightened for the ${quiz.tightened_for}` : ""}</p></div>
               {#if day.when === "Today"}<button class="btn btn-outline btn-sm text-primary-ink" onclick={() => onQuiz([quiz.topic])}><Play class="size-4" />Quiz</button>{/if}</li>{/each}
             {#if day.when === "Today" && day.quizzes.length > 1}<li class="flex justify-end pt-3"><button class="btn btn-ghost btn-sm" onclick={() => onQuiz(day!.quizzes.map((q) => q.topic))}><Play class="size-4" />Quiz all {day.quizzes.length} together</button></li>{/if}
             {#each day.attempts as attempt (attempt.attempt)}<li class="flex items-center justify-between gap-4 py-3"><div><p class="text-[15px] font-extrabold">Quiz: {attempt.topics.join(", ")}</p><p class="text-sm text-muted">{attempt.right} of {attempt.total} right{attempt.moves.length ? ` · ${attempt.moves.join(" · ")}` : ""}</p></div>
@@ -232,11 +306,15 @@
           </ul></section>
       {/if}
 
-      {#if !total && !day.cards.reviewed && !day.checks.length && !day.attempts.length && !day.drill_runs.length && !day.struggles.length}
+      {#if !total && !day.dates.length && !day.cards.reviewed && !day.checks.length && !day.attempts.length && !day.drill_runs.length && !day.struggles.length}
         <p class="panel p-8 text-muted">{day.when === "Past" ? "Nothing was done on this day." : "Nothing is due on this day yet."}</p>
       {/if}
     </div>
   </div>
+{/if}
+
+{#if editing && dialogData}
+  <DateDialog {today} date={editing === "new" ? null : editing} startDay={editing === "new" ? selected : null} modules={dialogData.modules} topics={dialogData.topics} quizzes={dialogData.quizzes} onSaved={dateSaved} onCancel={() => (editing = null)} />
 {/if}
 
 {#if moving && selected !== null}

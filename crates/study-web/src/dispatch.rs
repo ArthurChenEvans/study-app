@@ -167,6 +167,12 @@ pub fn dispatch_at(app: &mut App, command: &str, args: &Value, today: i64, clock
         "calendar_month" => json(app.calendar_month(arg(a, "from")?, arg(a, "to")?, today)),
         "calendar_day" => json(app.calendar_day(arg(a, "day")?, today)),
         "due_today" => json(app.due_today(today)),
+        "dates" => json(app.dates(today)),
+        "add_date" => json(app.add_date(arg(a, "date")?)),
+        "update_date" => json(app.update_date(arg(a, "id")?, arg(a, "date")?)),
+        "delete_date" => json(app.delete_date(arg(a, "id")?)),
+        "preview_date" => json(app.preview_date(arg(a, "id")?, arg(a, "date")?, today)),
+        "date_panel" => json(app.date_panel(arg(a, "id")?, today)),
 
         _ => Err(ApiError::new(format!("Command {command} not found"))),
     }

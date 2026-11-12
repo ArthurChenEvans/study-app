@@ -227,11 +227,12 @@ impl App {
         Ok((new, old))
     }
 
-    fn in_scope(&self, scope: Option<Subject>) -> ApiResult<Vec<CardRow>> {
+    /// Cards in the scope, not archived, with due days tightened for dates (R132).
+    fn in_scope(&self, scope: Option<Subject>, today: i64) -> ApiResult<Vec<CardRow>> {
         let topics = self.store.topics()?;
+        let now = self.now(today)?;
         Ok(self
-            .store
-            .cards()?
+            .cards_now(self.store.cards()?, &now)
             .into_iter()
             .filter(|card| {
                 !card.archived
@@ -261,14 +262,14 @@ impl App {
     /// Cards due today across every topic, for the sidebar (R68).
     pub fn cards_due_count(&self, today: i64) -> ApiResult<usize> {
         let settings = self.store.card_settings()?;
-        let due = self.due_counts(&self.in_scope(None)?, &settings, today)?;
+        let due = self.due_counts(&self.in_scope(None, today)?, &settings, today)?;
         Ok(due.new + due.learning + due.review)
     }
 
     /// The Cards screen (R68).
     pub fn cards_home(&self, today: i64) -> ApiResult<CardsHome> {
         let settings = self.store.card_settings()?;
-        let cards = self.in_scope(None)?;
+        let cards = self.in_scope(None, today)?;
         let due = self.due_counts(&cards, &settings, today)?;
         // Today's bar is today's session (new cards within the daily limit), so a big
         // backlog of unseen cards doesn't flatten the rest of the chart.
@@ -356,7 +357,7 @@ impl App {
                 .find(|r| r.id == m)
                 .map(|r| r.name)
         });
-        let cards = self.store.cards_in(topic)?;
+        let cards = self.cards_now(self.store.cards_in(topic)?, &self.now(today)?);
         let mut per_note: HashMap<NoteId, usize> = HashMap::new();
         for card in &cards {
             *per_note.entry(card.note).or_default() += 1;
@@ -445,7 +446,7 @@ impl App {
 
     pub fn start_review(&mut self, scope: Option<Subject>, today: i64) -> ApiResult<ReviewStep> {
         let settings = self.store.card_settings()?;
-        let cards = self.in_scope(scope)?;
+        let cards = self.in_scope(scope, today)?;
         let (new_today, reviewed_today) = self.reviews_today(today)?;
         let list: Vec<(CardId, Schedule)> = cards.iter().map(|c| (c.id, c.schedule)).collect();
         let queue: VecDeque<CardId> =
@@ -631,7 +632,7 @@ impl App {
             }
         }
         worth_rewriting.sort_by_key(|r| std::cmp::Reverse(r.agains));
-        let cards = self.in_scope(None)?;
+        let cards = self.in_scope(None, today)?;
         let busiest = (1..14)
             .map(|offset| {
                 (

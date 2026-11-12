@@ -244,3 +244,16 @@ Decided with the design: keywords are checked in any order, every answer is righ
 | R127 | If the folder can't be found, changes are kept and counted, and go out once it's back. A change file that's half-written is read once it's complete. A computer on a newer version of the app is skipped with a message to update |
 | R128 | Restoring a backup pauses sync, since the other computers would bring the newer changes straight back. Your data and the sidebar say whether sync is on, paused or has things to check, in words |
 | R129 | Right, wrong and guessed use standard green and red by default, with a switch for colour-blind safe blue and orange, remembered on this device. Both always show an icon and a word, and guessed is always hatched |
+
+## Dates on the calendar (approved 12 Nov 2026)
+
+| ID | Requirement |
+|---|---|
+| R130 | A date has a name, a day and an optional kind (Exam, Deadline, Coursework and Mock exam are suggested, anything else is fine). Dates can be added, edited and deleted from the calendar, where "Add a date" is the primary button |
+| R131 | A date covers nothing, a module (every topic in it, including ones added later) or picked topics. A deleted topic or module drops out of what it covers |
+| R132 | A date that covers something can tighten reviews, on by default for the Exam kind. Until the day, no topic quiz, card or drill for a covered topic waits longer than half the days that were left when it was last done, so nothing lands after the date. Recall checklists aren't tightened. When two dates cover the same topic, the tighter one wins |
+| R133 | Tightening is worked out, not stored: each item's due day is the earlier of its normal one and "last done + half the days that were left then". From the day after the date, items go back to their normal schedule. Editing or deleting a date puts everything back. The day before a date there's nothing left to halve, so an item done then is scheduled normally. Cards keep their FSRS memory, only the due day is pulled in. Never-quizzed topics and new cards have nothing to tighten |
+| R134 | The month view shows dates as a chip at the top of their day (a cap for exams, a flag for the rest), and a "Coming up" line above the grid gives the next dates with how many days are left. Counts on each day use the tightened due days |
+| R135 | The day view shows a date's own panel: how many days are left, what it covers, each covered topic's next quiz and where it was pulled in from, how many of its cards are due before it and how many were pulled in, and the never-quizzed topics with a Quiz button. A day before a covering date says how many days are left, and a tightened quiz says which date it's tightened for |
+| R136 | Adding or editing a date previews what moves before saving: each topic quiz moving from one day to another, topics with no schedule to tighten, and how many cards come in before it |
+| R137 | Topics show "Tightened for" a date under a tightened next quiz, and results show what the next quiz date would have been without it. Dates sync and go into full exports like everything else |
