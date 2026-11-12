@@ -26,7 +26,7 @@ describe("Suggestions", () => {
   it("filters by where they came from", async () => {
     const u = userEvent.setup();
     render(Suggestions, { onBack: vi.fn() });
-    const list = await screen.findByRole("list", { name: "Suggestions" });
+    const list = await screen.findByRole("group", { name: "Suggestions" });
     expect(within(list).getAllByRole("listitem")).toHaveLength(2);
     await u.click(screen.getByRole("radio", { name: "Quiz mistakes 1" }));
     expect(within(list).getAllByRole("listitem")).toHaveLength(1);
@@ -90,20 +90,27 @@ describe("Suggestions", () => {
     expect(within(item).getByLabelText("Back")).toHaveValue("");
     expect(within(item).getByText(/Starts as what tripped you up/)).toBeInTheDocument();
   });
-  it("shows ten at a time, says how many, and filters by topic", async () => {
+  // lists.feature: Suggestions grouped by topic (R149)
+  it("groups by topic, biggest first, ten at a time, and dismisses a group", async () => {
     const u = userEvent.setup();
     const many = Array.from({ length: 23 }, (_, n): Suggestion => ({ ...quiz, key: `quiz:${n}`, text: `Question ${n}`, topic: n < 20 ? 2 : 1, from: n < 20 ? "Quiz: OSI model" : "Quiz: CPU" }));
     mocked.cardSuggestions.mockResolvedValue(many);
     render(Suggestions, { onBack: vi.fn() });
-    const list = await screen.findByRole("list", { name: "Suggestions" });
-    expect(within(list).getAllByRole("listitem")).toHaveLength(10);
-    expect(within(list).getAllByRole("listitem")[0]).toHaveTextContent("QuizOSI model · wrong");
-    expect(screen.getByText("Showing 10 of 23")).toBeInTheDocument();
-    await u.click(screen.getByRole("button", { name: "Show 10 more" }));
-    await u.click(screen.getByRole("button", { name: "Show 3 more" }));
-    expect(within(list).getAllByRole("listitem")).toHaveLength(23);
-    expect(screen.queryByText(/^Showing/)).toBeNull();
+    const osi = await screen.findByRole("region", { name: "OSI model suggestions" });
+    expect(within(osi).getAllByRole("listitem")).toHaveLength(10);
+    expect(within(osi).getAllByRole("listitem")[0]).toHaveTextContent("QuizOSI model · wrong");
+    expect(within(osi).getByText("Showing 10 of 20")).toBeInTheDocument();
+    await u.click(within(osi).getByRole("button", { name: "Show 10 more" }));
+    expect(within(osi).getAllByRole("listitem")).toHaveLength(20);
+    const cpu = screen.getByRole("region", { name: "CPU suggestions" });
+    expect(within(cpu).queryAllByRole("listitem")).toHaveLength(0);
+    await u.click(within(cpu).getByRole("button", { expanded: false }));
+    expect(within(cpu).getAllByRole("listitem")).toHaveLength(3);
+    await u.click(within(cpu).getByRole("button", { name: /Dismiss these 3/ }));
+    expect(mocked.dismissSuggestion).toHaveBeenCalledTimes(3);
+    await u.type(screen.getByRole("searchbox", { name: "Filter" }), "Question 1");
+    expect(screen.getByText(/11 of 23/)).toBeInTheDocument();
     await u.selectOptions(screen.getByLabelText("Topic"), "CPU");
-    expect(within(list).getAllByRole("listitem")).toHaveLength(3);
+    expect(screen.queryByRole("region", { name: "OSI model suggestions" })).toBeNull();
   });
 });

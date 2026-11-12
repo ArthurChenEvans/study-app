@@ -100,4 +100,27 @@ describe("Search", () => {
     await u.type(await screen.findByRole("searchbox"), "tensor core");
     expect(await screen.findByText('No matches for "tensor core"')).toBeInTheDocument();
   });
+
+  // lists.feature: results 50 at a time, recent searches until you type (R147)
+  it("shows 50 results at a time and remembers recent searches", async () => {
+    localStorage.clear();
+    localStorage.setItem("studyapp-recent-searches", JSON.stringify(["cache", "tlb"]));
+    mocked.search.mockResolvedValue(Array.from({ length: 120 }, (_, index) => ({ Question: { id: index, text: `Question ${index}`, topic: 1, topic_name: "CPU", tags: [], edited: "2026-11-02 10:15:00" } })));
+    const u = userEvent.setup();
+    render(Search, { onOpenTopic: vi.fn() });
+    const recent = await screen.findByRole("region", { name: "Recent searches" });
+    expect(await screen.findByText("Recently edited")).toBeInTheDocument();
+    expect(within(await screen.findByRole("list", { name: "Questions" })).getAllByRole("listitem")).toHaveLength(10);
+    await u.click(within(recent).getByRole("button", { name: "tlb" }));
+    expect(lastQuery().text).toBe("tlb");
+    expect(screen.queryByRole("region", { name: "Recent searches" })).toBeNull();
+    const list = await screen.findByRole("list", { name: "Questions" });
+    await screen.findByText("50 of 120 shown");
+    expect(within(list).getAllByRole("listitem")).toHaveLength(50);
+    await u.click(screen.getByRole("button", { name: "Show 50 more" }));
+    await u.click(screen.getByRole("button", { name: "Show 20 more" }));
+    expect(within(list).getAllByRole("listitem")).toHaveLength(120);
+    localStorage.clear();
+  });
 });
+

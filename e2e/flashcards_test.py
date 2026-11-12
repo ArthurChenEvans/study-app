@@ -187,7 +187,7 @@ try:
     driver.execute_script("location.hash = '#topics'")
     driver.execute_script("location.hash = '#cards'")
     button("Look through all").click()
-    item = find("//ul[@aria-label='Suggestions']/li[contains(., \"Belady\")]")
+    item = find("//*[@aria-label='Suggestions']//li[contains(., \"Belady\")]")
     item.find_element(By.XPATH, ".//button[starts-with(normalize-space(), 'Make a card')]").click()
     front = labelled("Front")
     assert front.get_attribute("value") == ""

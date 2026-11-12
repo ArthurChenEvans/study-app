@@ -32,7 +32,8 @@ describe("Bibliography", () => {
   it("lists sources in APA with where they're used", async () => {
     mocked.sources.mockResolvedValue([kirk]);
     render(Bibliography);
-    const entry = await screen.findByRole("listitem", { name: /Kirk/ });
+    await userEvent.click(await screen.findByRole("button", { name: /Kirk/ }));
+    const entry = screen.getByRole("complementary", { name: "Picked source" });
     expect(within(entry).getByText("Programming massively parallel processors").tagName).toBe("EM");
     expect(entry).toHaveTextContent("Cited by 7 questions");
     expect(within(entry).getByText("GPU")).toBeInTheDocument();
@@ -43,6 +44,21 @@ describe("Bibliography", () => {
     mocked.sources.mockResolvedValue([{ ...kirk, cited_by_questions: 1 }]);
     render(Bibliography);
     expect(await screen.findByText(/^1 question$/)).toBeInTheDocument();
+  });
+
+  // lists.feature: Bibliography as compact sortable rows with a filter (R149)
+  it("sorts and filters sources", async () => {
+    const other: SourceRow = { ...kirk, id: 2, fields: { ...kirk.fields, authors: "Abel, A.", year: "2019", title: "Networks" }, cited_by_questions: 1 };
+    mocked.sources.mockResolvedValue([kirk, other]);
+    const u = userEvent.setup();
+    render(Bibliography);
+    const names = async () => (await screen.findAllByRole("row")).slice(1).map((row) => within(row).getByRole("button").textContent);
+    expect(await names()).toEqual(["Abel, A.", "Kirk, D. B., & Hwu, W. W."]);
+    await u.click(within(screen.getByRole("columnheader", { name: /Cited by/ })).getByRole("button"));
+    await u.click(within(screen.getByRole("columnheader", { name: /Cited by/ })).getByRole("button"));
+    expect(await names()).toEqual(["Kirk, D. B., & Hwu, W. W.", "Abel, A."]);
+    await u.type(screen.getByRole("searchbox", { name: "Filter" }), "2019");
+    expect(await names()).toEqual(["Abel, A."]);
   });
 
   it("has an empty state", async () => {
@@ -68,7 +84,7 @@ describe("Bibliography", () => {
       authors: "University College Isle of Man", year: "2026", title: "Lecture 3: The processor pipeline",
       edition: null, description: "Lecture slides", publisher: null, url: null,
     });
-    expect(await screen.findByRole("listitem", { name: /Kirk/ })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: /Kirk/ })).toBeInTheDocument();
   });
 
   it("shows why a source couldn't be added", async () => {
@@ -86,7 +102,8 @@ describe("Bibliography", () => {
     mocked.sources.mockResolvedValue([kirk]);
     const u = userEvent.setup();
     render(Bibliography);
-    await u.click(await screen.findByRole("button", { name: "Source actions" }));
+    await u.click(await screen.findByRole("button", { name: /Kirk/ }));
+    await u.click(screen.getByRole("button", { name: "Source actions" }));
     await u.click(screen.getByRole("menuitem", { name: "Edit source" }));
     const year = screen.getByLabelText("Year");
     expect(year).toHaveValue("2022");
@@ -102,7 +119,8 @@ describe("Bibliography", () => {
     mocked.deleteSource.mockResolvedValue(7);
     const u = userEvent.setup();
     render(Bibliography);
-    await u.click(await screen.findByRole("button", { name: "Source actions" }));
+    await u.click(await screen.findByRole("button", { name: /Kirk/ }));
+    await u.click(screen.getByRole("button", { name: "Source actions" }));
     await u.click(screen.getByRole("menuitem", { name: "Delete source…" }));
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveTextContent("7 questions cite it");

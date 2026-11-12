@@ -663,3 +663,19 @@ What differs from the exploration page:
 
 Checked: the accessibility audit (contrast, 24px targets, one primary per view) passes on every screen in light, dark and both colour sets. Unit tests and the end-to-end run pass. The end-to-end tests now compare chip and button text without caring about case, since labels are uppercased by CSS.
 
+## Lists at scale built (12 Nov 2026)
+
+Requirements R138 to R149 in `specs/README.md`, scenarios in `specs/features/lists.feature`. The shared pieces live in `src/components/list/` (Rail, FilterBox, SortHeader, ColumnsMenu, TopicPicker) and `src/lib/lists.ts`, with the CSS under "Lists at scale" in `src/app.css`.
+
+- **Topics:** module rail, filter, status buttons, sortable columns, Columns menu, scrolling pane, item card, ticks with Quiz them, Move to module and Tag. Module actions show beside the filter once a module is picked.
+- **New quiz:** the same rail and filter, "Tick all N in a module", and the picked topics as removable chips.
+- **Daily quiz limit:** 5 a day by default, set in Quiz schedule with a warning when more come due. The rest wait their turn, keeping their step. Today says how many wait and when the last comes in.
+- **Search:** recent searches and recently edited questions until you type, then 50 results at a time.
+- **History:** the chart shows the last 30 quizzes (90 days and All one click away). The table is grouped by month, folded after the first two, with a filter.
+- **Suggestions:** grouped by topic, biggest first, folded after the first when there are many, with "Dismiss these N" and a filter.
+- **Bibliography:** one compact sortable row per source with a filter. The full APA reference is in the item card.
+- **Overview:** the 8 weakest topics, with a module picker.
+- **Cards:** the by-topic table sorts by any column and filters once there are more than 8 topics.
+
+Not done from the design: the Topics cards and last-score columns (they need new data from the backend), and the exam date dialog's topic list keeps its own filter instead of the rail, since the dialog is too narrow for one.
+

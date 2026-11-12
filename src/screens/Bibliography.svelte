@@ -5,6 +5,10 @@
   import { api, errorMessage, type SourceFields, type SourceRow, type TopicRow } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
   import Rich from "../components/Rich.svelte";
+  import Highlight from "../components/Highlight.svelte";
+  import FilterBox from "../components/list/FilterBox.svelte";
+  import SortHeader, { type Sort } from "../components/list/SortHeader.svelte";
+  import { matchesFilter, sortBy } from "../lib/lists";
 
   let sources = $state<SourceRow[]>([]);
   let topics = $state<TopicRow[]>([]);
@@ -43,6 +47,13 @@
     { key: "publisher", label: "Publisher" },
     { key: "url", label: "URL", wide: true },
   ];
+
+  // lists.feature (R149): one compact sortable row per source, the full reference in the item card.
+  let filter = $state("");
+  let sort = $state<Sort>({ key: "authors", up: true });
+  let picked = $state<number | null>(null);
+  const shown = $derived(sortBy(sources.filter((s) => matchesFilter(filter, s.fields.authors, s.fields.title, s.fields.year, s.fields.publisher)), (s) => (sort.key === "year" ? (s.fields.year ?? null) : sort.key === "title" ? s.fields.title : sort.key === "cited" ? s.cited_by_questions : s.fields.authors || s.fields.title), sort.up, (s) => s.fields.title));
+  const pickedSource = $derived(sources.find((s) => s.id === picked) ?? null);
 
   const topicName = (id: number) => topics.find((topic) => topic.id === id)?.name ?? "Deleted topic";
 
@@ -96,21 +107,49 @@
       <button class="btn btn-primary mt-6" onclick={open}><Plus class="size-4" />Add your first source</button>
     </div>
   {:else}
-    <!-- Each source is a tile, its APA line exactly as it is, the topics citing it as chips -->
-    <ul class="flex flex-col gap-3">
-      {#each sources as source (source.id)}
-        <li class="panel flex items-start gap-4 px-5 py-4" aria-label={source.fields.authors}>
-          <span class="well" aria-hidden="true"><BookOpen class="size-5 fill-current" /></span>
-          <div class="min-w-0 flex-1">
-            <p class="pl-8 -indent-8 text-[15.5px] leading-relaxed"><Rich inline text={source.apa} /></p>
-            <p class="mt-1.5 flex flex-wrap items-center gap-1.5 text-[13px]"><span class="text-muted">Cited by <span class="tabular-nums">{source.cited_by_questions} {source.cited_by_questions === 1 ? "question" : "questions"}</span></span>{" "}{#each source.used_by as id (id)}<span class="chip">{topicName(id)}</span>{:else}<span class="text-muted">· not cited yet</span>{/each}</p>
+    <div class="mb-3"><FilterBox bind:value={filter} shown={shown.length} total={sources.length} placeholder="Filter by author, title or year…" /></div>
+    <div class="flex gap-5">
+      <div class="min-w-0 flex-1">
+        {#if shown.length}
+          <div class="panel pane">
+            <table class="rows" aria-label="Sources">
+              <thead><tr>
+                <SortHeader key="authors" label="Author(s)" bind:sort />
+                <SortHeader key="year" label="Year" bind:sort />
+                <SortHeader key="title" label="Title" bind:sort />
+                <SortHeader key="cited" label="Cited by" numeric bind:sort />
+              </tr></thead>
+              <tbody>
+                {#each shown as source (source.id)}
+                  <tr aria-selected={picked === source.id} onclick={() => (picked = source.id)}>
+                    <td class="max-w-56"><button type="button" class="block min-h-6 w-full truncate text-left font-extrabold" onclick={() => (picked = source.id)}><Highlight text={source.fields.authors || "No author"} term={filter} /></button></td>
+                    <td class="whitespace-nowrap tabular-nums">{source.fields.year ?? "n.d."}</td>
+                    <td class="max-w-0 w-full truncate italic"><Highlight text={source.fields.title} term={filter} /></td>
+                    <td class="num whitespace-nowrap">{source.cited_by_questions} {source.cited_by_questions === 1 ? "question" : "questions"}</td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
           </div>
-          <div class="shrink-0">
-            <RowMenu small label="Source actions" items={[{ label: "Edit source", onSelect: () => edit(source) }, { label: "Delete source…", danger: true, onSelect: () => (deleting = source) }]} />
+        {:else}
+          <p class="panel p-6 text-sm text-muted">Nothing matches "{filter.trim()}". <button class="btn btn-link btn-sm" onclick={() => (filter = "")}>Clear the filter</button></p>
+        {/if}
+      </div>
+      <aside class="itemcard" aria-label="Picked source">
+        {#if pickedSource}
+          {@const source = pickedSource}
+          <div class="panel p-5">
+            <div class="flex items-start justify-between gap-2"><span class="well" aria-hidden="true"><BookOpen class="size-5" /></span>
+              <RowMenu small label="Source actions" items={[{ label: "Edit source", onSelect: () => edit(source) }, { label: "Delete source…", danger: true, onSelect: () => (deleting = source) }]} /></div>
+            <p class="mt-3 pl-6 -indent-6 text-[15px] leading-relaxed"><Rich inline text={source.apa} /></p>
+            <p class="mt-3 text-sm text-muted">Cited by <span class="tabular-nums">{source.cited_by_questions} {source.cited_by_questions === 1 ? "question" : "questions"}</span></p>
+            <div class="mt-2 flex flex-wrap gap-1.5">{#each source.used_by as id (id)}<span class="chip">{topicName(id)}</span>{:else}<span class="text-sm text-muted">Not cited yet</span>{/each}</div>
           </div>
-        </li>
-      {/each}
-    </ul>
+        {:else}
+          <div class="panel p-5 text-sm text-muted"><p class="font-extrabold text-base-content">Pick a source to see it here</p><p class="mt-2">The full APA reference and the topics citing it show here.</p></div>
+        {/if}
+      </aside>
+    </div>
   {/if}
 </div>
 

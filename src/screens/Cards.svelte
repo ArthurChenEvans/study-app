@@ -1,4 +1,8 @@
 <script lang="ts">
+  import FilterBox from "../components/list/FilterBox.svelte";
+  import SortHeader, { type Sort } from "../components/list/SortHeader.svelte";
+  import Highlight from "../components/Highlight.svelte";
+  import { matchesFilter, sortBy } from "../lib/lists";
   // flashcards.feature (R68, R74, R75): what's due today, the forecast, retention, per topic.
   import { CircleCheck, Inbox, Play, Plus, RefreshCw, RotateCcw, Settings2, SquareStack } from "@lucide/svelte";
   import { api, errorMessage, type CardSettings, type CardsHome, type ModuleRow, type Subject, type TopicRow } from "../lib/api";
@@ -11,6 +15,10 @@
   let today = $state(0);
   let modules = $state<ModuleRow[]>([]);
   let topics = $state<TopicRow[]>([]);
+  // lists.feature (R138, R139, R141): the by-topic table filters and sorts, in its own pane.
+  let filter = $state("");
+  let sort = $state<Sort>({ key: "review", up: false });
+  const byTopic = $derived(home ? sortBy(home.per_topic.filter((row) => matchesFilter(filter, row.name, row.module)), (row) => (sort.key === "name" ? row.name : sort.key === "new" ? row.due.new : sort.key === "learning" ? row.due.learning : sort.key === "total" ? row.total : sort.key === "retention" ? row.retention : row.due.review), sort.up, (row) => row.name) : []);
   let scope = $state("");
   let editing = $state<CardSettings | null>(null);
   let noLimit = $state(false);
@@ -146,14 +154,15 @@
 
     <section aria-labelledby="by-topic-h">
       <h2 id="by-topic-h" class="sr-only">By topic</h2>
-      <div class="panel overflow-hidden">
-        <table class="table table-fixed" aria-label="Cards by topic">
+      {#if home.per_topic.length > 8}<div class="mb-3"><FilterBox bind:value={filter} shown={byTopic.length} total={home.per_topic.length} placeholder="Filter topics…" /></div>{/if}
+      <div class="panel pane">
+        <table class="rows table-fixed" aria-label="Cards by topic">
           <colgroup><col class="w-[27%]" /><col class="w-[11%]" /><col class="w-[14%]" /><col class="w-[15%]" /><col class="w-[11%]" /><col class="w-[22%]" /></colgroup>
-          <thead><tr class="text-muted"><th>Topic</th><th>New</th><th>Learning</th><th>To review</th><th>Cards</th><th>Retention</th></tr></thead>
+          <thead><tr><SortHeader key="name" label="Topic" bind:sort /><SortHeader key="new" label="New" bind:sort /><SortHeader key="learning" label="Learning" bind:sort /><SortHeader key="review" label="To review" bind:sort /><SortHeader key="total" label="Cards" bind:sort /><SortHeader key="retention" label="Retention" bind:sort /></tr></thead>
           <tbody>
-            {#each home.per_topic as row (row.topic)}
-              <tr class="hover:bg-base-100">
-                <td><button class="py-0.5 text-left font-semibold hover:underline" onclick={() => onTopic(row.topic)}>{row.name}</button><div class="text-xs text-muted">{row.module ?? "No module"}</div></td>
+            {#each byTopic as row (row.topic)}
+              <tr>
+                <td><button class="py-0.5 text-left font-semibold hover:underline" onclick={() => onTopic(row.topic)}><Highlight text={row.name} term={filter} /></button><div class="text-xs text-muted">{row.module ?? "No module"}</div></td>
                 <td class="tabular-nums">{row.due.new}</td><td class="tabular-nums">{row.due.learning}</td><td class="tabular-nums">{row.due.review}</td>
                 <td class="tabular-nums">{row.total}</td>
                 <td class="tabular-nums">{#if row.retention === null}<span class="text-muted">None yet</span>{:else}<span class="flex items-center gap-2"><span class="inline-block h-3 w-14 shrink-0 overflow-hidden rounded-full bg-base-300" aria-hidden="true"><span class="block h-full rounded-full" style="width: {row.retention}%; background: var(--chart-ink)"></span></span>{row.retention}%</span>{/if}</td>

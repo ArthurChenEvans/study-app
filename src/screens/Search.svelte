@@ -22,6 +22,35 @@
   let today = $state(0);
   api.today().then((day) => (today = day));
 
+  // lists.feature (R147): results 50 at a time, recent searches until you type.
+  const PAGE = 50;
+  const RECENT_KEY = "studyapp-recent-searches";
+  let limit = $state(PAGE);
+  let recent = $state<string[]>(loadRecent());
+  function loadRecent(): string[] {
+    try {
+      const saved = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]");
+      return Array.isArray(saved) ? saved.filter((item) => typeof item === "string").slice(0, 8) : [];
+    } catch {
+      return [];
+    }
+  }
+  function remember(term: string) {
+    recent = [term, ...recent.filter((item) => item.toLowerCase() !== term.toLowerCase())].slice(0, 8);
+    try {
+      localStorage.setItem(RECENT_KEY, JSON.stringify(recent));
+    } catch {
+      // Only a convenience.
+    }
+  }
+  // A search is remembered once you stop typing for a moment.
+  $effect(() => {
+    const term = text.trim();
+    if (term.length < 2) return;
+    const timer = setTimeout(() => remember(term), 1200);
+    return () => clearTimeout(timer);
+  });
+  const typing = $derived(text.trim() !== "" || module !== "" || tag.trim() !== "");
   const questions = $derived(hits.flatMap((hit) => ("Question" in hit ? [hit.Question] : [])));
   const others = $derived(hits.filter((hit) => !("Question" in hit)));
   const filtered = $derived(module !== "" || tag.trim() !== "");
@@ -29,6 +58,7 @@
   $effect(() => {
     const query: SearchQuery = { text, tab, module: module ? Number(module) : null, tag: tag.trim() || null, sort, descending };
     const mine = ++request;
+    limit = query.text.trim() || query.module !== null || query.tag ? PAGE : 10;
     api.search(query).then((result) => {
       if (mine === request) hits = result; // ignore answers to older keystrokes
     });
@@ -114,9 +144,18 @@
     </div>
   {/if}
 
+  {#if !typing && recent.length}
+    <section class="mt-6" aria-label="Recent searches">
+      <h2 class="eyebrow mb-2">Recent searches</h2>
+      <ul class="flex flex-wrap gap-2">
+        {#each recent as term (term)}<li><button type="button" class="word" onclick={() => (text = term)}>{term}</button></li>{/each}
+      </ul>
+    </section>
+  {/if}
+
   {#if questions.length}
     <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
-      <p class="text-sm text-muted" aria-live="polite">{questions.length} {questions.length === 1 ? "question matches" : "questions match"}{text.trim() ? ` "${text.trim()}"` : ""}</p>
+      <p class="text-sm text-muted" aria-live="polite">{#if !typing}<span class="eyebrow">Recently edited</span>{:else}{questions.length} {questions.length === 1 ? "question matches" : "questions match"}{text.trim() ? ` "${text.trim()}"` : ""}{#if questions.length > limit}, showing {limit}{/if}{/if}</p>
       <div class="flex items-center gap-2 text-sm">
         <span class="text-muted" id="sort-label">Sort</span>
         <div class="seg" role="radiogroup" aria-labelledby="sort-label">
@@ -128,7 +167,7 @@
       </div>
     </div>
     <ol bind:this={resultList} class="panel mt-3 divide-y" aria-label="Questions">
-      {#each questions as question, index (question.id)}
+      {#each questions.slice(0, limit) as question, index (question.id)}
         <li class="search-result">
           <button class="w-full px-6 py-3 text-left" data-result onclick={() => onOpenTopic(question.topic)} onkeydown={(event) => moveFocus(event, index)} aria-describedby="where-{question.id}">
             <span class="block text-[15px]"><Highlight text={question.text} term={text} /></span>
@@ -142,6 +181,9 @@
         </li>
       {/each}
     </ol>
+    {#if questions.length > limit}
+      <div class="mt-3 flex items-center gap-3"><button class="btn btn-outline btn-sm" onclick={() => (limit += PAGE)}>Show {Math.min(PAGE, questions.length - limit)} more</button><span class="text-sm text-muted">{limit} of {questions.length} shown</span></div>
+    {/if}
     <p class="mt-2 text-xs text-muted"><kbd class="kbd kbd-xs">↑</kbd> <kbd class="kbd kbd-xs">↓</kbd> to move, <kbd class="kbd kbd-xs">Enter</kbd> to open</p>
   {/if}
 

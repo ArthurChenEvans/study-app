@@ -35,6 +35,12 @@
   const progress = $derived(overview && overview !== "FirstRun" ? overview.Progress : null);
   const right = (tally: Tally) => tally.right_sure + tally.right_guessed;
   const total = (tally: Tally) => right(tally) + tally.wrong + tally.unanswered;
+  // lists.feature (R149): the 8 weakest, narrowed to one module if you like.
+  let weakModule = $state("all");
+  const moduleOf = (id: number) => topics.find((topic) => topic.id === id)?.module ?? null;
+  let modules = $state<{ id: number; name: string }[]>([]);
+  Promise.resolve().then(() => api.modules()).then((rows) => (modules = rows ?? [])).catch(() => {});
+
   const name = (id: number) => topics.find((topic) => topic.id === id)?.name ?? "Deleted topic";
   const maxReason = $derived(Math.max(1, ...(progress?.reasons.map(([, count]) => count) ?? [1])));
   const scores = $derived(progress?.scores ?? []);
@@ -161,20 +167,22 @@
 
         <section class="panel rise rise-3 p-5">
           <h2 id="weakest" class="text-[18px]">Topics, weakest first</h2>
-          <p class="text-[13px] text-muted">Latest quiz on each topic</p>
+          <div class="flex items-center justify-between gap-2"><p class="text-[13px] text-muted">Latest quiz on each topic</p>
+            {#if modules.length > 1}<select class="select select-sm w-40" aria-label="Weakest topics in" bind:value={weakModule}><option value="all">All modules</option>{#each modules as m (m.id)}<option value={String(m.id)}>{m.name}</option>{/each}</select>{/if}</div>
           <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
             <span class="flex items-center gap-1.5"><span class="swatch" style="background: var(--chart-right)"></span>Right, sure</span>
             <span class="flex items-center gap-1.5"><span class="swatch" style="background: var(--guessed-fill)"></span>Guessed</span>
             <span class="flex items-center gap-1.5"><span class="swatch" style="background: var(--chart-wrong)"></span>Wrong</span>
           </div>
           <ul class="mt-4 space-y-3" aria-labelledby="weakest">
-            {#each progress.weakest_topics as [id, tally] (id)}
+            {#each progress.weakest_topics.filter(([id]) => weakModule === "all" || String(moduleOf(id)) === weakModule).slice(0, 8) as [id, tally] (id)}
               <li>
                 <div class="flex items-baseline justify-between text-sm"><span class="font-extrabold">{name(id)}</span>{" "}<span class="tabular-nums">{Math.round((right(tally) / Math.max(1, total(tally))) * 100)}% right</span></div>
                 <div class="mt-1.5"><SegBar {tally} height={12} /></div>
               </li>
             {/each}
           </ul>
+          {#if progress.weakest_topics.filter(([id]) => weakModule === "all" || String(moduleOf(id)) === weakModule).length > 8}<p class="mt-3 text-[13px] text-muted">The 8 weakest shown. Topics lists them all.</p>{/if}
           {#if progress.never_quizzed.length}<p class="mt-4 text-[13px] text-muted">Not quizzed yet: {progress.never_quizzed.map(name).join(", ")}</p>{/if}
         </section>
 

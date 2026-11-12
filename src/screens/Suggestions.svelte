@@ -3,6 +3,9 @@
   import { ArrowLeft, Plus, X } from "@lucide/svelte";
   import { api, errorMessage, type Suggestion, type TopicRow } from "../lib/api";
   import Rich from "../components/Rich.svelte";
+  import { ChevronRight } from "@lucide/svelte";
+  import FilterBox from "../components/list/FilterBox.svelte";
+  import { matchesFilter } from "../lib/lists";
 
   let { onBack, onChanged = () => {} }: { onBack: () => void; onChanged?: () => void } = $props();
 
@@ -15,10 +18,27 @@
 
   // Ten at a time: a long backlog stays a short page, and keyboard users don't tab past hundreds of buttons.
   const PAGE = 10;
-  let limit = $state(PAGE);
   let topicFilter = $state<number | "all">("all");
-  const matching = $derived((items ?? []).filter((item) => (filter === "all" || item.kind === filter) && (topicFilter === "all" || item.topic === topicFilter)));
-  const shown = $derived(matching.slice(0, limit));
+  let text = $state("");
+  const matching = $derived((items ?? []).filter((item) => (filter === "all" || item.kind === filter) && (topicFilter === "all" || item.topic === topicFilter) && matchesFilter(text, item.text, item.answer, fromWhere(item))));
+  // lists.feature (R149): grouped by topic, biggest first, folded after the first.
+  const groups = $derived.by(() => {
+    const byTopic = new Map<number | null, Suggestion[]>();
+    for (const item of matching) byTopic.set(item.topic, [...(byTopic.get(item.topic) ?? []), item]);
+    return [...byTopic.entries()].map(([topic, list]) => ({ topic, name: topic === null ? "No topic" : topicName(topic) || "No topic", list })).sort((a, b) => b.list.length - a.list.length || a.name.localeCompare(b.name));
+  });
+  let opened = $state<Record<string, boolean>>({});
+  let limits = $state<Record<string, number>>({});
+  const keyOf = (topic: number | null) => String(topic);
+  const isOpen = (topic: number | null, index: number) => opened[keyOf(topic)] ?? (index === 0 || text.trim() !== "" || matching.length <= PAGE);
+  const limitOf = (topic: number | null) => limits[keyOf(topic)] ?? PAGE;
+
+  async function dismissAll(list: Suggestion[]) {
+    for (const item of list) await api.dismissSuggestion(item.key);
+    status = `${list.length} ${list.length === 1 ? "suggestion" : "suggestions"} dismissed`;
+    await load();
+    onChanged();
+  }
   const usedTopics = $derived(topics.filter((topic) => (items ?? []).some((item) => item.topic === topic.id)));
   const kindLabel = { Recall: "Recall", Quiz: "Quiz", Struggle: "Project" } as const;
   const kindChip = { Recall: "chip-due", Quiz: "chip-primary", Struggle: "chip-info" } as const;
@@ -79,13 +99,13 @@
     {:else}
       <div class="mb-3 flex flex-wrap items-center gap-y-2">
         <div class="seg" role="radiogroup" aria-label="Show">
-          <button type="button" role="radio" aria-checked={filter === "all"} onclick={() => { filter = "all"; limit = PAGE; }}>All {items.length}</button>
-          <button type="button" role="radio" aria-checked={filter === "Recall"} onclick={() => { filter = "Recall"; limit = PAGE; }}>Recall misses {count("Recall")}</button>
-          <button type="button" role="radio" aria-checked={filter === "Quiz"} onclick={() => { filter = "Quiz"; limit = PAGE; }}>Quiz mistakes {count("Quiz")}</button>
-          {#if count("Struggle")}<button type="button" role="radio" aria-checked={filter === "Struggle"} onclick={() => { filter = "Struggle"; limit = PAGE; }}>Project struggles {count("Struggle")}</button>{/if}
+          <button type="button" role="radio" aria-checked={filter === "all"} onclick={() => (filter = "all")}>All {items.length}</button>
+          <button type="button" role="radio" aria-checked={filter === "Recall"} onclick={() => (filter = "Recall")}>Recall misses {count("Recall")}</button>
+          <button type="button" role="radio" aria-checked={filter === "Quiz"} onclick={() => (filter = "Quiz")}>Quiz mistakes {count("Quiz")}</button>
+          {#if count("Struggle")}<button type="button" role="radio" aria-checked={filter === "Struggle"} onclick={() => (filter = "Struggle")}>Project struggles {count("Struggle")}</button>{/if}
         </div>
         {#if usedTopics.length > 1}
-          <select class="select select-sm ml-3 w-56" aria-label="Topic" bind:value={topicFilter} onchange={() => (limit = PAGE)}>
+          <select class="select select-sm ml-3 w-56" aria-label="Topic" bind:value={topicFilter}>
             <option value="all">All topics</option>
             {#each usedTopics as topic (topic.id)}<option value={topic.id}>{topic.name}</option>{/each}
           </select>
@@ -93,8 +113,21 @@
         <span class="flex-1"></span>
         <span class="text-sm text-muted">Nothing becomes a card until you say so</span>
       </div>
-      <ul class="space-y-3" aria-label="Suggestions">
-        {#each shown as item (item.key)}
+      <div class="mb-4"><FilterBox bind:value={text} shown={matching.length} total={items.length} placeholder="Filter suggestions…" /></div>
+      <div role="group" aria-label="Suggestions">
+      {#each groups as group, index (group.topic)}
+      {@const open = isOpen(group.topic, index)}
+      <section class="mb-5" aria-label="{group.name} suggestions">
+        <div class="mb-2 flex items-center gap-3">
+          <button type="button" class="flex min-h-8 items-center gap-2 text-left" aria-expanded={open} onclick={() => (opened = { ...opened, [keyOf(group.topic)]: !open })}>
+            <ChevronRight class="size-4 transition-transform {open ? 'rotate-90' : ''}" aria-hidden="true" /><span class="text-lg font-black">{group.name}</span><span class="chip">{group.list.length}</span>
+          </button>
+          <span class="flex-1"></span>
+          <button class="btn btn-quiet btn-sm" onclick={() => dismissAll(group.list)}><X class="size-4" />Dismiss these {group.list.length}</button>
+        </div>
+        {#if open}
+      <ul class="space-y-3" aria-label="{group.name}">
+        {#each group.list.slice(0, limitOf(group.topic)) as item (item.key)}
           {@const open = making?.key === item.key}
           <li class="panel px-5 py-4">
             <div class="flex items-center justify-between gap-6">
@@ -136,12 +169,18 @@
           </li>
         {/each}
       </ul>
-      {#if matching.length > shown.length}
-        <div class="mt-4 flex items-center justify-center gap-4">
-          <span class="text-sm text-muted">Showing {shown.length} of {matching.length}</span>
-          <button class="btn btn-outline" onclick={() => (limit += PAGE)}>Show {Math.min(PAGE, matching.length - shown.length)} more</button>
+      {#if group.list.length > limitOf(group.topic)}
+        <div class="mt-3 flex items-center gap-4">
+          <button class="btn btn-outline btn-sm" onclick={() => (limits = { ...limits, [keyOf(group.topic)]: limitOf(group.topic) + PAGE })}>Show {Math.min(PAGE, group.list.length - limitOf(group.topic))} more</button>
+          <span class="text-sm text-muted">Showing {limitOf(group.topic)} of {group.list.length}</span>
         </div>
       {/if}
+        {/if}
+      </section>
+      {:else}
+        <p class="panel p-6 text-sm text-muted">No suggestions match. {#if text}<button class="btn btn-link btn-sm" onclick={() => (text = "")}>Clear the filter</button>{/if}</p>
+      {/each}
+      </div>
     {/if}
   {/if}
 </div>

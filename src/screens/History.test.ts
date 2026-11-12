@@ -63,4 +63,22 @@ describe("History", () => {
     await userEvent.click(await screen.findByRole("button", { name: /^View results from / }));
     expect(onView).toHaveBeenCalledWith(7);
   });
+
+  // lists.feature: History by month, the last 30 charted (R148)
+  it("groups by month, folds older months, charts the last 30 and filters", async () => {
+    const many = Array.from({ length: 40 }, (_, index) => row(100 - index, TODAY - index * 3, tally(5, 0, 5), { topics: index % 2 ? [1] : [2] }));
+    mocked.history.mockResolvedValue(many);
+    const u = userEvent.setup();
+    render(History, { onView: vi.fn() });
+    const months = await screen.findAllByRole("button", { expanded: true });
+    expect(months).toHaveLength(2);
+    expect(screen.getAllByRole("button", { expanded: false }).length).toBeGreaterThan(0);
+    expect(screen.getByRole("img", { name: /Score per quiz/ }).querySelectorAll("circle").length).toBeLessThanOrEqual(31);
+    await u.click(screen.getByRole("radio", { name: "All" }));
+    expect(screen.getByRole("img", { name: /Score per quiz/ }).querySelectorAll("circle").length).toBeGreaterThanOrEqual(40);
+    await u.type(screen.getByRole("searchbox", { name: "Filter" }), "gpu");
+    expect(screen.getByText(/20 of 40/)).toBeInTheDocument();
+    expect(screen.getAllByRole("row", { name: /^Quiz/ })).toHaveLength(20);
+  });
 });
+

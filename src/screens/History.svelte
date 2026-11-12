@@ -2,7 +2,10 @@
   // history.feature (R26, R27, R29). Resuming an incomplete attempt is open (Q13).
   import { CirclePause, History as HistoryIcon, Play, RotateCcw } from "@lucide/svelte";
   import { api, type HistoryRow, type Id, type Tally, type TopicRow } from "../lib/api";
-  import { dayLabel } from "../lib/dates";
+  import { ChevronRight } from "@lucide/svelte";
+  import { dateOf, dayLabel, monthLabel } from "../lib/dates";
+  import FilterBox from "../components/list/FilterBox.svelte";
+  import { matchesFilter } from "../lib/lists";
   import PageHeader from "../components/PageHeader.svelte";
   import ScoreChart from "../components/ScoreChart.svelte";
   import SegBar from "../components/SegBar.svelte";
@@ -19,8 +22,28 @@
   const percent = (tally: Tally) => (total(tally) ? Math.round((right(tally) / total(tally)) * 100) : 0);
   const names = (ids: Id[]) => ids.map((id) => topics.find((topic) => topic.id === id)?.name ?? "Deleted topic").join(", ");
 
+  // lists.feature (R148): the chart shows the last 30 quizzes unless asked for more, and the
+  // table is grouped by month, folded after the first two, with a filter.
+  let range = $state<"30" | "90" | "all">("30");
+  let filter = $state("");
+  let opened = $state<Record<string, boolean>>({});
+  const charted = $derived(range === "30" ? rows.slice(0, 30) : range === "90" ? rows.filter((row) => row.day > today - 90) : rows);
+  const listed = $derived(rows.filter((row) => matchesFilter(filter, names(row.topics))));
+  const months = $derived.by(() => {
+    const groups: { key: string; label: string; rows: HistoryRow[] }[] = [];
+    for (const row of listed) {
+      const { year, month } = dateOf(row.day);
+      const key = `${year}-${month}`;
+      if (groups.at(-1)?.key !== key) groups.push({ key, label: monthLabel(year, month), rows: [] });
+      groups.at(-1)!.rows.push(row);
+    }
+    return groups;
+  });
+  const isOpen = (key: string, index: number) => opened[key] ?? (index < 2 || filter.trim() !== "");
+  const average = (list: HistoryRow[]) => Math.round(list.reduce((sum, row) => sum + percent(row.summary.overall), 0) / list.length);
+
   const points = $derived(
-    [...rows].reverse().map((row) => ({
+    [...charted].reverse().map((row) => ({
       label: dayLabel(row.day, today),
       percent: percent(row.summary.overall),
       retry: row.retry_of !== null,
@@ -48,16 +71,29 @@
     </div>
   {:else if loaded}
     <section class="panel p-6">
-      <h2 class="font-semibold">Score per quiz</h2>
-      <p class="text-sm text-muted">% right. Hollow points are retries.</p>
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div><h2 class="font-semibold">Score per quiz</h2>
+          <p class="text-sm text-muted">% right. Hollow points are retries.</p></div>
+        <div class="seg" role="radiogroup" aria-label="Chart range">
+          {#each [["30", "Last 30"], ["90", "90 days"], ["all", "All"]] as const as [key, label] (key)}<button type="button" role="radio" aria-checked={range === key} onclick={() => (range = key)}>{label}</button>{/each}
+        </div>
+      </div>
       <div class="mt-4"><ScoreChart {points} height={200} /></div>
     </section>
 
-    <div class="panel mt-8 overflow-hidden">
-      <table class="table">
+    <div class="mt-8 mb-3"><FilterBox bind:value={filter} shown={listed.length} total={rows.length} placeholder="Filter by topic…" /></div>
+    {#each months as group, index (group.key)}
+      <section class="panel mb-3 overflow-hidden" aria-label={group.label}>
+        <button type="button" class="flex w-full items-center gap-3 px-5 py-3 text-left" aria-expanded={isOpen(group.key, index)} onclick={() => (opened = { ...opened, [group.key]: !isOpen(group.key, index) })}>
+          <ChevronRight class="size-4 transition-transform {isOpen(group.key, index) ? 'rotate-90' : ''}" aria-hidden="true" />
+          <span class="font-black">{group.label}</span>
+          <span class="text-sm text-muted">{group.rows.length} {group.rows.length === 1 ? "quiz" : "quizzes"} · average {average(group.rows)}%</span>
+        </button>
+        {#if isOpen(group.key, index)}
+      <table class="table border-t-2 border-base-300">
         <thead><tr class="text-muted"><th>Date</th><th>Topics</th><th class="w-56">Result</th><th class="text-right">Score</th><th><span class="sr-only">Status</span></th></tr></thead>
         <tbody>
-          {#each rows as row (row.id)}
+          {#each group.rows as row (row.id)}
             <!-- The whole row opens the results: one button, stretched over the row. -->
             <tr class="link-row hover:bg-base-100" aria-label="Quiz {row.id}">
               <td class="font-extrabold tabular-nums"><button class="row-link" onclick={() => onView(row.id)}><span class="sr-only">View results from</span>{" "}{dayLabel(row.day, today)}</button></td>
@@ -75,6 +111,10 @@
           {/each}
         </tbody>
       </table>
-    </div>
+        {/if}
+      </section>
+    {:else}
+      <p class="panel p-6 text-sm text-muted">No quizzes on "{filter.trim()}". <button class="btn btn-link btn-sm" onclick={() => (filter = "")}>Clear the filter</button></p>
+    {/each}
   {/if}
 </div>

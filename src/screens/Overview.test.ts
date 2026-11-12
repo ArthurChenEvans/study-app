@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../lib/api", async (original) => {
   const actual = await original<typeof import("../lib/api")>();
-  return { ...actual, api: { overview: vi.fn(), topics: vi.fn(), today: vi.fn(), dueToday: vi.fn(), topicQuizzes: vi.fn() } };
+  return { ...actual, api: { overview: vi.fn(), topics: vi.fn(), today: vi.fn(), dueToday: vi.fn(), topicQuizzes: vi.fn(), modules: vi.fn() } };
 });
 
 import { api, type Progress } from "../lib/api";
@@ -143,4 +143,22 @@ describe("Overview", () => {
     expect(points.length).toBeLessThan(10);
     expect(points.at(-1)).toHaveAttribute("data-hollow", "true");
   });
+
+  // lists.feature: Overview shows the 8 weakest topics with a module picker (R149)
+  it("shows the 8 weakest topics, narrowed by module", async () => {
+    const rows = Array.from({ length: 10 }, (_, index) => ({ id: 100 + index, name: `Topic ${index}`, module: index < 3 ? 1 : 2, tags: [], question_count: 5, short_count: 0 }));
+    mocked.topics.mockResolvedValue(rows);
+    mocked.modules.mockResolvedValue([{ id: 1, name: "Networks" }, { id: 2, name: "Security" }]);
+    mocked.overview.mockResolvedValue({ Progress: progress({ weakest_topics: rows.map((row) => [row.id, tally(1, 0, 4)] as [number, ReturnType<typeof tally>]), never_quizzed: [] }) });
+    mocked.dueToday.mockResolvedValue({ cards: 0, checklists: 0, quizzes: 0, drills: 0, total: 0 });
+    mocked.topicQuizzes.mockResolvedValue([]);
+    const u = userEvent.setup();
+    render(Overview, {});
+    const list = await screen.findByRole("list", { name: "Topics, weakest first" });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(8);
+    expect(screen.getByText("The 8 weakest shown. Topics lists them all.")).toBeInTheDocument();
+    await u.selectOptions(await screen.findByLabelText("Weakest topics in"), "Networks");
+    expect(within(list).getAllByRole("listitem")).toHaveLength(3);
+  });
 });
+
