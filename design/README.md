@@ -488,3 +488,13 @@ Waiting for a greenlight. Built after testing the real app against the large pro
 - Audit (contrast, 24px targets, at most one primary) passes everywhere. The first pass flagged the 20px checkboxes, now 24px.
 - Interaction test in the prototype: `/` focuses the filter, typing filters without losing focus, arrows move the selection into the item card, `Esc` clears, a header sorts both ways, the rail and Due narrow the list, and the page stays one window tall.
 - Found while building: DaisyUI's own `list` class made tables shrink to fit (renamed), and hidden screen-reader labels escaped the scroll pane and made the page 10,000px tall (fixed by containing them).
+
+## Playful redesign (exploration)
+
+`playful-redesign/index.html` redraws all 22 screens in a chunky, game-like style and lets you flip each one against a screenshot of the current app (`playful-redesign/shots/`). It's a comparison piece, not the agreed design, and it doesn't follow `docs/design-rules.md` yet.
+
+- **Theme** switch: Gleam colours (faff pink, aged plastic yellow, underwater blue) or the current warm paper neutrals.
+- **Colours** switch: standard green/red for right and wrong, or the colour-blind safe blue/orange pair. Icon, word and the guessed hatch stay in both.
+- The page ends with what the style costs against the design rules (type, radii, density, red meaning both wrong and destructive).
+
+Fonts load from Google Fonts, so open it online.
