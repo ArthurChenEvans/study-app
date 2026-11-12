@@ -17,6 +17,10 @@ services:
       # "0" starts empty. STUDY_SEED=large podman compose up -d seeds a heavy profile
       # (about 170 topics, thousands of questions and cards) for testing at scale
       STUDY_SEED: "${STUDY_SEED:-1}"
+      # The server only answers requests addressed to localhost and sent by its own page,
+      # so other websites open in your browser can't reach your data. If you open it by
+      # another name (a hostname on your network, say), list it here, separated by commas.
+      STUDY_HOSTS: "${STUDY_HOSTS:-}"
     volumes:
       - study-data:/data
       # To sync with the desktop app, mount the same folder it syncs through, then set up

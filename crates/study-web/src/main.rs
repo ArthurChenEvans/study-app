@@ -4,7 +4,7 @@
 
 use study_api::App;
 use study_store::Store;
-use study_web::{Config, router, today};
+use study_web::{Config, today};
 
 fn seed(app: &mut App, large: bool) -> Result<(), String> {
     let (summary, days) = if large {
@@ -55,7 +55,7 @@ async fn main() -> Result<(), String> {
     }
     let listener = tokio::net::TcpListener::bind(&config.address).await.map_err(|error| format!("couldn't listen on {}: {error}", config.address))?;
     println!("Study App on http://{} (database {})", config.address, config.db.display());
-    axum::serve(listener, router(app, &config.dist, today))
+    axum::serve(listener, study_web::router_for(app, &config.dist, today, &config.hosts))
         .with_graceful_shutdown(stopped())
         .await
         .map_err(|error| error.to_string())

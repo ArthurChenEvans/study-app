@@ -108,3 +108,100 @@ fn dispatch_replies_with_bytes_only_for_images() {
     let mut app = App::with_seed(Store::in_memory().unwrap(), 1);
     assert!(matches!(dispatch(&mut app, "modules", &json!({}), TODAY), Ok(Reply::Json(_))));
 }
+
+// ---------- Hazards 12 and 13: only this app's own page may call the server ----------
+
+/// A request as a browser or another program would send it, with whichever headers.
+async fn raw(server: &axum::Router, command: &str, headers: &[(&str, &str)], body: &str) -> (StatusCode, String) {
+    let mut request = Request::post(format!("/api/{command}"));
+    for (name, value) in headers {
+        request = request.header(*name, *value);
+    }
+    let response = server.clone().oneshot(request.body(Body::from(body.to_string())).unwrap()).await.unwrap();
+    let status = response.status();
+    (status, String::from_utf8_lossy(&response.into_body().collect().await.unwrap().to_bytes()).to_string())
+}
+
+async fn module_names(server: &axum::Router) -> Vec<String> {
+    let (_, _, body) = call(server, "modules", json!({})).await;
+    json_of(&body).as_array().unwrap().iter().map(|module| module["name"].as_str().unwrap().to_string()).collect()
+}
+
+// There are no logins, so the server trusts whoever can reach it. A web page open in the
+// same browser can reach 127.0.0.1 too, and used to be able to change or delete anything.
+#[tokio::test]
+async fn another_website_cannot_call_the_server() {
+    let server = server();
+    let attack = r#"{"name":"made by another site"}"#;
+    let json = ("content-type", "application/json");
+    let here = ("host", "127.0.0.1:7392");
+    let attempts: Vec<(&str, Vec<(&str, &str)>)> = vec![
+        ("a form or fetch without preflight (text/plain)", vec![here, ("content-type", "text/plain"), ("origin", "https://evil.example")]),
+        ("a form post", vec![here, ("content-type", "application/x-www-form-urlencoded"), ("origin", "https://evil.example")]),
+        ("no content type at all", vec![here, ("origin", "https://evil.example")]),
+        ("another origin, even with JSON", vec![here, json, ("origin", "https://evil.example")]),
+        ("another port on this computer", vec![here, json, ("origin", "http://127.0.0.1:9999")]),
+        ("a sandboxed page (null origin)", vec![here, json, ("origin", "null")]),
+        ("the browser says it's cross-site", vec![here, json, ("sec-fetch-site", "cross-site")]),
+        ("the browser says it's same-site but another origin", vec![here, json, ("sec-fetch-site", "same-site")]),
+        ("a name that only resolves here (DNS rebinding)", vec![("host", "evil.example:7392"), json, ("origin", "http://evil.example:7392")]),
+        ("a rebinding name without an origin", vec![("host", "evil.example"), json]),
+    ];
+    for (what, headers) in attempts {
+        let (status, body) = raw(&server, "create_module", &headers, attack).await;
+        assert_eq!(status, StatusCode::FORBIDDEN, "{what}: {body}");
+        let (status, body) = raw(&server, "modules", &headers, "{}").await;
+        assert_eq!(status, StatusCode::FORBIDDEN, "{what} can't read either: {body}");
+    }
+    assert_eq!(module_names(&server).await, Vec::<String>::new(), "nothing got through");
+}
+
+#[tokio::test]
+async fn the_apps_own_page_and_local_tools_still_can() {
+    let server = server();
+    let json = ("content-type", "application/json");
+    let ways: Vec<Vec<(&str, &str)>> = vec![
+        vec![("host", "127.0.0.1:7392"), json, ("origin", "http://127.0.0.1:7392"), ("sec-fetch-site", "same-origin")],
+        vec![("host", "localhost:7392"), json, ("origin", "http://localhost:7392")],
+        vec![("host", "[::1]:7392"), json, ("origin", "http://[::1]:7392")],
+        vec![("host", "localhost:7400"), ("content-type", "application/json; charset=utf-8")], // curl or a script
+        vec![json],
+    ];
+    for (n, headers) in ways.iter().enumerate() {
+        let (status, body) = raw(&server, "create_module", headers, &format!(r#"{{"name":"m{n}"}}"#)).await;
+        assert_eq!(status, StatusCode::OK, "{headers:?}: {body}");
+    }
+    assert_eq!(module_names(&server).await.len(), ways.len());
+}
+
+#[tokio::test]
+async fn a_host_name_you_allow_works_too() {
+    let server = study_web::router_for(App::with_seed(Store::in_memory().unwrap(), 1), &dist(), || TODAY, &["study.lan".to_string()]);
+    let json = ("content-type", "application/json");
+    let (status, _) = raw(&server, "modules", &[("host", "study.lan:7392"), json, ("origin", "http://study.lan:7392")], "{}").await;
+    assert_eq!(status, StatusCode::OK);
+    let (status, _) = raw(&server, "modules", &[("host", "other.lan:7392"), json], "{}").await;
+    assert_eq!(status, StatusCode::FORBIDDEN);
+}
+
+// The desktop app has a content security policy. The browser version sent none, so
+// anything that slipped past the sanitiser could run, and images in imported text could
+// phone home.
+#[tokio::test]
+async fn every_response_carries_the_security_headers() {
+    let server = server();
+    for request in [Request::get("/").body(Body::empty()).unwrap(), Request::get("/assets/missing.js").body(Body::empty()).unwrap(), Request::post("/api/modules").header("content-type", "application/json").body(Body::from("{}")).unwrap(), Request::post("/api/modules").header("origin", "https://evil.example").body(Body::from("{}")).unwrap()] {
+        let path = request.uri().to_string();
+        let response = server.clone().oneshot(request).await.unwrap();
+        let header = |name: &str| response.headers().get(name).map(|value| value.to_str().unwrap().to_string()).unwrap_or_default();
+        let policy = header("content-security-policy");
+        for part in ["default-src 'self'", "script-src 'self'", "img-src 'self' data: blob:", "frame-ancestors 'none'", "form-action 'none'", "base-uri 'none'", "object-src 'none'"] {
+            assert!(policy.contains(part), "{path}: the policy lacks {part}: {policy}");
+        }
+        assert!(!policy.contains("unsafe-eval") && !policy.split(';').any(|part| part.trim().starts_with("script-src") && part.contains("unsafe-inline")), "{policy}");
+        assert_eq!(header("x-content-type-options"), "nosniff", "{path}");
+        assert_eq!(header("x-frame-options"), "DENY", "{path}");
+        assert_eq!(header("referrer-policy"), "no-referrer", "{path}");
+        assert_eq!(header("cross-origin-resource-policy"), "same-origin", "{path}");
+    }
+}
