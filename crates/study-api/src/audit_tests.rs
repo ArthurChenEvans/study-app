@@ -121,22 +121,35 @@ fn exercise(app: &mut App, today: i64) -> Option<String> {
     outcome.err().map(|payload| payload.downcast_ref::<String>().cloned().or_else(|| payload.downcast_ref::<&str>().map(|text| text.to_string())).unwrap_or_default())
 }
 
+// ---------- Hazard 7: damaged backup settings never thin out backups ----------
+
+// backup.feature: Old backups are thinned out (R103). The settings file sits beside the
+// backups. Cut short (a crash while it was being written, a sync app copying half of it)
+// it used to read as "the defaults", and the next backup deleted everything the
+// defaults don't keep.
 #[test]
-#[ignore]
-fn probe_damaged_backup_settings() {
+fn damaged_backup_settings_never_thin_out_backups() {
     let dir = scratch("settings");
     let mut app = App::with_seed(Store::in_memory().unwrap(), 1);
     app.set_backups(dir.join("backups"));
     app.create_topic("Caches", None).unwrap();
-    app.set_backup_settings(BackupSettings { keep_days: 60, keep_weeks: 4, keep_months: 12, copy_to: None }, at(TODAY - 40, 600)).unwrap();
+    let wanted = BackupSettings { keep_days: 60, keep_weeks: 4, keep_months: 12, copy_to: None };
+    app.set_backup_settings(wanted.clone(), at(TODAY - 40, 600)).unwrap();
     for ago in (0..40).rev() {
         app.back_up_now(at(TODAY - ago - 1, 600)).unwrap();
     }
-    let before = app.backups().unwrap().len();
-    std::fs::write(dir.join("backups").join("settings.json"), b"{\"keep_days\": 6").unwrap();
-    app.back_up_now(at(TODAY, 600)).unwrap();
-    let after = app.backups().unwrap().len();
-    println!("\n== damaged settings.json: {before} backups before, {after} after one more backup (settings now read as {:?})", app.backup_status().unwrap().settings);
+    assert_eq!(app.backups().unwrap().len(), 40);
+    let file = dir.join("backups").join("settings.json");
+    for damage in [&b"{\"keep_days\": 6"[..], b"", b"\0\0\0\0", b"[1, 2, 3]"] {
+        std::fs::write(&file, damage).unwrap();
+        app.back_up_now(at(TODAY, 600)).unwrap();
+        assert!(app.backups().unwrap().len() >= 41, "nothing is deleted while the settings can't be read ({:?})", String::from_utf8_lossy(damage));
+    }
+    // Saving settings again makes the file whole, and thinning carries on from there.
+    app.set_backup_settings(BackupSettings { keep_days: 5, keep_weeks: 0, keep_months: 0, copy_to: None }, at(TODAY, 601)).unwrap();
+    assert!(app.backups().unwrap().len() < 20);
+    assert_eq!(app.backup_status().unwrap().settings.keep_days, 5);
+    assert!(std::fs::read_dir(dir.join("backups")).unwrap().flatten().all(|entry| !entry.file_name().to_string_lossy().contains("partial")), "settings are written whole, nothing half-written left");
 }
 
 // Hazard 6: the desktop app and the browser version (or two windows) on one database.

@@ -225,13 +225,30 @@ impl Backups {
     }
 
     pub fn settings(&self) -> BackupSettings {
-        std::fs::read_to_string(self.dir.join("settings.json")).ok().and_then(|json| serde_json::from_str(&json).ok()).unwrap_or_default()
+        self.saved_settings().unwrap_or_default()
+    }
+
+    /// The settings as saved, the defaults if none were ever saved, or `None` when the
+    /// file is there but can't be read. Then nobody knows how many backups to keep, so
+    /// nothing may be thinned out until settings are saved again.
+    fn saved_settings(&self) -> Option<BackupSettings> {
+        match std::fs::read(self.dir.join("settings.json")) {
+            Ok(bytes) => serde_json::from_slice(&bytes).ok(),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Some(BackupSettings::default()),
+            Err(_) => None,
+        }
     }
 
     fn save_settings(&self, settings: &BackupSettings) -> ApiResult<()> {
         std::fs::create_dir_all(&self.dir).map_err(|error| io("couldn't make the backups folder", error))?;
         let json = serde_json::to_string_pretty(settings).map_err(|error| ApiError::new(error.to_string()))?;
-        std::fs::write(self.dir.join("settings.json"), json).map_err(|error| io("couldn't save the backup settings", error))
+        // Whole or not at all, so a crash mid-write can't leave half a file.
+        let path = self.dir.join("settings.json");
+        let partial = self.dir.join("settings.json.partial");
+        std::fs::write(&partial, json).and_then(|()| std::fs::rename(&partial, &path)).map_err(|error| {
+            let _ = std::fs::remove_file(&partial);
+            io("couldn't save the backup settings", error)
+        })
     }
 
     fn free_name(&self, clock: Clock, reason: Reason) -> String {
@@ -251,12 +268,13 @@ impl Backups {
             return Err(error);
         }
         std::fs::rename(&partial, &path).map_err(|error| io("couldn't finish the backup", error))?;
-        let settings = self.settings();
-        prune_in(&self.dir, &settings, clock.day);
-        if let Some(other) = settings.copy_to.as_deref().map(Path::new) {
-            // A second folder that can't be reached never stops the backup itself (R106).
-            if other.is_dir() && copy_whole(&path, &other.join(&name)).is_ok() {
-                prune_in(other, &settings, clock.day);
+        if let Some(settings) = self.saved_settings() {
+            prune_in(&self.dir, &settings, clock.day);
+            if let Some(other) = settings.copy_to.as_deref().map(Path::new) {
+                // A second folder that can't be reached never stops the backup itself (R106).
+                if other.is_dir() && copy_whole(&path, &other.join(&name)).is_ok() {
+                    prune_in(other, &settings, clock.day);
+                }
             }
         }
         let bytes = std::fs::metadata(&path).map(|meta| meta.len()).unwrap_or(0);
