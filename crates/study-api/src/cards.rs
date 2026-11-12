@@ -253,10 +253,15 @@ impl App {
         settings: &CardSettings,
         today: i64,
     ) -> ApiResult<DueCounts> {
-        let (new_today, reviewed_today) = self.reviews_today(today)?;
+        Ok(self.due_counts_after(cards, settings, today, self.reviews_today(today)?))
+    }
+
+    /// The same, given how many cards were already reviewed today (new, others), so a
+    /// screen with a row per topic reads today's reviews once instead of once per topic.
+    fn due_counts_after(&self, cards: &[CardRow], settings: &CardSettings, today: i64, (new_today, reviewed_today): (u32, u32)) -> DueCounts {
         let list: Vec<(CardId, Schedule)> = cards.iter().map(|c| (c.id, c.schedule)).collect();
         let order = session_order(&list, settings, today, new_today, reviewed_today);
-        Ok(count(&order, cards, today))
+        count(&order, cards, today)
     }
 
     /// Cards due today across every topic, for the sidebar (R68).
@@ -270,7 +275,8 @@ impl App {
     pub fn cards_home(&self, today: i64) -> ApiResult<CardsHome> {
         let settings = self.store.card_settings()?;
         let cards = self.in_scope(None, today)?;
-        let due = self.due_counts(&cards, &settings, today)?;
+        let done_today = self.reviews_today(today)?;
+        let due = self.due_counts_after(&cards, &settings, today, done_today);
         // Today's bar is today's session (new cards within the daily limit), so a big
         // backlog of unseen cards doesn't flatten the rest of the chart.
         let forecast = (0..14)
@@ -294,6 +300,12 @@ impl App {
         let topics = self.store.topics()?;
         let modules = self.store.modules()?;
         let card_topics: HashMap<CardId, TopicId> = cards.iter().map(|c| (c.id, c.topic)).collect();
+        // Every card once, counted by topic (archived ones included), instead of a query
+        // per topic.
+        let mut totals: HashMap<TopicId, usize> = HashMap::new();
+        for card in self.store.cards()? {
+            *totals.entry(card.topic).or_default() += 1;
+        }
         let mut per_topic = vec![];
         for topic in &topics {
             let in_topic: Vec<CardRow> = cards
@@ -301,7 +313,7 @@ impl App {
                 .filter(|c| c.topic == topic.id)
                 .cloned()
                 .collect();
-            let all = self.store.cards_in(topic.id)?.len();
+            let all = totals.get(&topic.id).copied().unwrap_or(0);
             if all == 0 {
                 continue;
             }
@@ -318,7 +330,7 @@ impl App {
                         .find(|row| row.id == m)
                         .map(|row| row.name.clone())
                 }),
-                due: self.due_counts(&in_topic, &settings, today)?,
+                due: self.due_counts_after(&in_topic, &settings, today, done_today),
                 total: all,
                 retention: percent(
                     topic_reviews

@@ -1,5 +1,13 @@
-//! Performance on years of heavy use. Seeds a big database once (kept in the temp folder),
-//! then times every screen's commands and reads SQLite's plan for each statement they run.
+//! Performance on years of heavy use (hazard 21). Seeds a big database once (kept in the
+//! temp folder: 3 years, about 170 topics, 4,600 questions, 1,600 quizzes, 43,000 card
+//! reviews), then times every command a screen calls when it opens, and reads SQLite's
+//! plan for each statement they run.
+//!
+//! Budgets, on the best of three runs so a busy machine doesn't fail it:
+//! - a command a screen needs to open: 100 ms (PERF_SCREEN_MS)
+//! - an action you asked for and wait on (a quiz across every topic, a backup, an
+//!   export of everything): 2 seconds (PERF_ACTION_MS)
+//!
 //!   cargo test --release -p study-web --features trace --test perf -- --nocapture
 
 use std::collections::BTreeMap;
@@ -95,13 +103,22 @@ fn screens_on_years_of_use() {
     ];
     let mut plans: BTreeMap<String, (Vec<String>, Duration, usize, Vec<String>)> = BTreeMap::new();
     println!("\n{:<13}{:<20}{:>10}{:>12}{:>8}", "screen", "command", "ms", "bytes", "stmts");
+    let budget = |name: &str, default: u64| Duration::from_millis(std::env::var(name).ok().and_then(|ms| ms.parse().ok()).unwrap_or(default));
+    let (screen_budget, action_budget) = (budget("PERF_SCREEN_MS", 100), budget("PERF_ACTION_MS", 2000));
     let mut over: Vec<String> = vec![];
     for (screen, command, args) in calls {
-        let (took, bytes, _) = run(&mut app, command, args);
+        // Commands that change something run once. The rest are timed three times.
+        let once = ["start_quiz", "quit_quiz", "start_review", "grade_card", "back_up_now"].contains(&command);
+        let (mut took, bytes, _) = run(&mut app, command, args.clone());
         let statements = Store::take_trace();
+        for _ in 0..if once { 0 } else { 2 } {
+            took = took.min(run(&mut app, command, args.clone()).0);
+            Store::take_trace();
+        }
+        let allowed = if ["start_quiz", "back_up_now", "export_summary", "export_file"].contains(&command) { action_budget } else { screen_budget };
         println!("{screen:<13}{command:<20}{:>10.1}{bytes:>12}{:>8}", took.as_secs_f64() * 1000.0, statements.len());
-        if took > Duration::from_millis(100) {
-            over.push(format!("{command} {:.0}ms", took.as_secs_f64() * 1000.0));
+        if took > allowed {
+            over.push(format!("{screen}: {command} took {:.0} ms, over its {} ms", took.as_secs_f64() * 1000.0, allowed.as_millis()));
         }
         for (sql, spent) in statements {
             let entry = plans.entry(sql.clone()).or_insert_with(|| (vec![], Duration::ZERO, 0, vec![]));
@@ -115,7 +132,7 @@ fn screens_on_years_of_use() {
             }
         }
     }
-    println!("\nover the 100 ms budget: {over:?}");
+    println!("\nover budget: {over:?}");
     let mut ranked: Vec<_> = plans.iter().collect();
     ranked.sort_by_key(|(_, (_, spent, _, _))| std::cmp::Reverse(*spent));
     println!("\nstatements by total time (top 25), with full scans marked:");
@@ -124,4 +141,5 @@ fn screens_on_years_of_use() {
         let short: String = sql.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(150).collect();
         println!("{:>9.1}ms x{count:<6} {commands:?}\n      {short}\n      scans: {scans:?}", spent.as_secs_f64() * 1000.0);
     }
+    assert!(over.is_empty(), "{over:#?}");
 }
