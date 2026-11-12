@@ -371,7 +371,7 @@ impl App {
         schema_version_of(&path)?;
         let safety = self.make_backup(clock, Reason::BeforeRestore)?;
         self.store.restore_from(&path)?;
-        self.active = None;
+        self.forget_running_quiz()?;
         self.card_session = None;
         self.pause_sync_after_restore();
         Ok(safety)

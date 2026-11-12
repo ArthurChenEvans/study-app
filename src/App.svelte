@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { tick } from "svelte";
+  import { onMount, tick } from "svelte";
   import Sidebar from "./components/Sidebar.svelte";
   import Topics from "./screens/Topics.svelte";
   import Editor from "./screens/Editor.svelte";
@@ -147,6 +147,15 @@
   }
 
   const startQuiz = (view: QuizView) => go({ screen: "quiz", view, run: ++runs });
+
+  // A quiz is saved after every answer. If one was running when the app last closed (or
+  // crashed), open straight back onto it at the question it stopped on.
+  onMount(() => {
+    api.currentQuestion().then(
+      (view) => { if (view && typeof view === "object" && typeof view.position === "number" && route.screen !== "quiz") startQuiz(view); },
+      () => { /* no quiz is running */ },
+    );
+  });
 </script>
 
 <svelte:window onhashchange={() => (route = { screen: screenFromHash(location.hash) })} onkeydown={shortcut} />

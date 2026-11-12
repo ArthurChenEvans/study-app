@@ -100,3 +100,11 @@ Feature: Take a quiz
       | 5     | the fifth option is picked     |
       | Enter | my answer is submitted         |
       | F     | the question is flagged as guessed |
+
+  # Added by the November 2026 robustness audit
+  Scenario: A quiz in progress survives the app closing
+    Given I have answered 2 of 4 questions in a quiz
+    When the app closes, crashes or the computer loses power
+    And I open the app again
+    Then the quiz opens at question 3 with my 2 answers kept
+    And it is not in history until I finish or quit it

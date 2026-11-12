@@ -396,3 +396,79 @@ fn probe_slide_conversion_leftovers() {
     println!("\n== slides: result {result:?}, {survivors} child process(es) still running, temp folder mode {}, folders left behind: {left:?}", mode.trim());
     let _ = std::process::Command::new("pkill").args(["-f", "sleep 31337"]).status();
 }
+
+// ---------- Hazard 1: a quiz in progress is saved as you go ----------
+
+fn quiz_on(app: &mut App, topic: TopicId) -> QuizView {
+    app.start_quiz(QuizSetupInput { topics: vec![topic], count: None, even: false, shuffle_questions: false, shuffle_options: false, exam: false, total_minutes: None, per_question_seconds: None, easy: false, types: QuestionTypes::Mcq }).unwrap()
+}
+
+fn topic_with_questions(app: &mut App, count: usize) -> TopicId {
+    let topic = app.create_topic("Resumable", None).unwrap();
+    for n in 0..count {
+        app.save_question(QuestionInput { topic, text: format!("Question {n}"), multiple: false, options: vec![OptionInput { text: "right".into(), correct: true }, OptionInput { text: "wrong".into(), correct: false }, OptionInput { text: "also wrong".into(), correct: false }], explanation: String::new(), tags: vec![], citations: vec![], short: None }).unwrap();
+    }
+    topic
+}
+
+#[test]
+fn a_quiz_in_progress_survives_the_app_closing() {
+    let dir = scratch("resume");
+    let path = dir.join("study.sqlite");
+    let topic = {
+        let mut app = App::with_seed(Store::open(&path).unwrap(), 1);
+        let topic = topic_with_questions(&mut app, 4);
+        let first = quiz_on(&mut app, topic);
+        assert_eq!((first.position, first.total), (1, 4));
+        app.answer(vec![0], TODAY).unwrap();
+        app.toggle_flag().unwrap();
+        app.answer(vec![1], TODAY).unwrap();
+        topic
+        // The app goes away here without finishing: closed, crashed or killed.
+    };
+    let mut app = App::with_seed(Store::open(&path).unwrap(), 2);
+    let resumed = app.current_question().expect("the quiz is still running after reopening");
+    assert_eq!((resumed.position, resumed.total, resumed.topic), (3, 4, topic));
+    assert_eq!(app.history().unwrap().len(), 0, "it isn't in history until it's finished");
+    app.answer(vec![0], TODAY).unwrap();
+    let last = app.answer(vec![0], TODAY).unwrap();
+    let Next::Finished(attempt) = last.next else { panic!("four answers finish the quiz") };
+    let results = app.results(attempt).unwrap();
+    let tally = results.summary.overall;
+    assert_eq!(tally.right_sure + tally.right_guessed + tally.wrong, 4, "the answers from before closing are counted: {tally:?}");
+    assert_eq!(tally.unanswered, 0);
+    drop(app);
+    let app = App::with_seed(Store::open(&path).unwrap(), 3);
+    assert!(app.current_question().is_err(), "a finished quiz doesn't come back");
+    assert_eq!(app.history().unwrap().len(), 1);
+}
+
+#[test]
+fn quitting_or_restoring_leaves_no_quiz_to_resume() {
+    let dir = scratch("resume-quit");
+    let path = dir.join("study.sqlite");
+    {
+        let mut app = App::with_seed(Store::open(&path).unwrap(), 1);
+        app.set_backups(dir.join("backups"));
+        let topic = topic_with_questions(&mut app, 3);
+        let backup = app.back_up_now(at(TODAY, 600)).unwrap();
+        quiz_on(&mut app, topic);
+        app.answer(vec![0], TODAY).unwrap();
+        app.quit_quiz(TODAY).unwrap();
+        assert!(App::with_seed(Store::open(&path).unwrap(), 2).current_question().is_err(), "quit means gone");
+        quiz_on(&mut app, topic);
+        app.restore_backup(&backup.name, at(TODAY, 601)).unwrap();
+    }
+    let app = App::with_seed(Store::open(&path).unwrap(), 3);
+    assert!(app.current_question().is_err(), "a restore doesn't bring back a quiz that was running");
+}
+
+#[test]
+fn a_running_quiz_stays_on_this_computer() {
+    let mut app = App::with_seed(Store::in_memory().unwrap(), 1);
+    let topic = topic_with_questions(&mut app, 2);
+    let before = app.export(&ExportRequest { topics: None, history: true }, TODAY).unwrap().1;
+    quiz_on(&mut app, topic);
+    let (_, snapshot) = unpack(&app.export(&ExportRequest { topics: None, history: true }, TODAY).unwrap().1).unwrap();
+    assert_eq!(serde_json::to_value(&snapshot).unwrap(), serde_json::to_value(&unpack(&before).unwrap().1).unwrap(), "an export is the same with or without a quiz running");
+}

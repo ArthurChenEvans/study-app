@@ -494,6 +494,38 @@ impl Store {
         Ok(AttemptId(self.connection.last_insert_rowid()))
     }
 
+    /// The quiz being taken right now, as the app last saved it. Kept in `sync_meta`, which
+    /// belongs to this computer alone: it's never exported or synced.
+    pub fn running_quiz(&self) -> Result<Option<String>> {
+        Ok(self.connection.query_row("SELECT value FROM sync_meta WHERE key = 'running_quiz'", [], |row| row.get(0)).optional()?)
+    }
+
+    /// Saves the quiz being taken, or forgets it with `None`.
+    pub fn set_running_quiz(&mut self, attempt: Option<&Attempt>) -> Result<()> {
+        match attempt {
+            Some(attempt) => self.connection.execute(
+                "INSERT INTO sync_meta (key, value) VALUES ('running_quiz', ?1) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                [serde_json::to_string(attempt)?],
+            )?,
+            None => self.connection.execute("DELETE FROM sync_meta WHERE key = 'running_quiz'", [])?,
+        };
+        Ok(())
+    }
+
+    /// Saves the running quiz to history and forgets it as the running one, together, so a
+    /// crash can't leave it both finished and waiting to be resumed.
+    pub fn save_finished_quiz(&mut self, attempt: &Attempt, day: i64) -> Result<AttemptId> {
+        let transaction = self.connection.transaction()?;
+        transaction.execute(
+            "INSERT INTO attempts (day, status, retry_of, attempt, reasons) VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![day, serde_json::to_string(&attempt.status())?, attempt.retry_of().map(|id| id as i64), serde_json::to_string(attempt)?, serde_json::to_string(&Reasons::default())?],
+        )?;
+        let id = AttemptId(transaction.last_insert_rowid());
+        transaction.execute("DELETE FROM sync_meta WHERE key = 'running_quiz'", [])?;
+        transaction.commit()?;
+        Ok(id)
+    }
+
     /// Replaces a saved attempt, after a short answer on its results is overruled (R84).
     pub fn update_attempt(&mut self, id: AttemptId, attempt: &Attempt) -> Result<()> {
         let changed = self.connection.execute(

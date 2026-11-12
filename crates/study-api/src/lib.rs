@@ -265,10 +265,11 @@ impl App {
 
 impl App {
     pub fn new(store: Store) -> Self {
+        let active = running_quiz(&store);
         Self {
             store,
             rng: StdRng::from_os_rng(),
-            active: None,
+            active,
             card_session: None,
             backups: None,
             pending_import: None,
@@ -278,10 +279,11 @@ impl App {
 
     /// Deterministic shuffles, for tests.
     pub fn with_seed(store: Store, seed: u64) -> Self {
+        let active = running_quiz(&store);
         Self {
             store,
             rng: StdRng::seed_from_u64(seed),
-            active: None,
+            active,
             card_session: None,
             backups: None,
             pending_import: None,
@@ -455,6 +457,7 @@ impl App {
                 .expect("assembled from this pool")
         };
         self.active = Some(Attempt::start(settings, items, lookup));
+        self.keep_running()?;
         self.current_question()
     }
 
@@ -468,6 +471,7 @@ impl App {
 
     pub fn toggle_flag(&mut self) -> ApiResult<QuizView> {
         self.active_mut()?.toggle_flag()?;
+        self.keep_running()?;
         self.current_question()
     }
 
@@ -501,7 +505,9 @@ impl App {
             None => {
                 let active = self.active_mut()?;
                 active.overrule(index)?;
-                Ok(feedback_for(active, index))
+                let feedback = feedback_for(active, index);
+                self.keep_running()?;
+                Ok(feedback)
             }
             Some(id) => {
                 let saved = self.overrule_saved(id, index)?;
@@ -555,6 +561,7 @@ impl App {
         // R42: a retry of a retry uses its own questions but links to the original quiz.
         let original = saved.retry_of().unwrap_or(attempt.0 as usize);
         self.active = Some(saved.retry(original)?);
+        self.keep_running()?;
         self.current_question()
     }
 
@@ -647,9 +654,25 @@ impl App {
 
     fn next(&mut self, today: i64) -> ApiResult<Next> {
         match self.current_question() {
-            Ok(view) => Ok(Next::Question(view)),
+            Ok(view) => {
+                self.keep_running()?;
+                Ok(Next::Question(view))
+            }
             Err(_) => Ok(Next::Finished(self.save_active(today)?)),
         }
+    }
+
+    /// Saves the running quiz as it stands, so closing the app, a crash or a power cut
+    /// loses nothing: the next start picks it up at the same question.
+    fn keep_running(&mut self) -> ApiResult<()> {
+        Ok(self.store.set_running_quiz(self.active.as_ref())?)
+    }
+
+    /// Drops any running quiz, in memory and saved. For when the data underneath it is
+    /// replaced (a restore or an import).
+    pub(crate) fn forget_running_quiz(&mut self) -> ApiResult<()> {
+        self.active = None;
+        Ok(self.store.set_running_quiz(None)?)
     }
 
     fn save_active(&mut self, today: i64) -> ApiResult<AttemptId> {
@@ -657,10 +680,24 @@ impl App {
             .active
             .take()
             .ok_or_else(|| ApiError::new("no quiz is running"))?;
-        let id = self.store.save_attempt(&attempt, today, &Reasons::default())?;
+        let id = match self.store.save_finished_quiz(&attempt, today) {
+            Ok(id) => id,
+            Err(error) => {
+                // Not saved (a full disk, say): keep the quiz so finishing can be tried again.
+                self.active = Some(attempt);
+                return Err(error.into());
+            }
+        };
         self.move_quiz_schedules(id, &attempt, today)?;
         Ok(id)
     }
+}
+
+/// The quiz that was running when the app last closed, if it can still be carried on.
+fn running_quiz(store: &Store) -> Option<Attempt> {
+    let saved = store.running_quiz().ok().flatten()?;
+    let attempt: Attempt = serde_json::from_str(&saved).ok()?;
+    view_of(&attempt).is_some().then_some(attempt)
 }
 
 fn required<'a>(text: &'a str, message: &str) -> ApiResult<&'a str> {
