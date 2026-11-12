@@ -203,9 +203,7 @@ impl App {
         let mut cards = DayCards { due: DueCounts { new: 0, learning: 0, review: 0 }, minutes: 0, reviewed: 0, again: 0, seconds: 0 };
         match when {
             When::Today => {
-                let home = self.cards_home(today)?;
-                cards.due = home.due;
-                cards.minutes = home.minutes;
+                (cards.due, cards.minutes) = self.cards_due_today(today)?;
             }
             When::Future => cards.due.review = self.cards_forecast(day, today)?,
             When::Past => {

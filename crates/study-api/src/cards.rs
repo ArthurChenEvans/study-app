@@ -216,6 +216,11 @@ fn percent(part: usize, whole: usize) -> Option<u8> {
     (whole > 0).then(|| ((part * 100) as f64 / whole as f64).round() as u8)
 }
 
+/// About 25 seconds a card, rounded up to whole minutes.
+fn minutes_for(cards: usize) -> usize {
+    (cards * 25).div_ceil(60)
+}
+
 impl App {
     fn reviews_today(&self, today: i64) -> ApiResult<(u32, u32)> {
         let reviews = self.store.reviews_since(today)?;
@@ -269,6 +274,16 @@ impl App {
         let settings = self.store.card_settings()?;
         let due = self.due_counts(&self.in_scope(None, today)?, &settings, today)?;
         Ok(due.new + due.learning + due.review)
+    }
+
+    /// What's due today across every topic and about how many minutes it'll take, for
+    /// the calendar's "today". The Cards screen works out much more (a row per topic,
+    /// suggestions from every past quiz), which the calendar doesn't show.
+    pub fn cards_due_today(&self, today: i64) -> ApiResult<(DueCounts, usize)> {
+        let settings = self.store.card_settings()?;
+        let due = self.due_counts(&self.in_scope(None, today)?, &settings, today)?;
+        let total = due.new + due.learning + due.review;
+        Ok((due, minutes_for(total)))
     }
 
     /// The Cards screen (R68).
@@ -343,9 +358,9 @@ impl App {
         }
         let total = due.new + due.learning + due.review;
         Ok(CardsHome {
-            minutes: (total * 25).div_ceil(60),
+            minutes: minutes_for(total),
             due,
-            total_cards: self.store.cards()?.len(),
+            total_cards: totals.values().sum(),
             forecast,
             retention,
             target: (settings.desired_retention * 100.0).round() as u8,
