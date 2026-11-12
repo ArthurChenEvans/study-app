@@ -211,6 +211,23 @@ fn copy_whole(from: &Path, to: &Path) -> std::io::Result<()> {
     std::fs::rename(&partial, to)
 }
 
+/// Removes half-written files a crash or a full disk left behind (`*.partial`, and
+/// SQLite's `*.partial-journal`). Only ones over an hour old, so a backup another copy of
+/// the app is writing right now is left alone.
+fn clear_stale_partials(dir: &Path) {
+    let Ok(entries) = std::fs::read_dir(dir) else { return };
+    for entry in entries.flatten() {
+        let name = entry.file_name().to_string_lossy().to_string();
+        if !(name.ends_with(".partial") || name.ends_with(".partial-journal")) {
+            continue;
+        }
+        let age = entry.metadata().and_then(|meta| meta.modified()).ok().and_then(|made| made.elapsed().ok());
+        if age.is_some_and(|age| age > std::time::Duration::from_secs(60 * 60)) {
+            let _ = std::fs::remove_file(entry.path());
+        }
+    }
+}
+
 impl Backups {
     pub fn new(dir: impl Into<PathBuf>) -> Self {
         Self { dir: dir.into() }
@@ -262,9 +279,12 @@ impl Backups {
         let name = self.free_name(clock, reason);
         let path = self.dir.join(&name);
         let partial = path.with_extension("partial");
+        let journal = path.with_extension("partial-journal");
         let _ = std::fs::remove_file(&partial);
+        clear_stale_partials(&self.dir);
         if let Err(error) = write(&partial) {
             let _ = std::fs::remove_file(&partial);
+            let _ = std::fs::remove_file(&journal);
             return Err(error);
         }
         std::fs::rename(&partial, &path).map_err(|error| io("couldn't finish the backup", error))?;

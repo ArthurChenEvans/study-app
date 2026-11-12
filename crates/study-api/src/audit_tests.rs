@@ -555,3 +555,31 @@ fn a_backup_that_doesnt_restore_cleanly_is_undone() {
     assert_eq!(serde_json::to_value(app.topics().unwrap()).unwrap(), before);
 }
 
+
+// ---------- Hazards 5 and 8: nothing half-written piles up in the backups folder ----------
+
+// A kill or a full disk part-way through a backup leaves "<name>.partial" (and SQLite's
+// "<name>.partial-journal") behind, each up to the size of the database. Nothing used
+// to clear them.
+#[test]
+fn half_written_backups_from_a_crash_are_cleared_by_the_next_backup() {
+    let dir = scratch("partials");
+    let mut app = App::with_seed(Store::in_memory().unwrap(), 1);
+    app.set_backups(dir.join("backups"));
+    app.create_topic("Caches", None).unwrap();
+    app.back_up_now(at(TODAY, 600)).unwrap();
+    let folder = dir.join("backups");
+    let old = std::time::SystemTime::now() - std::time::Duration::from_secs(3 * 60 * 60);
+    for name in ["study 2026-11-10 09-00 daily.partial", "study 2026-11-10 09-00 daily.partial-journal", "settings.json.partial"] {
+        std::fs::write(folder.join(name), b"half").unwrap();
+        std::fs::File::options().write(true).open(folder.join(name)).unwrap().set_modified(old).unwrap();
+    }
+    // One being written right now (by another copy of the app, say) is left alone.
+    std::fs::write(folder.join("study 2026-11-12 10-05 by-hand.partial"), b"busy").unwrap();
+    std::fs::write(folder.join("notes.txt"), b"mine").unwrap();
+    app.back_up_now(at(TODAY, 601)).unwrap();
+    let mut left: Vec<String> = std::fs::read_dir(&folder).unwrap().flatten().map(|entry| entry.file_name().to_string_lossy().to_string()).filter(|name| !name.ends_with(".sqlite")).collect();
+    left.sort();
+    assert_eq!(left, ["notes.txt", "study 2026-11-12 10-05 by-hand.partial"]);
+    assert_eq!(app.backups().unwrap().len(), 2);
+}
