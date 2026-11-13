@@ -12,7 +12,7 @@
     if (pop.burst && !calm()) {
       setTimeout(() => {
         const box = node.getBoundingClientRect();
-        confetti({ particleCount: 30 * pop.burst, spread: 70, startVelocity: 25, scalar: 0.8, zIndex: 90, colors: ["#d34516", "#f2c14e", "#f7915f", "#8cc4e2", "#7fd1ae"], origin: { x: (box.left + 30) / innerWidth, y: box.top / innerHeight } });
+        confetti({ particleCount: 30 * pop.burst, spread: 70, startVelocity: 25, scalar: 0.8, zIndex: 1200, colors: ["#d34516", "#f2c14e", "#f7915f", "#8cc4e2", "#7fd1ae"], origin: { x: (box.left + 30) / innerWidth, y: box.top / innerHeight } });
       }, 250);
     }
   }
@@ -29,7 +29,7 @@
 </div>
 
 <style>
-  .pops { position: fixed; z-index: 70; right: 16px; bottom: 16px; display: grid; justify-items: end; gap: 10px; max-width: calc(100vw - 32px); pointer-events: none; }
+  .pops { position: fixed; z-index: 1050; right: 16px; bottom: 16px; display: grid; justify-items: end; gap: 10px; max-width: calc(100vw - 32px); pointer-events: none; }
   .pop {
     display: flex; align-items: center; gap: 12px; padding: 10px 18px 10px 10px;
     background: var(--surface); border: 2px solid var(--color-base-content); border-radius: 18px; box-shadow: 0 5px 0 var(--color-base-content);
