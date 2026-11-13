@@ -12,17 +12,17 @@
   let sound = $state(isSoundOn());
   let colourBlind = $state(initialPalette() === "colour-blind");
 
-  // Each section's icon takes a colour (pink or Gleam's blue), so the sidebar reads at a glance.
-  const links: { screen: Screen; label: string; icon: typeof Library; tone: "pink" | "blue" }[] = [
-    { screen: "overview", label: "Overview", icon: LayoutDashboard, tone: "pink" },
+  // Each section's icon takes a colour (Rust orange or Rust blue), so the sidebar reads at a glance.
+  const links: { screen: Screen; label: string; icon: typeof Library; tone: "orange" | "blue" }[] = [
+    { screen: "overview", label: "Overview", icon: LayoutDashboard, tone: "orange" },
     { screen: "calendar", label: "Calendar", icon: CalendarDays, tone: "blue" },
-    { screen: "topics", label: "Topics", icon: Library, tone: "pink" },
+    { screen: "topics", label: "Topics", icon: Library, tone: "orange" },
     { screen: "cards", label: "Cards", icon: SquareStack, tone: "blue" },
-    { screen: "recall", label: "Recall", icon: Brain, tone: "pink" },
+    { screen: "recall", label: "Recall", icon: Brain, tone: "orange" },
     { screen: "projects", label: "Projects", icon: Hammer, tone: "blue" },
-    { screen: "bibliography", label: "Bibliography", icon: BookOpen, tone: "pink" },
+    { screen: "bibliography", label: "Bibliography", icon: BookOpen, tone: "orange" },
     { screen: "history", label: "History", icon: History, tone: "blue" },
-    { screen: "search", label: "Search", icon: Search, tone: "pink" },
+    { screen: "search", label: "Search", icon: Search, tone: "orange" },
     { screen: "data", label: "Your data", icon: Database, tone: "blue" },
   ];
 

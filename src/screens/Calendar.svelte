@@ -170,7 +170,7 @@
         {/each}
       </section>
     {/if}
-    <!-- Each day is a tile, each kind of work a chip. Today stands on a pink ledge, past days sit flat. -->
+    <!-- Each day is a tile, each kind of work a chip. Today stands on an orange ledge, past days sit flat. -->
     <div>
       <div bind:this={gridEl} role="grid" aria-label={monthLabel(year, month)} class="flex flex-col gap-2">
         <div role="row" class="grid grid-cols-7 gap-2 text-xs font-extrabold uppercase tracking-[.07em] text-muted">
