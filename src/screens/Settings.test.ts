@@ -71,7 +71,7 @@ describe("Settings", () => {
 
   // updates.feature (R167, R168): updates live in Settings
   it("shows the version, checks by hand and shows the new version's notes", async () => {
-    mocked.updateCheck.mockResolvedValue({ version: "0.1.5", current: "0.1.4", notes: "Week view on phones.", date: null, ready: false });
+    mocked.updateCheck.mockResolvedValue({ version: "0.1.5", current: "0.1.4", notes: "Week view on phones.", date: null, ready: false, asks_password: true });
     render(Settings, { onNavigate: vi.fn() });
     const section = screen.getByRole("region", { name: "Updates" });
     expect(section).toHaveTextContent("Study App 0.1.4");
@@ -80,6 +80,15 @@ describe("Settings", () => {
     expect(section).toHaveTextContent("Week view on phones.");
     expect(section).toHaveTextContent(/asks for your password/);
     expect(screen.getByRole("button", { name: "Update to 0.1.5" })).toBeInTheDocument();
+  });
+
+  it("doesn't mention a password where installing doesn't ask for one (Windows)", async () => {
+    mocked.updateCheck.mockResolvedValue({ version: "0.1.5", current: "0.1.4", notes: null, date: null, ready: false, asks_password: false });
+    render(Settings, { onNavigate: vi.fn() });
+    await userEvent.click(screen.getByRole("button", { name: "Check for updates" }));
+    const section = await screen.findByRole("region", { name: "Updates" });
+    await screen.findByText("Version 0.1.5 is available");
+    expect(section).not.toHaveTextContent(/password/);
   });
 
   it("says when you're up to date, and turns auto update off", async () => {

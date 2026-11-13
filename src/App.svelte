@@ -177,13 +177,13 @@
   // celebrations.feature (R150): load which moments you want, and finish any deletes still
   // waiting on their undo window if the app closes.
   // updates.feature (R166): check for a new release on open, and say so plainly if one is
-  // being installed as the app closes (the system asks for a password).
-  let installingOnClose = $state(false);
+  // being installed as the app closes. The event says whether the system asks for a password.
+  let installingOnClose = $state<{ asksPassword: boolean } | null>(null);
   onMount(() => {
     loadPrefs();
     startUpdates();
     let stop: (() => void) | undefined;
-    listen("updating-on-close", () => (installingOnClose = true)).then((unlisten) => (stop = unlisten)).catch(() => {});
+    listen<boolean>("updating-on-close", (event) => (installingOnClose = { asksPassword: event.payload !== false })).then((unlisten) => (stop = unlisten)).catch(() => {});
     return () => stop?.();
   });
   onMount(() => {
@@ -262,7 +262,7 @@
     <div class="modal-box max-w-md text-center">
       <Download class="mx-auto size-8" />
       <h2 id="closing-h" class="mt-3 text-lg font-black">Installing the update</h2>
-      <p class="mt-2 text-muted">Your computer will ask for your password. The app closes when it's done, and your study data was backed up first.</p>
+      <p class="mt-2 text-muted">{installingOnClose.asksPassword ? "Your computer will ask for your password. " : ""}The app closes when it's done, and your study data was backed up first.</p>
     </div>
   </div>
 {/if}

@@ -45,10 +45,10 @@ printf '\xff' | dd of="$FEED/tampered.rpm" bs=1 seek=$((size - 100)) conv=notrun
 cp "$ART/new.rpm.sig" "$FEED/tampered.rpm.sig"
 echo "Notes for $NEW." > /tmp/notes
 url=http://127.0.0.1:$PORT
-python3 "$HERE/../scripts/latest-json.py" "$NEW" "$FEED/new.rpm" "$url/new.rpm" /tmp/notes "$FEED/newer.json" >/dev/null
-python3 "$HERE/../scripts/latest-json.py" "$OLD" "$FEED/new.rpm" "$url/new.rpm" /tmp/notes "$FEED/same.json" >/dev/null
-python3 "$HERE/../scripts/latest-json.py" "0.0.1" "$FEED/new.rpm" "$url/new.rpm" /tmp/notes "$FEED/older.json" >/dev/null
-python3 "$HERE/../scripts/latest-json.py" "$NEW" "$FEED/tampered.rpm" "$url/tampered.rpm" /tmp/notes "$FEED/tampered.json" >/dev/null
+python3 "$HERE/../scripts/latest-json.py" "$NEW" /tmp/notes "$FEED/newer.json" "linux-x86_64-rpm=$FEED/new.rpm=$url/new.rpm" >/dev/null
+python3 "$HERE/../scripts/latest-json.py" "$OLD" /tmp/notes "$FEED/same.json" "linux-x86_64-rpm=$FEED/new.rpm=$url/new.rpm" >/dev/null
+python3 "$HERE/../scripts/latest-json.py" "0.0.1" /tmp/notes "$FEED/older.json" "linux-x86_64-rpm=$FEED/new.rpm=$url/new.rpm" >/dev/null
+python3 "$HERE/../scripts/latest-json.py" "$NEW" /tmp/notes "$FEED/tampered.json" "linux-x86_64-rpm=$FEED/tampered.rpm=$url/tampered.rpm" >/dev/null
 python3 -m http.server "$PORT" -d "$FEED" >/tmp/http.log 2>&1 &
 sleep 1
 

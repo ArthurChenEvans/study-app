@@ -75,7 +75,7 @@
       <div class="note-box mt-4 p-4">
         <p class="font-extrabold">Version {updates.info.version} is available</p>
         {#if updates.info.notes}<p class="mt-1 whitespace-pre-line text-sm">{updates.info.notes}</p>{/if}
-        <p class="mt-2 text-sm text-muted">Installing asks for your password, because it updates the app for everyone on this computer. Your study data is backed up first.</p>
+        <p class="mt-2 text-sm text-muted">{updates.info.asks_password ? "Installing asks for your password, because it updates the app for everyone on this computer. " : ""}Your study data is backed up first.</p>
         <button type="button" class="btn btn-primary btn-sm mt-3" onclick={installNow}><Download class="size-4" />Update to {updates.info.version}</button>
       </div>
     {/if}

@@ -423,4 +423,4 @@ export interface SyncResult { sent: number; received: number; deferred: boolean;
 export interface ToCheck { n: number; record: string; what: string; label: string; context: string | null; field: string; deleted: boolean; kept: string | null; other: string | null; kept_by: string; kept_when: number; other_by: string; other_when: number }
 
 // ---------- Updates (R165 to R168) ----------
-export interface UpdateInfo { version: string; current: string; notes: string | null; date: string | null; ready: boolean }
+export interface UpdateInfo { version: string; current: string; notes: string | null; date: string | null; ready: boolean; /** Linux installs ask for a password, Windows ones don't. */ asks_password: boolean }

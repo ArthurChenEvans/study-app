@@ -37,7 +37,7 @@ function explain(failure: unknown, stage: "check" | "download" | "install"): str
 function readyToast(info: UpdateInfo) {
   toast({
     text: `Version ${info.version} is ready`,
-    sub: "It installs when you close the app. Your computer will ask for your password.",
+    sub: info.asks_password ? "It installs when you close the app. Your computer will ask for your password." : "It installs when you close the app.",
     icon: "download",
     ms: 12_000,
     action: { label: "Install now", run: () => void installNow() },
@@ -97,7 +97,7 @@ export async function getUpdate(): Promise<void> {
   }
 }
 
-/** Downloads if needed, then backs up, installs (asking for a password) and restarts. */
+/** Downloads if needed, then backs up, installs (on Linux, asking for a password) and restarts. */
 export async function installNow(): Promise<void> {
   if (!updates.info?.ready) {
     await getUpdate();
