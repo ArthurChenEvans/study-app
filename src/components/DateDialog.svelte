@@ -5,10 +5,10 @@
   import { GraduationCap, Trash2 } from "@lucide/svelte";
   import { untrack } from "svelte";
   import { api, errorMessage, type DatePreview, type DateSave, type DateView, type Id, type ModuleRow, type TopicQuizView, type TopicRow } from "../lib/api";
-  import { toast } from "../lib/celebrations.svelte";
+  import { deleteWithUndo, toast } from "../lib/celebrations.svelte";
   import { dayFromIso, fullLabel, isoOf } from "../lib/dates";
 
-  let { today, date = null, modules, topics, quizzes = [], startDay = null, onSaved, onCancel }: {
+  let { today, date = null, modules, topics, quizzes = [], startDay = null, onSaved, onCancel, onHide = () => {} }: {
     today: number;
     /** The date being edited, or null to add one. */
     date?: DateView | null;
@@ -19,6 +19,8 @@
     startDay?: number | null;
     onSaved: () => void;
     onCancel: () => void;
+    /** Take a date off the calendar while its delete waits for Undo, or put it back. */
+    onHide?: (id: Id, hidden: boolean) => void;
   } = $props();
 
   type CoverChoice = "nothing" | "module" | "topics";
@@ -94,17 +96,21 @@
     }
   }
 
-  async function remove() {
+  // toasts.feature (R157): it still asks first, then goes with Undo like every other delete.
+  function remove() {
     if (!date) return;
-    busy = true;
-    try {
-      await api.deleteDate(date.id);
-      toast({ text: "Date deleted", sub: date.name, icon: "trash" });
-      onSaved();
-    } catch (failure) {
-      error = errorMessage(failure);
-      busy = false;
-    }
+    const { id, name } = date;
+    confirmingDelete = false;
+    deleteWithUndo({
+      text: "Date deleted",
+      sub: name,
+      hide: () => onHide(id, true),
+      restore: () => onHide(id, false),
+      commit: async () => {
+        await api.deleteDate(id);
+        onHide(id, false);
+      },
+    });
   }
 </script>
 

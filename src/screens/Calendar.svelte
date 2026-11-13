@@ -74,7 +74,9 @@
 
   async function loadMonth() {
     if (!grid.length) return;
-    [days, dates] = await Promise.all([api.calendarMonth(grid[0], grid[grid.length - 1]), api.dates()]);
+    const [loadedDays, loadedDates] = await Promise.all([api.calendarMonth(grid[0], grid[grid.length - 1]), api.dates()]);
+    days = loadedDays;
+    dates = loadedDates.filter((date) => !hiddenDates.has(date.id));
   }
 
   async function openDialog(date: DateView | "new") {
@@ -84,6 +86,13 @@
       dialogData = { modules, topics, quizzes };
     }
     editing = date;
+  }
+
+  // A deleted date stays off the calendar while its Undo is showing (R157).
+  let hiddenDates = $state<Set<Id>>(new Set());
+  async function hideDate(id: Id, hidden: boolean) {
+    hiddenDates = hidden ? new Set([...hiddenDates, id]) : new Set([...hiddenDates].filter((value) => value !== id));
+    await dateSaved();
   }
 
   async function dateSaved() {
@@ -103,7 +112,8 @@
     selected = value;
     onOpenDay(value);
     error = "";
-    day = await api.calendarDay(value);
+    const loaded = await api.calendarDay(value);
+    day = { ...loaded, dates: loaded.dates.filter((panel) => !hiddenDates.has(panel.date.id)) };
   }
 
   async function step(by: number) {
@@ -317,7 +327,7 @@
 {/if}
 
 {#if editing && dialogData}
-  <DateDialog {today} date={editing === "new" ? null : editing} startDay={editing === "new" ? selected : null} modules={dialogData.modules} topics={dialogData.topics} quizzes={dialogData.quizzes} onSaved={dateSaved} onCancel={() => (editing = null)} />
+  <DateDialog {today} date={editing === "new" ? null : editing} startDay={editing === "new" ? selected : null} modules={dialogData.modules} topics={dialogData.topics} quizzes={dialogData.quizzes} onSaved={dateSaved} onHide={hideDate} onCancel={() => (editing = null)} />
 {/if}
 
 {#if moving && selected !== null}
