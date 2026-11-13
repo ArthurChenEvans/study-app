@@ -278,6 +278,10 @@ export const api = {
   search: (query: SearchQuery) => invoke<SearchHit[]>("search", { query }),
   /** R7: stores a pasted or picked image and returns the id the Markdown points at. */
   addImage: async (file: Blob) => invoke<Id>("add_image", { data: await toBase64(file) }),
+  /** Images on the system clipboard, saved. WebKitGTK doesn't hand pasted images to the page. */
+  pasteImage: () => invoke<Id[]>("paste_image"),
+  /** Image files dropped on the window, by path (WebKitGTK doesn't give them to the page). */
+  addImageFiles: (paths: string[]) => invoke<Id[]>("add_image_files", { paths }),
   image: async (id: Id) => new Uint8Array(await invoke<ArrayBuffer | number[]>("image", { id })),
   /** Sends slides as base64 JSON (works on every IPC path) and gets PDF bytes back. Nothing is stored. */
   recallList: () => invoke<RecallRow[]>("recall_list"),

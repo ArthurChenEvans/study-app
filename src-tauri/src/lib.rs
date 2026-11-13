@@ -3,6 +3,7 @@
 
 use std::sync::Mutex;
 
+mod clipboard;
 mod updates;
 
 use chrono::{Local, NaiveDate};
@@ -158,6 +159,21 @@ fn add_image(state: AppState, data: String) -> ApiResult<ImageId> {
         .decode(data)
         .map_err(|_| ApiError { message: "the image couldn't be read, try adding it again".into() })?;
     with(state, |app| app.add_image(&bytes))
+}
+/// R7: images pasted from the system clipboard, since WebKitGTK doesn't give them to the page.
+/// Returns the new images' ids, or none if the clipboard holds no image.
+#[tauri::command]
+fn paste_image(state: AppState) -> ApiResult<Vec<ImageId>> {
+    let Some(mut system) = clipboard::System::open() else { return Ok(vec![]) };
+    let found = clipboard::images(&mut system);
+    with(state, |app| found.iter().map(|bytes| app.add_image(bytes)).collect())
+}
+/// R7: image files dropped on the window. WebKitGTK doesn't give dropped files to the page, so
+/// Tauri passes their paths and the app reads them. Files that aren't images are skipped.
+#[tauri::command]
+fn add_image_files(state: AppState, paths: Vec<std::path::PathBuf>) -> ApiResult<Vec<ImageId>> {
+    let found = clipboard::image_files(paths);
+    with(state, |app| found.iter().map(|bytes| app.add_image(bytes)).collect())
 }
 /// The image's raw bytes, which the frontend shows through a blob: URL.
 #[tauri::command]
@@ -797,6 +813,8 @@ pub fn run() {
             questions_in,
             delete_question,
             add_image,
+            paste_image,
+            add_image_files,
             image,
             add_source,
             sources,
