@@ -70,8 +70,11 @@ jobs:
         run: |
           jq -n --arg v "$VERSION" '{version: $v}' > "$RUNNER_TEMP/version.json"
           pnpm tauri build --bundles rpm --config "$RUNNER_TEMP/version.json"
-          rpm=$(ls target/release/bundle/rpm/*-"$VERSION"-*.rpm)
-          [ -f "$rpm.sig" ] || pnpm tauri signer sign "$rpm"
+          built=$(ls target/release/bundle/rpm/*-"$VERSION"-*.rpm)
+          [ -f "$built.sig" ] || pnpm tauri signer sign "$built"
+          # A name without spaces, so the link in latest.json matches what GitHub stores.
+          rpm="study-app-$VERSION.x86_64.rpm"
+          cp "$built" "$rpm"; cp "$built.sig" "$rpm.sig"
           echo "RPM=$rpm" >> "$GITHUB_ENV"
 
       - name: Release notes

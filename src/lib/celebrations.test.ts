@@ -44,10 +44,12 @@ describe("prefs", () => {
 // celebrations.feature (R154): each big moment follows its own choice.
 describe("celebrate", () => {
   const details = { title: "Reviews done!", line: "", stats: [] };
-  it("queues a full screen, one at a time, with its jingle", () => {
+  it("queues a full screen, one at a time, with its jingle once it has painted", () => {
     celebrate("reviews", details);
     celebrate("quiz", { ...details, title: "Quiz done!", score: 58 });
     expect(live.big.map((moment) => moment.title)).toEqual(["Reviews done!", "Quiz done!"]);
+    expect(playBig).not.toHaveBeenCalled();
+    vi.advanceTimersToNextFrame();
     expect(playBig).toHaveBeenCalledWith("reviews", undefined);
   });
   it("shrinks to a small pop when that's the choice, and does nothing when it's off", () => {

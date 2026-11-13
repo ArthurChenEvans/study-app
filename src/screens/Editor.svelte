@@ -4,7 +4,7 @@
   import Preview from "../components/Preview.svelte";
   import Rich from "../components/Rich.svelte";
   import { api, errorMessage, type Id, type Marking, type QuestionInput, type ShortAnswer, type SourceRow } from "../lib/api";
-  import { imageMarkdown } from "../lib/images";
+  import { IMAGE_TYPES, imageInput } from "../lib/imageInput.svelte";
 
   let { topic }: { topic: Id } = $props();
 
@@ -136,58 +136,13 @@
     return { kind: "short", checkBy: "Keywords", accepted: empty.accepted, typos: true, keywords: keywords.map((keyword) => ({ word: keyword.word, also: keyword.also.join(", ") })), needed, model: short.model_answer };
   }
 
-  // R7 / questions.feature "Add an image by pasting or picking". Images go into the
-  // database straight away and the field gets ![name](image:12) at the cursor.
-  type RichField = HTMLInputElement | HTMLTextAreaElement;
-  const IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+  // R7 / questions.feature "Add an image by pasting, dropping or picking" (shared with cards).
   let questionField = $state<HTMLTextAreaElement>();
-  let lastField = $state<RichField>();
   let picker = $state<HTMLInputElement>();
-  let imageNote = $state("");
-
-  /** "the question", "the explanation" or "option 2", for the status message. */
-  function fieldName(field: RichField): string {
-    const option = field.getAttribute("aria-label");
-    if (option) return option.toLowerCase();
-    return `the ${(field.labels?.[0]?.textContent ?? "question").trim().toLowerCase()}`;
-  }
-
-  async function addImages(files: File[], field: RichField) {
-    error = "";
-    imageNote = "";
-    for (const file of files) {
-      try {
-        const id = await api.addImage(file);
-        const start = field.selectionStart ?? field.value.length;
-        const end = field.selectionEnd ?? start;
-        const spacer = start > 0 && !/\s$/.test(field.value.slice(0, start)) ? " " : "";
-        field.setRangeText(spacer + imageMarkdown(id, file.name), start, end, "end");
-        field.dispatchEvent(new Event("input", { bubbles: true }));
-        imageNote = `Image added to ${fieldName(field)}`;
-      } catch (failure) {
-        error = errorMessage(failure);
-      }
-    }
-  }
-
-  function onPaste(event: ClipboardEvent) {
-    const field = event.target;
-    if (!(field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) || !field.dataset.rich) return;
-    const images = [...(event.clipboardData?.files ?? [])].filter((file) => IMAGE_TYPES.includes(file.type));
-    if (!images.length) return;
-    event.preventDefault();
-    addImages(images, field);
-  }
-
-  function onFocus(event: FocusEvent) {
-    const field = event.target;
-    if ((field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) && field.dataset.rich) lastField = field;
-  }
+  const images = imageInput(() => questionField);
 
   function onPicked() {
-    const files = [...(picker?.files ?? [])];
-    const field = lastField?.isConnected ? lastField : questionField;
-    if (files.length && field) addImages(files, field).then(() => field.focus());
+    images.add([...(picker?.files ?? [])]);
     if (picker) picker.value = "";
   }
 
@@ -199,7 +154,7 @@
     draft = { ...blank(), kind: draft.kind };
     tryText = "";
     error = "";
-    imageNote = "";
+    images.clear();
   }
 
   load();
@@ -237,7 +192,7 @@
       </details>
     {/if}
 
-    <form class="max-w-2xl space-y-8 px-10 pb-16" onsubmit={save} onpaste={onPaste} onfocusin={onFocus}>
+    <form class="max-w-2xl space-y-8 px-10 pb-16" onsubmit={save} onpaste={images.onPaste} onfocusin={images.onFocus} ondragover={images.onDragOver} ondrop={images.onDrop}>
       <div class="flex items-center justify-between gap-4">
         <span class="text-sm font-semibold" id="type-label">Question type</span>
         <div class="seg" role="radiogroup" aria-labelledby="type-label">
@@ -249,11 +204,11 @@
         <label class="text-sm font-semibold" for="question-text">Question</label>
         <textarea id="question-text" class="textarea w-full font-mono text-sm" rows="3" data-rich="true" bind:this={questionField} bind:value={draft.text}></textarea>
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <p class="text-sm text-muted">Markdown, `code`, $LaTeX$ and images. Paste an image into any field, or add one from a file.</p>
+          <p class="text-sm text-muted">Markdown, `code`, $LaTeX$ and images. Paste or drop an image into any field, or add one from a file.</p>
           <button type="button" class="btn btn-ghost btn-sm" title="Adds the image where your cursor was last, in the question, an option or the explanation" onclick={() => picker?.click()}><ImagePlus class="size-4" />Add image</button>
           <input bind:this={picker} type="file" class="hidden" accept={IMAGE_TYPES.join(",")} multiple aria-label="Image file" onchange={onPicked} />
         </div>
-        {#if imageNote}<p role="status" class="text-sm text-muted">{imageNote}</p>{/if}
+        {#if images.note}<p role="status" class="text-sm text-muted">{images.note}</p>{/if}{#if images.error}<p role="alert" class="text-sm text-error">{images.error}</p>{/if}
         {#if worthPreviewing(draft.text)}<div class="panel p-4" aria-label="Question preview"><Rich text={draft.text} class="max-w-prose" /></div>{/if}
       </div>
 

@@ -142,8 +142,9 @@
     place-items: center;
     overflow: hidden;
     padding: 24px 16px;
+    /* Solid from the first frame: a fading backdrop let the summary underneath show through.
+       The rays, badge, title and numbers bring the motion. */
     background: var(--color-base-100);
-    animation: fade 0.25s both;
   }
   .rays {
     position: absolute;
