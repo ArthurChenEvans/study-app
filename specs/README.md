@@ -303,4 +303,4 @@ Decided with the design: keywords are checked in any order, every answer is righ
 
 | ID | Requirement |
 |---|---|
-| R164 | The app builds as an .rpm, .deb and .AppImage for Linux and an .exe installer (and .msi) for Windows, with the full icon set, Education category and a short description. Windows builds run on GitHub Actions (Build installers, by hand or on a v* tag). On Windows the slide preview finds LibreOffice's soffice.exe on the PATH or in Program Files, and its throwaway profile uses a proper file URL |
+| R164 | The app builds as an .rpm, .deb and .AppImage for Linux and an .exe installer (and .msi) for Windows, with the full icon set, Education category and a short description. Windows builds run on GitHub Actions (Build installers, on a push to the release branch, by hand, or on a v* tag). On Windows the slide preview finds LibreOffice's soffice.exe on the PATH or in Program Files, and its throwaway profile uses a proper file URL |
