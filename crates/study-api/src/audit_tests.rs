@@ -613,3 +613,69 @@ fn half_written_backups_from_a_crash_are_cleared_by_the_next_backup() {
     assert_eq!(left, ["notes.txt", "study 2026-11-12 10-05 by-hand.partial"]);
     assert_eq!(app.backups().unwrap().len(), 2);
 }
+
+// ---------- Edges that mutation testing showed were untested ----------
+
+#[test]
+fn the_calendar_range_limit_is_exact() {
+    let app = seeded(1);
+    assert_eq!(app.calendar_month(TODAY, TODAY, TODAY).unwrap().len(), 1, "one day is a range");
+    let most = crate::calendar::MAX_CALENDAR_DAYS;
+    assert_eq!(app.calendar_month(TODAY, TODAY + most, TODAY).unwrap().len() as i64, most + 1);
+    assert!(app.calendar_month(TODAY, TODAY + most + 1, TODAY).is_err());
+}
+
+#[test]
+fn todays_calendar_shows_the_same_cards_and_minutes_as_the_cards_screen() {
+    let app = seeded(1);
+    let home = app.cards_home(TODAY).unwrap();
+    let total = home.due.new + home.due.learning + home.due.review;
+    assert!(total > 3, "the seed has cards due today: {:?}", home.due);
+    assert_eq!(home.minutes, (total * 25).div_ceil(60), "about 25 seconds a card");
+    let (due, minutes) = app.cards_due_today(TODAY).unwrap();
+    assert_eq!((&due, minutes), (&home.due, home.minutes));
+    let day = serde_json::to_value(app.calendar_day(TODAY, TODAY).unwrap()).unwrap();
+    assert_eq!(day["cards"]["minutes"], home.minutes);
+    assert_eq!(day["cards"]["due"], serde_json::to_value(&home.due).unwrap());
+}
+
+#[test]
+fn backups_are_thinned_by_the_defaults_when_no_settings_were_ever_saved() {
+    let dir = scratch("no-settings");
+    let mut app = App::with_seed(Store::in_memory().unwrap(), 1);
+    app.set_backups(dir.join("backups"));
+    app.create_topic("Caches", None).unwrap();
+    for ago in (0..40).rev() {
+        app.back_up_now(at(TODAY - ago, 600)).unwrap();
+    }
+    assert!(!dir.join("backups").join("settings.json").exists());
+    let kept = app.backups().unwrap().len();
+    assert!(kept < 20, "no settings file means the defaults, which thin 40 daily backups out: {kept} kept");
+    // A settings file that's there but can't even be opened (here: a folder in its place)
+    // is unknown settings, not the defaults.
+    std::fs::create_dir(dir.join("backups").join("settings.json")).unwrap();
+    for ago in (41..60).rev() {
+        app.back_up_now(at(TODAY + 100 - ago, 600)).unwrap();
+    }
+    assert_eq!(app.backups().unwrap().len(), kept + 19, "nothing is thinned while the settings can't be read");
+}
+
+#[test]
+fn only_half_written_backups_over_an_hour_old_are_cleared() {
+    let dir = scratch("partial-age");
+    let mut app = App::with_seed(Store::in_memory().unwrap(), 1);
+    app.set_backups(dir.join("backups"));
+    app.back_up_now(at(TODAY, 600)).unwrap();
+    let folder = dir.join("backups");
+    let aged = |name: &str, minutes: u64| {
+        std::fs::write(folder.join(name), b"half").unwrap();
+        std::fs::File::options().write(true).open(folder.join(name)).unwrap().set_modified(std::time::SystemTime::now() - std::time::Duration::from_secs(minutes * 60)).unwrap();
+    };
+    aged("fifty minutes.partial", 50);
+    aged("seventy minutes.partial", 70);
+    aged("two minutes.partial-journal", 2);
+    app.back_up_now(at(TODAY, 601)).unwrap();
+    let mut left: Vec<String> = std::fs::read_dir(&folder).unwrap().flatten().map(|entry| entry.file_name().to_string_lossy().to_string()).filter(|name| name.contains("partial")).collect();
+    left.sort();
+    assert_eq!(left, ["fifty minutes.partial", "two minutes.partial-journal"]);
+}
