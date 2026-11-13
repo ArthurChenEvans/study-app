@@ -303,4 +303,13 @@ Decided with the design: keywords are checked in any order, every answer is righ
 
 | ID | Requirement |
 |---|---|
-| R164 | The app builds as an .rpm, .deb and .AppImage for Linux and an .exe installer (and .msi) for Windows, with the full icon set, Education category and a short description. Windows builds run on GitHub Actions (Build installers, on a push to the release branch, by hand, or on a v* tag). On Windows the slide preview finds LibreOffice's soffice.exe on the PATH or in Program Files, and its throwaway profile uses a proper file URL |
+| R164 | The app builds as an .rpm, .deb and .AppImage for Linux and an .exe installer (and .msi) for Windows, with the full icon set, Education category and a short description. Windows builds run on GitHub Actions (Release, on a push to the release branch or by hand). On Windows the slide preview finds LibreOffice's soffice.exe on the PATH or in Program Files, and its throwaway profile uses a proper file URL |
+
+## Updates (approved 13 Nov 2026)
+
+| ID | Requirement |
+|---|---|
+| R165 | The app updates only from published, signed releases, never from commits. Each push to the release branch passes the Fedora update test, gets the next version (0.1.N), builds the .rpm signed with the key in the TAURI_SIGNING_PRIVATE_KEY secret, and publishes it as a GitHub Release with latest.json. "New" means a newer version than the one installed: the same or an older one is not an update |
+| R166 | With Auto update on (the default), the app checks on open and downloads a newer release in the background, then says "Version X is ready" with Install now, and that it installs on close and the computer will ask for a password. On close it installs a downloaded update, or checks first if the last check was over an hour ago, showing "Installing the update" while it does |
+| R167 | Settings shows the installed version, an Auto update switch and Check for updates. A found update shows its version, its notes, the password note and an Update button. Being up to date, offline or a failed install each say so in plain words |
+| R168 | Before installing, the database is backed up (a "before update" backup). A package whose signature doesn't match the public key built into the app is refused and never installed. Being offline is quiet on open and close, and only shown when checking by hand. `study-app --update-now` does the same with no window (exit 0 installed, 3 nothing newer, 4 failed) for the end-to-end test |

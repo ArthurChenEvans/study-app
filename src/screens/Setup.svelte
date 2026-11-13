@@ -118,7 +118,7 @@
 
 <div class="mx-auto max-w-[96rem] px-12 pb-24">
   <PageHeader title="New quiz" subtitle="Pick what to practise and how" />
-  <div class="grid grid-cols-1 items-start gap-8 wide:grid-cols-[1fr_320px]">
+  <div class="grid grid-cols-1 items-start gap-8 wide:grid-cols-[minmax(0,1fr)_320px]">
     <div class="space-y-8">
       <section>
         <div class="mb-3 flex items-center justify-between">

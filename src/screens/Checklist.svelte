@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { stackTable } from "../lib/stack";
   // free-recall.feature (R53, R54, R59): points, adding from questions, and history.
   import { ArrowLeft, FileText, GripVertical, ListPlus, Play, Plus, X } from "@lucide/svelte";
   import RowMenu from "../components/RowMenu.svelte";
@@ -175,7 +176,7 @@
     </div>
 
     {#if tab === "points"}
-      <div class="mt-8 grid grid-cols-[minmax(0,1fr)] wide:grid-cols-[1fr_300px] items-start gap-12">
+      <div class="mt-8 grid grid-cols-[minmax(0,1fr)] wide:grid-cols-[minmax(0,1fr)_300px] items-start gap-12">
         <div>
           <div class="mb-3 flex items-center justify-between">
             <h2 class="text-sm font-semibold">Points to recall</h2>
@@ -236,7 +237,7 @@
       {#if history.checks.length === 0}
         <div class="panel mt-8 max-w-lg p-8"><p class="font-semibold">No checks yet</p><p class="mt-1 text-sm text-muted">Each recall you finish shows up here with its score and step change.</p></div>
       {:else}
-        <div class="mt-8 grid grid-cols-[minmax(0,1fr)] wide:grid-cols-[1fr_300px] items-start gap-12">
+        <div class="mt-8 grid grid-cols-[minmax(0,1fr)] wide:grid-cols-[minmax(0,1fr)_300px] items-start gap-12">
           <div class="space-y-8">
             <section class="panel p-6" aria-labelledby="trend-h">
               <div class="flex items-baseline justify-between"><h2 id="trend-h" class="text-sm font-semibold">Score per check</h2><span class="text-xs text-muted">Pass mark {history.pass_mark}%</span></div>
@@ -245,7 +246,7 @@
             <section aria-labelledby="checks-h">
               <h2 id="checks-h" class="eyebrow mb-3">Checks</h2>
               <div class="panel overflow-hidden">
-                <table class="table" aria-label="Checks">
+                <table class="table" aria-label="Checks" use:stackTable>
                   <thead><tr class="text-muted"><th>Date</th><th>Score</th><th>Step</th><th>Dump</th></tr></thead>
                   <tbody>
                     {#each history.checks as check, index (index)}

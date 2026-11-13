@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { stackTable } from "../lib/stack";
   // projects.feature (R87, R94): projects, and the issues every project shares.
   import { Box, Clock, Code, Dumbbell, FileUp, Hammer, Play, Plus } from "@lucide/svelte";
   import { api, errorMessage, type Id, type IssueView, type ProjectRow } from "../lib/api";
@@ -113,7 +114,7 @@
         </div>
       {/if}
       <div class="panel overflow-hidden">
-        <table class="table" aria-label="Projects">
+        <table class="table" aria-label="Projects" use:stackTable>
           <thead><tr class="text-muted"><th>Project</th><th aria-sort="descending">Last worked on</th><th>Struggles</th><th>To review</th><th>Drills due</th></tr></thead>
           <tbody>
             {#each shownProjects as project (project.id)}
@@ -146,7 +147,7 @@
           </div>
         {/if}
         <div class="panel overflow-hidden">
-          <table class="table" aria-label="Issues">
+          <table class="table" aria-label="Issues" use:stackTable>
             <thead><tr class="text-muted"><th>Issue</th><th aria-sort="descending">Seen</th><th>Last seen</th><th>Drill</th></tr></thead>
             <tbody>
               {#each shownIssues as issue (issue.id)}

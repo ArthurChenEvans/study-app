@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { stackTable } from "../lib/stack";
   // backup.feature (R101 to R108). The view's goal: know your study is safe, and put it
   // back if something goes wrong. So it leads with when the last backup was, in words.
   import { Copy, FolderInput, HardDriveDownload, Plus, RotateCcw, ShieldAlert, ShieldCheck } from "@lucide/svelte";
@@ -241,7 +242,7 @@
 
         {#if list.length}
           <div class="mt-5 overflow-hidden rounded-lg border border-base-300">
-            <table class="table" aria-label="Backups">
+            <table class="table" aria-label="Backups" use:stackTable>
               <thead><tr class="text-muted"><th>Made</th><th>Why</th><th class="text-right">Size</th><th><span class="sr-only">Restore</span></th></tr></thead>
               <tbody>
                 {#each shown as backup (backup.name)}
@@ -260,7 +261,7 @@
           </div>
         {/if}
 
-        <dl class="mt-5 grid grid-cols-[9rem_1fr_auto] items-center gap-x-4 gap-y-3 text-sm">
+        <dl class="mt-5 grid grid-cols-[9rem_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-3 text-sm">
           <dt class="text-muted">Kept</dt>
           <dd>{keptLabel(status.settings)}</dd>
           <dd><button class="btn btn-ghost btn-sm" onclick={openKeeping} aria-label="Change how many are kept">Change</button></dd>

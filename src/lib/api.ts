@@ -334,6 +334,11 @@ export const api = {
   topicQuizzes: () => invoke<TopicQuizView[]>("topic_quizzes"),
   quizQueue: () => invoke<QuizQueue>("quiz_queue"),
   quizzesADay: () => invoke<number>("quizzes_a_day"),
+  appVersion: () => invoke<string>("app_version"),
+  updateSetAuto: (on: boolean) => invoke<void>("update_set_auto", { on }),
+  updateCheck: () => invoke<UpdateInfo | null>("update_check"),
+  updateDownload: () => invoke<UpdateInfo>("update_download"),
+  updateInstall: (restart: boolean) => invoke<void>("update_install", { restart }),
   celebrations: () => invoke<string | null>("celebrations"),
   setCelebrations: (json: string) => invoke<void>("set_celebrations", { json }),
   resetCelebrations: () => invoke<void>("reset_celebrations"),
@@ -412,3 +417,6 @@ export interface SyncDevice { id: string; name: string; this_one: boolean; last_
 export interface SyncStatus { on: boolean; paused: string | null; folder: string | null; device: string; name: string; devices: SyncDevice[]; last_synced: number | null; problem: string | null; waiting: number; held: number; to_check: number }
 export interface SyncResult { sent: number; received: number; deferred: boolean; status: SyncStatus }
 export interface ToCheck { n: number; record: string; what: string; label: string; context: string | null; field: string; deleted: boolean; kept: string | null; other: string | null; kept_by: string; kept_when: number; other_by: string; other_when: number }
+
+// ---------- Updates (R165 to R168) ----------
+export interface UpdateInfo { version: string; current: string; notes: string | null; date: string | null; ready: boolean }

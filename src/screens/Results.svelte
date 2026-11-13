@@ -136,7 +136,7 @@
           <h2 class="text-[18px]">By topic</h2>
           <ul class="mt-2 space-y-2" aria-label="By topic">
             {#each Object.entries(results.summary.per_topic) as [id, tally] (id)}
-              <li class="grid grid-cols-[110px_1fr_56px] items-center gap-3 text-[15px]"><span class="truncate">{topicName(id)}</span>{@render bar(tally, 14, true)}<span class="text-right tabular-nums">{right(tally)} / {total(tally)}</span></li>
+              <li class="grid grid-cols-[110px_minmax(0,1fr)_56px] items-center gap-3 text-[15px]"><span class="truncate">{topicName(id)}</span>{@render bar(tally, 14, true)}<span class="text-right tabular-nums">{right(tally)} / {total(tally)}</span></li>
             {/each}
           </ul>
         </section>

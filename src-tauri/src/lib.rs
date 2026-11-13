@@ -3,6 +3,8 @@
 
 use std::sync::Mutex;
 
+mod updates;
+
 use chrono::{Local, NaiveDate};
 use tauri::{Manager, State};
 
@@ -46,6 +48,35 @@ async fn slides_to_pdf(name: String, data: String) -> ApiResult<tauri::ipc::Resp
     .map_err(|_| ApiError { message: "the conversion stopped unexpectedly".into() })?
     .map_err(|error| ApiError { message: error.to_string() })?;
     Ok(tauri::ipc::Response::new(pdf))
+}
+
+// ---------- Updates (R165 to R168) ----------
+
+#[tauri::command]
+fn app_version(app: tauri::AppHandle) -> String {
+    app.package_info().version.to_string()
+}
+#[tauri::command]
+fn update_set_auto(app: tauri::AppHandle, on: bool) {
+    updates::set_auto(&app, on);
+}
+#[tauri::command]
+async fn update_check(app: tauri::AppHandle) -> ApiResult<Option<updates::UpdateInfo>> {
+    updates::check(&app).await
+}
+#[tauri::command]
+async fn update_download(app: tauri::AppHandle) -> ApiResult<updates::UpdateInfo> {
+    updates::download(&app).await
+}
+/// Installs, then restarts into the new version (or quits, when closing).
+#[tauri::command]
+fn update_install(app: tauri::AppHandle, restart: bool) -> ApiResult<()> {
+    updates::install(&app)?;
+    if restart {
+        app.restart();
+    }
+    app.exit(0);
+    Ok(())
 }
 
 type AppState<'a> = State<'a, Mutex<App>>;
@@ -626,6 +657,16 @@ fn sync_settle(state: AppState, n: i64, other: bool) -> ApiResult<Vec<study_api:
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .manage(updates::Updates::with_feed(std::env::var(updates::FEED_OVERRIDE).ok()))
+        .on_window_event(|window, event| {
+            // Auto update installs a ready update as the app closes (R166).
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event
+                && updates::on_close(window.app_handle())
+            {
+                api.prevent_close();
+            }
+        })
         .setup(|handle| {
             let dir = handle.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
@@ -641,9 +682,17 @@ pub fn run() {
                 eprintln!("couldn't make today's backup: {}", error.message);
             }
             handle.manage(Mutex::new(app));
+            if std::env::args().any(|arg| arg == "--update-now") {
+                updates::run_headless(handle.handle().clone());
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            app_version,
+            update_set_auto,
+            update_check,
+            update_download,
+            update_install,
             slides_to_pdf,
             backup_status,
             backups,

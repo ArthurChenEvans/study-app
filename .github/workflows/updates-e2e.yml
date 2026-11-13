@@ -1,0 +1,78 @@
+# updates.feature end to end (R165 to R168): two signed .rpm builds, then a fresh Fedora that
+# installs the old one, adds study data, and lets the app update itself from a feed served on
+# the same machine. Also checks that the same or an older version, being offline and a
+# tampered package all leave the installed app alone.
+#
+# The builds are signed with a throwaway key made for this run, never the real one.
+name: Update test (Fedora)
+
+on:
+  workflow_dispatch:
+  workflow_call:
+  pull_request:
+  push:
+    branches: [main, celebrations]
+
+env:
+  OLD: 1.0.0
+  NEW: 1.0.1
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+      - name: Linux libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils rpm jq
+      - run: pnpm install --frozen-lockfile
+
+      - name: Throwaway signing key
+        run: |
+          pnpm tauri signer generate --ci -p "" -w "$RUNNER_TEMP/test.key"
+          echo "TAURI_SIGNING_PRIVATE_KEY=$(cat "$RUNNER_TEMP/test.key")" >> "$GITHUB_ENV"
+          echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=" >> "$GITHUB_ENV"
+
+      - name: Build the old and new versions
+        run: |
+          mkdir -p out
+          for pair in "old:$OLD" "new:$NEW"; do
+            name=${pair%%:*}; v=${pair#*:}
+            # Trust the throwaway key, and allow the plain http feed this test serves locally.
+            jq -n --arg v "$v" --arg k "$(cat "$RUNNER_TEMP/test.key.pub")" \
+              '{version: $v, plugins: {updater: {pubkey: $k, dangerousInsecureTransportProtocol: true}}}' > "$RUNNER_TEMP/ci.json"
+            pnpm tauri build --bundles rpm --config "$RUNNER_TEMP/ci.json"
+            rpm=$(ls target/release/bundle/rpm/*-"$v"-*.rpm)
+            [ -f "$rpm.sig" ] || pnpm tauri signer sign "$rpm"
+            cp "$rpm" "out/$name.rpm"; cp "$rpm.sig" "out/$name.rpm.sig"
+          done
+          ls -la out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: update-test-rpms
+          path: out/
+
+  fedora:
+    needs: build
+    runs-on: ubuntu-latest
+    container: fedora:42
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: update-test-rpms
+          path: rpms
+      - run: bash e2e/fedora-update.sh rpms

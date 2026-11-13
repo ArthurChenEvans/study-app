@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { stackTable } from "../lib/stack";
   // history.feature (R26, R27, R29). Resuming an incomplete attempt is open (Q13).
   import { CirclePause, History as HistoryIcon, Play, RotateCcw } from "@lucide/svelte";
   import { api, type HistoryRow, type Id, type Tally, type TopicRow } from "../lib/api";
@@ -90,7 +91,7 @@
           <span class="text-sm text-muted">{group.rows.length} {group.rows.length === 1 ? "quiz" : "quizzes"} · average {average(group.rows)}%</span>
         </button>
         {#if isOpen(group.key, index)}
-      <table class="table border-t-2 border-base-300">
+      <table class="table border-t-2 border-base-300" use:stackTable>
         <thead><tr class="text-muted"><th>Date</th><th>Topics</th><th class="w-56">Result</th><th class="text-right">Score</th><th><span class="sr-only">Status</span></th></tr></thead>
         <tbody>
           {#each group.rows as row (row.id)}

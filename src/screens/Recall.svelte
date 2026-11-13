@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { stackTable } from "../lib/stack";
   // free-recall.feature (R52, R58, R60): checklists due today first, then the rest by date.
   import { Brain, CalendarCog, CircleCheck, Clock, Play, Plus } from "@lucide/svelte";
   import { api, errorMessage, type ModuleRow, type RecallRow, type Schedule, type TopicRow } from "../lib/api";
@@ -97,7 +98,7 @@
         {#each due as row, index (row.id)}
           <!-- The due checklist is a raised hero tile, with its step pips and last score -->
           <article class="due-tile flex items-center gap-6 px-6 py-5" aria-label={row.subject_name}>
-            <div class="min-w-0 flex-1">
+            <div class="min-w-0 flex-[1_1_16rem]">
               <p><span class="chip">{row.module ? "Module" : "Topic"} · {row.points} {row.points === 1 ? "point" : "points"}</span></p>
               <h3 class="mt-1.5 text-[26px] font-black leading-tight"><button class="text-left hover:underline" onclick={() => onOpen(row.id)}>{row.subject_name}</button></h3>
               <p class="mt-1.5 flex flex-wrap items-center gap-3">
@@ -129,7 +130,7 @@
     <section class="mt-12" aria-labelledby="later-h">
       <h2 id="later-h" class="eyebrow mb-3">{due.length ? "Coming up" : "All checklists"}</h2>
       <div class="panel overflow-hidden">
-        <table class="table table-fixed" aria-label="Checklists">
+        <table class="table table-fixed" aria-label="Checklists" use:stackTable>
           <colgroup><col class="w-[28%]" /><col class="w-[12%]" /><col class="w-[30%]" /><col class="w-[15%]" /><col class="w-[15%]" /></colgroup>
           <thead><tr class="text-muted"><th>Checklist</th><th>Points</th><th>Step</th><th>Last check</th><th>Next</th></tr></thead>
           <tbody>

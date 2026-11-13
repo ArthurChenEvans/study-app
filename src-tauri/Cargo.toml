@@ -20,3 +20,7 @@ base64 = "0.22"
 study-core = { path = "../crates/study-core" }
 study-store = { path = "../crates/study-store" }
 study-api = { path = "../crates/study-api" }
+tauri-plugin-updater = "2.10"
+
+[dev-dependencies]
+tauri = { version = "2", features = ["test"] }

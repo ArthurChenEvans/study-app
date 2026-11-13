@@ -307,7 +307,7 @@
   <PageHeader title="Topics" subtitle={loaded && topics.length ? `${topics.length} topics in ${modules.length} modules${dueTopics.length ? ` · ${dueTopics.length} ${dueTopics.length === 1 ? "quiz" : "quizzes"} due today` : ""}` : ""}>
     {#if topics.length}<button class="btn btn-ghost" onclick={async () => { const queue = await api.quizQueue(); daily = { value: queue.daily, coming: queue.next_four_weeks }; editingSchedule = await api.quizSchedule(); }}><CalendarCog class="size-4" />Quiz schedule</button>{/if}
     <button class="btn btn-ghost" onclick={() => { moduleError = ""; creatingModule = true; }}><FolderPlus class="size-4" />New module</button>
-    <button class="btn {dueTopics.length ? 'btn-ghost' : 'btn-primary'}" onclick={openCreate}><Plus class="size-4" />New topic</button>
+    <button class="btn {dueTopics.length || (loaded && topics.length === 0) ? 'btn-ghost' : 'btn-primary'}" onclick={openCreate}><Plus class="size-4" />New topic</button>
     {#if dueTopics.length}<button class="btn btn-primary" onclick={() => onQuizTopics(dueTopics)}><Play class="size-4" />Quiz the {dueTopics.length === 1 ? "due topic" : `${dueTopics.length} due topics`}</button>{/if}
   </PageHeader>
 
@@ -398,7 +398,7 @@
             <p class="text-xs font-bold text-muted">{moduleName(picked.module) ?? "No module"}</p>
             <h2 class="mt-1 text-lg font-black leading-snug">{picked.name}</h2>
             {#if picked.tags.length}<div class="mt-2 flex flex-wrap gap-1">{#each picked.tags as tag (tag)}<span class="chip">{tag}</span>{/each}</div>{/if}
-            <dl class="mt-4 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2.5 text-sm">
+            <dl class="mt-4 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2.5 text-sm">
               <dt class="text-muted">Questions</dt><dd class="text-right font-extrabold tabular-nums">{picked.question_count}{picked.short_count ? `, ${picked.short_count} short answer` : ""}</dd>
               <dt class="text-muted">Quiz step</dt><dd class="flex items-center justify-end gap-2 font-extrabold">{#if quiz}{@render pips(quiz)}{quiz.step}{:else}Not started{/if}</dd>
               <dt class="text-muted">Next quiz</dt><dd class="text-right font-extrabold">{#if quiz}{quiz.due_today ? "Due today" : quiz.waiting ? "Waiting its turn" : dueLabel(quiz.due, today)}{:else}{picked.question_count ? "Quiz it to start" : "No questions yet"}{/if}</dd>
@@ -409,7 +409,7 @@
               <button class="btn btn-outline btn-sm" aria-label="Edit {picked.name}" onclick={() => onEdit(picked!.id)}><Pencil class="size-4" />Edit</button>
               <button class="btn btn-ghost btn-sm col-span-2" onclick={() => onCards(picked!.id)}><SquareStack class="size-4" />Cards</button>
             </div>
-            <div class="mt-3 flex justify-between gap-1 border-t-2 border-base-300 pt-3">
+            <div class="action-row mt-3 border-t-2 border-base-300 pt-3">
               <button class="btn btn-quiet btn-xs" onclick={() => openMove([picked!.id])}><FolderInput class="size-3.5" />Move</button>
               <button class="btn btn-quiet btn-xs" onclick={() => openTags(picked!)}><Tag class="size-3.5" />Tags</button>
               <button class="btn btn-quiet btn-xs text-error" onclick={() => requestDelete(picked!)}><Trash2 class="size-3.5" />Delete</button>

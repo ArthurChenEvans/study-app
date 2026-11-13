@@ -66,7 +66,9 @@ describe("Topics screen", () => {
     given([], []);
     render(Topics);
     expect(await screen.findByText("No topics yet")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create your first topic" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create your first topic" })).toHaveClass("btn-primary");
+    // One primary button per view: the header's button steps back while the first steps show.
+    expect(screen.getByRole("button", { name: /^New topic/ })).not.toHaveClass("btn-primary");
   });
 
   it("creates a topic in a module", async () => {

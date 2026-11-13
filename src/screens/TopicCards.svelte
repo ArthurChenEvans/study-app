@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { stackTable } from "../lib/stack";
   // flashcards.feature (R62 to R64, R70, R71, R77): a topic's cards and the note editor.
   import { Archive, ArchiveRestore, ArrowLeft, Brackets, Flag, Play, Plus, Trash2, X } from "@lucide/svelte";
   import { tick, untrack } from "svelte";
@@ -166,7 +167,7 @@
           <input type="search" class="input input-sm w-72" aria-label="Filter cards" placeholder="Filter cards…" bind:value={query} />
         </div>
         <div class="panel overflow-hidden">
-          <table class="table table-fixed" aria-label="Cards in {data.name}">
+          <table class="table table-fixed" aria-label="Cards in {data.name}" use:stackTable>
             <colgroup><col class="w-[40%]" /><col class="w-[12%]" /><col class="w-[16%]" /><col class="w-[12%]" /><col class="w-[10%]" /><col class="w-[10%]" /></colgroup>
             <thead><tr class="text-muted"><th>Front</th><th>Type</th><th>From</th><th>Next</th><th>Again</th><th><span class="sr-only">Archive</span></th></tr></thead>
             <tbody>
@@ -187,7 +188,7 @@
       {/if}
     {:else}
       {@const note = editing.note}
-      <div class="grid grid-cols-[minmax(0,1fr)] wide:grid-cols-[1fr_320px] items-start gap-10">
+      <div class="grid grid-cols-[minmax(0,1fr)] wide:grid-cols-[minmax(0,1fr)_320px] items-start gap-10">
         <form class="space-y-8" onsubmit={save}>
           {#if leech}
             <div class="panel flex items-start gap-3 px-4 py-3" role="note"><Flag class="mt-0.5 size-4 shrink-0" />

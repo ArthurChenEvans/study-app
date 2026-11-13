@@ -126,7 +126,7 @@
         <button type="button" class="btn btn-error" disabled={busy} onclick={remove}><Trash2 class="size-4" />Delete date</button>
       </div>
     {:else}
-      <div class="mt-5 grid grid-cols-[1fr_11rem] gap-4">
+      <div class="mt-5 grid grid-cols-[minmax(0,1fr)_11rem] gap-4">
         <label class="block"><span class="text-sm font-semibold">Name</span>
           <!-- svelte-ignore a11y_autofocus -->
           <input class="input mt-1 w-full" bind:value={name} placeholder="e.g. Networks exam" autofocus /></label>
