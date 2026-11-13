@@ -6,7 +6,7 @@ vi.mock("../lib/api", async (original) => {
   const actual = await original<typeof import("../lib/api")>();
   return {
     ...actual,
-    api: { topicCards: vi.fn(), today: vi.fn(), topics: vi.fn(), noteView: vi.fn(), saveNote: vi.fn(), deleteNote: vi.fn(), archiveCard: vi.fn() },
+    api: { topicCards: vi.fn(), today: vi.fn(), topics: vi.fn(), noteView: vi.fn(), saveNote: vi.fn(), deleteNote: vi.fn(), archiveCard: vi.fn(), addImage: vi.fn() },
   };
 });
 
@@ -105,6 +105,56 @@ describe("Topic cards", () => {
     expect(await screen.findByText("2 cards added")).toBeInTheDocument();
   });
 
+  // flashcards.feature: Writing several cards in a row
+  it("saving a new card keeps the editor open for the next one, same type and topic", async () => {
+    const u = userEvent.setup();
+    render(TopicCards, props({ editNote: "new" }));
+    await u.click(await screen.findByRole("radio", { name: "Basic and reversed" }));
+    await u.type(screen.getByLabelText("Front"), "TLB");
+    await u.type(screen.getByLabelText("Back"), "A cache of page table entries");
+    await u.click(screen.getByRole("button", { name: /Save 2 cards/ }));
+    expect(mocked.saveNote).toHaveBeenCalledTimes(1);
+    expect(await screen.findByRole("status")).toHaveTextContent("2 cards added");
+    expect(screen.getByLabelText("Front")).toHaveValue("");
+    expect(screen.getByLabelText("Back")).toHaveValue("");
+    expect(screen.getByRole("radio", { name: "Basic and reversed" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByLabelText("Front")).toHaveFocus();
+    expect(screen.queryByRole("table", { name: "Cards in CPU" })).toBeNull();
+  });
+
+  it("Save and return to list saves and goes back to the cards", async () => {
+    const u = userEvent.setup();
+    render(TopicCards, props({ editNote: "new" }));
+    await u.type(await screen.findByLabelText("Front"), "Why a write buffer?");
+    await u.type(screen.getByLabelText("Back"), "So stores don't stall");
+    await u.click(screen.getByRole("button", { name: "Save and return to list" }));
+    expect(await screen.findByRole("table", { name: "Cards in CPU" })).toBeInTheDocument();
+    expect(screen.getByText("1 card added")).toBeInTheDocument();
+  });
+
+  it("editing a card still saves and goes back", async () => {
+    const u = userEvent.setup();
+    render(TopicCards, props({ editNote: 101 }));
+    await u.click(await screen.findByRole("button", { name: /Save changes/ }));
+    expect(await screen.findByRole("table", { name: "Cards in CPU" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Save and return to list" })).toBeNull();
+  });
+
+  // flashcards.feature (R7): images on either side
+  it("adds an image to the front or the back by pasting or from a file", async () => {
+    const u = userEvent.setup();
+    mocked.addImage.mockResolvedValue(12);
+    render(TopicCards, props({ editNote: "new" }));
+    const front = await screen.findByLabelText("Front");
+    await u.click(front);
+    await u.paste({ files: [new File(["x"], "pipeline.png", { type: "image/png" })] } as unknown as DataTransfer);
+    await vi.waitFor(() => expect(front).toHaveValue("![pipeline](image:12)"));
+    expect(screen.getByRole("status")).toHaveTextContent("Image added to the front");
+    await u.click(screen.getByLabelText("Back"));
+    await u.upload(screen.getByLabelText("Image file"), new File(["x"], "stages.png", { type: "image/png" }));
+    await vi.waitFor(() => expect(screen.getByLabelText("Back")).toHaveValue("![stages](image:12)"));
+  });
+
   // flashcards.feature: A reversed card makes two
   it("can save a reversed card into another topic, then opens that topic", async () => {
     const u = userEvent.setup();
@@ -115,7 +165,7 @@ describe("Topic cards", () => {
     await u.type(screen.getByLabelText("Front"), "TLB");
     await u.type(screen.getByLabelText("Back"), "A cache of page table entries");
     await u.selectOptions(screen.getByLabelText("Topic"), "2");
-    await u.click(screen.getByRole("button", { name: /Save 2 cards/ }));
+    await u.click(screen.getByRole("button", { name: "Save and return to list" }));
     expect(mocked.saveNote.mock.calls[0][1].note).toMatchObject({ topic: 2, kind: "Reversed" });
     await vi.waitFor(() => expect(handlers.onTopic).toHaveBeenCalledWith(2, "2 cards added to Memory"));
   });

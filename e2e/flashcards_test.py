@@ -103,8 +103,9 @@ try:
     find("//input[@aria-label='Extra cue 1']").send_keys("What makes a page walk unnecessary most of the time?")
     assert driver.find_element(By.CSS_SELECTOR, "section[aria-label='Preview'] strong").text == "TLB"
     shot("editor-basic")
-    button("Save 2 cards").click()
-    wait.until(lambda _: "2 cards added to Memory" in text())
+    button("Save and return to list").click()
+    # Memory is the only topic, so the editor opened on it and there's no "to Memory".
+    wait.until(lambda _: "2 cards added" in text())
     find("//h1[normalize-space()='Memory']")
     ok("basic card with an extra cue saves as 2 cards, into the topic picked (R62)")
 
@@ -112,7 +113,7 @@ try:
     find("//button[@role='radio' and normalize-space()='Basic and reversed']").click()
     labelled("Front").send_keys("Thrashing")
     labelled("Back").send_keys("Spending more time paging than running")
-    button("Save 2 cards").click()
+    button("Save and return to list").click()
     wait.until(lambda _: "2 cards added" in text() and "Thrashing" in text())
     ok("reversed card makes two (R63)")
 
@@ -129,7 +130,13 @@ try:
     assert "Makes 2 cards" in preview.text and len(preview.find_elements(By.CSS_SELECTOR, ".cloze-gap")) == 2
     shot("editor-cloze")
     box.send_keys(Keys.CONTROL, "s")
-    wait.until(lambda _: "2 cards added" in text() and "CLOZE 2 OF 2" in text().upper())
+    # Saving a new card keeps the editor open for the next one, same type.
+    find("//*[@role='status' and normalize-space()='2 cards added']")
+    assert labelled("Text").get_attribute("value") == ""
+    assert find("//button[@role='radio' and normalize-space()='Cloze']").get_attribute("aria-checked") == "true"
+    ok("saving a new card clears the editor for the next one")
+    button("Cancel").click()
+    wait.until(lambda _: "CLOZE 2 OF 2" in text().upper())
     rows = driver.execute_script("return document.querySelector('table[aria-label=\"Cards in Memory\"]').tBodies[0].rows.length")
     assert rows == 6, rows
     ok("cloze gaps from the selection and the shortcut, previewed, saved as 2 cards (R64)")
@@ -144,6 +151,17 @@ try:
 
     find("//*[@role='heading' and @aria-level='1']")
     assert not driver.find_elements(By.XPATH, "//nav[@aria-label='Main']"), "sidebar hidden in review"
+    # celebrations.feature (R154): the finish moment covers the summary from its first frame,
+    # with no glimpse of the summary underneath. Watch for it before the last grade.
+    driver.execute_script("""
+      window.__firstFrame = null;
+      new MutationObserver((changes, watcher) => {
+        const moment = document.querySelector('.celebrate');
+        if (!moment) return;
+        watcher.disconnect();
+        requestAnimationFrame(() => { window.__firstFrame = getComputedStyle(moment).opacity; });
+      }).observe(document.body, { childList: true, subtree: true });
+    """)
     seen = []
     again_card = None
     graded = 0
@@ -183,6 +201,10 @@ try:
     ok(f"reviewed {len(seen)} cards with the keyboard, the Again card came back (R65, R66)")
 
     find("//h1[normalize-space()='Done for today']")
+    wait.until(lambda _: driver.execute_script("return window.__firstFrame") is not None)
+    first = float(driver.execute_script("return window.__firstFrame"))
+    assert first == 1, f"the finish moment was {first:.2f} opaque on its first frame, so the summary showed through"
+    ok("the finish moment covers the summary from its first frame (R154)")
     celebrated()
     assert "1 time Again" in text(), text()
     ok("the summary shows reviewed, remembered and time (R69)")

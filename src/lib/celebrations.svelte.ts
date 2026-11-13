@@ -99,7 +99,9 @@ export function celebrate(kind: Big, details: BigDetails): Mode {
     return mode;
   }
   live.big.push({ ...details, id: nextId++, kind });
-  playBig(kind, details.score);
+  // Start the jingle once the moment has painted, so building the sound doesn't hold up its
+  // first frame.
+  requestAnimationFrame(() => playBig(kind, details.score));
   return mode;
 }
 

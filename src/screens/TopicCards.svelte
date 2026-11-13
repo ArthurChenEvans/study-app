@@ -1,11 +1,12 @@
 <script lang="ts">
   import { stackTable } from "../lib/stack";
   // flashcards.feature (R62 to R64, R70, R71, R77): a topic's cards and the note editor.
-  import { Archive, ArchiveRestore, ArrowLeft, Brackets, Flag, Play, Plus, Trash2, X } from "@lucide/svelte";
+  import { Archive, ArchiveRestore, ArrowLeft, Brackets, Flag, ImagePlus, Play, Plus, Trash2, X } from "@lucide/svelte";
   import { tick, untrack } from "svelte";
   import { api, errorMessage, type Note, type NoteKind, type NoteView, type Subject, type TopicCards, type TopicRow } from "../lib/api";
   import { deleteWithUndo, toast } from "../lib/celebrations.svelte";
   import Rich from "../components/Rich.svelte";
+  import { IMAGE_TYPES, imageInput } from "../lib/imageInput.svelte";
   import { dueLabel } from "../lib/dates";
 
   let { topic, editNote = null, notice = "", onBack, onReview, onTopic = () => {} }: { topic: number; editNote?: number | "new" | null; notice?: string; onBack: () => void; onReview: (scope: Subject) => void; onTopic?: (topic: number, notice: string) => void } = $props();
@@ -56,20 +57,40 @@
     }
   }
 
-  async function save(event?: Event) {
+  /** A new card stays open for the next one unless `andClose`. An edit always closes. */
+  async function save(event?: Event, andClose = false) {
     event?.preventDefault();
     if (!editing) return;
     error = "";
     try {
       const note = $state.snapshot(editing.note);
       await api.saveNote(editing.id, { note, suggestion: null });
-      status = editing.id === null ? `${count(note)} added` : "Changes saved";
+      const isNew = editing.id === null;
+      status = isNew ? `${count(note)} added` : "Changes saved";
+      if (isNew && !andClose) {
+        // flashcards.feature: write the next card straight away, same type and topic.
+        editing = { id: null, note: { ...blank(note.kind), topic: note.topic }, view: null };
+        images.clear();
+        await tick();
+        firstField()?.focus();
+        if (note.topic === topic) await load();
+        return;
+      }
       editing = null;
       if (note.topic !== topic) return onTopic(note.topic, `${status} to ${topics.find((row) => row.id === note.topic)?.name ?? "another topic"}`);
       await load();
     } catch (failure) {
       error = errorMessage(failure);
     }
+  }
+
+  // flashcards.feature (R7): images on either side, by pasting, dropping or picking a file.
+  let picker = $state<HTMLInputElement>();
+  const firstField = () => document.querySelector<HTMLTextAreaElement>("#card-front, #cloze-text");
+  const images = imageInput(firstField);
+  function onPicked() {
+    images.add([...(picker?.files ?? [])]);
+    if (picker) picker.value = "";
   }
 
   function count(note: Note) {
@@ -189,7 +210,7 @@
     {:else}
       {@const note = editing.note}
       <div class="grid grid-cols-[minmax(0,1fr)] wide:grid-cols-[minmax(0,1fr)_320px] items-start gap-10">
-        <form class="space-y-8" onsubmit={save}>
+        <form class="space-y-8" onsubmit={save} onpaste={images.onPaste} onfocusin={images.onFocus} ondragover={images.onDragOver} ondrop={images.onDrop}>
           {#if leech}
             <div class="panel flex items-start gap-3 px-4 py-3" role="note"><Flag class="mt-0.5 size-4 shrink-0" />
               <p><span class="font-semibold">Again {leech.lapses} times.</span> <span class="text-muted">Ask why the answer wasn't obvious, and write that cue as the front. Saving clears this flag and keeps the schedule.</span></p></div>
@@ -206,41 +227,49 @@
             <div class="space-y-2">
               <div class="flex items-end justify-between"><label class="text-sm font-semibold" for="cloze-text">Text</label>
                 <button type="button" class="btn btn-ghost btn-sm" onclick={makeGap}><Brackets class="size-4" />Make a gap <kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">Shift</kbd><kbd class="kbd kbd-xs">C</kbd></button></div>
-              <textarea id="cloze-text" class="textarea w-full font-mono text-sm" rows="4" bind:this={clozeBox} bind:value={note.text}></textarea>
+              <textarea id="cloze-text" data-rich="true" class="textarea w-full font-mono text-sm" rows="4" bind:this={clozeBox} bind:value={note.text}></textarea>
               <p class="text-sm text-muted">Select a word and make a gap, or type <code>{"{{c1::answer}}"}</code>. Add a hint with <code>{"{{c1::answer::hint}}"}</code>. Gaps with the same number are hidden together.</p>
             </div>
             <div class="space-y-2">
               <label class="text-sm font-semibold" for="cloze-extra">Extra on the back <span class="font-normal text-muted">(optional)</span></label>
-              <textarea id="cloze-extra" class="textarea w-full text-[15px]" rows="2" placeholder="Why it matters, or where it came from…" bind:value={note.extra}></textarea>
+              <textarea id="cloze-extra" data-rich="true" class="textarea w-full text-[15px]" rows="2" placeholder="Why it matters, or where it came from…" bind:value={note.extra}></textarea>
             </div>
           {:else}
             {#if note.kind === "Reversed"}<p class="-mt-4 text-sm text-muted">Makes two cards: front to back, and back to front. Each is scheduled on its own. Best when both directions are worth knowing, like a term and its meaning.</p>{/if}
             <div class="space-y-2">
               <label class="text-sm font-semibold" for="card-front">Front</label>
-              <textarea id="card-front" class="textarea w-full text-[15px]" rows="3" placeholder="e.g. I want X to happen, what handles it?…" bind:value={note.front}></textarea>
+              <textarea id="card-front" data-rich="true" class="textarea w-full text-[15px]" rows="3" placeholder="e.g. I want X to happen, what handles it?…" bind:value={note.front}></textarea>
               <p class="text-sm text-muted">Write it as the thought you'll have when you need this, not "what is the name of".</p>
             </div>
             <div class="space-y-2">
               <label class="text-sm font-semibold" for="card-back">Back</label>
-              <textarea id="card-back" class="textarea w-full font-mono text-sm" rows="4" bind:value={note.back}></textarea>
-              <p class="text-sm text-muted">Markdown, <code>code</code>, maths in <code>$…$</code> and images.</p>
+              <textarea id="card-back" data-rich="true" class="textarea w-full font-mono text-sm" rows="4" bind:value={note.back}></textarea>
+              
             </div>
             {#if note.kind === "Basic"}
               <fieldset class="space-y-3">
                 {#if note.cues.length}<legend class="text-sm font-semibold">More cues for the same answer <span class="font-normal text-muted">(optional)</span></legend>{/if}
                 {#each note.cues as _, index (index)}
-                  <div class="flex items-center gap-2"><input class="input input-sm flex-1" aria-label="Extra cue {index + 1}" bind:value={note.cues[index]} /><button type="button" class="btn btn-quiet btn-sm btn-square" aria-label="Remove extra cue {index + 1}" onclick={() => note.cues.splice(index, 1)}><X class="size-4" /></button></div>
+                  <div class="flex items-center gap-2"><input class="input input-sm flex-1" data-rich="true" aria-label="Extra cue {index + 1}" bind:value={note.cues[index]} /><button type="button" class="btn btn-quiet btn-sm btn-square" aria-label="Remove extra cue {index + 1}" onclick={() => note.cues.splice(index, 1)}><X class="size-4" /></button></div>
                 {/each}
                 <div class="flex flex-wrap items-center gap-3"><button type="button" class="btn btn-ghost btn-sm -ml-3" onclick={() => note.cues.push("")}><Plus class="size-4" />Add another cue for the same answer</button><span class="text-sm text-muted">Each cue becomes its own card.</span></div>
               </fieldset>
             {/if}
           {/if}
 
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <p class="text-sm text-muted">Markdown, <code>code</code>, maths in <code>$…$</code> and images. Paste or drop an image into any field, or add one from a file.</p>
+            <button type="button" class="btn btn-ghost btn-sm" title="Adds the image where your cursor was last" onclick={() => picker?.click()}><ImagePlus class="size-4" />Add image</button>
+            <input bind:this={picker} type="file" class="hidden" accept={IMAGE_TYPES.join(",")} multiple aria-label="Image file" onchange={onPicked} />
+          </div>
+          {#if images.error}<p role="alert" class="text-sm text-error">{images.error}</p>{/if}
           {#if error}<p role="alert" class="text-sm text-error">{error}</p>{/if}
           <!-- The save bar stays in reach however long the card gets. -->
-          <div class="sticky bottom-0 z-10 flex items-center gap-3 border-t border-base-300 bg-base-100 py-4">
+          <div class="sticky bottom-0 z-10 flex flex-wrap items-center gap-3 border-t border-base-300 bg-base-100 py-4">
             <button type="submit" class="btn btn-primary">{editing.id === null ? `Save ${count(note)}` : "Save changes"} <kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">S</kbd></button>
+            {#if editing.id === null}<button type="button" class="btn btn-ghost" onclick={() => save(undefined, true)}>Save and return to list</button>{/if}
             <button type="button" class="btn btn-ghost" onclick={() => (editing = null)}>Cancel</button>
+            {#if editing.id === null && (images.note || status)}<p role="status" class="text-sm text-muted">{images.note || status}</p>{/if}
             {#if editing.id !== null}<button type="button" class="btn btn-ghost ml-auto" onclick={() => (deleting = true)}><Trash2 class="size-4" />Delete…</button>{/if}
           </div>
         </form>
