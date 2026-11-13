@@ -139,9 +139,9 @@
                 {#each shown as source (source.id)}
                   <tr aria-selected={picked === source.id} onclick={() => (picked = source.id)}>
                     <td class="max-w-56"><button type="button" class="block min-h-6 w-full truncate text-left font-extrabold" onclick={() => (picked = source.id)}><Highlight text={source.fields.authors || "No author"} term={filter} /></button></td>
-                    <td class="whitespace-nowrap tabular-nums">{source.fields.year ?? "n.d."}</td>
-                    <td class="max-w-0 w-full truncate italic"><Highlight text={source.fields.title} term={filter} /></td>
-                    <td class="num whitespace-nowrap">{source.cited_by_questions} {source.cited_by_questions === 1 ? "question" : "questions"}</td>
+                    <td class="whitespace-nowrap tabular-nums" data-label="Year">{source.fields.year ?? "n.d."}</td>
+                    <td class="max-w-0 w-full truncate italic" data-label="Title"><Highlight text={source.fields.title} term={filter} /></td>
+                    <td class="num whitespace-nowrap" data-label="Cited by">{source.cited_by_questions} {source.cited_by_questions === 1 ? "question" : "questions"}</td>
                   </tr>
                 {/each}
               </tbody>

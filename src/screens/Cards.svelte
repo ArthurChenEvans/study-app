@@ -163,9 +163,9 @@
             {#each byTopic as row (row.topic)}
               <tr>
                 <td><button class="py-0.5 text-left font-semibold hover:underline" onclick={() => onTopic(row.topic)}><Highlight text={row.name} term={filter} /></button><div class="text-xs text-muted">{row.module ?? "No module"}</div></td>
-                <td class="tabular-nums">{row.due.new}</td><td class="tabular-nums">{row.due.learning}</td><td class="tabular-nums">{row.due.review}</td>
-                <td class="tabular-nums">{row.total}</td>
-                <td class="tabular-nums">{#if row.retention === null}<span class="text-muted">None yet</span>{:else}<span class="flex items-center gap-2"><span class="inline-block h-3 w-14 shrink-0 overflow-hidden rounded-full bg-base-300" aria-hidden="true"><span class="block h-full rounded-full" style="width: {row.retention}%; background: var(--chart-ink)"></span></span>{row.retention}%</span>{/if}</td>
+                <td class="tabular-nums" data-label="New">{row.due.new}</td><td class="tabular-nums" data-label="Learning">{row.due.learning}</td><td class="tabular-nums" data-label="To review">{row.due.review}</td>
+                <td class="tabular-nums" data-label="Cards">{row.total}</td>
+                <td class="tabular-nums" data-label="Retention">{#if row.retention === null}<span class="text-muted">None yet</span>{:else}<span class="flex items-center gap-2"><span class="inline-block h-3 w-14 shrink-0 overflow-hidden rounded-full bg-base-300" aria-hidden="true"><span class="block h-full rounded-full" style="width: {row.retention}%; background: var(--chart-ink)"></span></span>{row.retention}%</span>{/if}</td>
               </tr>
             {/each}
           </tbody>

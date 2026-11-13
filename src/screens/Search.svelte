@@ -184,7 +184,7 @@
     {#if questions.length > limit}
       <div class="mt-3 flex items-center gap-3"><button class="btn btn-outline btn-sm" onclick={() => (limit += PAGE)}>Show {Math.min(PAGE, questions.length - limit)} more</button><span class="text-sm text-muted">{limit} of {questions.length} shown</span></div>
     {/if}
-    <p class="mt-2 text-xs text-muted"><kbd class="kbd kbd-xs">↑</kbd> <kbd class="kbd kbd-xs">↓</kbd> to move, <kbd class="kbd kbd-xs">Enter</kbd> to open</p>
+    <p class="mt-2 text-xs text-muted max-tab:hidden"><kbd class="kbd kbd-xs">↑</kbd> <kbd class="kbd kbd-xs">↓</kbd> to move, <kbd class="kbd kbd-xs">Enter</kbd> to open</p>
   {/if}
 
   {#if others.length}

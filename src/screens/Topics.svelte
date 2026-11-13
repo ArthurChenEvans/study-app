@@ -358,17 +358,17 @@
                       <button type="button" class="block min-h-6 w-full truncate text-left text-[15px] font-extrabold" data-topic={topic.id} title={topic.name} onkeydown={(event) => rowKeys(event, topic)}><Highlight text={topic.name} term={filter} /></button>
                       {#if rail === "all"}<span class="block truncate text-xs text-muted">{#if topic.module !== null}<Highlight text={moduleName(topic.module) ?? ""} term={filter} />{:else}No module{/if}</span>{/if}
                     </td>
-                    {#if columns.tags}<td><span class="flex flex-wrap gap-1">{#each topic.tags as tag (tag)}<span class="chip"><Highlight text={tag} term={filter} /></span>{/each}</span></td>{/if}
-                    {#if columns.questions}<td class="num">{topic.question_count}</td>{/if}
-                    {#if columns.short}<td class="num">{topic.short_count}</td>{/if}
-                    {#if columns.step}<td class="whitespace-nowrap">{#if quiz}<span class="text-[13px]">{quiz.step}</span>{:else}<span class="text-muted">Not started</span>{/if}</td>{/if}
-                    {#if columns.next}<td class="whitespace-nowrap">{@render next(quiz, topic)}</td>{/if}
+                    {#if columns.tags}<td data-label="Tags"><span class="flex flex-wrap gap-1">{#each topic.tags as tag (tag)}<span class="chip"><Highlight text={tag} term={filter} /></span>{/each}</span></td>{/if}
+                    {#if columns.questions}<td class="num" data-label="Questions">{topic.question_count}</td>{/if}
+                    {#if columns.short}<td class="num" data-label="Short answers">{topic.short_count}</td>{/if}
+                    {#if columns.step}<td class="whitespace-nowrap" data-label="Quiz step">{#if quiz}<span class="text-[13px]">{quiz.step}</span>{:else}<span class="text-muted">Not started</span>{/if}</td>{/if}
+                    {#if columns.next}<td class="whitespace-nowrap" data-label="Next quiz">{@render next(quiz, topic)}</td>{/if}
                   </tr>
                 {/each}
               </tbody>
             </table>
           </div>
-          <p class="mt-2 text-xs text-muted"><kbd class="kbd kbd-xs">↑</kbd> <kbd class="kbd kbd-xs">↓</kbd> to move, <kbd class="kbd kbd-xs">Enter</kbd> to edit, <kbd class="kbd kbd-xs">Space</kbd> to tick, <kbd class="kbd kbd-xs">/</kbd> to filter</p>
+          <p class="mt-2 text-xs text-muted max-tab:hidden"><kbd class="kbd kbd-xs">↑</kbd> <kbd class="kbd kbd-xs">↓</kbd> to move, <kbd class="kbd kbd-xs">Enter</kbd> to edit, <kbd class="kbd kbd-xs">Space</kbd> to tick, <kbd class="kbd kbd-xs">/</kbd> to filter</p>
         {:else}
           <div class="panel p-8">
             <p class="font-extrabold">{filter.trim() ? `Nothing matches "${filter.trim()}"` : "No topics here"}{railModule ? ` in ${railModule.name}` : ""}</p>

@@ -606,7 +606,7 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
    them cut off cleanly. Phones show a coloured dot for each kind of work, and the words are
    in each day's button label and in the day view you open by tapping it. */
 @media (max-width: 1099px) {
-  .cal-chip, .date-chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cal-day .cal-chip, .cal-day .date-chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cal-chip { font-size: 10px; padding: 2px 5px; }
   .cal-day { min-height: 88px; padding: 5px 6px; }
 }
@@ -615,10 +615,10 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
   .cal-day { min-height: 56px; padding: 4px; gap: 3px; flex-direction: row; flex-wrap: wrap; align-content: flex-start; border-radius: 10px; }
   .cal-day > span:first-child { width: 100%; }
   .cal-day .cal-today { display: none; }
-  .cal-chip, .date-chip { width: 9px; height: 9px; min-width: 0; padding: 0; border-radius: 50%; font-size: 0; border-width: 0; background: var(--chip, var(--muted)); }
-  .cal-chip.chip-due { background: var(--color-accent); }
-  .date-chip { background: var(--primary-ink); }
-  .date-chip svg { display: none; }
+  .cal-day .cal-chip, .cal-day .date-chip { width: 9px; height: 9px; min-width: 0; padding: 0; border-radius: 50%; font-size: 0; border-width: 0; background: var(--chip, var(--muted)); }
+  .cal-day .cal-chip.chip-due { background: var(--color-accent); }
+  .cal-day .date-chip { background: var(--primary-ink); }
+  .cal-day .date-chip svg { display: none; }
 }
 
 /* navigation.feature (R161): on phones a dialog takes the whole screen, and the lesson
@@ -630,3 +630,34 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
 }
 
 @media (max-width: 599px) { main { overflow-x: clip; } }
+
+/* navigation.feature (R162): on phones a list table becomes a stack of cards that scrolls
+   down. The tick box sits on the left, the name on top, and each other value on its own
+   line with its column's name in front. The headers become a row of sort chips. */
+@media (max-width: 599px) {
+  main .pane { overflow: visible; max-height: none; }
+  main table.rows, main table.rows tbody { display: block; width: 100%; table-layout: auto; }
+  main table.rows thead, main table.rows thead tr { display: block; }
+  main table.rows thead tr { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; border-bottom: 2px solid var(--color-base-300); }
+  main table.rows thead th { position: static; display: block; border: 0; width: auto !important; }
+  main table.rows thead th > button, main table.rows thead th > span { width: auto; min-height: 34px; padding: 4px 12px; border: 2px solid var(--color-base-300); border-radius: 999px; background: var(--surface); }
+  main table.rows thead th.num > button { justify-content: flex-start; }
+  main table.rows tbody tr { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: 2px; padding: 12px 14px; border-bottom: 2px solid var(--color-base-300); }
+  main table.rows tbody tr:has(> td > input[type="checkbox"]) { grid-template-columns: 40px minmax(0, 1fr); }
+  main table.rows tbody td { display: block; grid-column: -2 / -1; width: auto !important; min-width: 0 !important; max-width: none !important; padding: 0 !important; border: 0 !important; text-align: left !important; white-space: normal !important; }
+  main table.rows tbody td:has(> input[type="checkbox"]) { grid-column: 1; grid-row: 1 / span 8; padding-top: 2px !important; }
+  main table.rows tbody td[data-label] { font-size: 13px; color: var(--muted); }
+  main table.rows tbody td[data-label]::before { content: attr(data-label) "  "; font-weight: 800; color: var(--color-base-content); }
+}
+@media (max-width: 599px) {
+  main table.rows thead th > button, main table.rows thead th > span { min-height: 30px; padding: 2px 10px; font-size: 11px; }
+}
+
+/* navigation.feature (R163): the calendar's week, a list of days. */
+.week { display: flex; flex-direction: column; gap: 8px; }
+.week-day { display: flex; width: 100%; min-height: 64px; align-items: center; gap: 14px; padding: 10px 14px; text-align: left; border: 2px solid var(--color-base-300); border-radius: 14px; background: var(--surface); }
+.week-day:hover { background: var(--color-base-200); }
+.week-day:focus-visible { outline: 3px solid var(--primary-ink); outline-offset: 2px; }
+.week-day.past { background: transparent; }
+.week-day[aria-current="date"] { border-color: var(--primary-ink); box-shadow: 0 3px 0 var(--primary-ink); }
+.week-date { display: grid; justify-items: center; gap: 2px; width: 48px; flex-shrink: 0; }

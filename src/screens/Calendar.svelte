@@ -8,7 +8,7 @@
   import DateDialog from "../components/DateDialog.svelte";
   import MoveDrillDialog from "../components/MoveDrillDialog.svelte";
   import PageHeader from "../components/PageHeader.svelte";
-  import { dateOf, dueLabel, fullLabel, monthGrid, monthLabel, onDay } from "../lib/dates";
+  import { dateOf, dayOf, dueLabel, fullLabel, monthGrid, monthLabel, onDay, weekLabel, weekStart } from "../lib/dates";
 
   let {
     initialDay = null, onOpenDay = () => {},
@@ -32,6 +32,33 @@
   /** The date dialog: "new" to add one, a date to edit it. */
   let editing = $state<DateView | "new" | null>(null);
   let dialogData = $state<{ modules: ModuleRow[]; topics: TopicRow[]; quizzes: TopicQuizView[] } | null>(null);
+
+  // navigation.feature (R163): Month or Week, remembered on this device. Phones start on the
+  // week, a list of days with everything in full, since a month of dots says less.
+  type View = "month" | "week";
+  const VIEW_KEY = "studyapp-calendar-view";
+  function startView(): View {
+    try {
+      const saved = localStorage.getItem(VIEW_KEY);
+      if (saved === "month" || saved === "week") return saved;
+    } catch { /* storage blocked */ }
+    return typeof matchMedia === "function" && matchMedia("(max-width: 599px)").matches ? "week" : "month";
+  }
+  let view = $state<View>(startView());
+  let weekFrom = $state(0);
+  const weekDays = $derived(weekFrom ? Array.from({ length: 7 }, (_, index) => weekFrom + index) : []);
+  function choose(next: View) {
+    view = next;
+    try { localStorage.setItem(VIEW_KEY, next); } catch { /* storage blocked */ }
+    if (next === "week") {
+      const now = dateOf(today);
+      weekFrom = weekStart(now.year === year && now.month === month ? today : dayOf(year, month, 1));
+    } else {
+      const middle = dateOf(weekFrom + 3);
+      [year, month] = [middle.year, middle.month];
+    }
+    loadMonth();
+  }
 
   const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -68,13 +95,15 @@
     const start = untrack(() => initialDay);
     const now = dateOf(start ?? today);
     [year, month] = [now.year, now.month];
+    weekFrom = weekStart(start ?? today);
     if (start !== null) await open(start);
     else await loadMonth();
   }
 
   async function loadMonth() {
     if (!grid.length) return;
-    const [loadedDays, loadedDates] = await Promise.all([api.calendarMonth(grid[0], grid[grid.length - 1]), api.dates()]);
+    const [from, to] = view === "week" ? [weekFrom, weekFrom + 6] : [grid[0], grid[grid.length - 1]];
+    const [loadedDays, loadedDates] = await Promise.all([api.calendarMonth(from, to), api.dates()]);
     days = loadedDays;
     dates = loadedDates.filter((date) => !hiddenDates.has(date.id));
   }
@@ -103,6 +132,13 @@
   }
 
   function shift(by: number) {
+    if (view === "week") {
+      weekFrom += by * 7;
+      const middle = dateOf(weekFrom + 3);
+      [year, month] = [middle.year, middle.month];
+      loadMonth();
+      return;
+    }
     const next = new Date(Date.UTC(year, month + by, 1));
     [year, month] = [next.getUTCFullYear(), next.getUTCMonth()];
     loadMonth();
@@ -164,10 +200,14 @@
 {#if selected === null}
   <div class="mx-auto max-w-6xl px-12 pb-24">
     <PageHeader title="Calendar" subtitle="Everything due, day by day. Past days show what you did.">
-      <button class="btn btn-ghost btn-sm btn-square" aria-label="Previous month" onclick={() => shift(-1)}><ChevronLeft class="size-4" /></button>
-      <span class="w-44 text-center text-[19px] font-extrabold" aria-live="polite">{year ? monthLabel(year, month) : ""}</span>
-      <button class="btn btn-ghost btn-sm btn-square" aria-label="Next month" onclick={() => shift(1)}><ChevronRight class="size-4" /></button>
-      <button class="btn btn-outline btn-sm ml-2" onclick={() => { const now = dateOf(today); [year, month] = [now.year, now.month]; loadMonth(); }}>Today</button>
+      <div class="seg" role="radiogroup" aria-label="Show">
+        <button type="button" role="radio" aria-checked={view === "month"} onclick={() => choose("month")}>Month</button>
+        <button type="button" role="radio" aria-checked={view === "week"} onclick={() => choose("week")}>Week</button>
+      </div>
+      <button class="btn btn-ghost btn-sm btn-square" aria-label={view === "week" ? "Previous week" : "Previous month"} onclick={() => shift(-1)}><ChevronLeft class="size-4" /></button>
+      <span class="min-w-44 text-center text-[19px] font-extrabold" aria-live="polite">{view === "week" ? (weekFrom ? weekLabel(weekFrom) : "") : year ? monthLabel(year, month) : ""}</span>
+      <button class="btn btn-ghost btn-sm btn-square" aria-label={view === "week" ? "Next week" : "Next month"} onclick={() => shift(1)}><ChevronRight class="size-4" /></button>
+      <button class="btn btn-outline btn-sm ml-2" onclick={() => { const now = dateOf(today); [year, month] = [now.year, now.month]; weekFrom = weekStart(today); loadMonth(); }}>Today</button>
       <button class="btn btn-primary btn-sm ml-2" onclick={() => openDialog("new")}><Plus class="size-4" />Add a date</button>
     </PageHeader>
     {#if comingUp.length}
@@ -182,6 +222,29 @@
         {/each}
       </section>
     {/if}
+    {#if view === "week"}
+      <!-- navigation.feature (R163): the week as a list, each day with everything on it in full. -->
+      <ol class="week" aria-label="Week of {weekLabel(weekFrom)}">
+        {#each weekDays as value (value)}
+          {@const entry = days.find((d) => d.day === value)}
+          {@const items = entry ? counts(entry) : []}
+          {@const onThisDay = dates.filter((d) => d.day === value)}
+          <li>
+            <button class="week-day {value < today ? 'past' : ''}" aria-current={value === today ? "date" : undefined}
+              aria-label="{longDate(value)}{onThisDay.map((d) => `, ${d.name}`).join('')}{items.length ? `: ${items.map((c) => `${c.count} ${c.count === 1 ? c.one : c.many}`).join(", ")}${entry?.when === 'Past' ? ' done' : ' due'}` : ', nothing'}"
+              onclick={() => open(value)}>
+              <span class="week-date" aria-hidden="true"><span class="text-xs font-extrabold uppercase tracking-[.07em] text-muted">{WEEKDAYS[dateOf(value).weekday]}</span><span class="text-[22px] font-black leading-none">{dateOf(value).date}</span>{#if value === today}<span class="cal-today">Today</span>{/if}</span>
+              <span class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5" aria-hidden="true">
+                {#each onThisDay as marked (marked.id)}<span class="date-chip {isExam(marked) ? 'exam' : ''}">{#if isExam(marked)}<GraduationCap class="size-3.5 shrink-0" />{:else}<Flag class="size-3.5 shrink-0" />{/if}<span class="truncate">{marked.name}</span></span>{/each}
+                {#each items as item (item.key)}<span class="chip {value < today ? '' : value === today ? 'chip-due' : `cal-${item.key}`}">{item.count} {item.count === 1 ? item.one : item.many}</span>{/each}
+                {#if !items.length && !onThisDay.length}<span class="text-sm text-muted">Nothing</span>{/if}
+              </span>
+              <ChevronRight class="size-4 shrink-0 text-muted" aria-hidden="true" />
+            </button>
+          </li>
+        {/each}
+      </ol>
+    {:else}
     <!-- Each day is a tile, each kind of work a chip. Today stands on an orange ledge, past days sit flat. -->
     <div>
       <div bind:this={gridEl} role="grid" aria-label={monthLabel(year, month)} class="flex flex-col gap-2">
@@ -212,6 +275,7 @@
         {/each}
       </div>
     </div>
+    {/if}
     <p class="mt-3 text-[13px] text-muted">Future cards are a forecast and move as you review.</p>
   </div>
 {:else if day}
