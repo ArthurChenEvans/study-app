@@ -37,7 +37,7 @@ ok "installed $OLD"
 
 say "Publish feeds"
 mkdir -p "$FEED"
-cp "$ART/new.rpm" "$FEED/new.rpm"
+cp "$ART/new.rpm" "$ART/new.rpm.sig" "$FEED/"
 # Tampered: same signature, one byte changed near the end, still a valid-looking .rpm.
 cp "$ART/new.rpm" "$FEED/tampered.rpm"
 size=$(stat -c %s "$FEED/tampered.rpm")
