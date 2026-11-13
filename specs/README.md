@@ -298,3 +298,9 @@ Decided with the design: keywords are checked in any order, every answer is righ
 | R161 | No screen scrolls sideways on a phone or tablet. Side gutters shrink, two-column layouts stack, module rails become a row of chips, a picked row's details come up as a sheet with a close button, the calendar shows a dot for each kind of work on phones, card grades are a 2 by 2 grid, and dialogs fill the screen |
 | R162 | On phones a list table is a stack of cards that scrolls down: the tick box on the left, the name on top, and each other value on its own line with its column's name in front. The column headers become a row of sort chips, so sorting still works. Keyboard hints are left out |
 | R163 | The calendar shows a Month or a Week, remembered on this device, and phones start on the Week. A week is a list of its seven days from Monday, each with its dates and everything due or done in full, with Previous week, Next week and Today. Tapping a day opens it |
+
+## Packaging (approved 13 Nov 2026)
+
+| ID | Requirement |
+|---|---|
+| R164 | The app builds as an .rpm, .deb and .AppImage for Linux and an .exe installer (and .msi) for Windows, with the full icon set, Education category and a short description. Windows builds run on GitHub Actions (Build installers, by hand or on a v* tag). On Windows the slide preview finds LibreOffice's soffice.exe on the PATH or in Program Files, and its throwaway profile uses a proper file URL |

@@ -27,12 +27,46 @@ pub enum ConvertError {
     Failed(String),
 }
 
-/// Finds `soffice` or `libreoffice` on the PATH.
+/// Finds LibreOffice: `soffice` or `libreoffice` on the PATH, and on Windows `soffice.exe`
+/// on the PATH or in its usual Program Files folder (R164).
 pub fn find_libreoffice() -> Option<PathBuf> {
-    let path = std::env::var_os("PATH")?;
-    std::env::split_paths(&path)
-        .flat_map(|dir| ["soffice", "libreoffice"].map(|name| dir.join(name)))
-        .find(|candidate| candidate.is_file())
+    let path = std::env::var_os("PATH");
+    let program_files = ["ProgramFiles", "ProgramFiles(x86)"].iter().filter_map(std::env::var_os).map(PathBuf::from).collect::<Vec<_>>();
+    let mut candidates = libreoffice_candidates(path.as_deref(), cfg!(windows), None);
+    for folder in &program_files {
+        candidates.extend(libreoffice_candidates(None, cfg!(windows), Some(folder)));
+    }
+    candidates.into_iter().find(|candidate| candidate.is_file())
+}
+
+/// Where LibreOffice might be, given a PATH value and, on Windows, a Program Files folder.
+fn libreoffice_candidates(path: Option<&std::ffi::OsStr>, windows: bool, program_files: Option<&Path>) -> Vec<PathBuf> {
+    let names: &[&str] = if windows { &["soffice.exe"] } else { &["soffice", "libreoffice"] };
+    let separator = if windows { ';' } else { ':' };
+    let mut found: Vec<PathBuf> = path
+        .map(|value| value.to_string_lossy().split(separator).filter(|dir| !dir.is_empty()).flat_map(|dir| names.iter().map(move |name| Path::new(dir).join(name))).collect())
+        .unwrap_or_default();
+    if windows {
+        if let Some(folder) = program_files {
+            found.push(folder.join("LibreOffice").join("program").join("soffice.exe"));
+        }
+    }
+    found
+}
+
+/// A file URL for a local folder, which LibreOffice wants for its profile. Windows paths
+/// get forward slashes and a leading slash, and anything unusual is percent-encoded.
+fn file_url(path: &Path) -> String {
+    let text = path.to_string_lossy().replace('\\', "/");
+    let text = if text.starts_with('/') { text } else { format!("/{text}") };
+    let mut url = String::from("file://");
+    for byte in text.bytes() {
+        match byte {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'.' | b'_' | b'~' | b'/' | b':' => url.push(byte as char),
+            _ => url.push_str(&format!("%{byte:02X}")),
+        }
+    }
+    url
 }
 
 /// A private folder that is always deleted, even if conversion fails.
@@ -117,10 +151,7 @@ pub fn slides_to_pdf(
         command.process_group(0);
     }
     let mut child = command
-        .arg(format!(
-            "-env:UserInstallation=file://{}",
-            profile.display()
-        ))
+        .arg(format!("-env:UserInstallation={}", file_url(&profile)))
         .args([
             "--headless",
             "--norestore",
@@ -183,6 +214,24 @@ mod tests {
                 .join(name),
         )
         .unwrap()
+    }
+
+    // packaging (R164): the same lookups work for a Windows install
+    #[test]
+    fn libreoffice_names_and_places_cover_windows() {
+        let unix = libreoffice_candidates(Some(std::ffi::OsStr::new("/usr/bin:/opt/lo/bin")), false, None);
+        assert_eq!(unix, vec![PathBuf::from("/usr/bin/soffice"), PathBuf::from("/usr/bin/libreoffice"), PathBuf::from("/opt/lo/bin/soffice"), PathBuf::from("/opt/lo/bin/libreoffice")]);
+        let windows = libreoffice_candidates(Some(std::ffi::OsStr::new("C:\\Tools")), true, Some(Path::new("C:\\Program Files")));
+        assert!(windows.contains(&PathBuf::from("C:\\Tools").join("soffice.exe")));
+        assert!(windows.contains(&Path::new("C:\\Program Files").join("LibreOffice").join("program").join("soffice.exe")));
+        assert!(!windows.iter().any(|path| path.extension().is_none()), "Windows only looks for .exe");
+    }
+
+    #[test]
+    fn the_profile_is_a_proper_file_url() {
+        assert_eq!(file_url(Path::new("/tmp/study/profile")), "file:///tmp/study/profile");
+        assert_eq!(file_url(Path::new("C:\\Users\\Chen\\AppData\\Local\\Temp\\profile")), "file:///C:/Users/Chen/AppData/Local/Temp/profile");
+        assert_eq!(file_url(Path::new("/tmp/with space")), "file:///tmp/with%20space");
     }
 
     #[test]
