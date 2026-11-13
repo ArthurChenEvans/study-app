@@ -1,3 +1,4 @@
+import time
 """End-to-end: free recall in the real app window (free-recall.feature).
 
 Creates a module and topic, makes a checklist about the module through the UI, writes
@@ -54,6 +55,15 @@ def find(xpath: str):
 
 def button(name: str):
     return find(f"//button[starts-with(normalize-space(), '{name}') or @aria-label='{name}']")
+
+def celebrated() -> None:
+    """celebrations.feature (R154): a finished session shows a full-screen moment. Wait for
+    Continue to take presses (half a second in), then close it like a person would."""
+    find("//*[@role='dialog' and @aria-modal='true']//button[normalize-space()='Continue']")
+    time.sleep(0.7)
+    find("//*[@role='dialog' and @aria-modal='true']//button[normalize-space()='Continue']").click()
+    wait.until(lambda _: not driver.find_elements(By.XPATH, "//*[@role='dialog' and @aria-modal='true' and .//button[normalize-space()='Continue']]"))
+
 
 
 def ipc(command: str, args: dict):
@@ -124,6 +134,7 @@ try:
     shot("check")
     driver.find_element(By.TAG_NAME, "body").send_keys(Keys.CONTROL, Keys.ENTER)
 
+    celebrated()
     wait.until(lambda _: "Started on Day" in text())
     assert "2 of 5 recalled" in text() and "Next check tomorrow" in text(), text()
     assert "Cache levels L1 to L3" in find("//ul[@aria-label='Missed points']").text

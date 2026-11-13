@@ -1,3 +1,4 @@
+import time
 """End-to-end: short answer questions in the real app window (short-answer.feature).
 
 Writes one question checked by accepted answers and one by keywords, tries answers in the
@@ -52,6 +53,15 @@ def find(xpath: str):
 
 def button(name: str):
     return find(f"//button[starts-with(normalize-space(), '{name}') or @aria-label='{name}']")
+
+def celebrated() -> None:
+    """celebrations.feature (R154): a finished session shows a full-screen moment. Wait for
+    Continue to take presses (half a second in), then close it like a person would."""
+    find("//*[@role='dialog' and @aria-modal='true']//button[normalize-space()='Continue']")
+    time.sleep(0.7)
+    find("//*[@role='dialog' and @aria-modal='true']//button[normalize-space()='Continue']").click()
+    wait.until(lambda _: not driver.find_elements(By.XPATH, "//*[@role='dialog' and @aria-modal='true' and .//button[normalize-space()='Continue']]"))
+
 
 
 def radio(name: str):
@@ -167,6 +177,7 @@ try:
 
     # ---------- Results ----------
     find("//h1[normalize-space()='Results' or normalize-space()='Quiz finished']")
+    celebrated()
     wait.until(lambda _: "2 / 2" in text().replace("\n", " ") or "2/ 2" in text())
     first = find("//li[@aria-label='Question 1' or .//*[contains(., 'own port number')]][.//*[contains(., 'You overruled this')]]")
     assert "Your answer: network layer" in first.text and "Didn't match any accepted answer" in first.text, first.text

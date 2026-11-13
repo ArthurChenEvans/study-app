@@ -15,7 +15,7 @@ tauri-driver & driver=$!
 trap 'kill $driver ${xvfb:-} 2>/dev/null; rm -rf "$XDG_DATA_HOME"' EXIT
 sleep 2
 status=0
-for test in e2e/slides_test.py e2e/rich_content_test.py e2e/recall_test.py e2e/flashcards_test.py e2e/short_answer_test.py e2e/projects_calendar_test.py e2e/dates_test.py e2e/backup_test.py e2e/transfer_test.py e2e/sync_test.py; do
+for test in ${TESTS:-e2e/slides_test.py e2e/rich_content_test.py e2e/recall_test.py e2e/flashcards_test.py e2e/short_answer_test.py e2e/projects_calendar_test.py e2e/dates_test.py e2e/backup_test.py e2e/transfer_test.py e2e/sync_test.py}; do
   echo "== $test"
   python3 "$test" || status=1
 done
