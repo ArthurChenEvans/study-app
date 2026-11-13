@@ -1,6 +1,6 @@
-export type Screen = "overview" | "calendar" | "topics" | "cards" | "recall" | "projects" | "bibliography" | "history" | "search" | "setup" | "data";
+export type Screen = "overview" | "calendar" | "topics" | "cards" | "recall" | "projects" | "bibliography" | "history" | "search" | "setup" | "data" | "settings";
 
-const screens: Screen[] = ["overview", "calendar", "topics", "cards", "recall", "projects", "bibliography", "history", "search", "setup", "data"];
+const screens: Screen[] = ["overview", "calendar", "topics", "cards", "recall", "projects", "bibliography", "history", "search", "setup", "data", "settings"];
 
 /** Screen from a location hash like "#topics", falling back to the overview. */
 export function screenFromHash(hash: string): Screen {

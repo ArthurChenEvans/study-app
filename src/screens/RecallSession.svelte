@@ -6,6 +6,7 @@
   import Ladder from "../components/Ladder.svelte";
   import Rich from "../components/Rich.svelte";
   import { onDay } from "../lib/dates";
+  import { celebrate, praise } from "../lib/celebrations.svelte";
 
   let { id, onLeave, onEdit, onNext }: { id: number; onLeave: () => void; onEdit: (id: number) => void; onNext: (id: number) => void } = $props();
 
@@ -75,6 +76,14 @@
     try {
       result = await api.finishCheck(id, outside ? null : dump, [...ticked]);
       stage = "result";
+      celebrate("recall", {
+        title: praise("recall"),
+        line: result.from === null ? `Started on ${result.to}.` : result.passed ? `Up to ${result.to}.` : `Everything you remembered is logged.`,
+        stats: [
+          { label: "Score", value: result.score, suffix: "%", tone: "primary" },
+          { label: "Recalled", value: result.recalled, suffix: `/${result.total}`, tone: "info" },
+        ],
+      });
       const rows = await api.recallList();
       nextDue = rows.find((row) => row.due_today && row.id !== id && row.points > 0) ?? null;
     } catch (failure) {
@@ -102,12 +111,12 @@
 <svelte:window onkeydown={keys} />
 
 {#if view && schedule}
-  <div class="sticky top-0 z-10 grid grid-cols-[1fr_auto_1fr] items-center gap-6 bg-base-100 px-12 py-4">
+  <div class="sticky top-0 z-10 grid grid-cols-[auto_minmax(0,1fr)_auto] tab:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 tab:gap-6 bg-base-100 px-12 py-4">
     <div class="flex items-center gap-3"><button class="btn btn-quiet btn-sm btn-square" aria-label="Leave" title="Leave" onclick={leave}><X class="size-6" strokeWidth={2.6} /></button><span class="sr-only">Recall: {view.row.subject_name}</span></div>
     <ol class="flex items-center gap-2" aria-label="Session steps">
       {#each steps as name, index (name)}
         <li class="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider {index <= stageIndex ? '' : 'text-muted'}" aria-current={index === stageIndex ? "step" : undefined}>
-          <span class="step-dot {index <= stageIndex ? 'done' : ''}">{#if index < stageIndex}<Check class="size-4" strokeWidth={3} /><span class="sr-only">Done:</span>{:else}{index + 1}{/if}</span>{name}
+          <span class="step-dot {index <= stageIndex ? 'done' : ''}">{#if index < stageIndex}<Check class="size-4" strokeWidth={3} /><span class="sr-only">Done:</span>{:else}{index + 1}{/if}</span><span class={index === stageIndex ? '' : 'max-tab:sr-only'}>{name}</span>
         </li>
         {#if index < 2}<li aria-hidden="true" class="h-1 w-6 rounded-full bg-base-300"></li>{/if}
       {/each}

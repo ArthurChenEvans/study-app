@@ -125,10 +125,11 @@ try:
     wait.until(lambda _: len(token_colours("[aria-label='Question preview']")) > 2)
     dark = token_colours("[aria-label='Question preview']")
     assert len(set(dark)) > 1, f"code isn't coloured: {dark}"
-    button("Light").click()
+    # The theme switch lives in Settings now (R158). Flip it the same way it does.
+    driver.execute_script("document.documentElement.dataset.theme = 'studyapp'")
     light = token_colours("[aria-label='Question preview']")
     assert light != dark, "the code colours didn't change with the theme"
-    button("Dark").click()
+    driver.execute_script("document.documentElement.dataset.theme = 'studyapp-dark'")
     step(f"code is highlighted ({len(set(dark))} colours) and follows the Dark / Light switch")
 
     picked_file = pathlib.Path(tempfile.mkdtemp()) / "alu.png"

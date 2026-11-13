@@ -381,6 +381,11 @@ impl App {
         self.make_backup(clock, Reason::ByHand)
     }
 
+    /// Before installing a new version of the app (R168).
+    pub fn back_up_before_update(&self, clock: Clock) -> ApiResult<BackupInfo> {
+        self.make_backup(clock, Reason::BeforeUpdate)
+    }
+
     /// The day's backup, once there's something to back up and nothing from today yet (R102).
     pub fn daily_backup(&self, clock: Clock) -> ApiResult<Option<BackupInfo>> {
         let backups = self.backups_folder()?;
@@ -551,6 +556,16 @@ mod tests {
         assert_eq!(app.daily_backup(at(TODAY + 1, 30)).unwrap().map(|backup| backup.day), Some(TODAY + 1));
         let status = app.backup_status().unwrap();
         assert_eq!((status.count, status.latest.map(|backup| backup.day)), (2, Some(TODAY + 1)));
+    }
+
+    // updates.feature: The database is backed up before an update installs (R168)
+    #[test]
+    fn installing_an_update_backs_up_first_and_labels_it() {
+        let (app, _) = app("before-installing");
+        let backup = app.back_up_before_update(at(TODAY, 600)).unwrap();
+        assert_eq!(backup.reason, Reason::BeforeUpdate);
+        assert!(backup.name.contains("before-update"));
+        assert_eq!(app.backups().unwrap().len(), 1);
     }
 
     // backup.feature: Backing up by hand (R104)

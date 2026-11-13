@@ -1,8 +1,10 @@
 <script lang="ts">
+  import { stackTable } from "../lib/stack";
   // flashcards.feature (R62 to R64, R70, R71, R77): a topic's cards and the note editor.
   import { Archive, ArchiveRestore, ArrowLeft, Brackets, Flag, Play, Plus, Trash2, X } from "@lucide/svelte";
   import { tick, untrack } from "svelte";
   import { api, errorMessage, type Note, type NoteKind, type NoteView, type Subject, type TopicCards, type TopicRow } from "../lib/api";
+  import { deleteWithUndo, toast } from "../lib/celebrations.svelte";
   import Rich from "../components/Rich.svelte";
   import { dueLabel } from "../lib/dates";
 
@@ -38,7 +40,10 @@
     && card.front.toLowerCase().includes(query.trim().toLowerCase())));
 
   async function load() {
-    [data, today, topics] = await Promise.all([api.topicCards(topic), api.today(), api.topics()]);
+    const [loaded, loadedToday, loadedTopics] = await Promise.all([api.topicCards(topic), api.today(), api.topics()]);
+    data = { ...loaded, cards: loaded.cards.filter((card) => !hiddenNotes.has(card.note)) };
+    today = loadedToday;
+    topics = loadedTopics;
   }
 
   async function open(id: number | null) {
@@ -92,19 +97,37 @@
     clozeBox.setSelectionRange(start + 6 + String(next).length, start + 6 + String(next).length + chosen.length);
   }
 
-  async function toggleArchive(id: number, archived: boolean) {
+  async function toggleArchive(id: number, archived: boolean, quiet = false) {
     await api.archiveCard(id, archived);
     await load();
     if (editing?.id !== null && editing?.id !== undefined) editing.view = await api.noteView(editing.id);
+    if (!quiet) toast({ text: archived ? "Card archived" : "Card back in reviews", icon: "check", action: { label: "Undo", run: () => toggleArchive(id, !archived, true) } });
   }
 
-  async function remove() {
+  // toasts.feature (R157): a deleted card goes at once, with a few seconds to undo.
+  let hiddenNotes = $state<Set<number>>(new Set());
+
+  function remove() {
     if (!editing?.id) return;
-    await api.deleteNote(editing.id);
-    deleting = false;
-    editing = null;
-    status = "Card deleted";
-    await load();
+    const id = editing.id;
+    deleteWithUndo({
+      text: "Card deleted",
+      hide: () => {
+        hiddenNotes = new Set([...hiddenNotes, id]);
+        deleting = false;
+        editing = null;
+        if (data) data.cards = data.cards.filter((card) => card.note !== id);
+      },
+      restore: () => {
+        hiddenNotes = new Set([...hiddenNotes].filter((note) => note !== id));
+        load();
+      },
+      commit: async () => {
+        await api.deleteNote(id);
+        hiddenNotes = new Set([...hiddenNotes].filter((note) => note !== id));
+        await load();
+      },
+    });
   }
 
   function keys(event: KeyboardEvent) {
@@ -144,7 +167,7 @@
           <input type="search" class="input input-sm w-72" aria-label="Filter cards" placeholder="Filter cards…" bind:value={query} />
         </div>
         <div class="panel overflow-hidden">
-          <table class="table table-fixed" aria-label="Cards in {data.name}">
+          <table class="table table-fixed" aria-label="Cards in {data.name}" use:stackTable>
             <colgroup><col class="w-[40%]" /><col class="w-[12%]" /><col class="w-[16%]" /><col class="w-[12%]" /><col class="w-[10%]" /><col class="w-[10%]" /></colgroup>
             <thead><tr class="text-muted"><th>Front</th><th>Type</th><th>From</th><th>Next</th><th>Again</th><th><span class="sr-only">Archive</span></th></tr></thead>
             <tbody>
@@ -165,7 +188,7 @@
       {/if}
     {:else}
       {@const note = editing.note}
-      <div class="grid grid-cols-[1fr_320px] items-start gap-10">
+      <div class="grid grid-cols-[minmax(0,1fr)] wide:grid-cols-[minmax(0,1fr)_320px] items-start gap-10">
         <form class="space-y-8" onsubmit={save}>
           {#if leech}
             <div class="panel flex items-start gap-3 px-4 py-3" role="note"><Flag class="mt-0.5 size-4 shrink-0" />

@@ -58,11 +58,11 @@
         {#each shown as topic (topic.id)}
           {@const off = disabled(topic)}
           <li class={chosen.includes(topic.id) ? "bg-[color-mix(in_oklch,var(--primary-ink)_10%,var(--surface))]" : ""}>
-            <label class="flex items-center gap-3 px-4 py-2.5 {off ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-base-200'}">
+            <label class="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 tab:flex-nowrap {off ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-base-200'}">
               <input type="checkbox" class="checkbox checkbox-sm" checked={chosen.includes(topic.id)} disabled={off} onchange={() => toggle(topic.id)} />
               <span class="min-w-0 flex-1"><span class="block truncate text-[15px] font-extrabold"><Highlight text={topic.name} term={filter} /></span>
                 {#if rail === "all"}<span class="block truncate text-xs text-muted">{moduleName(topic.module) ?? "No module"}</span>{/if}</span>
-              {@render extra?.(topic)}
+              {#if extra}<span class="flex items-center gap-2 max-tab:basis-full max-tab:pl-8">{@render extra(topic)}</span>{/if}
             </label>
           </li>
         {/each}

@@ -233,5 +233,39 @@ describe("Calendar", () => {
     expect(await screen.findByText("2 more waiting")).toBeInTheDocument();
     expect(screen.getByText(/Only 1 topic quizzes come due a day, most overdue first. They keep their step, and the last comes in tomorrow./)).toBeInTheDocument();
   });
-});
 
+  // navigation.feature (R163): a week as a list of days, the default on phones
+  it("shows a week as a list of days with everything in full", async () => {
+    const u = userEvent.setup();
+    localStorage.clear();
+    render(Calendar, {});
+    await screen.findByRole("grid", { name: "November 2026" });
+    await u.click(screen.getByRole("radio", { name: "Week" }));
+    const week = await screen.findByRole("list", { name: "Week of 2 to 8 Nov 2026" });
+    expect(mocked.calendarMonth).toHaveBeenLastCalledWith(TODAY - 1, TODAY + 5);
+    const items = within(week).getAllByRole("button");
+    expect(items).toHaveLength(7);
+    expect(items[1]).toHaveAccessibleName(/^Today, Tue 3 Nov: 12 cards, 1 checklist, 2 quizzes, 1 drill due$/);
+    expect(items[1]).toHaveTextContent("12 cards1 checklist2 quizzes1 drill");
+    expect(localStorage.getItem("studyapp-calendar-view")).toBe("week");
+
+    await u.click(screen.getByRole("button", { name: "Next week" }));
+    expect(await screen.findByRole("list", { name: "Week of 9 to 15 Nov 2026" })).toBeInTheDocument();
+    expect(mocked.calendarMonth).toHaveBeenLastCalledWith(TODAY + 6, TODAY + 12);
+    await u.click(screen.getByRole("button", { name: "Today" }));
+    await screen.findByRole("list", { name: "Week of 2 to 8 Nov 2026" });
+
+    mocked.calendarDay.mockResolvedValue(emptyDay(TODAY + 1, "Future"));
+    await u.click(within(screen.getByRole("list", { name: /Week of/ })).getByRole("button", { name: /^Wed 4 Nov/ }));
+    expect(mocked.calendarDay).toHaveBeenCalledWith(TODAY + 1);
+  });
+
+  it("starts on the week view on a phone", async () => {
+    localStorage.clear();
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({ matches: query.includes("599"), media: query, addEventListener() {}, removeEventListener() {} })) as unknown as typeof window.matchMedia;
+    render(Calendar, {});
+    expect(await screen.findByRole("list", { name: "Week of 2 to 8 Nov 2026" })).toBeInTheDocument();
+    window.matchMedia = original;
+  });
+});

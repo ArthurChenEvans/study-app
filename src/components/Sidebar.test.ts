@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/svelte";
+import { render, screen, within } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Sidebar from "./Sidebar.svelte";
@@ -20,29 +20,6 @@ describe("Sidebar", () => {
     render(Sidebar, { current: "overview", onNavigate });
     await userEvent.click(screen.getByRole("link", { name: "History" }));
     expect(onNavigate).toHaveBeenCalledWith("history");
-  });
-
-  // appearance.feature: Switch to light
-  it("switches theme", async () => {
-    render(Sidebar, { current: "overview", onNavigate: vi.fn() });
-    expect(screen.getByRole("radio", { name: "Dark" })).toHaveAttribute("aria-checked", "true");
-    await userEvent.click(screen.getByRole("radio", { name: "Light" }));
-    expect(document.documentElement.dataset.theme).toBe("studyapp");
-    expect(screen.getByRole("radio", { name: "Light" })).toHaveAttribute("aria-checked", "true");
-  });
-
-  // appearance.feature: Colour-blind safe colours (R129)
-  it("switches right and wrong to the colour-blind safe colours", async () => {
-    localStorage.clear();
-    delete document.documentElement.dataset.palette;
-    const u = userEvent.setup();
-    render(Sidebar, { current: "overview", onNavigate: vi.fn() });
-    const toggle = screen.getByRole("switch", { name: "Colour-blind safe" });
-    expect(toggle).not.toBeChecked();
-    await u.click(toggle);
-    expect(document.documentElement.dataset.palette).toBe("cb");
-    await u.click(toggle);
-    expect(document.documentElement.dataset.palette).toBeUndefined();
   });
 
   // free-recall.feature: Due checklists come first (the sidebar shows how many are due)
@@ -74,7 +51,7 @@ describe("Sidebar", () => {
     expect(screen.getByRole("link", { name: /Calendar/ })).toHaveTextContent("17");
     expect(screen.getByRole("link", { name: /Topics/ })).toHaveTextContent("2");
     expect(screen.getByRole("link", { name: /Projects/ })).toHaveTextContent("1");
-    const names = screen.getAllByRole("link").map((link) => link.textContent?.replace(/\d+/g, "").trim());
+    const names = screen.getAllByRole("link").map((link) => link.textContent?.replace(/\d+/g, "").trim()).filter((name) => !name?.startsWith("Search"));
     expect(names.slice(0, 6)).toEqual(["Overview", "Calendar", "Topics", "Cards", "Recall", "Projects"]);
   });
 
@@ -95,16 +72,6 @@ describe("Sidebar", () => {
     expect(screen.getByRole("link", { name: "New quiz" })).toHaveAttribute("aria-current", "page");
   });
 
-  // UI polish: sounds can be turned off, and the choice is remembered on this device
-  it("switches sound off and remembers it", async () => {
-    render(Sidebar, { current: "overview", onNavigate: vi.fn() });
-    const toggle = screen.getByRole("switch", { name: "Sound" });
-    expect(toggle).toBeChecked();
-    await userEvent.click(toggle);
-    expect(toggle).not.toBeChecked();
-    expect(localStorage.getItem("studyapp-sound")).toBe("off");
-  });
-
   // backup.feature (R108)
   it("shows the backup status in one line and links it to Your data", async () => {
     const onNavigate = vi.fn();
@@ -112,7 +79,6 @@ describe("Sidebar", () => {
     const line = screen.getByRole("link", { name: "Backed up today" });
     await userEvent.click(line);
     expect(onNavigate).toHaveBeenCalledWith("data");
-    expect(screen.getByRole("link", { name: /Your data/ })).toBeInTheDocument();
     await rerender({ current: "overview", onNavigate, backup: { safe: false, short: "No backup yet" } });
     expect(screen.getByRole("link", { name: "No backup yet" })).toHaveClass("font-extrabold");
   });
@@ -132,5 +98,54 @@ describe("Sidebar", () => {
   it("leaves the backup line out until the status has loaded", () => {
     render(Sidebar, { current: "overview", onNavigate: vi.fn() });
     expect(screen.queryByRole("link", { name: /Backed up|No backup/ })).not.toBeInTheDocument();
+  });
+
+  // navigation.feature (R158): links come in three groups, and preferences live in Settings
+  it("groups the links and keeps preferences out of the sidebar", () => {
+    render(Sidebar, { current: "overview", onNavigate: vi.fn() });
+    const groups = screen.getAllByRole("group").map((group) => [group.getAttribute("aria-label"), within(group).getAllByRole("link").map((link) => link.textContent?.trim())]);
+    expect(groups).toEqual([["Today", ["Overview", "Calendar"]], ["Study", ["Topics", "Cards", "Recall", "Projects"]], ["Library", ["Bibliography", "History"]]]);
+    expect(screen.queryByRole("switch")).not.toBeInTheDocument();
+    expect(screen.queryByRole("radiogroup", { name: "Theme" })).not.toBeInTheDocument();
+  });
+
+  it("opens Settings and Your data from the bottom", async () => {
+    const onNavigate = vi.fn();
+    render(Sidebar, { current: "settings", onNavigate });
+    const settings = screen.getByRole("link", { name: "Settings" });
+    expect(settings).toHaveAttribute("aria-current", "page");
+    await userEvent.click(settings);
+    expect(onNavigate).toHaveBeenCalledWith("settings");
+  });
+
+  // navigation.feature (R159): a tablet gets an icon rail, with the library under More
+  it("shrinks to a rail with the rest under More", async () => {
+    const onNavigate = vi.fn();
+    render(Sidebar, { current: "topics", onNavigate, mode: "rail", due: { cards: 13 } });
+    const nav = screen.getByRole("navigation", { name: "Main" });
+    expect(within(nav).getAllByRole("link").map((link) => link.getAttribute("aria-label") ?? link.textContent?.trim())).toEqual(["Search", "Overview", "Calendar", "Topics", "Cards, 13 due today", "Recall", "Projects", "Settings"]);
+    await userEvent.click(within(nav).getByRole("button", { name: "More" }));
+    const sheet = screen.getByRole("dialog", { name: "More" });
+    await userEvent.click(within(sheet).getByRole("link", { name: "Bibliography" }));
+    expect(onNavigate).toHaveBeenCalledWith("bibliography");
+    expect(screen.queryByRole("dialog", { name: "More" })).not.toBeInTheDocument();
+  });
+
+  // navigation.feature (R160): a phone gets five tabs with More in the middle
+  it("becomes a dock of five on a phone, More in the middle", async () => {
+    const onNavigate = vi.fn();
+    render(Sidebar, { current: "cards", onNavigate, mode: "dock", due: { calendar: 16, cards: 13, recall: 1 } });
+    const dock = screen.getByRole("navigation", { name: "Main" });
+    const tabs = within(dock).getAllByRole("link").map((link) => link.textContent?.replace(/\d+/g, "").trim());
+    expect(tabs).toEqual(["Today", "Calendar", "Topics", "Cards"]);
+    const items = [...dock.querySelectorAll("a, button")].map((item) => item.textContent?.replace(/\d+/g, "").trim());
+    expect(items).toEqual(["Today", "Calendar", "More", "Topics", "Cards"]);
+    expect(within(dock).getByRole("link", { name: /Cards/ })).toHaveAttribute("aria-current", "page");
+    await userEvent.click(within(dock).getByRole("button", { name: "More" }));
+    const sheet = screen.getByRole("dialog", { name: "More" });
+    expect(within(sheet).getAllByRole("link").map((link) => link.textContent?.replace(/\d+/g, "").trim())).toEqual(["Recall", "Projects", "Bibliography", "History", "Search", "New quiz", "Your data", "Settings"]);
+    expect(within(sheet).getByLabelText("1 due today")).toBeInTheDocument();
+    await userEvent.click(within(sheet).getByRole("link", { name: /Recall/ }));
+    expect(onNavigate).toHaveBeenCalledWith("recall");
   });
 });

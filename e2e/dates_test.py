@@ -129,8 +129,10 @@ try:
     find("//dialog//*[contains(normalize-space(), 'Anything it tightened goes back to its normal schedule.')]")
     button("Delete date").click()
     wait.until(lambda _: not driver.find_elements(By.XPATH, "//section//h2[normalize-space()='Algorithms final']"))
-    assert ipc("dates", {}) == []
-    ok("a date is edited, and deleted only after asking (R130)")
+    # toasts.feature (R157): it goes from the calendar at once, and for real once Undo has passed
+    find("//*[@role='status']//*[contains(normalize-space(), 'Date deleted')]")
+    WebDriverWait(driver, 15).until(lambda _: ipc("dates", {}) == [])
+    ok("a date is edited, and deleted only after asking, with Undo (R130, R157)")
 
     if audit:
         print("audit: " + ("no contrast, target or primary-button problems on any screen, both themes" if not findings else "\n  ".join(findings)))

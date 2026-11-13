@@ -3,6 +3,7 @@
   // Most important: what's going in, said in words before you press Export.
   import { FileOutput } from "@lucide/svelte";
   import { api, errorMessage, type ExportFile, type ExportSummary, type Id, type ModuleRow, type TopicRow } from "../lib/api";
+  import { toast } from "../lib/celebrations.svelte";
   import { countList } from "../lib/transfer";
 
   let { onClose, onDone }: { onClose: () => void; onDone: (file: ExportFile) => void } = $props();
@@ -60,7 +61,9 @@
     busy = true;
     error = "";
     try {
-      onDone(await api.exportFile(request));
+      const file = await api.exportFile(request);
+      toast({ text: "Exported", icon: "download" });
+      onDone(file);
     } catch (failure) {
       error = errorMessage(failure);
     } finally {

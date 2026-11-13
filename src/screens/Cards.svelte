@@ -101,7 +101,7 @@
       </div>
     </div>
   {:else if home}
-    <div class="grid grid-cols-[minmax(0,1fr)_20rem] items-start gap-6">
+    <div class="grid grid-cols-[minmax(0,1fr)] wide:grid-cols-[minmax(0,1fr)_20rem] items-start gap-6">
       <div class="flex min-w-0 flex-col gap-4">
       <section class="panel p-6" aria-labelledby="today-h">
         <h2 id="today-h" class="eyebrow">Today</h2>
@@ -163,9 +163,9 @@
             {#each byTopic as row (row.topic)}
               <tr>
                 <td><button class="py-0.5 text-left font-semibold hover:underline" onclick={() => onTopic(row.topic)}><Highlight text={row.name} term={filter} /></button><div class="text-xs text-muted">{row.module ?? "No module"}</div></td>
-                <td class="tabular-nums">{row.due.new}</td><td class="tabular-nums">{row.due.learning}</td><td class="tabular-nums">{row.due.review}</td>
-                <td class="tabular-nums">{row.total}</td>
-                <td class="tabular-nums">{#if row.retention === null}<span class="text-muted">None yet</span>{:else}<span class="flex items-center gap-2"><span class="inline-block h-3 w-14 shrink-0 overflow-hidden rounded-full bg-base-300" aria-hidden="true"><span class="block h-full rounded-full" style="width: {row.retention}%; background: var(--chart-ink)"></span></span>{row.retention}%</span>{/if}</td>
+                <td class="tabular-nums" data-label="New">{row.due.new}</td><td class="tabular-nums" data-label="Learning">{row.due.learning}</td><td class="tabular-nums" data-label="To review">{row.due.review}</td>
+                <td class="tabular-nums" data-label="Cards">{row.total}</td>
+                <td class="tabular-nums" data-label="Retention">{#if row.retention === null}<span class="text-muted">None yet</span>{:else}<span class="flex items-center gap-2"><span class="inline-block h-3 w-14 shrink-0 overflow-hidden rounded-full bg-base-300" aria-hidden="true"><span class="block h-full rounded-full" style="width: {row.retention}%; background: var(--chart-ink)"></span></span>{row.retention}%</span>{/if}</td>
               </tr>
             {/each}
           </tbody>
@@ -211,7 +211,7 @@
           </div>
           <p class="mt-1 text-sm text-muted">The chance you still remember a card when it comes back. Higher means more reviews a day.</p>
         </div>
-        <div class="grid grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 gap-6 tab:grid-cols-2">
           <label class="block"><span class="block text-sm font-semibold">New cards a day</span><input class="input mt-1 w-24 tabular-nums" type="number" min="0" bind:value={editing.new_per_day} /></label>
           <div>
             <span class="block text-sm font-semibold" id="max-reviews-h">Most reviews a day</span>

@@ -5,9 +5,10 @@
   import { GraduationCap, Trash2 } from "@lucide/svelte";
   import { untrack } from "svelte";
   import { api, errorMessage, type DatePreview, type DateSave, type DateView, type Id, type ModuleRow, type TopicQuizView, type TopicRow } from "../lib/api";
+  import { deleteWithUndo, toast } from "../lib/celebrations.svelte";
   import { dayFromIso, fullLabel, isoOf } from "../lib/dates";
 
-  let { today, date = null, modules, topics, quizzes = [], startDay = null, onSaved, onCancel }: {
+  let { today, date = null, modules, topics, quizzes = [], startDay = null, onSaved, onCancel, onHide = () => {} }: {
     today: number;
     /** The date being edited, or null to add one. */
     date?: DateView | null;
@@ -18,6 +19,8 @@
     startDay?: number | null;
     onSaved: () => void;
     onCancel: () => void;
+    /** Take a date off the calendar while its delete waits for Undo, or put it back. */
+    onHide?: (id: Id, hidden: boolean) => void;
   } = $props();
 
   type CoverChoice = "nothing" | "module" | "topics";
@@ -84,6 +87,7 @@
     try {
       if (date) await api.updateDate(date.id, save);
       else await api.addDate(save);
+      toast({ text: date ? "Date saved" : "Date added", sub: `${save.name}, ${fullLabel(save.day, today)}`, icon: date ? "check" : "calendar" });
       onSaved();
     } catch (failure) {
       error = errorMessage(failure);
@@ -92,16 +96,21 @@
     }
   }
 
-  async function remove() {
+  // toasts.feature (R157): it still asks first, then goes with Undo like every other delete.
+  function remove() {
     if (!date) return;
-    busy = true;
-    try {
-      await api.deleteDate(date.id);
-      onSaved();
-    } catch (failure) {
-      error = errorMessage(failure);
-      busy = false;
-    }
+    const { id, name } = date;
+    confirmingDelete = false;
+    deleteWithUndo({
+      text: "Date deleted",
+      sub: name,
+      hide: () => onHide(id, true),
+      restore: () => onHide(id, false),
+      commit: async () => {
+        await api.deleteDate(id);
+        onHide(id, false);
+      },
+    });
   }
 </script>
 
@@ -117,7 +126,7 @@
         <button type="button" class="btn btn-error" disabled={busy} onclick={remove}><Trash2 class="size-4" />Delete date</button>
       </div>
     {:else}
-      <div class="mt-5 grid grid-cols-[1fr_11rem] gap-4">
+      <div class="mt-5 grid grid-cols-[minmax(0,1fr)_11rem] gap-4">
         <label class="block"><span class="text-sm font-semibold">Name</span>
           <!-- svelte-ignore a11y_autofocus -->
           <input class="input mt-1 w-full" bind:value={name} placeholder="e.g. Networks exam" autofocus /></label>

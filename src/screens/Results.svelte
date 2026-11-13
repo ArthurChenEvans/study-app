@@ -7,6 +7,7 @@
   import CountUp from "../components/CountUp.svelte";
   import { fullLabel, onDay } from "../lib/dates";
   import { play } from "../lib/sound";
+  import { celebrate, praise } from "../lib/celebrations.svelte";
 
   // `fresh` is true when you've just finished the quiz, false when reopening it from History.
   let { attempt, onRetry, fresh = false }: { attempt: Id; onRetry: (view: QuizView) => void; fresh?: boolean } = $props();
@@ -34,7 +35,25 @@
 
   async function load() {
     [results, topics, today] = await Promise.all([api.results(attempt), api.topics(), Promise.resolve().then(() => api.today()).catch(() => 0)]);
-    if (fresh) play("finished");
+    if (fresh) {
+      const overall = results.summary.overall;
+      const count = total(overall);
+      const score = count ? Math.round((right(overall) / count) * 100) : 0;
+      const names = Object.keys(results.summary.per_topic).map(topicName);
+      const mode = results.status === "Finished"
+        ? celebrate("quiz", {
+            title: praise("quiz", score),
+            line: (names.length > 2 ? `${names.slice(0, 2).join(" · ")} and ${names.length - 2} more` : names.join(" · ")) + (score < 80 && results.to_prompt.length ? ". The ones you missed come back sooner." : ""),
+            score,
+            stats: [
+              { label: "Score", value: score, suffix: "%", tone: "primary" },
+              { label: "Right", value: right(overall), suffix: `/${count}`, tone: "success" },
+              { label: "Guessed", value: overall.right_guessed, tone: "accent" },
+            ],
+          })
+        : "off";
+      if (mode !== "full") play("finished");
+    }
   }
 
   async function give(index: number, reason: GivenReason) {
@@ -90,7 +109,7 @@
   <div class="mx-auto max-w-7xl px-10 pb-24">
     <PageHeader title={fresh ? "Quiz finished" : "Results"} subtitle="{results.exam ? 'Exam' : 'Study'} mode · {total(overall)} questions{results.status === 'Incomplete' ? ' · Quit early' : ''}" />
 
-    <div class="grid grid-cols-[minmax(0,1fr)_20rem] items-start gap-6">
+    <div class="grid grid-cols-[minmax(0,1fr)] wide:grid-cols-[minmax(0,1fr)_20rem] items-start gap-6">
       <div class="flex min-w-0 flex-col gap-4">
         <!-- The score splits into four framed tiles: score, right, guessed (hatched) and wrong -->
         <section class="rise grid grid-cols-4 gap-3" aria-label="Score">
@@ -117,7 +136,7 @@
           <h2 class="text-[18px]">By topic</h2>
           <ul class="mt-2 space-y-2" aria-label="By topic">
             {#each Object.entries(results.summary.per_topic) as [id, tally] (id)}
-              <li class="grid grid-cols-[110px_1fr_56px] items-center gap-3 text-[15px]"><span class="truncate">{topicName(id)}</span>{@render bar(tally, 14, true)}<span class="text-right tabular-nums">{right(tally)} / {total(tally)}</span></li>
+              <li class="grid grid-cols-[110px_minmax(0,1fr)_56px] items-center gap-3 text-[15px]"><span class="truncate">{topicName(id)}</span>{@render bar(tally, 14, true)}<span class="text-right tabular-nums">{right(tally)} / {total(tally)}</span></li>
             {/each}
           </ul>
         </section>

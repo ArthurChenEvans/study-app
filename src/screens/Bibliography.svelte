@@ -1,8 +1,9 @@
 <script lang="ts">
   // sources.feature (R13, R44 to R46)
-  import { BookOpen, Plus } from "@lucide/svelte";
+  import { X, BookOpen, Plus } from "@lucide/svelte";
   import RowMenu from "../components/RowMenu.svelte";
   import { api, errorMessage, type SourceFields, type SourceRow, type TopicRow } from "../lib/api";
+  import { deleteWithUndo, toast } from "../lib/celebrations.svelte";
   import PageHeader from "../components/PageHeader.svelte";
   import Rich from "../components/Rich.svelte";
   import Highlight from "../components/Highlight.svelte";
@@ -27,11 +28,23 @@
     adding = true;
   }
 
-  async function confirmDelete() {
+  let hiddenSources = $state<Set<number>>(new Set());
+  const unhide = (id: number) => (hiddenSources = new Set([...hiddenSources].filter((value) => value !== id)));
+
+  function confirmDelete() {
     if (!deleting) return;
-    await api.deleteSource(deleting.id);
+    const source = deleting;
     deleting = null;
-    await load();
+    deleteWithUndo({
+      text: "Source deleted",
+      sub: source.fields.title,
+      hide: () => {
+        hiddenSources = new Set([...hiddenSources, source.id]);
+        sources = sources.filter((row) => row.id !== source.id);
+      },
+      restore: () => { unhide(source.id); load(); },
+      commit: async () => { await api.deleteSource(source.id); unhide(source.id); await load(); },
+    });
   }
 
   function blank() {
@@ -58,7 +71,9 @@
   const topicName = (id: number) => topics.find((topic) => topic.id === id)?.name ?? "Deleted topic";
 
   async function load() {
-    [sources, topics] = await Promise.all([api.sources(), api.topics()]);
+    const [allSources, allTopics] = await Promise.all([api.sources(), api.topics()]);
+    sources = allSources.filter((row) => !hiddenSources.has(row.id));
+    topics = allTopics;
     loaded = true;
   }
 
@@ -84,6 +99,7 @@
     try {
       if (editing === null) await api.addSource(fieldsToSave);
       else await api.updateSource(editing, fieldsToSave);
+      toast({ text: editing === null ? "Source added" : "Source saved", sub: fieldsToSave.title, icon: editing === null ? "plus" : "check" });
       adding = false;
       await load();
     } catch (failure) {
@@ -123,9 +139,9 @@
                 {#each shown as source (source.id)}
                   <tr aria-selected={picked === source.id} onclick={() => (picked = source.id)}>
                     <td class="max-w-56"><button type="button" class="block min-h-6 w-full truncate text-left font-extrabold" onclick={() => (picked = source.id)}><Highlight text={source.fields.authors || "No author"} term={filter} /></button></td>
-                    <td class="whitespace-nowrap tabular-nums">{source.fields.year ?? "n.d."}</td>
-                    <td class="max-w-0 w-full truncate italic"><Highlight text={source.fields.title} term={filter} /></td>
-                    <td class="num whitespace-nowrap">{source.cited_by_questions} {source.cited_by_questions === 1 ? "question" : "questions"}</td>
+                    <td class="whitespace-nowrap tabular-nums" data-label="Year">{source.fields.year ?? "n.d."}</td>
+                    <td class="max-w-0 w-full truncate italic" data-label="Title"><Highlight text={source.fields.title} term={filter} /></td>
+                    <td class="num whitespace-nowrap" data-label="Cited by">{source.cited_by_questions} {source.cited_by_questions === 1 ? "question" : "questions"}</td>
                   </tr>
                 {/each}
               </tbody>
@@ -135,8 +151,9 @@
           <p class="panel p-6 text-sm text-muted">Nothing matches "{filter.trim()}". <button class="btn btn-link btn-sm" onclick={() => (filter = "")}>Clear the filter</button></p>
         {/if}
       </div>
-      <aside class="itemcard" aria-label="Picked source">
+      <aside class="itemcard" aria-label="Picked source" data-empty={!pickedSource}>
         {#if pickedSource}
+          <button type="button" class="itemcard-close btn btn-quiet btn-sm btn-square" aria-label="Close" onclick={() => (picked = null)}><X class="size-4" /></button>
           {@const source = pickedSource}
           <div class="panel p-5">
             <div class="flex items-start justify-between gap-2"><span class="well" aria-hidden="true"><BookOpen class="size-5" /></span>

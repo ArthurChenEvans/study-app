@@ -9,6 +9,13 @@ vi.mock("../lib/api", async (original) => {
 
 vi.mock("../lib/sound", () => ({ play: vi.fn() }));
 
+const cele = vi.hoisted(() => ({ answered: vi.fn(), celebrate: vi.fn(), startSession: vi.fn() }));
+vi.mock("../lib/celebrations.svelte", () => ({
+  celebrate: (...args: unknown[]) => cele.celebrate(...args),
+  praise: () => "Well done!",
+  startSession: (queue: number) => cele.startSession(queue) ?? { answered: cele.answered },
+}));
+
 import { play } from "../lib/sound";
 import { api, type Feedback, type QuizView, type ShortFeedback } from "../lib/api";
 import Quiz from "./Quiz.svelte";
@@ -250,5 +257,18 @@ describe("Quiz", () => {
       expect(mocked.toggleFlag).toHaveBeenCalledTimes(1);
       expect(screen.getByLabelText("Your answer")).toHaveValue("maybef");
     });
+  });
+
+  // celebrations.feature (R151): right answers count towards streaks
+  it("tells the session pacer about each answer", async () => {
+    cele.startSession.mockReturnValue({ answered: cele.answered });
+    const u = userEvent.setup();
+    mocked.answer.mockResolvedValue({ feedback: { index: 0, short: null, right: true, auto_reason: null, correct: [1], explanation: "", citations: [] }, next: { Question: second } });
+    render(Quiz, { initial: view(), onFinished: vi.fn() });
+    expect(cele.startSession).toHaveBeenCalledWith(3);
+    await u.click(screen.getByRole("button", { name: "3 Decode" }));
+    await u.click(screen.getByRole("button", { name: /Submit/ }));
+    await screen.findByRole("status");
+    expect(cele.answered).toHaveBeenCalledWith(true);
   });
 });

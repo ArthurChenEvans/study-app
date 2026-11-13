@@ -5,6 +5,7 @@
   import { api, errorMessage, type CardRating, type ReviewCard, type ReviewDone, type ReviewStep, type Subject } from "../lib/api";
   import Rich from "../components/Rich.svelte";
   import { dueLabel } from "../lib/dates";
+  import { celebrate, praise, startSession } from "../lib/celebrations.svelte";
 
   let { scope = null, scopeName = "All topics", onLeave, onEdit }: { scope?: Subject | null; scopeName?: string; onLeave: () => void; onEdit: (topic: number, note: number) => void } = $props();
 
@@ -15,6 +16,7 @@
   let error = $state("");
   let today = $state(0);
   let started = Date.now();
+  let session: ReturnType<typeof startSession> | null = null;
 
   const ratings: CardRating[] = ["Again", "Hard", "Good", "Easy"];
   const cloze = $derived(card?.kind.startsWith("Cloze") ?? false);
@@ -35,9 +37,23 @@
     if ("Card" in step) {
       card = step.Card;
       done = null;
+      session ??= startSession(step.Card.total - step.Card.done);
     } else {
       card = null;
       done = step.Done;
+      // Only a session that ran here celebrates, not reopening a finished day.
+      if (session && step.Done.reviewed > 0) {
+        celebrate("reviews", {
+          title: praise("reviews"),
+          line: "Every card due today is cleared.",
+          stats: [
+            { label: "Cards", value: step.Done.reviewed, tone: "primary" },
+            { label: "Minutes", value: Math.max(1, Math.round(step.Done.seconds / 60)), tone: "accent" },
+            ...(step.Done.remembered === null ? [] : [{ label: "Remembered", value: step.Done.remembered, suffix: "%", tone: "success" as const }]),
+          ],
+        });
+        session = null;
+      }
     }
   }
 
@@ -54,7 +70,11 @@
     }
   }
 
-  const grade = (rating: CardRating) => run(() => api.gradeCard(rating, Math.min(600, Math.round((Date.now() - started) / 1000))));
+  function grade(rating: CardRating) {
+    if (busy) return;
+    session?.answered(rating !== "Again");
+    run(() => api.gradeCard(rating, Math.min(600, Math.round((Date.now() - started) / 1000))));
+  }
   const undo = () => run(() => api.undoCard());
 
   async function edit() {
@@ -99,10 +119,10 @@
        top, the card as one tile, and the four ratings as full-width buttons in a bottom band. -->
   <div class="flex min-h-screen flex-col">
   <div class="sticky top-0 z-10 bg-base-100 px-12 pb-3 pt-6">
-    <div class="mx-auto flex max-w-5xl items-center gap-5">
+    <div class="mx-auto flex max-w-5xl items-center gap-2 tab:gap-5">
       <button class="btn btn-quiet btn-sm btn-square" aria-label="Leave" title="Leave" onclick={leave}><X class="size-6" strokeWidth={2.6} /></button>
-      <div class="h-[18px] flex-1 overflow-hidden rounded-full bg-base-300" role="progressbar" aria-label="Session progress" aria-valuenow={card.done} aria-valuemin={0} aria-valuemax={card.total}><div class="lesson-fill h-full rounded-full" style="width: max(18px, {card.total ? (card.done / card.total) * 100 : 0}%)"></div></div>
-      <p class="flex items-center gap-1.5" aria-label="Left today: {card.left.new} new, {card.left.learning} learning, {card.left.review} to review. This card is {queueName[card.queue]}.">
+      <div class="h-[18px] min-w-16 flex-1 overflow-hidden rounded-full bg-base-300" role="progressbar" aria-label="Session progress" aria-valuenow={card.done} aria-valuemin={0} aria-valuemax={card.total}><div class="lesson-fill h-full rounded-full" style="width: max(18px, {card.total ? (card.done / card.total) * 100 : 0}%)"></div></div>
+      <p class="hidden items-center gap-1.5 tab:flex" aria-label="Left today: {card.left.new} new, {card.left.learning} learning, {card.left.review} to review. This card is {queueName[card.queue]}.">
         <span class="chip chip-info tabular-nums {card.queue === 'new' ? 'chip-now' : ''}">{card.left.new} new</span>
         <span class="chip tabular-nums {card.queue === 'learning' ? 'chip-now' : ''}">{card.left.learning} learning</span>
         <span class="chip chip-primary tabular-nums {card.queue === 'review' ? 'chip-now' : ''}">{card.left.review} to review</span>
@@ -138,7 +158,7 @@
   <div class="sheet-foot">
     <div class="mx-auto max-w-5xl">
       {#if shown}
-        <div class="grid grid-cols-4 gap-3.5">
+        <div class="grid grid-cols-2 gap-3.5 tab:grid-cols-4">
           {#each ratings as rating, index (rating)}
             <button class="btn grade grade-{rating.toLowerCase()} w-full" disabled={busy} onclick={() => grade(rating)}>
               <span>{rating} <kbd class="kbd kbd-xs">{index + 1}</kbd></span><span class="when">{interval(card.intervals[index])}</span>

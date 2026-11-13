@@ -82,3 +82,17 @@ export function pastOn(day: number, today: number): string {
   const label = dayLabel(day, today);
   return label === "Today" || label === "Yesterday" ? label.toLowerCase() : `on ${label}`;
 }
+
+/** navigation.feature (R163): the Monday of a day's week. */
+export function weekStart(day: number): number {
+  return day - dateOf(day).weekday;
+}
+
+/** "2 to 8 Nov 2026", "30 Nov to 6 Dec 2026", "28 Dec 2026 to 3 Jan 2027" */
+export function weekLabel(start: number): string {
+  const from = dateOf(start);
+  const to = dateOf(start + 6);
+  if (from.year !== to.year) return `${from.date} ${MONTHS[from.month]} ${from.year} to ${to.date} ${MONTHS[to.month]} ${to.year}`;
+  if (from.month !== to.month) return `${from.date} ${MONTHS[from.month]} to ${to.date} ${MONTHS[to.month]} ${to.year}`;
+  return `${from.date} to ${to.date} ${MONTHS[to.month]} ${to.year}`;
+}

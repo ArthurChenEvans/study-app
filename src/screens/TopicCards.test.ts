@@ -12,6 +12,7 @@ vi.mock("../lib/api", async (original) => {
 
 import { api, type NoteView, type TopicCards as TopicCardsView } from "../lib/api";
 import TopicCards from "./TopicCards.svelte";
+import { flushPendingDeletes, live } from "../lib/celebrations.svelte";
 
 const mocked = vi.mocked(api);
 const TODAY = 20_760;
@@ -159,7 +160,9 @@ describe("Topic cards", () => {
     expect(aside).toHaveTextContent("62%");
     await u.click(screen.getByRole("button", { name: /Delete/ }));
     await u.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete" }));
+    expect(live.toasts.at(-1)).toMatchObject({ text: "Card deleted", action: { label: "Undo" } });
+    expect(mocked.deleteNote).not.toHaveBeenCalled();
+    await flushPendingDeletes();
     expect(mocked.deleteNote).toHaveBeenCalledWith(101);
-    expect(await screen.findByText("Card deleted")).toBeInTheDocument();
   });
 });

@@ -27,6 +27,7 @@ vi.mock("../lib/api", async (original) => {
 });
 
 import { api } from "../lib/api";
+import { flushPendingDeletes, live } from "../lib/celebrations.svelte";
 import Topics from "./Topics.svelte";
 
 const mocked = vi.mocked(api);
@@ -65,7 +66,9 @@ describe("Topics screen", () => {
     given([], []);
     render(Topics);
     expect(await screen.findByText("No topics yet")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Create your first topic" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Create your first topic" })).toHaveClass("btn-primary");
+    // One primary button per view: the header's button steps back while the first steps show.
+    expect(screen.getByRole("button", { name: /^New topic/ })).not.toHaveClass("btn-primary");
   });
 
   it("creates a topic in a module", async () => {
@@ -81,6 +84,7 @@ describe("Topics screen", () => {
     await user.click(within(dialog).getByRole("button", { name: "Create topic" }));
     expect(mocked.createTopic).toHaveBeenCalledWith("GPU", 1);
     expect(await screen.findByRole("button", { name: "GPU" })).toBeInTheDocument();
+    expect(live.toasts.at(-1)).toMatchObject({ text: "Topic added" });
   });
 
   it("shows the backend's message when creating fails", async () => {
@@ -103,9 +107,29 @@ describe("Topics screen", () => {
     const dialog = screen.getByRole("dialog", { name: 'Delete "CPU"?' });
     expect(dialog).toHaveTextContent("history isn't affected");
     expect(mocked.deleteTopic).not.toHaveBeenCalled();
-    mocked.topics.mockResolvedValue([]);
     await user.click(within(dialog).getByRole("button", { name: "Delete topic" }));
+    // toasts.feature (R157): it goes at once, with a few seconds to undo before it's deleted for real
+    expect(screen.queryByRole("button", { name: "CPU" })).not.toBeInTheDocument();
+    expect(live.toasts.at(-1)).toMatchObject({ text: "Topic deleted", sub: "CPU and its 24 questions", action: { label: "Undo" } });
+    expect(mocked.deleteTopic).not.toHaveBeenCalled();
+    mocked.topics.mockResolvedValue([]);
+    await flushPendingDeletes();
     expect(mocked.deleteTopic).toHaveBeenCalledWith(1);
+  });
+
+  // toasts.feature (R157): an empty topic skips the question, Undo brings it back
+  it("deletes an empty topic straight away, and Undo puts it back", async () => {
+    given([{ id: 1, name: "Scratch", module: null, tags: [], question_count: 0, short_count: 0 }]);
+    const user = userEvent.setup();
+    render(Topics);
+    await user.click(await screen.findByRole("button", { name: "Scratch" }));
+    await user.click(within(screen.getByRole("complementary", { name: "Picked topic" })).getByRole("button", { name: "Delete" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Scratch" })).not.toBeInTheDocument();
+    live.toasts.at(-1)!.action!.run();
+    expect(await screen.findByRole("button", { name: "Scratch" })).toBeInTheDocument();
+    await flushPendingDeletes();
+    expect(mocked.deleteTopic).not.toHaveBeenCalled();
   });
 
   // R43
@@ -120,6 +144,8 @@ describe("Topics screen", () => {
     expect(dialog).toHaveTextContent('moved to "No module"');
     given([{ id: 1, name: "CPU", module: null, tags: [], question_count: 3, short_count: 0 }], []);
     await u.click(within(dialog).getByRole("button", { name: "Delete module" }));
+    expect(live.toasts.at(-1)).toMatchObject({ text: "Module deleted", action: { label: "Undo" } });
+    await flushPendingDeletes();
     expect(mocked.deleteModule).toHaveBeenCalledWith(1);
     expect(await screen.findByRole("button", { name: "No module 1 topic" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "All modules 1 topic" })).toHaveAttribute("aria-pressed", "true");
@@ -245,11 +271,17 @@ describe("Topics screen", () => {
     await u.click(screen.getByRole("button", { name: "Add tag" }));
     expect(mocked.setTopicTags).toHaveBeenCalledTimes(1);
     expect(mocked.setTopicTags).toHaveBeenCalledWith(1, ["exam"]);
+    expect(live.toasts.at(-1)).toMatchObject({ text: 'Tagged 1 topic "exam"' });
     await u.click(within(screen.getByRole("region", { name: "Ticked topics" })).getByRole("button", { name: /Move to module/ }));
     await u.selectOptions(screen.getByLabelText("To module"), "Computer Architecture");
     await u.click(screen.getByRole("button", { name: "Move" }));
     expect(mocked.moveTopic).toHaveBeenCalledWith(1, 1);
     expect(mocked.moveTopic).toHaveBeenCalledWith(2, 1);
+    // toasts.feature (R155): says what moved, and Undo moves them back
+    expect(live.toasts.at(-1)).toMatchObject({ text: "2 topics moved to Computer Architecture" });
+    live.toasts.at(-1)!.action!.run();
+    await vi.waitFor(() => expect(mocked.moveTopic).toHaveBeenCalledWith(2, null));
+    expect(mocked.moveTopic).toHaveBeenCalledWith(1, null);
     await u.click(screen.getByRole("checkbox", { name: "Tick all 3 shown" }));
     expect(screen.getByRole("region", { name: "Ticked topics" })).toHaveTextContent("3 ticked");
     await u.click(screen.getByRole("button", { name: "Untick all" }));

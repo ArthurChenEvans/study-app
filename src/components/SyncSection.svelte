@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { stackTable } from "../lib/stack";
   // sync.feature (R119 to R128), on Your data. The section's goal: keep the computers in
   // step without thinking about it. Most important: whether it's working, which the status
   // card above says in words. Here: which computers there are, the folder, and anything to
@@ -88,7 +89,7 @@
 
   {#if status.on}
     <div class="mt-5 overflow-hidden rounded-lg border border-base-300">
-      <table class="table" aria-label="Computers">
+      <table class="table" aria-label="Computers" use:stackTable>
         <thead><tr class="text-muted"><th>Computer</th><th>Last seen</th><th class="text-right">Changes waiting</th></tr></thead>
         <tbody>
           {#each status.devices as device (device.id)}
@@ -102,7 +103,7 @@
       </table>
     </div>
 
-    <dl class="mt-5 grid grid-cols-[9rem_1fr_auto] items-center gap-x-4 gap-y-3 text-sm">
+    <dl class="mt-5 grid grid-cols-[9rem_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-3 text-sm">
       <dt class="text-muted">Sync folder</dt>
       <dd class="min-w-0"><span class="path break-all">{status.folder}</span></dd>
       <dd><button class="btn btn-sm {fix === 'folder' ? 'btn-primary' : 'btn-ghost'}" onclick={() => (setup = "folder")}><FolderSync class="size-4" />Change folder</button></dd>

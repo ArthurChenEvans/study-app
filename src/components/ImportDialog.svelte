@@ -4,6 +4,7 @@
   // screen reader can read cell by cell.
   import { FileInput, ShieldCheck } from "@lucide/svelte";
   import { api, errorMessage, type ClashRule, type ImportPreview, type ImportResult } from "../lib/api";
+  import { toast } from "../lib/celebrations.svelte";
   import { fullLabel } from "../lib/dates";
 
   let { preview, today, onClose, onDone }: { preview: ImportPreview; today: number; onClose: () => void; onDone: (result: ImportResult) => void } = $props();
@@ -27,7 +28,10 @@
     busy = true;
     error = "";
     try {
-      onDone(await api.importApply({ rule, theirs: rule === "EachOne" ? theirs : [] }));
+      const result = await api.importApply({ rule, theirs: rule === "EachOne" ? theirs : [] });
+      const added = result.added.filter((count) => count.count > 0);
+      toast({ text: "Import finished", sub: added.length ? `Added ${added.map((count) => `${count.count} ${count.what}`).join(", ")}${result.replaced ? `, replaced ${result.replaced}` : ""}` : result.replaced ? `Replaced ${result.replaced}` : "Nothing new to add", icon: "download", ms: 5000 });
+      onDone(result);
     } catch (failure) {
       error = errorMessage(failure);
       busy = false;

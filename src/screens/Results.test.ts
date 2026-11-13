@@ -9,6 +9,13 @@ vi.mock("../lib/api", async (original) => {
 
 vi.mock("../lib/sound", () => ({ play: vi.fn() }));
 
+const cele = vi.hoisted(() => ({ answered: vi.fn(), celebrate: vi.fn(), startSession: vi.fn() }));
+vi.mock("../lib/celebrations.svelte", () => ({
+  celebrate: (...args: unknown[]) => cele.celebrate(...args),
+  praise: () => "Well done!",
+  startSession: (queue: number) => cele.startSession(queue) ?? { answered: cele.answered },
+}));
+
 import * as soundModule from "../lib/sound";
 import { api, type ResultsView, type ReviewItem, type ShortFeedback } from "../lib/api";
 import Results from "./Results.svelte";
@@ -174,6 +181,24 @@ describe("Results", () => {
     render(Results, { attempt: 3, onRetry: vi.fn() });
     expect(await screen.findByRole("heading", { name: "Results" })).toBeInTheDocument();
     expect(sound.play).not.toHaveBeenCalled();
+    expect(cele.celebrate).toHaveBeenCalledTimes(1);
+  });
+
+  // celebrations.feature (R154): a finished quiz celebrates, scaled by the score
+  it("celebrates a finished quiz with its score instead of the plain cue", async () => {
+    cele.celebrate.mockReturnValue("full");
+    mocked.results.mockResolvedValue(results());
+    render(Results, { attempt: 3, onRetry: vi.fn(), fresh: true });
+    await screen.findByRole("heading", { name: "Quiz finished" });
+    expect(cele.celebrate).toHaveBeenCalledWith("quiz", expect.objectContaining({ score: 50, stats: expect.arrayContaining([{ label: "Score", value: 50, suffix: "%", tone: "primary" }, { label: "Right", value: 2, suffix: "/4", tone: "success" }]) }));
+    expect(sound.play).not.toHaveBeenCalled();
+  });
+
+  it("doesn't celebrate an incomplete quiz", async () => {
+    mocked.results.mockResolvedValue(results({ status: "Incomplete" }));
+    render(Results, { attempt: 3, onRetry: vi.fn(), fresh: true });
+    await screen.findByText(/incomplete/i);
+    expect(cele.celebrate).not.toHaveBeenCalled();
   });
 
   it("has no schedule panel for retries", async () => {

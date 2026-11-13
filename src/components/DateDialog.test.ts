@@ -8,6 +8,7 @@ vi.mock("../lib/api", async (original) => {
 });
 
 import { api, type DateView, type ModuleRow, type TopicRow } from "../lib/api";
+import { flushPendingDeletes, live } from "../lib/celebrations.svelte";
 import DateDialog from "./DateDialog.svelte";
 
 const mocked = vi.mocked(api);
@@ -38,6 +39,8 @@ describe("DateDialog", () => {
     await u.click(screen.getByRole("button", { name: "Add date" }));
     expect(mocked.addDate).toHaveBeenCalledWith({ name: "Study app write-up", day: TODAY + 14, kind: "Deadline", module: null, topics: [], tighten: false });
     expect(onSaved).toHaveBeenCalled();
+    // toasts.feature (R155)
+    expect(live.toasts.at(-1)).toMatchObject({ text: "Date added", sub: "Study app write-up, Tue 17 Nov" });
   });
 
   it("needs a name", async () => {
@@ -87,7 +90,8 @@ describe("DateDialog", () => {
     const u = userEvent.setup();
     const onSaved = vi.fn();
     const date: DateView = { id: 4, name: "Study app write-up", day: TODAY + 10, kind: "Deadline", covers: "Nothing", covers_label: "", topics: [], tighten: false, days_left: 10 };
-    render(DateDialog, { today: TODAY, date, modules, topics, onSaved, onCancel: vi.fn() });
+    const onHide = vi.fn();
+    render(DateDialog, { today: TODAY, date, modules, topics, onSaved, onCancel: vi.fn(), onHide });
     expect(screen.getByRole("heading", { name: "Edit date" })).toBeInTheDocument();
     expect(screen.getByLabelText("Name")).toHaveValue("Study app write-up");
     expect(screen.getByLabelText("Date")).toHaveValue("2026-11-13");
@@ -99,6 +103,18 @@ describe("DateDialog", () => {
     await u.click(screen.getByRole("button", { name: "Keep it" }));
     await u.click(screen.getByRole("button", { name: "Delete" }));
     await u.click(screen.getByRole("button", { name: "Delete date" }));
+    // toasts.feature (R157): it still asks, then goes with Undo like every other delete
+    expect(onHide).toHaveBeenLastCalledWith(4, true);
+    expect(live.toasts.at(-1)).toMatchObject({ text: "Date deleted", sub: "Study app write-up", action: { label: "Undo" } });
+    expect(mocked.deleteDate).not.toHaveBeenCalled();
+    live.toasts.at(-1)!.action!.run();
+    expect(onHide).toHaveBeenLastCalledWith(4, false);
+    await flushPendingDeletes();
+    expect(mocked.deleteDate).not.toHaveBeenCalled();
+
+    await u.click(screen.getByRole("button", { name: "Delete" }));
+    await u.click(screen.getByRole("button", { name: "Delete date" }));
+    await flushPendingDeletes();
     expect(mocked.deleteDate).toHaveBeenCalledWith(4);
   });
 });

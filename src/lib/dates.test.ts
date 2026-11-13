@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dayLabel, dueLabel, onDay, pastOn, dateOf, dayFromIso, dayOf, isoOf, monthGrid, monthLabel } from "./dates";
+import { dayLabel, dueLabel, onDay, pastOn, dateOf, dayFromIso, dayOf, isoOf, monthGrid, monthLabel, weekLabel, weekStart } from "./dates";
 
 // Days are numbered from 1970-01-01 in local time, as the backend stores them.
 const NOV_1_2026 = 20758;
@@ -68,3 +68,17 @@ describe("pastOn", () => {
   });
 });
 
+// navigation.feature (R163): the week view starts on a Monday and says which week it is
+describe("weeks", () => {
+  it("finds the Monday of any day's week", () => {
+    expect(dateOf(weekStart(20_760)).weekday).toBe(0);
+    expect(weekStart(20_760)).toBe(20_759);
+    expect(weekStart(20_759)).toBe(20_759);
+    expect(weekStart(20_765)).toBe(20_759);
+  });
+  it("names the week, across months and years too", () => {
+    expect(weekLabel(20_759)).toBe("2 to 8 Nov 2026");
+    expect(weekLabel(dayOf(2026, 10, 30))).toBe("30 Nov to 6 Dec 2026");
+    expect(weekLabel(dayOf(2026, 11, 28))).toBe("28 Dec 2026 to 3 Jan 2027");
+  });
+});

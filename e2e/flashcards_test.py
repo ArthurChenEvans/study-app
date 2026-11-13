@@ -1,3 +1,4 @@
+import time
 """End-to-end: flashcards in the real app window (flashcards.feature).
 
 Makes a topic, writes a basic card with an extra cue, a reversed card and a cloze card
@@ -52,6 +53,15 @@ def find(xpath: str):
 
 def button(name: str):
     return find(f"//button[starts-with(normalize-space(), '{name}') or @aria-label='{name}']")
+
+def celebrated() -> None:
+    """celebrations.feature (R154): a finished session shows a full-screen moment. Wait for
+    Continue to take presses (half a second in), then close it like a person would."""
+    find("//*[@role='dialog' and @aria-modal='true']//button[normalize-space()='Continue']")
+    time.sleep(0.7)
+    find("//*[@role='dialog' and @aria-modal='true']//button[normalize-space()='Continue']").click()
+    wait.until(lambda _: not driver.find_elements(By.XPATH, "//*[@role='dialog' and @aria-modal='true' and .//button[normalize-space()='Continue']]"))
+
 
 
 def ipc(command: str, args: dict):
@@ -173,6 +183,7 @@ try:
     ok(f"reviewed {len(seen)} cards with the keyboard, the Again card came back (R65, R66)")
 
     find("//h1[normalize-space()='Done for today']")
+    celebrated()
     assert "1 time Again" in text(), text()
     ok("the summary shows reviewed, remembered and time (R69)")
     shot("done")

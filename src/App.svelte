@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, tick } from "svelte";
-  import Sidebar from "./components/Sidebar.svelte";
+  import Sidebar, { type NavMode } from "./components/Sidebar.svelte";
   import Topics from "./screens/Topics.svelte";
   import Editor from "./screens/Editor.svelte";
   import Setup from "./screens/Setup.svelte";
@@ -23,6 +23,14 @@
   import SessionReview from "./screens/SessionReview.svelte";
   import DrillSession from "./screens/DrillSession.svelte";
   import YourData from "./screens/YourData.svelte";
+  import Settings from "./screens/Settings.svelte";
+  import Celebration from "./components/Celebration.svelte";
+  import Pops from "./components/Pops.svelte";
+  import Toasts from "./components/Toasts.svelte";
+  import { flushPendingDeletes, loadPrefs } from "./lib/celebrations.svelte";
+  import { startUpdates } from "./lib/updates.svelte";
+  import { listen } from "@tauri-apps/api/event";
+  import { Download } from "@lucide/svelte";
   import { statusLine } from "./lib/backup";
   import { syncLine } from "./lib/sync";
   import { screenFromHash, type Screen } from "./lib/router";
@@ -46,6 +54,21 @@
     | { screen: "search"; text: string };
 
   let route = $state<Route>({ screen: screenFromHash(location.hash) });
+
+  // navigation.feature (R159, R160): the full sidebar when there's room, an icon rail on
+  // tablets, a dock on phones. Breakpoints follow Material's window size classes, with the
+  // full sidebar held back until 1100px so a portrait tablet keeps its width for content.
+  const PHONE = "(max-width: 599px)";
+  const TABLET = "(max-width: 1099px)";
+  const navMode = (): NavMode => (typeof matchMedia !== "function" ? "full" : matchMedia(PHONE).matches ? "dock" : matchMedia(TABLET).matches ? "rail" : "full");
+  let mode = $state<NavMode>(navMode());
+  $effect(() => {
+    if (typeof matchMedia !== "function") return;
+    const queries = [matchMedia(PHONE), matchMedia(TABLET)];
+    const update = () => (mode = navMode());
+    queries.forEach((query) => query.addEventListener?.("change", update));
+    return () => queries.forEach((query) => query.removeEventListener?.("change", update));
+  });
   let runs = 0;
 
   const navScreen = $derived<Screen>(
@@ -54,7 +77,7 @@
 
   function go(next: Route) {
     route = next;
-    if (["overview", "calendar", "topics", "cards", "recall", "projects", "bibliography", "history", "search", "setup", "data"].includes(next.screen)) history.replaceState(null, "", `#${next.screen}`);
+    if (["overview", "calendar", "topics", "cards", "recall", "projects", "bibliography", "history", "search", "setup", "data", "settings"].includes(next.screen)) history.replaceState(null, "", `#${next.screen}`);
     window.scrollTo?.(0, 0);
     refreshDue();
   }
@@ -89,6 +112,7 @@
         const result = await api.syncNow(auto);
         status = result.status;
         if (result.received && RELOADS.includes(route.screen)) dataVersion++;
+        if (result.received) loadPrefs();
         if (result.received) refreshCounts();
       }
       showSync(status);
@@ -150,6 +174,18 @@
 
   // A quiz is saved after every answer. If one was running when the app last closed (or
   // crashed), open straight back onto it at the question it stopped on.
+  // celebrations.feature (R150): load which moments you want, and finish any deletes still
+  // waiting on their undo window if the app closes.
+  // updates.feature (R166): check for a new release on open, and say so plainly if one is
+  // being installed as the app closes (the system asks for a password).
+  let installingOnClose = $state(false);
+  onMount(() => {
+    loadPrefs();
+    startUpdates();
+    let stop: (() => void) | undefined;
+    listen("updating-on-close", () => (installingOnClose = true)).then((unlisten) => (stop = unlisten)).catch(() => {});
+    return () => stop?.();
+  });
   onMount(() => {
     api.currentQuestion().then(
       (view) => { if (view && typeof view === "object" && typeof view.position === "number" && route.screen !== "quiz") startQuiz(view); },
@@ -158,11 +194,11 @@
   });
 </script>
 
-<svelte:window onhashchange={() => (route = { screen: screenFromHash(location.hash) })} onkeydown={shortcut} />
+<svelte:window onhashchange={() => (route = { screen: screenFromHash(location.hash) })} onkeydown={shortcut} onbeforeunload={() => { flushPendingDeletes(); }} />
 
 <div class="flex min-h-screen">
-  {#if !["quiz", "recall-session", "card-review", "session-review", "drills"].includes(route.screen)}<Sidebar current={navScreen} {due} {backup} {sync} onNavigate={(screen) => go({ screen })} />{/if}
-  <main class="min-w-0 flex-1">
+  {#if !["quiz", "recall-session", "card-review", "session-review", "drills"].includes(route.screen)}<Sidebar current={navScreen} {due} {backup} {sync} {mode} onNavigate={(screen) => go({ screen })} />{/if}
+  <main class="min-w-0 flex-1" class:pb-24={mode === "dock"}>
     {#key dataVersion}
     {#if route.screen === "topics"}
       <Topics onCards={(topic) => go({ screen: "topic-cards", topic, note: null })} onSearch={(text) => go({ screen: "search", text })} onEdit={(topic) => go({ screen: "editor", topic })} onQuiz={(topic) => go({ screen: "setup-for", topics: [topic] })} onQuizTopics={(topics) => go({ screen: "setup-for", topics })} />
@@ -200,6 +236,8 @@
     {:else if route.screen === "drills"}
       {@const back = route.back}
       {#key route.run}<DrillSession ids={route.ids} onLeave={() => go(back)} />{/key}
+    {:else if route.screen === "settings"}
+      <Settings onNavigate={(screen) => go({ screen })} />
     {:else if route.screen === "data"}
       <YourData onRestored={() => { refreshDue(); syncTick(); }} onSync={showSync} />
     {:else if route.screen === "bibliography"}
@@ -214,3 +252,17 @@
     {/key}
   </main>
 </div>
+
+<Celebration />
+<Pops />
+<Toasts />
+
+{#if installingOnClose}
+  <div class="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="closing-h">
+    <div class="modal-box max-w-md text-center">
+      <Download class="mx-auto size-8" />
+      <h2 id="closing-h" class="mt-3 text-lg font-black">Installing the update</h2>
+      <p class="mt-2 text-muted">Your computer will ask for your password. The app closes when it's done, and your study data was backed up first.</p>
+    </div>
+  </div>
+{/if}

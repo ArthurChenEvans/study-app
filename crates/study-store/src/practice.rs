@@ -15,6 +15,9 @@ use crate::{AttemptId, Result, Store, StoreError};
 
 const QUIZ_SCHEDULE_KEY: &str = "quiz_schedule";
 const QUIZZES_A_DAY_KEY: &str = "quizzes_a_day";
+const CELEBRATIONS_KEY: &str = "celebrations";
+/// The celebrations blob is a handful of switches, so anything bigger is a mistake.
+const CELEBRATIONS_MAX_BYTES: usize = 4096;
 /// Topic quizzes due a day unless changed (R146).
 pub const DEFAULT_QUIZZES_A_DAY: usize = 5;
 
@@ -223,6 +226,32 @@ impl Store {
             "INSERT INTO settings (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
             params![QUIZZES_A_DAY_KEY, count.to_string()],
         )?;
+        Ok(())
+    }
+
+    /// Which celebrations you want (R150). The app owns the shape, the store keeps it as a
+    /// small JSON object so it syncs like any other setting.
+    pub fn celebrations(&self) -> Result<Option<String>> {
+        Ok(self.connection.query_row("SELECT value FROM settings WHERE key = ?1", [CELEBRATIONS_KEY], |row| row.get(0)).optional()?)
+    }
+
+    pub fn set_celebrations(&mut self, json: &str) -> Result<()> {
+        if json.len() > CELEBRATIONS_MAX_BYTES {
+            return Err(StoreError::Invalid("celebration settings are too big"));
+        }
+        let parsed: serde_json::Value = serde_json::from_str(json).map_err(|_| StoreError::Invalid("celebration settings aren't valid JSON"))?;
+        if !parsed.is_object() {
+            return Err(StoreError::Invalid("celebration settings have to be an object"));
+        }
+        self.connection.execute(
+            "INSERT INTO settings (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            params![CELEBRATIONS_KEY, json],
+        )?;
+        Ok(())
+    }
+
+    pub fn reset_celebrations(&mut self) -> Result<()> {
+        self.connection.execute("DELETE FROM settings WHERE key = ?1", [CELEBRATIONS_KEY])?;
         Ok(())
     }
 

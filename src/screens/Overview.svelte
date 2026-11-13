@@ -69,7 +69,7 @@
 <div class="mx-auto max-w-7xl px-10 pb-24">
   {#if overview === "FirstRun"}
     <PageHeader title="Welcome" subtitle="Three steps to your first quiz" />
-    <div class="grid grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 gap-6 tab:grid-cols-3">
       {#each steps as step, index (step.title)}
         <div class="panel rise p-6">
           <span class="well" aria-hidden="true"><step.icon class="size-5" /></span>
@@ -84,7 +84,7 @@
   {:else if progress}
     <PageHeader title="Overview" subtitle="Last 7 days, compared with the 7 days before" />
 
-    <div class="grid grid-cols-[minmax(0,1fr)_20rem] items-start gap-6">
+    <div class="grid grid-cols-1 items-start gap-6 wide:grid-cols-[minmax(0,1fr)_20rem]">
       <div class="flex min-w-0 flex-col gap-4">
         <!-- The one primary: start what's due, or a new quiz when nothing is -->
         {#if dueTopics.length}
@@ -105,7 +105,7 @@
           </section>
         {/if}
 
-        <section class="grid grid-cols-3 gap-4">
+        <section class="grid grid-cols-1 gap-4 tab:grid-cols-3">
           <div class="panel rise flex gap-3 p-4" role="region" aria-labelledby="tile-accuracy">
             <span class="well" aria-hidden="true"><Target class="size-5" /></span>
             <div>

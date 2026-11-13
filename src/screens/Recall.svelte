@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { stackTable } from "../lib/stack";
   // free-recall.feature (R52, R58, R60): checklists due today first, then the rest by date.
   import { Brain, CalendarCog, CircleCheck, Clock, Play, Plus } from "@lucide/svelte";
   import { api, errorMessage, type ModuleRow, type RecallRow, type Schedule, type TopicRow } from "../lib/api";
+  import { toast } from "../lib/celebrations.svelte";
   import PageHeader from "../components/PageHeader.svelte";
   import Ladder from "../components/Ladder.svelte";
   import ScheduleDialog from "../components/ScheduleDialog.svelte";
@@ -56,6 +58,7 @@
     try {
       const checklist = await api.createChecklist(kind === "module" ? { Module: Number(id) } : { Topic: Number(id) });
       creating = false;
+      toast({ text: "Checklist created", icon: "plus" });
       onChanged();
       onOpen(checklist);
     } catch (failure) {
@@ -95,7 +98,7 @@
         {#each due as row, index (row.id)}
           <!-- The due checklist is a raised hero tile, with its step pips and last score -->
           <article class="due-tile flex items-center gap-6 px-6 py-5" aria-label={row.subject_name}>
-            <div class="min-w-0 flex-1">
+            <div class="min-w-0 flex-[1_1_16rem]">
               <p><span class="chip">{row.module ? "Module" : "Topic"} · {row.points} {row.points === 1 ? "point" : "points"}</span></p>
               <h3 class="mt-1.5 text-[26px] font-black leading-tight"><button class="text-left hover:underline" onclick={() => onOpen(row.id)}>{row.subject_name}</button></h3>
               <p class="mt-1.5 flex flex-wrap items-center gap-3">
@@ -127,7 +130,7 @@
     <section class="mt-12" aria-labelledby="later-h">
       <h2 id="later-h" class="eyebrow mb-3">{due.length ? "Coming up" : "All checklists"}</h2>
       <div class="panel overflow-hidden">
-        <table class="table table-fixed" aria-label="Checklists">
+        <table class="table table-fixed" aria-label="Checklists" use:stackTable>
           <colgroup><col class="w-[28%]" /><col class="w-[12%]" /><col class="w-[30%]" /><col class="w-[15%]" /><col class="w-[15%]" /></colgroup>
           <thead><tr class="text-muted"><th>Checklist</th><th>Points</th><th>Step</th><th>Last check</th><th>Next</th></tr></thead>
           <tbody>
@@ -136,7 +139,7 @@
                 <td><button class="py-0.5 text-left font-semibold hover:underline" onclick={() => onOpen(row.id)}>{row.subject_name}</button><div class="text-xs text-muted">{row.module ? "Module" : "Topic"}{row.subject_exists ? "" : " (deleted)"}</div></td>
                 <td class="tabular-nums">{row.points}</td>
                 <td><div class="flex items-center gap-3"><div class="w-28"><Ladder compact steps={schedule.steps} position={row.position} step={row.step} next={row.next_step} /></div><span class="text-sm">{row.step ?? "Not started"}</span></div></td>
-                <td class="tabular-nums">{#if row.last_score === null}<span class="text-muted">None yet</span>{:else}<span class="flex items-center gap-2"><span class="inline-block h-3 w-24 shrink-0 overflow-hidden rounded-full bg-base-300" aria-hidden="true"><span class="block h-full rounded-full" style="width: {row.last_score}%; background: var(--chart-right)"></span></span>{row.last_score}%</span>{/if}</td>
+                <td class="tabular-nums">{#if row.last_score === null}<span class="text-muted">None yet</span>{:else}<span class="flex min-w-0 items-center gap-2"><span class="inline-block h-3 w-24 min-w-6 shrink overflow-hidden rounded-full bg-base-300" aria-hidden="true"><span class="block h-full rounded-full" style="width: {row.last_score}%; background: var(--chart-right)"></span></span>{row.last_score}%</span>{/if}</td>
                 <td class="tabular-nums">{dueLabel(row.due, today)}</td>
               </tr>
             {/each}
