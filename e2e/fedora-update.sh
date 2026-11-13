@@ -69,7 +69,17 @@ run "$url/same.json"
 ok "same version left alone"
 
 say "Add study data"
-sudo -u chen sqlite3 "$DATA/study.sqlite" "INSERT INTO modules (name) VALUES ('Kept through the update');"
+# The app's triggers call functions it registers itself, so stand in for them here.
+sudo -u chen python3 - "$DATA/study.sqlite" <<'PY'
+import sqlite3, sys, time, uuid
+db = sqlite3.connect(sys.argv[1])
+db.create_function("new_uid", 0, lambda: str(uuid.uuid4()))
+device = db.execute("SELECT device FROM this_device").fetchone()[0]
+db.create_function("stamp_now", 0, lambda: f"{int(time.time() * 1000):016d}-0000-{device}")
+db.create_function("device_id", 0, lambda: device)
+db.execute("INSERT INTO modules (name) VALUES ('Kept through the update')")
+db.commit()
+PY
 ok "data added"
 
 say "Older version: not an update"

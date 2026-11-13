@@ -139,7 +139,7 @@
                 <td><button class="py-0.5 text-left font-semibold hover:underline" onclick={() => onOpen(row.id)}>{row.subject_name}</button><div class="text-xs text-muted">{row.module ? "Module" : "Topic"}{row.subject_exists ? "" : " (deleted)"}</div></td>
                 <td class="tabular-nums">{row.points}</td>
                 <td><div class="flex items-center gap-3"><div class="w-28"><Ladder compact steps={schedule.steps} position={row.position} step={row.step} next={row.next_step} /></div><span class="text-sm">{row.step ?? "Not started"}</span></div></td>
-                <td class="tabular-nums">{#if row.last_score === null}<span class="text-muted">None yet</span>{:else}<span class="flex items-center gap-2"><span class="inline-block h-3 w-24 shrink-0 overflow-hidden rounded-full bg-base-300" aria-hidden="true"><span class="block h-full rounded-full" style="width: {row.last_score}%; background: var(--chart-right)"></span></span>{row.last_score}%</span>{/if}</td>
+                <td class="tabular-nums">{#if row.last_score === null}<span class="text-muted">None yet</span>{:else}<span class="flex min-w-0 items-center gap-2"><span class="inline-block h-3 w-24 min-w-6 shrink overflow-hidden rounded-full bg-base-300" aria-hidden="true"><span class="block h-full rounded-full" style="width: {row.last_score}%; background: var(--chart-right)"></span></span>{row.last_score}%</span>{/if}</td>
                 <td class="tabular-nums">{dueLabel(row.due, today)}</td>
               </tr>
             {/each}
