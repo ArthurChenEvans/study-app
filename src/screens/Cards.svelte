@@ -101,7 +101,7 @@
       </div>
     </div>
   {:else if home}
-    <div class="grid grid-cols-[minmax(0,1fr)_20rem] items-start gap-6">
+    <div class="grid grid-cols-[minmax(0,1fr)] wide:grid-cols-[minmax(0,1fr)_20rem] items-start gap-6">
       <div class="flex min-w-0 flex-col gap-4">
       <section class="panel p-6" aria-labelledby="today-h">
         <h2 id="today-h" class="eyebrow">Today</h2>
@@ -211,7 +211,7 @@
           </div>
           <p class="mt-1 text-sm text-muted">The chance you still remember a card when it comes back. Higher means more reviews a day.</p>
         </div>
-        <div class="grid grid-cols-2 gap-6">
+        <div class="grid grid-cols-1 gap-6 tab:grid-cols-2">
           <label class="block"><span class="block text-sm font-semibold">New cards a day</span><input class="input mt-1 w-24 tabular-nums" type="number" min="0" bind:value={editing.new_per_day} /></label>
           <div>
             <span class="block text-sm font-semibold" id="max-reviews-h">Most reviews a day</span>

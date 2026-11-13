@@ -109,7 +109,7 @@
   <div class="mx-auto max-w-7xl px-10 pb-24">
     <PageHeader title={fresh ? "Quiz finished" : "Results"} subtitle="{results.exam ? 'Exam' : 'Study'} mode · {total(overall)} questions{results.status === 'Incomplete' ? ' · Quit early' : ''}" />
 
-    <div class="grid grid-cols-[minmax(0,1fr)_20rem] items-start gap-6">
+    <div class="grid grid-cols-[minmax(0,1fr)] wide:grid-cols-[minmax(0,1fr)_20rem] items-start gap-6">
       <div class="flex min-w-0 flex-col gap-4">
         <!-- The score splits into four framed tiles: score, right, guessed (hatched) and wrong -->
         <section class="rise grid grid-cols-4 gap-3" aria-label="Score">

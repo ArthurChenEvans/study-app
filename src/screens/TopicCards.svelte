@@ -187,7 +187,7 @@
       {/if}
     {:else}
       {@const note = editing.note}
-      <div class="grid grid-cols-[1fr_320px] items-start gap-10">
+      <div class="grid grid-cols-[minmax(0,1fr)] wide:grid-cols-[1fr_320px] items-start gap-10">
         <form class="space-y-8" onsubmit={save}>
           {#if leech}
             <div class="panel flex items-start gap-3 px-4 py-3" role="note"><Flag class="mt-0.5 size-4 shrink-0" />

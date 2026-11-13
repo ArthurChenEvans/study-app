@@ -17,6 +17,9 @@
   --color-due: var(--color-accent);
   --font-sans: "Nunito", ui-rounded, ui-sans-serif, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  /* navigation.feature (R159 to R161): tablet from 600px, the full layout from 1100px */
+  --breakpoint-tab: 600px;
+  --breakpoint-wide: 1100px;
 }
 
 @layer base {
@@ -220,7 +223,7 @@ pre.shiki { padding: 12px 16px; border-radius: var(--radius-box); font-size: 14p
 
 /* Segmented control */
 .seg { display: inline-flex; align-items: stretch; height: 2.5rem; padding: 3px; gap: 3px; border: 2px solid var(--color-base-300); border-radius: 12px; background: var(--color-base-200); vertical-align: middle; }
-.seg > button { padding: 0 12px; font-size: 13px; font-weight: 800; line-height: 1; border-radius: 8px; color: var(--muted); transition: background-color 150ms ease-out, color 150ms ease-out; }
+.seg > button { white-space: nowrap; padding: 0 12px; font-size: 13px; font-weight: 800; line-height: 1; border-radius: 8px; color: var(--muted); transition: background-color 150ms ease-out, color 150ms ease-out; }
 .seg > button:hover:not([aria-checked="true"]) { background: var(--color-base-300); color: var(--color-base-content); }
 .seg > button[aria-checked="true"] { background: var(--color-neutral); color: var(--color-neutral-content); }
 .seg > button:focus-visible { outline-offset: 1px; }
@@ -543,3 +546,87 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
 .selbar { position: sticky; bottom: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 12px; padding: 10px 14px; border: 2px solid var(--primary-ink); border-radius: 16px; background: var(--surface); box-shadow: var(--shadow-float); }
 .itemcard { position: sticky; top: 16px; align-self: start; width: 16rem; flex-shrink: 0; }
 @media (max-width: 1400px) { .rail { width: 10.5rem; } .itemcard { width: 14rem; } }
+
+/* navigation.feature (R158 to R160): the sidebar's search box and groups, the tablet rail,
+   and the phone dock with its More sheet. */
+.nav-search { display: flex; align-items: center; gap: 8px; min-height: 40px; margin: 0 4px 2px; padding: 0 10px; border: 2px solid var(--field-border); border-radius: 12px; background: var(--surface); color: var(--muted); font-weight: 700; font-size: 14px; }
+.nav-search:hover, .nav-search[aria-current="page"] { border-color: var(--primary-ink); color: var(--color-base-content); }
+.nav-group { padding: 6px 12px 2px; font-size: 11px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.nav-rail { position: sticky; top: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 84px; height: 100vh; flex-shrink: 0; padding: 12px 6px; overflow-y: auto; background: var(--color-base-200); border-right: 2px solid var(--color-base-300); }
+.rail-item { position: relative; display: grid; justify-items: center; gap: 3px; width: 72px; min-height: 52px; padding: 6px 0; border-radius: 14px; border: 2px solid transparent; color: var(--muted); font-size: 11px; font-weight: 800; text-align: center; line-height: 1.1; }
+.rail-item:hover { background: var(--color-base-300); color: var(--color-base-content); }
+.rail-item[aria-current="page"] { background: color-mix(in oklch, var(--primary-ink) 14%, var(--surface)); border-color: var(--primary-ink); color: var(--color-base-content); }
+.rail-count { position: absolute; top: -8px; left: 12px; min-width: 18px; padding: 0 4px; border-radius: 9px; background: var(--color-accent); color: var(--color-accent-content); font-size: 10px; line-height: 18px; font-weight: 900; }
+.rail-sep { width: 36px; border: 0; border-top: 2px solid var(--color-base-300); margin: 2px 0; }
+.nav-dock { position: fixed; z-index: 63; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(5, 1fr); padding: 6px 4px calc(8px + env(safe-area-inset-bottom, 0px)); background: var(--color-base-200); border-top: 2px solid var(--color-base-300); }
+.dock-tab { display: grid; justify-items: center; gap: 2px; min-height: 52px; padding-top: 4px; color: var(--muted); font-size: 11.5px; font-weight: 800; background: none; border: 0; }
+.dock-icon { position: relative; display: grid; place-items: center; width: 56px; height: 30px; border-radius: 15px; }
+.dock-icon .due-pill { position: absolute; top: -6px; right: 2px; min-width: 18px; line-height: 18px; font-size: 10px; padding: 0 4px; }
+.due-dot { position: absolute; top: 2px; right: 14px; width: 9px; height: 9px; border-radius: 50%; background: var(--color-accent); border: 2px solid var(--color-base-200); }
+.dock-tab[aria-current="page"] { color: var(--color-base-content); }
+.dock-tab[aria-current="page"] .dock-icon { background: color-mix(in oklch, var(--primary-ink) 18%, var(--surface)); color: var(--primary-ink); }
+.nav-scrim { position: fixed; inset: 0; z-index: 61; background: oklch(0% 0 0 / .35); border: 0; }
+.nav-sheet { position: fixed; z-index: 62; display: flex; flex-direction: column; gap: 2px; padding: 12px; background: var(--surface); border: 2px solid var(--color-base-content); box-shadow: var(--shadow-float); }
+.nav-sheet-dock { left: 0; right: 0; bottom: 0; padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); border-radius: 20px 20px 0 0; border-bottom: 0; animation: sheet-up .22s cubic-bezier(.22,1,.36,1) both; }
+.nav-sheet-rail { left: 92px; bottom: 12px; width: 260px; border-radius: 18px; animation: sheet-up .18s ease-out both; }
+@keyframes sheet-up { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .nav-sheet { animation: none; } }
+.settings-row { display: flex; width: 100%; min-height: 56px; align-items: center; gap: 12px; padding: 8px 10px; margin-inline: -10px; width: calc(100% + 20px); border-radius: 12px; background: none; border: 0; color: inherit; cursor: pointer; }
+.settings-row:hover { background: var(--color-base-200); }
+
+/* navigation.feature (R161): screens use px-12 for their side gutter. On phones that's a
+   quarter of the width, so it drops to 16px there and 24px on tablets. */
+@media (max-width: 1099px) { main .px-12 { padding-left: 24px; padding-right: 24px; } }
+@media (max-width: 599px) {
+  main .px-12 { padding-left: 16px; padding-right: 16px; }
+  main h1 { font-size: 24px; }
+}
+
+/* navigation.feature (R161): lists on tablets and phones. The module rail becomes a row of
+   chips you can scroll sideways, and the item card is a sheet that comes up when you pick a
+   row, with its own close button. Nothing picked, no sheet. */
+.itemcard-close { display: none; }
+@media (max-width: 1099px) {
+  :has(> .rail) { flex-direction: column; }
+  .rail { position: static; width: auto; max-width: 100%; align-self: stretch; display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  .rail > * { flex-shrink: 0; }
+  .rail button { width: auto; white-space: nowrap; border: 2px solid var(--color-base-300); border-radius: 999px; padding: 4px 12px; min-height: 36px; }
+  .rail .eyebrow, .rail > div { display: none; }
+  .itemcard { position: fixed; z-index: 40; top: auto; left: 84px; right: 0; bottom: 0; width: auto; max-height: 60vh; overflow-y: auto; padding: 8px; background: color-mix(in oklab, var(--color-base-100) 92%, transparent); animation: sheet-up .2s cubic-bezier(.22,1,.36,1) both; }
+  .itemcard[data-empty="true"] { display: none; }
+  .itemcard > .panel { box-shadow: var(--shadow-float); }
+  .itemcard-close { display: inline-flex; position: absolute; top: 16px; right: 16px; z-index: 1; }
+  .pane { max-height: none; }
+}
+@media (max-width: 599px) {
+  .itemcard { left: 0; bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* navigation.feature (R161): the month on smaller screens. Tablets keep the words but let
+   them cut off cleanly. Phones show a coloured dot for each kind of work, and the words are
+   in each day's button label and in the day view you open by tapping it. */
+@media (max-width: 1099px) {
+  .cal-chip, .date-chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cal-chip { font-size: 10px; padding: 2px 5px; }
+  .cal-day { min-height: 88px; padding: 5px 6px; }
+}
+@media (max-width: 599px) {
+  [role="grid"] [role="row"] { gap: 4px !important; }
+  .cal-day { min-height: 56px; padding: 4px; gap: 3px; flex-direction: row; flex-wrap: wrap; align-content: flex-start; border-radius: 10px; }
+  .cal-day > span:first-child { width: 100%; }
+  .cal-day .cal-today { display: none; }
+  .cal-chip, .date-chip { width: 9px; height: 9px; min-width: 0; padding: 0; border-radius: 50%; font-size: 0; border-width: 0; background: var(--chip, var(--muted)); }
+  .cal-chip.chip-due { background: var(--color-accent); }
+  .date-chip { background: var(--primary-ink); }
+  .date-chip svg { display: none; }
+}
+
+/* navigation.feature (R161): on phones a dialog takes the whole screen, and the lesson
+   shell's top bar and bottom band shrink their gutters. */
+@media (max-width: 599px) {
+  .modal-box { width: 100%; max-width: none !important; height: 100%; max-height: none; border-radius: 0; }
+  .sheet-foot { padding-left: 16px; padding-right: 16px; }
+  main .px-12.pt-6, main .px-12.pb-3 { padding-left: 12px; padding-right: 12px; }
+}
+
+@media (max-width: 599px) { main { overflow-x: clip; } }

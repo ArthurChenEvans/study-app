@@ -287,3 +287,12 @@ Decided with the design: keywords are checked in any order, every answer is righ
 | R155 | Adding, saving, moving, importing, exporting and deleting say what happened in a calm toast at the bottom centre, two at most, with an icon, the words, a close button and an action where it helps. Errors are announced straight away, marked with an icon and the word Error, and stay until closed |
 | R156 | Every celebration sound is synthesised, follows the Sound switch and the volume, and has the same thing said in words on screen |
 | R157 | Deleting a topic, module, card, source or date takes it off screen at once with Undo for six seconds, and only deletes it for real after that, or when the app closes. Topics with questions and modules still ask first. If the real delete fails, it comes back with an error |
+
+## Navigation and small screens (approved 13 Nov 2026)
+
+| ID | Requirement |
+|---|---|
+| R158 | The sidebar groups its links into Today (Overview, Calendar), Study (Topics, Cards, Recall, Projects) and Library (Bibliography, History), with a Search box at the top (still `/`), New quiz under the groups, and the backup or sync line and Settings at the bottom. Theme, colour-blind safe colours, sound and celebrations live on a Settings screen, which links to Your data |
+| R159 | From 600px to 1099px wide the sidebar is an icon rail with short labels and due counts: Search, Overview, Calendar, Topics, Cards, Recall, Projects, More and Settings. More opens a panel with Bibliography, History, New quiz and Your data |
+| R160 | Under 600px wide the navigation is a dock along the bottom: Today, Calendar, More, Topics and Cards, with More in the middle. More opens a sheet with Recall, Projects, Bibliography, History, Search, New quiz, Your data, Settings and the backup or sync line. Due counts show on the tabs, and More shows a dot when something under it is due |
+| R161 | No screen scrolls sideways on a phone or tablet. Side gutters shrink, two-column layouts stack, module rails become a row of chips, a picked row's details come up as a sheet with a close button, the calendar shows a dot for each kind of work on phones, card grades are a 2 by 2 grid, and dialogs fill the screen |

@@ -118,7 +118,7 @@
     <input type="search" class="grow" aria-label="Search" placeholder="Questions, options, explanations, tags, sources…" bind:value={text} autofocus onkeydown={(event) => moveFocus(event, null)} />
   </label>
 
-  <div class="mt-6 flex items-center gap-1 border-b border-base-300" role="tablist" aria-label="Categories">
+  <div class="mt-6 flex items-center gap-1 overflow-x-auto border-b border-base-300" role="tablist" aria-label="Categories">
     {#each tabs as name (name)}
       <button role="tab" aria-selected={tab === name} onclick={() => (tab = name)}>{name}</button>
     {/each}
@@ -127,7 +127,7 @@
   <div class="mt-4 flex flex-wrap items-center gap-3">
     <span class="text-sm text-muted">Filters</span>
     <label class="flex items-center gap-2 text-sm">Module
-      <select class="select select-sm w-56" bind:value={module}>
+      <select class="select select-sm w-56 max-w-full" bind:value={module}>
         <option value="">Any module</option>
         {#each modules as row (row.id)}<option value={String(row.id)}>{row.name}</option>{/each}
       </select>

@@ -91,7 +91,7 @@ try:
     ipc("save_note", {"id": None, "input": {"note": {"topic": topic, "kind": "Basic", "front": "Cache latencies", "back": "About 3 cycles at L1, 10 at L2", "cues": [], "text": "", "extra": ""}, "suggestion": None}})
 
     # ---------- Set up sync on Desktop ----------
-    nav("Your data")
+    driver.execute_script("location.hash = '#data'")  # Your data is under Settings now (R158)
     find("//*[@role='status'][contains(., 'Sync is off')]")
     find("//section[@aria-labelledby='sync-h']//button[normalize-space()='Set up sync']").click()
     dialog = find("//dialog[@open]")

@@ -3,7 +3,7 @@
   // calendar.feature (R96, R97): each topic's quiz step and next quiz, and the schedule.
   // lists.feature (R138 to R144): a module rail, a filter, sortable columns in their own pane,
   // an item card for the picked topic, and ticks for acting on several at once.
-  import { CalendarCog, FolderInput, FolderPlus, GraduationCap, Library, Pencil, Play, Plus, Search, SquareStack, Tag, Trash2 } from "@lucide/svelte";
+  import { X, CalendarCog, FolderInput, FolderPlus, GraduationCap, Library, Pencil, Play, Plus, Search, SquareStack, Tag, Trash2 } from "@lucide/svelte";
   import { tick as settle } from "svelte";
   import RowMenu from "../components/RowMenu.svelte";
   import Highlight from "../components/Highlight.svelte";
@@ -303,7 +303,7 @@
   {:else}<span class="text-muted">{topic.question_count ? "Quiz it to start" : "No questions yet"}</span>{/if}
 {/snippet}
 
-<div class="mx-auto max-w-[96rem] px-8 pb-24">
+<div class="mx-auto max-w-[96rem] px-12 pb-24">
   <PageHeader title="Topics" subtitle={loaded && topics.length ? `${topics.length} topics in ${modules.length} modules${dueTopics.length ? ` · ${dueTopics.length} ${dueTopics.length === 1 ? "quiz" : "quizzes"} due today` : ""}` : ""}>
     {#if topics.length}<button class="btn btn-ghost" onclick={async () => { const queue = await api.quizQueue(); daily = { value: queue.daily, coming: queue.next_four_weeks }; editingSchedule = await api.quizSchedule(); }}><CalendarCog class="size-4" />Quiz schedule</button>{/if}
     <button class="btn btn-ghost" onclick={() => { moduleError = ""; creatingModule = true; }}><FolderPlus class="size-4" />New module</button>
@@ -390,8 +390,9 @@
           </div>
         {/if}
       </section>
-      <aside class="itemcard" aria-label="Picked topic">
+      <aside class="itemcard" aria-label="Picked topic" data-empty={!picked}>
         {#if picked}
+          <button type="button" class="itemcard-close btn btn-quiet btn-sm btn-square" aria-label="Close" onclick={() => (selected = null)}><X class="size-4" /></button>
           {@const quiz = quizOf(picked.id)}
           <div class="panel p-5">
             <p class="text-xs font-bold text-muted">{moduleName(picked.module) ?? "No module"}</p>

@@ -119,10 +119,10 @@
        top, the card as one tile, and the four ratings as full-width buttons in a bottom band. -->
   <div class="flex min-h-screen flex-col">
   <div class="sticky top-0 z-10 bg-base-100 px-12 pb-3 pt-6">
-    <div class="mx-auto flex max-w-5xl items-center gap-5">
+    <div class="mx-auto flex max-w-5xl items-center gap-2 tab:gap-5">
       <button class="btn btn-quiet btn-sm btn-square" aria-label="Leave" title="Leave" onclick={leave}><X class="size-6" strokeWidth={2.6} /></button>
-      <div class="h-[18px] flex-1 overflow-hidden rounded-full bg-base-300" role="progressbar" aria-label="Session progress" aria-valuenow={card.done} aria-valuemin={0} aria-valuemax={card.total}><div class="lesson-fill h-full rounded-full" style="width: max(18px, {card.total ? (card.done / card.total) * 100 : 0}%)"></div></div>
-      <p class="flex items-center gap-1.5" aria-label="Left today: {card.left.new} new, {card.left.learning} learning, {card.left.review} to review. This card is {queueName[card.queue]}.">
+      <div class="h-[18px] min-w-16 flex-1 overflow-hidden rounded-full bg-base-300" role="progressbar" aria-label="Session progress" aria-valuenow={card.done} aria-valuemin={0} aria-valuemax={card.total}><div class="lesson-fill h-full rounded-full" style="width: max(18px, {card.total ? (card.done / card.total) * 100 : 0}%)"></div></div>
+      <p class="hidden items-center gap-1.5 tab:flex" aria-label="Left today: {card.left.new} new, {card.left.learning} learning, {card.left.review} to review. This card is {queueName[card.queue]}.">
         <span class="chip chip-info tabular-nums {card.queue === 'new' ? 'chip-now' : ''}">{card.left.new} new</span>
         <span class="chip tabular-nums {card.queue === 'learning' ? 'chip-now' : ''}">{card.left.learning} learning</span>
         <span class="chip chip-primary tabular-nums {card.queue === 'review' ? 'chip-now' : ''}">{card.left.review} to review</span>
@@ -158,7 +158,7 @@
   <div class="sheet-foot">
     <div class="mx-auto max-w-5xl">
       {#if shown}
-        <div class="grid grid-cols-4 gap-3.5">
+        <div class="grid grid-cols-2 gap-3.5 tab:grid-cols-4">
           {#each ratings as rating, index (rating)}
             <button class="btn grade grade-{rating.toLowerCase()} w-full" disabled={busy} onclick={() => grade(rating)}>
               <span>{rating} <kbd class="kbd kbd-xs">{index + 1}</kbd></span><span class="when">{interval(card.intervals[index])}</span>

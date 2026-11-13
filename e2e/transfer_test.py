@@ -74,7 +74,7 @@ try:
         "explanation": "", "tags": [], "citations": [], "short": None}})
 
     # ---------- Export ----------
-    nav("Your data")
+    driver.execute_script("location.hash = '#data'")  # Your data is under Settings now (R158)
     find("//h1[normalize-space()='Your data']")
     find("//button[starts-with(normalize-space(), 'Export')]").click()
     dialog = find("//dialog[@open]")

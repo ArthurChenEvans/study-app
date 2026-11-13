@@ -1,6 +1,6 @@
 <script lang="ts">
   // sources.feature (R13, R44 to R46)
-  import { BookOpen, Plus } from "@lucide/svelte";
+  import { X, BookOpen, Plus } from "@lucide/svelte";
   import RowMenu from "../components/RowMenu.svelte";
   import { api, errorMessage, type SourceFields, type SourceRow, type TopicRow } from "../lib/api";
   import { deleteWithUndo, toast } from "../lib/celebrations.svelte";
@@ -151,8 +151,9 @@
           <p class="panel p-6 text-sm text-muted">Nothing matches "{filter.trim()}". <button class="btn btn-link btn-sm" onclick={() => (filter = "")}>Clear the filter</button></p>
         {/if}
       </div>
-      <aside class="itemcard" aria-label="Picked source">
+      <aside class="itemcard" aria-label="Picked source" data-empty={!pickedSource}>
         {#if pickedSource}
+          <button type="button" class="itemcard-close btn btn-quiet btn-sm btn-square" aria-label="Close" onclick={() => (picked = null)}><X class="size-4" /></button>
           {@const source = pickedSource}
           <div class="panel p-5">
             <div class="flex items-start justify-between gap-2"><span class="well" aria-hidden="true"><BookOpen class="size-5" /></span>
