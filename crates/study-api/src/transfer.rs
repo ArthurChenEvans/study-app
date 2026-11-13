@@ -387,7 +387,7 @@ fn check(snapshot: &Snapshot) -> ApiResult<()> {
 fn file_name(app: &App, request: &ExportRequest, today: i64) -> ApiResult<String> {
     let date = crate::backup::date_label(today);
     let name = match &request.topics {
-        None => format!("Study App {date}"),
+        None => format!("Shudhana {date}"),
         Some(picked) => {
             let topics = app.topics()?;
             let chosen: Vec<_> = topics.iter().filter(|topic| picked.contains(&topic.id)).collect();

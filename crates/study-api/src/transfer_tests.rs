@@ -66,7 +66,7 @@ fn everything_comes_back_the_same_in_a_database_that_already_has_other_things() 
     let quiz_mistake = original.card_suggestions(TODAY).unwrap().into_iter().find(|suggestion| suggestion.key.starts_with("quiz:")).expect("a quiz mistake to dismiss");
     original.dismiss_suggestion(&quiz_mistake.key).unwrap();
     let (name, file) = original.export(&everything(), TODAY).unwrap();
-    assert_eq!(name, "Study App 2026-11-04.studyapp");
+    assert_eq!(name, "Shudhana 2026-11-04.studyapp");
 
     // Something here first, so every row number the file's records get is different.
     let mut other = App::with_seed(Store::in_memory().unwrap(), 4);

@@ -1,4 +1,4 @@
-# Study App MVP Specs
+# Shudhana Specs
 
 Behaviour specs in Gherkin for everything a user does in the MVP. Every scenario traces to an approved requirement below. Anything that couldn't be traced is listed under Open questions instead of being specified.
 
@@ -313,3 +313,11 @@ Decided with the design: keywords are checked in any order, every answer is righ
 | R166 | With Auto update on (the default), the app checks on open and downloads a newer release in the background, then says "Version X is ready" with Install now, and that it installs on close and the computer will ask for a password. On close it installs a downloaded update, or checks first if the last check was over an hour ago, showing "Installing the update" while it does |
 | R167 | Settings shows the installed version, an Auto update switch and Check for updates. A found update shows its version, its notes, the password note and an Update button. Being up to date, offline or a failed install each say so in plain words |
 | R168 | Before installing, the database is backed up (a "before update" backup). A package whose signature doesn't match the public key built into the app is refused and never installed. Being offline is quiet on open and close, and only shown when checking by hand. `study-app --update-now` does the same with no window (exit 0 installed, 3 nothing newer, 4 failed) for the end-to-end test |
+
+## Shudhana and Windows (approved 13 Nov 2026)
+
+| ID | Requirement |
+|---|---|
+| R169 | The app is called Shudhana everywhere it shows its name. Its internal ID stays com.arthurchenevans.studyapp so it keeps the same data folder, and its .rpm (now `shudhana`) obsoletes `study-app`, so an update from Study App replaces it rather than installing beside it. `.studyapp` files keep their extension |
+| R170 | Each release also builds a signed Windows installer (.exe) and publishes it beside the .rpm, with both in latest.json, so Windows copies update too. Only Linux installs mention a password |
+

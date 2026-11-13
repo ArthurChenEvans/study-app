@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Study App",
+  "productName": "Shudhana",
   "version": "0.1.0",
   "identifier": "com.arthurchenevans.studyapp",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Study App",
+        "title": "Shudhana",
         "width": 1280,
         "height": 840,
         "minWidth": 360,
@@ -42,10 +42,13 @@
     ],
     "category": "Education",
     "shortDescription": "Spaced quizzes, flashcards and free recall in one place",
-    "longDescription": "Study App schedules multiple choice and short answer quizzes, flashcards and free recall checks, and tightens them before your exams. Everything stays on your computers.",
+    "longDescription": "Shudhana schedules multiple choice and short answer quizzes, flashcards and free recall checks, and tightens them before your exams. Everything stays on your computers.",
     "linux": {
       "rpm": {
-        "release": "1"
+        "release": "1",
+        "obsoletes": [
+          "study-app"
+        ]
       },
       "deb": {}
     },

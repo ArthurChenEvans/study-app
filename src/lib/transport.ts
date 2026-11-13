@@ -11,7 +11,7 @@ export async function invoke<T>(command: string, args: Record<string, unknown> =
   try {
     response = await fetch(`/api/${command}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(args) });
   } catch {
-    throw { message: "couldn't reach the Study App server, check it's running" };
+    throw { message: "couldn't reach the Shudhana server, check it's running" };
   }
   const kind = response.headers.get("content-type") ?? "";
   if (!response.ok) {

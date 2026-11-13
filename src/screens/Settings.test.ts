@@ -74,7 +74,7 @@ describe("Settings", () => {
     mocked.updateCheck.mockResolvedValue({ version: "0.1.5", current: "0.1.4", notes: "Week view on phones.", date: null, ready: false, asks_password: true });
     render(Settings, { onNavigate: vi.fn() });
     const section = screen.getByRole("region", { name: "Updates" });
-    expect(section).toHaveTextContent("Study App 0.1.4");
+    expect(section).toHaveTextContent("Shudhana 0.1.4");
     await userEvent.click(screen.getByRole("button", { name: "Check for updates" }));
     expect(await screen.findByText("Version 0.1.5 is available")).toBeInTheDocument();
     expect(section).toHaveTextContent("Week view on phones.");

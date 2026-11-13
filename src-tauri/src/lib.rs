@@ -838,5 +838,5 @@ pub fn run() {
             search
         ])
         .run(tauri::generate_context!())
-        .expect("error while running the Study App");
+        .expect("error while running Shudhana");
 }

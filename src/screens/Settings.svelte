@@ -57,7 +57,7 @@
 
   <section class="panel mt-5 p-5" aria-labelledby="updates-h">
     <h2 id="updates-h" class="eyebrow">Updates</h2>
-    <p class="mt-3 font-bold">Study App {updates.current || "(desktop app only)"}</p>
+    <p class="mt-3 font-bold">Shudhana {updates.current || "(desktop app only)"}</p>
     <label class="mt-2 flex min-h-11 cursor-pointer items-center gap-3">
       <RefreshCw class="size-5 text-muted" />
       <span class="flex-1"><span class="block font-bold">Auto update</span><span id="auto-help" class="block text-sm text-muted">Checks for a new release when the app opens and closes, downloads it in the background, and installs it as you close the app.</span></span>
