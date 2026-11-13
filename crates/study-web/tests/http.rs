@@ -184,6 +184,13 @@ async fn a_host_name_you_allow_works_too() {
     assert_eq!(status, StatusCode::FORBIDDEN);
 }
 
+#[test]
+fn the_host_setting_is_a_comma_list_with_blanks_ignored() {
+    assert_eq!(study_web::host_list(""), Vec::<String>::new());
+    assert_eq!(study_web::host_list(" , ,"), Vec::<String>::new());
+    assert_eq!(study_web::host_list("Study.LAN, nas.local ,,x"), ["study.lan", "nas.local", "x"]);
+}
+
 // The desktop app has a content security policy. The browser version sent none, so
 // anything that slipped past the sanitiser could run, and images in imported text could
 // phone home.

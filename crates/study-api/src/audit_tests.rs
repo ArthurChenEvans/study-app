@@ -352,6 +352,11 @@ fn a_quiz_timer_longer_than_time_itself_is_refused() {
     assert!(no_panic("start_quiz", || app.start_quiz(setup(None, Some(u64::MAX)))).is_err());
     assert!(no_panic("start_quiz", || app.start_quiz(setup(Some(20_000), None))).is_err(), "over a week");
     assert!(app.start_quiz(setup(Some(90), Some(30))).is_ok());
+    // The limit is a week, to the second.
+    let week = 7 * 24 * 60;
+    assert!(app.start_quiz(setup(Some(week), Some(week * 60))).is_ok(), "exactly a week is allowed");
+    assert!(app.start_quiz(setup(Some(week + 1), None)).is_err());
+    assert!(app.start_quiz(setup(None, Some(week * 60 + 1))).is_err());
 }
 
 #[test]

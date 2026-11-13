@@ -66,6 +66,11 @@ pub fn router_for(app: App, dist: &Path, today: fn() -> i64, hosts: &[String]) -
         .layer(middleware::from_fn(security_headers))
 }
 
+/// `STUDY_HOSTS` as a list: names separated by commas, blanks ignored.
+pub fn host_list(setting: &str) -> Vec<String> {
+    setting.split(',').map(|host| host.trim().to_lowercase()).filter(|host| !host.is_empty()).collect()
+}
+
 /// The host part of `localhost:7392`, `[::1]:7392` or `study.lan`, in lower case.
 fn host_name(host: &str) -> String {
     let host = host.trim().to_lowercase();
@@ -198,7 +203,7 @@ impl Config {
             address: var("STUDY_ADDRESS", "127.0.0.1:7392"),
             seed: matches!(var("STUDY_SEED", "").as_str(), "1" | "true" | "yes" | "large"),
             large: var("STUDY_SEED", "") == "large",
-            hosts: var("STUDY_HOSTS", "").split(',').map(|host| host.trim().to_string()).filter(|host| !host.is_empty()).collect(),
+            hosts: host_list(&var("STUDY_HOSTS", "")),
         }
     }
 }
