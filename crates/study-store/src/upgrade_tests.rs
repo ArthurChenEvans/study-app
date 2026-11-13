@@ -167,3 +167,58 @@ fn write_old_databases_for_the_kill_test() {
         old_database(&path, version, std::env::var("OLD_ROWS").ok().and_then(|rows| rows.parse().ok()).unwrap_or(1500));
     }
 }
+
+// Store::health is what the read-back check after an import, sync or restore rests on.
+#[test]
+fn health_is_empty_for_a_sound_database_and_names_rows_that_point_nowhere() {
+    let dir = scratch("health");
+    let path = dir.join("study.sqlite");
+    let mut store = Store::open(&path).unwrap();
+    let topic = store.create_topic("Caches", None).unwrap();
+    assert_eq!(store.health().unwrap(), Vec::<String>::new());
+    // A row whose topic doesn't exist, as a damaged file could leave behind.
+    store.connection.pragma_update(None, "foreign_keys", false).unwrap();
+    store.connection.execute("INSERT INTO topic_tags (topic_id, tag) VALUES (?1, 'orphan')", [topic.0 + 999]).unwrap();
+    store.connection.pragma_update(None, "foreign_keys", true).unwrap();
+    let problems = store.health().unwrap();
+    assert_eq!(problems.len(), 1, "{problems:?}");
+    assert!(problems[0].contains("topic_tags") && problems[0].contains("topics"), "{problems:?}");
+}
+
+#[test]
+fn a_trial_keeps_or_undoes_everything_written_inside_it() {
+    let mut store = Store::in_memory().unwrap();
+    store.begin_trial().unwrap();
+    store.create_topic("Undone", None).unwrap();
+    store.end_trial(false).unwrap();
+    assert_eq!(store.topics().unwrap().len(), 0, "undone");
+    store.begin_trial().unwrap();
+    store.create_topic("Kept", None).unwrap();
+    store.end_trial(true).unwrap();
+    assert_eq!(store.topics().unwrap().len(), 1, "kept");
+    // And the store works as normal afterwards, outside any trial.
+    store.create_topic("After", None).unwrap();
+    assert_eq!(store.topics().unwrap().len(), 2);
+}
+
+#[test]
+fn a_running_quiz_is_saved_replaced_and_forgotten() {
+    use study_core::assembly::QuizSettings;
+    use study_core::attempt::Attempt;
+    let mut store = Store::in_memory().unwrap();
+    assert_eq!(store.running_quiz().unwrap(), None);
+    let topic = store.create_topic("Caches", None).unwrap();
+    let attempt = Attempt::start(QuizSettings::for_topics(vec![topic]), vec![], |_| unreachable!("no questions"));
+    store.set_running_quiz(Some(&attempt)).unwrap();
+    let saved = store.running_quiz().unwrap().expect("saved");
+    assert_eq!(serde_json::from_str::<Attempt>(&saved).unwrap(), attempt);
+    store.set_running_quiz(Some(&attempt)).unwrap();
+    assert!(store.running_quiz().unwrap().is_some(), "saving again replaces it");
+    store.set_running_quiz(None).unwrap();
+    assert_eq!(store.running_quiz().unwrap(), None);
+    // Finishing saves it to history and forgets the running copy together.
+    store.set_running_quiz(Some(&attempt)).unwrap();
+    let id = store.save_finished_quiz(&attempt, 20_000).unwrap();
+    assert_eq!(store.running_quiz().unwrap(), None);
+    assert_eq!(store.attempt(id).unwrap().0, attempt);
+}

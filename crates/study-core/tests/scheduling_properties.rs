@@ -32,6 +32,19 @@ fn order(position: Position) -> (usize, u32) {
     (position.step, position.rep)
 }
 
+// Past the last day a calendar can name (a number only a damaged file would hold), a month
+// counts as 30 days and a year as 12 of them.
+#[test]
+fn beyond_any_calendar_a_month_counts_as_thirty_days() {
+    let far = 200_000_000_000;
+    assert_eq!(add(far, Interval { count: 2, unit: Unit::Months }), far + 60);
+    assert_eq!(add(far, Interval { count: 1, unit: Unit::Years }), far + 360);
+    assert_eq!(add(-far, Interval { count: 3, unit: Unit::Months }), -far + 90);
+    // And on real days months are real months: 31 January plus a month is the end of February.
+    assert_eq!(add(19_753, Interval { count: 1, unit: Unit::Months }), 19_782);
+    assert_eq!(add(-1, Interval { count: 1, unit: Unit::Months }), 30, "31 December 1969 plus a month is 31 January 1970");
+}
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(400))]
 

@@ -100,9 +100,29 @@ The file lands in `target/release/bundle/appimage/`. On NixOS run it with `nix r
 ## Tests
 
 ```bash
+scripts/test-all.sh          # everything, about 10 minutes
+scripts/test-all.sh --quick  # skips the steps that need a release build, about 3 minutes
+```
+
+Or the parts on their own:
+
+```bash
 cargo test           # domain, storage, command layer and the web server
 pnpm test            # Svelte screens (Vitest)
 ```
+
+What the robustness tests cover (added by the November 2026 audit):
+
+| Test | What it guards |
+|---|---|
+| `crates/study-web/tests/commands_fuzz.rs` | Every command with hostile arguments and with a wrong clock: none may panic or hang |
+| `crates/study-api/src/audit_tests.rs` | Damaged imports, sync folders and backups, a quiz surviving a restart, backup settings, slide conversion, two copies on one database |
+| `crates/study-store/src/upgrade_tests.rs` | Upgrading from every older schema version with rows in every table |
+| `crates/study-core/tests/scheduling_properties.rs` | Properties of the ladders, FSRS, tightening and drills (proptest) |
+| `crates/study-web/tests/http.rs` | Other websites can't call the browser version, security headers, the desktop policy |
+| `crates/study-web/tests/perf.rs` | Every screen's commands on three years of seeded use, against time budgets |
+| `scripts/kill-tests.py` | `kill -9` while saving and while upgrading, then SQLite's integrity and foreign key checks |
+| `src/lib/*.security.test.ts`, `links.test.ts` | What rendered text and EPUB pages can't do, EPUB size limits, links never navigating the app |
 
 ## Layout
 
