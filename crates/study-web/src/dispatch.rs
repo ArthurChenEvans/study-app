@@ -170,6 +170,8 @@ pub fn dispatch_at(app: &mut App, command: &str, args: &Value, today: i64, clock
         "quiz_queue" => json(app.quiz_queue(today)),
         "quizzes_a_day" => json(app.quizzes_a_day()),
         // Updates are for the desktop app (R165): the web build is always the newest.
+        "paste_image" => json::<Vec<i64>>(Ok(vec![])), // no system clipboard in the browser build
+        "add_image_files" => json::<Vec<i64>>(Ok(vec![])), // the browser can't read files by path
         "app_version" => json::<&str>(Ok(env!("CARGO_PKG_VERSION"))),
         "update_set_auto" => json::<()>(Ok(())),
         "update_check" => json::<Option<()>>(Ok(None)),

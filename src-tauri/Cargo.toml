@@ -21,6 +21,8 @@ study-core = { path = "../crates/study-core" }
 study-store = { path = "../crates/study-store" }
 study-api = { path = "../crates/study-api" }
 tauri-plugin-updater = "2.10"
+arboard = { version = "3.7", features = ["wayland-data-control"] }
+png = "0.18"
 
 [dev-dependencies]
 tauri = { version = "2", features = ["test"] }

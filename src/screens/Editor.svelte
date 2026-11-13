@@ -4,7 +4,7 @@
   import Preview from "../components/Preview.svelte";
   import Rich from "../components/Rich.svelte";
   import { api, errorMessage, type Id, type Marking, type QuestionInput, type ShortAnswer, type SourceRow } from "../lib/api";
-  import { IMAGE_TYPES, imageInput } from "../lib/imageInput.svelte";
+  import { IMAGE_TYPES, imageInput, listenForDrops } from "../lib/imageInput.svelte";
 
   let { topic }: { topic: Id } = $props();
 
@@ -140,6 +140,7 @@
   let questionField = $state<HTMLTextAreaElement>();
   let picker = $state<HTMLInputElement>();
   const images = imageInput(() => questionField);
+  $effect(() => listenForDrops(images));
 
   function onPicked() {
     images.add([...(picker?.files ?? [])]);

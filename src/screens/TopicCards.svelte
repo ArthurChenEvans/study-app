@@ -6,7 +6,7 @@
   import { api, errorMessage, type Note, type NoteKind, type NoteView, type Subject, type TopicCards, type TopicRow } from "../lib/api";
   import { deleteWithUndo, toast } from "../lib/celebrations.svelte";
   import Rich from "../components/Rich.svelte";
-  import { IMAGE_TYPES, imageInput } from "../lib/imageInput.svelte";
+  import { IMAGE_TYPES, imageInput, listenForDrops } from "../lib/imageInput.svelte";
   import { dueLabel } from "../lib/dates";
 
   let { topic, editNote = null, notice = "", onBack, onReview, onTopic = () => {} }: { topic: number; editNote?: number | "new" | null; notice?: string; onBack: () => void; onReview: (scope: Subject) => void; onTopic?: (topic: number, notice: string) => void } = $props();
@@ -88,6 +88,7 @@
   let picker = $state<HTMLInputElement>();
   const firstField = () => document.querySelector<HTMLTextAreaElement>("#card-front, #cloze-text");
   const images = imageInput(firstField);
+  $effect(() => listenForDrops(images));
   function onPicked() {
     images.add([...(picker?.files ?? [])]);
     if (picker) picker.value = "";
