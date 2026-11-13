@@ -8,6 +8,7 @@ vi.mock("../lib/api", async (original) => {
 });
 
 import { api, type DateView, type ModuleRow, type TopicRow } from "../lib/api";
+import { live } from "../lib/celebrations.svelte";
 import DateDialog from "./DateDialog.svelte";
 
 const mocked = vi.mocked(api);
@@ -38,6 +39,8 @@ describe("DateDialog", () => {
     await u.click(screen.getByRole("button", { name: "Add date" }));
     expect(mocked.addDate).toHaveBeenCalledWith({ name: "Study app write-up", day: TODAY + 14, kind: "Deadline", module: null, topics: [], tighten: false });
     expect(onSaved).toHaveBeenCalled();
+    // toasts.feature (R155)
+    expect(live.toasts.at(-1)).toMatchObject({ text: "Date added", sub: "Study app write-up, Tue 17 Nov" });
   });
 
   it("needs a name", async () => {

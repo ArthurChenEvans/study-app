@@ -133,4 +133,13 @@ describe("Sidebar", () => {
     render(Sidebar, { current: "overview", onNavigate: vi.fn() });
     expect(screen.queryByRole("link", { name: /Backed up|No backup/ })).not.toBeInTheDocument();
   });
+
+  // celebrations.feature (R152): the settings live one click from anywhere
+  it("opens the celebration settings", async () => {
+    render(Sidebar, { current: "overview", onNavigate: vi.fn() });
+    await userEvent.click(screen.getByRole("button", { name: "Celebrations" }));
+    expect(screen.getByRole("dialog", { name: "Celebrations" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect(screen.queryByRole("dialog", { name: "Celebrations" })).not.toBeInTheDocument();
+  });
 });

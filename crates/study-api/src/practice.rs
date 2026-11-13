@@ -495,6 +495,18 @@ impl App {
         self.quiz_schedule()
     }
 
+    pub fn celebrations(&self) -> ApiResult<Option<String>> {
+        Ok(self.store.celebrations()?)
+    }
+
+    pub fn set_celebrations(&mut self, json: String) -> ApiResult<()> {
+        Ok(self.store.set_celebrations(&json)?)
+    }
+
+    pub fn reset_celebrations(&mut self) -> ApiResult<()> {
+        Ok(self.store.reset_celebrations()?)
+    }
+
     pub fn quizzes_a_day(&self) -> ApiResult<usize> {
         Ok(self.store.quizzes_a_day()?)
     }

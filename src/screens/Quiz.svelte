@@ -5,11 +5,14 @@
   import { api, errorMessage, type AnswerResult, type Feedback, type Id, type QuizView, type TrackCell } from "../lib/api";
   import Rich from "../components/Rich.svelte";
   import { play } from "../lib/sound";
+  import { startSession } from "../lib/celebrations.svelte";
 
   let { initial, onFinished }: { initial: QuizView; onFinished: (attempt: Id) => void } = $props();
 
   // svelte-ignore state_referenced_locally
   let current = $state<QuizView>(initial);
+  // svelte-ignore state_referenced_locally
+  const session = startSession(initial.total);
   let picked = $state<number[]>([]);
   let typed = $state("");
   let feedback = $state<Feedback | null>(null);
@@ -79,6 +82,7 @@
       if (result.feedback) {
         feedback = result.feedback;
         play(result.feedback.right ? "right" : "wrong");
+        session.answered(result.feedback.right);
         pendingNext = result.next;
       } else show(result.next);
     } catch (failure) {

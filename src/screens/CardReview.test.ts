@@ -10,6 +10,13 @@ vi.mock("../lib/api", async (original) => {
   };
 });
 
+const cele = vi.hoisted(() => ({ answered: vi.fn(), celebrate: vi.fn(), startSession: vi.fn() }));
+vi.mock("../lib/celebrations.svelte", () => ({
+  celebrate: (...args: unknown[]) => cele.celebrate(...args),
+  praise: () => "Well done!",
+  startSession: (queue: number) => cele.startSession(queue) ?? { answered: cele.answered },
+}));
+
 import { api, type ReviewCard, type ReviewDone } from "../lib/api";
 import CardReview from "./CardReview.svelte";
 
@@ -136,5 +143,31 @@ describe("Card review", () => {
     mocked.startReview.mockResolvedValueOnce({ Done: { ...done, reviewed: 0, worth_rewriting: [], busiest: null } });
     render(CardReview, props());
     expect(await screen.findByRole("heading", { name: "Nothing due" })).toBeInTheDocument();
+  });
+
+  // celebrations.feature (R151, R154): each grade goes to the session, and finishing celebrates
+  it("feeds each grade to the session pacer and celebrates when the reviews are done", async () => {
+    cele.startSession.mockReturnValue({ answered: cele.answered });
+    const u = userEvent.setup();
+    mocked.gradeCard.mockResolvedValueOnce({ Card: { ...card, card: 11, done: 11 } }).mockResolvedValueOnce({ Done: done });
+    render(CardReview, props());
+    await screen.findByRole("heading", { name: card.front });
+    expect(cele.startSession).toHaveBeenCalledWith(17);
+    await u.keyboard(" 1");
+    expect(cele.answered).toHaveBeenLastCalledWith(false);
+    await screen.findByRole("heading", { name: card.front });
+    await u.keyboard(" 3");
+    expect(cele.answered).toHaveBeenLastCalledWith(true);
+    expect(await screen.findByRole("heading", { name: /Done for today/ })).toBeInTheDocument();
+    expect(cele.celebrate).toHaveBeenCalledWith("reviews", expect.objectContaining({
+      stats: [{ label: "Cards", value: 43, tone: "primary" }, { label: "Minutes", value: 18, tone: "accent" }, { label: "Remembered", value: 88, suffix: "%", tone: "success" }],
+    }));
+  });
+
+  it("doesn't celebrate when nothing was due", async () => {
+    mocked.startReview.mockResolvedValue({ Done: { ...done, reviewed: 0 } });
+    render(CardReview, props());
+    expect(await screen.findByRole("heading", { name: /Nothing due/ })).toBeInTheDocument();
+    expect(cele.celebrate).not.toHaveBeenCalled();
   });
 });

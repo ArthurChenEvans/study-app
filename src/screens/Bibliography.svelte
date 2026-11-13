@@ -3,6 +3,7 @@
   import { BookOpen, Plus } from "@lucide/svelte";
   import RowMenu from "../components/RowMenu.svelte";
   import { api, errorMessage, type SourceFields, type SourceRow, type TopicRow } from "../lib/api";
+  import { deleteWithUndo, toast } from "../lib/celebrations.svelte";
   import PageHeader from "../components/PageHeader.svelte";
   import Rich from "../components/Rich.svelte";
   import Highlight from "../components/Highlight.svelte";
@@ -27,11 +28,23 @@
     adding = true;
   }
 
-  async function confirmDelete() {
+  let hiddenSources = $state<Set<number>>(new Set());
+  const unhide = (id: number) => (hiddenSources = new Set([...hiddenSources].filter((value) => value !== id)));
+
+  function confirmDelete() {
     if (!deleting) return;
-    await api.deleteSource(deleting.id);
+    const source = deleting;
     deleting = null;
-    await load();
+    deleteWithUndo({
+      text: "Source deleted",
+      sub: source.fields.title,
+      hide: () => {
+        hiddenSources = new Set([...hiddenSources, source.id]);
+        sources = sources.filter((row) => row.id !== source.id);
+      },
+      restore: () => { unhide(source.id); load(); },
+      commit: async () => { await api.deleteSource(source.id); unhide(source.id); await load(); },
+    });
   }
 
   function blank() {
@@ -58,7 +71,9 @@
   const topicName = (id: number) => topics.find((topic) => topic.id === id)?.name ?? "Deleted topic";
 
   async function load() {
-    [sources, topics] = await Promise.all([api.sources(), api.topics()]);
+    const [allSources, allTopics] = await Promise.all([api.sources(), api.topics()]);
+    sources = allSources.filter((row) => !hiddenSources.has(row.id));
+    topics = allTopics;
     loaded = true;
   }
 
@@ -84,6 +99,7 @@
     try {
       if (editing === null) await api.addSource(fieldsToSave);
       else await api.updateSource(editing, fieldsToSave);
+      toast({ text: editing === null ? "Source added" : "Source saved", sub: fieldsToSave.title, icon: editing === null ? "plus" : "check" });
       adding = false;
       await load();
     } catch (failure) {

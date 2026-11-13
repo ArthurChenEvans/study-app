@@ -4,6 +4,7 @@
   import MoveDrillDialog from "../components/MoveDrillDialog.svelte";
   import { onDestroy } from "svelte";
   import { api, errorMessage, type DrillRating, type DrillView, type Id } from "../lib/api";
+  import { toast } from "../lib/celebrations.svelte";
   import { dayLabel, fullLabel, onDay } from "../lib/dates";
 
   let { ids, onLeave = () => {} }: { ids: Id[]; onLeave?: () => void } = $props();
@@ -72,6 +73,7 @@
     if (!rated) return;
     try {
       rated = await api.moveDrill(rated.id, day);
+      toast({ text: `Drill moved to ${fullLabel(day, today)}`, icon: "calendar" });
       moving = false;
     } catch (failure) {
       error = errorMessage(failure);

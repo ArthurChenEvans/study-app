@@ -733,3 +733,18 @@ impl App {
         review_one(self, Rating::Good, TODAY)
     }
 }
+
+// celebrations.feature: which moments you want follows you to your other computers.
+#[test]
+fn celebration_choices_sync() {
+    let shared = folder("celebrations");
+    let mut desktop = computer("celebrations", "desktop", 1);
+    small_profile(&mut desktop);
+    join(&mut desktop, &shared, "Desktop", at(TODAY, 600));
+    let mut laptop = computer("celebrations", "laptop", 2);
+    join(&mut laptop, &shared, "Laptop", at(TODAY, 601));
+    desktop.set_celebrations(r#"{"streaks":false}"#.into()).unwrap();
+    sync(&mut desktop, at(TODAY, 602));
+    sync(&mut laptop, at(TODAY, 603));
+    assert_eq!(laptop.celebrations().unwrap().as_deref(), Some(r#"{"streaks":false}"#));
+}

@@ -12,6 +12,7 @@
   import SortHeader, { type Sort } from "../components/list/SortHeader.svelte";
   import ColumnsMenu from "../components/list/ColumnsMenu.svelte";
   import { api, errorMessage, type Id, type ModuleRow, type Schedule, type TopicQuizView, type TopicRow } from "../lib/api";
+  import { deleteWithUndo, toast } from "../lib/celebrations.svelte";
   import PageHeader from "../components/PageHeader.svelte";
   import ScheduleDialog from "../components/ScheduleDialog.svelte";
   import { dueLabel } from "../lib/dates";
@@ -141,29 +142,72 @@
   async function move(event: SubmitEvent) {
     event.preventDefault();
     if (!moving) return;
-    for (const id of moving) await api.moveTopic(id, moveTo ? Number(moveTo) : null);
+    const target = moveTo ? Number(moveTo) : null;
+    const before = moving.map((id) => ({ id, module: topics.find((t) => t.id === id)?.module ?? null })).filter((row) => row.module !== target);
+    for (const id of moving) await api.moveTopic(id, target);
+    const where = target === null ? "No module" : modules.find((m) => m.id === target)?.name ?? "the module";
+    const one = moving.length === 1 ? topics.find((t) => t.id === moving![0])?.name : null;
     moving = null;
     await load();
+    toast({
+      text: one ? `${one} moved to ${where}` : `${before.length} topics moved to ${where}`,
+      icon: "move",
+      ms: 6000,
+      drain: true,
+      action: before.length ? { label: "Undo", run: async () => {
+        for (const row of before) await api.moveTopic(row.id, row.module);
+        await load();
+        toast({ text: "Moved back", icon: "undo", ms: 2500 }, true);
+      } } : undefined,
+    });
   }
 
   async function addTag(event: SubmitEvent) {
     event.preventDefault();
     const tag = bulkTag.trim();
     if (!tag) return;
+    let tagged = 0;
     for (const topic of topics.filter((t) => ticked.includes(t.id))) {
-      if (!topic.tags.some((existing) => existing.toLowerCase() === tag.toLowerCase())) await api.setTopicTags(topic.id, [...topic.tags, tag]);
+      if (!topic.tags.some((existing) => existing.toLowerCase() === tag.toLowerCase())) {
+        await api.setTopicTags(topic.id, [...topic.tags, tag]);
+        tagged += 1;
+      }
     }
+    toast({ text: `Tagged ${tagged} ${tagged === 1 ? "topic" : "topics"} "${tag}"`, icon: "check" });
     bulkTagging = false;
     bulkTag = "";
     await load();
   }
 
-  async function confirmDeleteModule() {
+  // toasts.feature (R157): deletes go at once with a few seconds to undo, and only happen for
+  // real once that's passed. Until then the item is just hidden here.
+  let hiddenTopics = $state<Set<Id>>(new Set());
+  let hiddenModules = $state<Set<Id>>(new Set());
+  const without = (set: Set<Id>, id: Id) => new Set([...set].filter((value) => value !== id));
+
+  function confirmDeleteModule() {
     if (!deletingModule) return;
-    await api.deleteModule(deletingModule.id);
+    const { id, name, count } = deletingModule;
     deletingModule = null;
-    rail = "all";
-    await load();
+    deleteWithUndo({
+      text: "Module deleted",
+      sub: count ? `${name}. Its ${count === 1 ? "topic moves" : `${count} topics move`} to No module.` : name,
+      hide: () => {
+        hiddenModules = new Set([...hiddenModules, id]);
+        rail = "all";
+        modules = modules.filter((m) => m.id !== id);
+        topics = topics.map((t) => (t.module === id ? { ...t, module: null } : t));
+      },
+      restore: () => {
+        hiddenModules = without(hiddenModules, id);
+        load();
+      },
+      commit: async () => {
+        await api.deleteModule(id);
+        hiddenModules = without(hiddenModules, id);
+        await load();
+      },
+    });
   }
 
   let creatingModule = $state(false);
@@ -174,6 +218,7 @@
     event.preventDefault();
     try {
       await api.createModule(moduleNameInput.trim());
+      toast({ text: "Module added", sub: moduleNameInput.trim(), icon: "plus" });
       creatingModule = false;
       moduleNameInput = "";
       await load();
@@ -183,7 +228,11 @@
   }
 
   async function load() {
-    [topics, modules, quizzes, today] = await Promise.all([api.topics(), api.modules(), api.topicQuizzes().catch(() => []), api.today().catch(() => 0)]);
+    const [allTopics, allModules, loadedQuizzes, loadedToday] = await Promise.all([api.topics(), api.modules(), api.topicQuizzes().catch(() => []), api.today().catch(() => 0)]);
+    modules = allModules.filter((m) => !hiddenModules.has(m.id));
+    topics = allTopics.filter((t) => !hiddenTopics.has(t.id)).map((t) => (t.module !== null && hiddenModules.has(t.module) ? { ...t, module: null } : t));
+    quizzes = loadedQuizzes;
+    today = loadedToday;
     ticked = ticked.filter((id) => topics.some((t) => t.id === id));
     loaded = true;
   }
@@ -199,6 +248,7 @@
     event.preventDefault();
     try {
       selected = await api.createTopic(newName.trim(), newModule ? Number(newModule) : null);
+      toast({ text: "Topic added", sub: newName.trim(), icon: "plus" });
       creating = false;
       await load();
     } catch (error) {
@@ -206,12 +256,40 @@
     }
   }
 
-  async function confirmDelete() {
+  /** A topic with questions asks first (it's a big delete). An empty one goes straight away. */
+  function requestDelete(topic: TopicRow) {
+    if (topic.question_count + topic.short_count > 0) deleting = topic;
+    else removeTopic(topic);
+  }
+
+  function confirmDelete() {
     if (!deleting) return;
-    await api.deleteTopic(deleting.id);
-    if (selected === deleting.id) selected = null;
+    const topic = deleting;
     deleting = null;
-    await load();
+    removeTopic(topic);
+  }
+
+  function removeTopic(topic: TopicRow) {
+    const questions = topic.question_count + topic.short_count;
+    deleteWithUndo({
+      text: "Topic deleted",
+      sub: questions ? `${topic.name} and its ${questions} ${questions === 1 ? "question" : "questions"}` : topic.name,
+      hide: () => {
+        hiddenTopics = new Set([...hiddenTopics, topic.id]);
+        topics = topics.filter((t) => t.id !== topic.id);
+        ticked = ticked.filter((id) => id !== topic.id);
+        if (selected === topic.id) selected = null;
+      },
+      restore: () => {
+        hiddenTopics = without(hiddenTopics, topic.id);
+        load();
+      },
+      commit: async () => {
+        await api.deleteTopic(topic.id);
+        hiddenTopics = without(hiddenTopics, topic.id);
+        await load();
+      },
+    });
   }
 
   load();
@@ -333,7 +411,7 @@
             <div class="mt-3 flex justify-between gap-1 border-t-2 border-base-300 pt-3">
               <button class="btn btn-quiet btn-xs" onclick={() => openMove([picked!.id])}><FolderInput class="size-3.5" />Move</button>
               <button class="btn btn-quiet btn-xs" onclick={() => openTags(picked!)}><Tag class="size-3.5" />Tags</button>
-              <button class="btn btn-quiet btn-xs text-error" onclick={() => (deleting = picked)}><Trash2 class="size-3.5" />Delete</button>
+              <button class="btn btn-quiet btn-xs text-error" onclick={() => requestDelete(picked!)}><Trash2 class="size-3.5" />Delete</button>
             </div>
           </div>
         {:else}

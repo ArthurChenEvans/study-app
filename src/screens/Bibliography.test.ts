@@ -9,6 +9,7 @@ vi.mock("../lib/api", async (original) => {
 
 import { api, type SourceRow } from "../lib/api";
 import Bibliography from "./Bibliography.svelte";
+import { flushPendingDeletes, live } from "../lib/celebrations.svelte";
 
 const mocked = vi.mocked(api);
 const kirk: SourceRow = {
@@ -126,6 +127,8 @@ describe("Bibliography", () => {
     expect(dialog).toHaveTextContent("7 questions cite it");
     mocked.sources.mockResolvedValue([]);
     await u.click(within(dialog).getByRole("button", { name: "Delete source" }));
+    expect(live.toasts.at(-1)).toMatchObject({ text: "Source deleted", action: { label: "Undo" } });
+    await flushPendingDeletes();
     expect(mocked.deleteSource).toHaveBeenCalledWith(1);
     expect(await screen.findByText("No sources yet")).toBeInTheDocument();
   });

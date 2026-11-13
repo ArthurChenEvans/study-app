@@ -7,6 +7,7 @@
   import CountUp from "../components/CountUp.svelte";
   import { fullLabel, onDay } from "../lib/dates";
   import { play } from "../lib/sound";
+  import { celebrate, praise } from "../lib/celebrations.svelte";
 
   // `fresh` is true when you've just finished the quiz, false when reopening it from History.
   let { attempt, onRetry, fresh = false }: { attempt: Id; onRetry: (view: QuizView) => void; fresh?: boolean } = $props();
@@ -34,7 +35,25 @@
 
   async function load() {
     [results, topics, today] = await Promise.all([api.results(attempt), api.topics(), Promise.resolve().then(() => api.today()).catch(() => 0)]);
-    if (fresh) play("finished");
+    if (fresh) {
+      const overall = results.summary.overall;
+      const count = total(overall);
+      const score = count ? Math.round((right(overall) / count) * 100) : 0;
+      const names = Object.keys(results.summary.per_topic).map(topicName);
+      const mode = results.status === "Finished"
+        ? celebrate("quiz", {
+            title: praise("quiz", score),
+            line: (names.length > 2 ? `${names.slice(0, 2).join(" · ")} and ${names.length - 2} more` : names.join(" · ")) + (score < 80 && results.to_prompt.length ? ". The ones you missed come back sooner." : ""),
+            score,
+            stats: [
+              { label: "Score", value: score, suffix: "%", tone: "primary" },
+              { label: "Right", value: right(overall), suffix: `/${count}`, tone: "success" },
+              { label: "Guessed", value: overall.right_guessed, tone: "accent" },
+            ],
+          })
+        : "off";
+      if (mode !== "full") play("finished");
+    }
   }
 
   async function give(index: number, reason: GivenReason) {

@@ -4,6 +4,7 @@
   import { ArrowLeft, Brain, CalendarArrowUp, ChevronLeft, ChevronRight, Dumbbell, Flag, GraduationCap, ListChecks, Pencil, Play, Plus, SquareStack, TriangleAlert } from "@lucide/svelte";
   import { untrack } from "svelte";
   import { api, errorMessage, type CalendarDay, type DateView, type DayView, type DrillView, type Id, type ModuleRow, type StruggleView, type TopicQuizView, type TopicRow } from "../lib/api";
+  import { toast } from "../lib/celebrations.svelte";
   import DateDialog from "../components/DateDialog.svelte";
   import MoveDrillDialog from "../components/MoveDrillDialog.svelte";
   import PageHeader from "../components/PageHeader.svelte";
@@ -127,6 +128,7 @@
     if (!moving || selected === null) return;
     try {
       await api.moveDrill(moving.id, to);
+      toast({ text: `Drill moved to ${fullLabel(to, today)}`, icon: "calendar" });
       moving = null;
       await open(selected);
     } catch (failure) {

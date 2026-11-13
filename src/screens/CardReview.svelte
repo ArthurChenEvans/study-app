@@ -5,6 +5,7 @@
   import { api, errorMessage, type CardRating, type ReviewCard, type ReviewDone, type ReviewStep, type Subject } from "../lib/api";
   import Rich from "../components/Rich.svelte";
   import { dueLabel } from "../lib/dates";
+  import { celebrate, praise, startSession } from "../lib/celebrations.svelte";
 
   let { scope = null, scopeName = "All topics", onLeave, onEdit }: { scope?: Subject | null; scopeName?: string; onLeave: () => void; onEdit: (topic: number, note: number) => void } = $props();
 
@@ -15,6 +16,7 @@
   let error = $state("");
   let today = $state(0);
   let started = Date.now();
+  let session: ReturnType<typeof startSession> | null = null;
 
   const ratings: CardRating[] = ["Again", "Hard", "Good", "Easy"];
   const cloze = $derived(card?.kind.startsWith("Cloze") ?? false);
@@ -35,9 +37,23 @@
     if ("Card" in step) {
       card = step.Card;
       done = null;
+      session ??= startSession(step.Card.total - step.Card.done);
     } else {
       card = null;
       done = step.Done;
+      // Only a session that ran here celebrates, not reopening a finished day.
+      if (session && step.Done.reviewed > 0) {
+        celebrate("reviews", {
+          title: praise("reviews"),
+          line: "Every card due today is cleared.",
+          stats: [
+            { label: "Cards", value: step.Done.reviewed, tone: "primary" },
+            { label: "Minutes", value: Math.max(1, Math.round(step.Done.seconds / 60)), tone: "accent" },
+            ...(step.Done.remembered === null ? [] : [{ label: "Remembered", value: step.Done.remembered, suffix: "%", tone: "success" as const }]),
+          ],
+        });
+        session = null;
+      }
     }
   }
 
@@ -54,7 +70,11 @@
     }
   }
 
-  const grade = (rating: CardRating) => run(() => api.gradeCard(rating, Math.min(600, Math.round((Date.now() - started) / 1000))));
+  function grade(rating: CardRating) {
+    if (busy) return;
+    session?.answered(rating !== "Again");
+    run(() => api.gradeCard(rating, Math.min(600, Math.round((Date.now() - started) / 1000))));
+  }
   const undo = () => run(() => api.undoCard());
 
   async function edit() {

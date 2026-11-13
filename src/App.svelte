@@ -23,6 +23,10 @@
   import SessionReview from "./screens/SessionReview.svelte";
   import DrillSession from "./screens/DrillSession.svelte";
   import YourData from "./screens/YourData.svelte";
+  import Celebration from "./components/Celebration.svelte";
+  import Pops from "./components/Pops.svelte";
+  import Toasts from "./components/Toasts.svelte";
+  import { flushPendingDeletes, loadPrefs } from "./lib/celebrations.svelte";
   import { statusLine } from "./lib/backup";
   import { syncLine } from "./lib/sync";
   import { screenFromHash, type Screen } from "./lib/router";
@@ -89,6 +93,7 @@
         const result = await api.syncNow(auto);
         status = result.status;
         if (result.received && RELOADS.includes(route.screen)) dataVersion++;
+        if (result.received) loadPrefs();
         if (result.received) refreshCounts();
       }
       showSync(status);
@@ -150,6 +155,11 @@
 
   // A quiz is saved after every answer. If one was running when the app last closed (or
   // crashed), open straight back onto it at the question it stopped on.
+  // celebrations.feature (R150): load which moments you want, and finish any deletes still
+  // waiting on their undo window if the app closes.
+  onMount(() => {
+    loadPrefs();
+  });
   onMount(() => {
     api.currentQuestion().then(
       (view) => { if (view && typeof view === "object" && typeof view.position === "number" && route.screen !== "quiz") startQuiz(view); },
@@ -158,7 +168,7 @@
   });
 </script>
 
-<svelte:window onhashchange={() => (route = { screen: screenFromHash(location.hash) })} onkeydown={shortcut} />
+<svelte:window onhashchange={() => (route = { screen: screenFromHash(location.hash) })} onkeydown={shortcut} onbeforeunload={() => { flushPendingDeletes(); }} />
 
 <div class="flex min-h-screen">
   {#if !["quiz", "recall-session", "card-review", "session-review", "drills"].includes(route.screen)}<Sidebar current={navScreen} {due} {backup} {sync} onNavigate={(screen) => go({ screen })} />{/if}
@@ -214,3 +224,7 @@
     {/key}
   </main>
 </div>
+
+<Celebration />
+<Pops />
+<Toasts />

@@ -3,6 +3,7 @@
   import { ArrowLeft, FileText, GripVertical, ListPlus, Play, Plus, X } from "@lucide/svelte";
   import RowMenu from "../components/RowMenu.svelte";
   import { api, errorMessage, type Candidate, type ChecklistView, type RecallHistory, type RecallItem, type RecallPoint, type Schedule } from "../lib/api";
+  import { toast } from "../lib/celebrations.svelte";
   import Ladder from "../components/Ladder.svelte";
   import Rich from "../components/Rich.svelte";
   import ScoreChart from "../components/ScoreChart.svelte";
@@ -147,6 +148,7 @@
 
   async function remove() {
     await api.deleteChecklist(id);
+    toast({ text: "Checklist deleted", icon: "trash" });
     onBack();
   }
 

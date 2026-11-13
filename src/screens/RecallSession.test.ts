@@ -10,6 +10,13 @@ vi.mock("../lib/api", async (original) => {
   };
 });
 
+const cele = vi.hoisted(() => ({ answered: vi.fn(), celebrate: vi.fn(), startSession: vi.fn() }));
+vi.mock("../lib/celebrations.svelte", () => ({
+  celebrate: (...args: unknown[]) => cele.celebrate(...args),
+  praise: () => "Well done!",
+  startSession: (queue: number) => cele.startSession(queue) ?? { answered: cele.answered },
+}));
+
 import { api, type ChecklistView, type RecallRow } from "../lib/api";
 import RecallSession from "./RecallSession.svelte";
 
@@ -67,6 +74,7 @@ describe("Recall session", () => {
     expect(screen.getByText("Back a step")).toBeInTheDocument();
     expect(screen.getByText(/Last check 79% · pass mark 70%/)).toHaveTextContent(/Recalled in 0:\d\d/);
     expect(screen.getByRole("list", { name: "Missed points" })).toHaveTextContent("Missed 3 of 4 checks");
+    expect(cele.celebrate).toHaveBeenCalledWith("recall", expect.objectContaining({ stats: [{ label: "Score", value: 67, suffix: "%", tone: "primary" }, { label: "Recalled", value: 2, suffix: "/3", tone: "info" }] }));
     await u.click(screen.getByRole("button", { name: "Next: OSI model" }));
     expect(handlers.onNext).toHaveBeenCalledWith(5);
   });

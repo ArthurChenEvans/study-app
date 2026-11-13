@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { BookOpen, Brain, CalendarDays, Database, Hammer, SquareStack, History, Layers, FolderX, GitCompare, Eye, LayoutDashboard, Library, Moon, Play, RefreshCw, RefreshCwOff, Search, ShieldAlert, ShieldCheck, Sun, Volume2 } from "@lucide/svelte";
+  import { BookOpen, Brain, CalendarDays, Database, Hammer, SquareStack, History, Layers, FolderX, GitCompare, Eye, LayoutDashboard, Library, Moon, PartyPopper, Play, RefreshCw, RefreshCwOff, Search, ShieldAlert, ShieldCheck, Sun, Volume2 } from "@lucide/svelte";
   import { DARK, LIGHT, applyPalette, applyTheme, initialPalette, type Theme } from "../lib/theme";
   import { isSoundOn, setSoundOn } from "../lib/sound";
+  import CelebrationsDialog from "./CelebrationsDialog.svelte";
   import type { Screen } from "../lib/router";
 
   let { current, onNavigate, due = {}, backup = null, sync = null }: { current: Screen; onNavigate: (screen: Screen) => void; due?: Partial<Record<Screen, number>>; backup?: { safe: boolean; short: string } | null; sync?: { ok: boolean; short: string; icon?: string } | null } = $props();
@@ -11,6 +12,7 @@
   let theme = $state<Theme>((document.documentElement.dataset.theme as Theme) ?? DARK);
   let sound = $state(isSoundOn());
   let colourBlind = $state(initialPalette() === "colour-blind");
+  let celebrations = $state(false);
 
   // Each section's icon takes a colour (Rust orange or Rust blue), so the sidebar reads at a glance.
   const links: { screen: Screen; label: string; icon: typeof Library; tone: "orange" | "blue" }[] = [
@@ -92,6 +94,9 @@
       <Volume2 class="size-4" /><span class="flex-1">Sound</span>
       <input type="checkbox" role="switch" class="toggle" checked={sound} onchange={toggleSound} />
     </label>
+    <button type="button" class="-mx-2 flex min-h-8 items-center gap-3 rounded-lg px-2 text-left text-sm font-bold text-muted hover:bg-base-300" onclick={() => (celebrations = true)}>
+      <PartyPopper class="size-4" /><span class="flex-1">Celebrations</span>
+    </button>
     <label class="flex cursor-pointer items-center gap-3 text-sm font-bold text-muted">
       <Eye class="size-4" /><span class="flex-1">Colour-blind safe</span>
       <input type="checkbox" role="switch" class="toggle" checked={colourBlind} onchange={toggleColours} />
@@ -102,3 +107,5 @@
     </div>
   </div>
 </nav>
+
+{#if celebrations}<CelebrationsDialog onClose={() => (celebrations = false)} />{/if}

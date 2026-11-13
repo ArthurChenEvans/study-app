@@ -5,6 +5,7 @@
   import { GraduationCap, Trash2 } from "@lucide/svelte";
   import { untrack } from "svelte";
   import { api, errorMessage, type DatePreview, type DateSave, type DateView, type Id, type ModuleRow, type TopicQuizView, type TopicRow } from "../lib/api";
+  import { toast } from "../lib/celebrations.svelte";
   import { dayFromIso, fullLabel, isoOf } from "../lib/dates";
 
   let { today, date = null, modules, topics, quizzes = [], startDay = null, onSaved, onCancel }: {
@@ -84,6 +85,7 @@
     try {
       if (date) await api.updateDate(date.id, save);
       else await api.addDate(save);
+      toast({ text: date ? "Date saved" : "Date added", sub: `${save.name}, ${fullLabel(save.day, today)}`, icon: date ? "check" : "calendar" });
       onSaved();
     } catch (failure) {
       error = errorMessage(failure);
@@ -97,6 +99,7 @@
     busy = true;
     try {
       await api.deleteDate(date.id);
+      toast({ text: "Date deleted", sub: date.name, icon: "trash" });
       onSaved();
     } catch (failure) {
       error = errorMessage(failure);

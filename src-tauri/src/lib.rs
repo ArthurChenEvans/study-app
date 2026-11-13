@@ -472,6 +472,18 @@ fn quiz_queue(state: AppState) -> ApiResult<QuizQueue> {
     with(state, |app| app.quiz_queue(today()))
 }
 #[tauri::command]
+fn celebrations(state: AppState) -> ApiResult<Option<String>> {
+    with(state, |app| app.celebrations())
+}
+#[tauri::command]
+fn set_celebrations(state: AppState, json: String) -> ApiResult<()> {
+    with(state, |app| app.set_celebrations(json))
+}
+#[tauri::command]
+fn reset_celebrations(state: AppState) -> ApiResult<()> {
+    with(state, |app| app.reset_celebrations())
+}
+#[tauri::command]
 fn quizzes_a_day(state: AppState) -> ApiResult<usize> {
     with(state, |app| app.quizzes_a_day())
 }
@@ -678,6 +690,9 @@ pub fn run() {
             due_today,
             quiz_queue,
             quizzes_a_day,
+            celebrations,
+            set_celebrations,
+            reset_celebrations,
             set_quizzes_a_day,
             dates,
             add_date,

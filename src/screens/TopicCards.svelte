@@ -3,6 +3,7 @@
   import { Archive, ArchiveRestore, ArrowLeft, Brackets, Flag, Play, Plus, Trash2, X } from "@lucide/svelte";
   import { tick, untrack } from "svelte";
   import { api, errorMessage, type Note, type NoteKind, type NoteView, type Subject, type TopicCards, type TopicRow } from "../lib/api";
+  import { deleteWithUndo, toast } from "../lib/celebrations.svelte";
   import Rich from "../components/Rich.svelte";
   import { dueLabel } from "../lib/dates";
 
@@ -38,7 +39,10 @@
     && card.front.toLowerCase().includes(query.trim().toLowerCase())));
 
   async function load() {
-    [data, today, topics] = await Promise.all([api.topicCards(topic), api.today(), api.topics()]);
+    const [loaded, loadedToday, loadedTopics] = await Promise.all([api.topicCards(topic), api.today(), api.topics()]);
+    data = { ...loaded, cards: loaded.cards.filter((card) => !hiddenNotes.has(card.note)) };
+    today = loadedToday;
+    topics = loadedTopics;
   }
 
   async function open(id: number | null) {
@@ -92,19 +96,37 @@
     clozeBox.setSelectionRange(start + 6 + String(next).length, start + 6 + String(next).length + chosen.length);
   }
 
-  async function toggleArchive(id: number, archived: boolean) {
+  async function toggleArchive(id: number, archived: boolean, quiet = false) {
     await api.archiveCard(id, archived);
     await load();
     if (editing?.id !== null && editing?.id !== undefined) editing.view = await api.noteView(editing.id);
+    if (!quiet) toast({ text: archived ? "Card archived" : "Card back in reviews", icon: "check", action: { label: "Undo", run: () => toggleArchive(id, !archived, true) } });
   }
 
-  async function remove() {
+  // toasts.feature (R157): a deleted card goes at once, with a few seconds to undo.
+  let hiddenNotes = $state<Set<number>>(new Set());
+
+  function remove() {
     if (!editing?.id) return;
-    await api.deleteNote(editing.id);
-    deleting = false;
-    editing = null;
-    status = "Card deleted";
-    await load();
+    const id = editing.id;
+    deleteWithUndo({
+      text: "Card deleted",
+      hide: () => {
+        hiddenNotes = new Set([...hiddenNotes, id]);
+        deleting = false;
+        editing = null;
+        if (data) data.cards = data.cards.filter((card) => card.note !== id);
+      },
+      restore: () => {
+        hiddenNotes = new Set([...hiddenNotes].filter((note) => note !== id));
+        load();
+      },
+      commit: async () => {
+        await api.deleteNote(id);
+        hiddenNotes = new Set([...hiddenNotes].filter((note) => note !== id));
+        await load();
+      },
+    });
   }
 
   function keys(event: KeyboardEvent) {

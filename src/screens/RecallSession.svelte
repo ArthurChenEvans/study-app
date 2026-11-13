@@ -6,6 +6,7 @@
   import Ladder from "../components/Ladder.svelte";
   import Rich from "../components/Rich.svelte";
   import { onDay } from "../lib/dates";
+  import { celebrate, praise } from "../lib/celebrations.svelte";
 
   let { id, onLeave, onEdit, onNext }: { id: number; onLeave: () => void; onEdit: (id: number) => void; onNext: (id: number) => void } = $props();
 
@@ -75,6 +76,14 @@
     try {
       result = await api.finishCheck(id, outside ? null : dump, [...ticked]);
       stage = "result";
+      celebrate("recall", {
+        title: praise("recall"),
+        line: result.from === null ? `Started on ${result.to}.` : result.passed ? `Up to ${result.to}.` : `Everything you remembered is logged.`,
+        stats: [
+          { label: "Score", value: result.score, suffix: "%", tone: "primary" },
+          { label: "Recalled", value: result.recalled, suffix: `/${result.total}`, tone: "info" },
+        ],
+      });
       const rows = await api.recallList();
       nextDue = rows.find((row) => row.due_today && row.id !== id && row.points > 0) ?? null;
     } catch (failure) {

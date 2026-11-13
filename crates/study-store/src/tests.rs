@@ -546,3 +546,17 @@ fn first_two_asked_differently(attempt: Attempt) -> Attempt {
     json["asked"][0]["flagged_guessed"] = serde_json::Value::Bool(true);
     serde_json::from_value(json).unwrap()
 }
+
+// celebrations.feature (R150): which moments to celebrate is a small JSON blob the app owns.
+#[test]
+fn celebration_choices_round_trip_and_are_checked() {
+    let mut store = store();
+    assert_eq!(store.celebrations().unwrap(), None);
+    store.set_celebrations(r#"{"master":false}"#).unwrap();
+    assert_eq!(store.celebrations().unwrap().as_deref(), Some(r#"{"master":false}"#));
+    assert!(store.set_celebrations("not json").is_err());
+    assert!(store.set_celebrations("[1,2]").is_err(), "has to be an object");
+    assert!(store.set_celebrations(&format!(r#"{{"x":"{}"}}"#, "a".repeat(5000))).is_err(), "kept small");
+    store.reset_celebrations().unwrap();
+    assert_eq!(store.celebrations().unwrap(), None);
+}

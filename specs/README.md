@@ -274,3 +274,16 @@ Decided with the design: keywords are checked in any order, every answer is righ
 | R147 | Search shows recent searches and recently edited questions until you type, then results 50 at a time with "Show 50 more" |
 | R148 | History's chart shows the last 30 quizzes by default (90 days and All one click away), and the table is grouped by month, folded after the first two, with a filter |
 | R149 | Suggestions are grouped by topic, biggest groups first and folded after the first, with "Dismiss these N" per group and a filter. Bibliography is one compact sortable row per source with a filter, the full reference in the item card. Overview shows the 8 weakest topics with a module picker |
+
+## Celebrations and toasts (approved 13 Nov 2026)
+
+| ID | Requirement |
+|---|---|
+| R150 | Which celebrations you want is saved as one setting that syncs to your other computers. Sound volume, "Sound for big moments only" and motion (Follow my system, Full, Calm) stay on each computer |
+| R151 | Small pops land about every 15 to 40 cards, worked out from the queue size when the session starts: a quarter of the queue, kept in range and rounded to a friendly number. Fewer and More move the range to 25 to 60 and 10 to 25. Sessions under 15 cards get no pops. Near half and three quarters the pop becomes Halfway there and Last stretch. Pops are never closer than 8 cards or within half a gap of the end |
+| R152 | Celebrations settings, from the sidebar: a master switch, each big moment as Full screen, Small pop or Off, card count pops with how often, Halfway and Last stretch, answer streaks of 5 or 10, a Keep going nudge after 3, 5 or 10 quiet minutes, and toasts. Every row has a Play button. Reset to defaults puts it all back. With the master switch off the end-of-session summary still shows, plainly |
+| R153 | At most one small moment per answer. A streak wins over a count or marker on the same card. The nudge comes on the next right answer after a quiet stretch, then waits for another |
+| R154 | Finishing today's reviews, a quiz or a free recall check shows a full-screen moment in beats: rays, the badge jumping and landing on the chord with confetti, the title word by word, each number counting up with a tick, then Continue. A quiz scales with its score (under 80, 80 and up, 100). Continue ignores presses in the first half second, Escape and Enter close it once it shows, and a second moment waits its turn. Calm mode and reduced motion keep it to fades with no confetti |
+| R155 | Adding, saving, moving, importing, exporting and deleting say what happened in a calm toast at the bottom centre, two at most, with an icon, the words, a close button and an action where it helps. Errors are announced straight away, marked with an icon and the word Error, and stay until closed |
+| R156 | Every celebration sound is synthesised, follows the Sound switch and the volume, and has the same thing said in words on screen |
+| R157 | Deleting a topic, module, card or source takes it off screen at once with Undo for six seconds, and only deletes it for real after that, or when the app closes. Topics with questions and modules still ask first. If the real delete fails, it comes back with an error |

@@ -2,6 +2,7 @@
   // projects.feature (R87, R94): projects, and the issues every project shares.
   import { Box, Clock, Code, Dumbbell, FileUp, Hammer, Play, Plus } from "@lucide/svelte";
   import { api, errorMessage, type Id, type IssueView, type ProjectRow } from "../lib/api";
+  import { toast } from "../lib/celebrations.svelte";
   import PageHeader from "../components/PageHeader.svelte";
   import { dayLabel, dueLabel, pastOn } from "../lib/dates";
 
@@ -30,6 +31,7 @@
     event.preventDefault();
     try {
       const id = await api.createProject(name, kind);
+      toast({ text: "Project created", sub: name, icon: "plus" });
       creating = false;
       onOpen(id);
     } catch (failure) {

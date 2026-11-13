@@ -2,6 +2,7 @@
   // free-recall.feature (R52, R58, R60): checklists due today first, then the rest by date.
   import { Brain, CalendarCog, CircleCheck, Clock, Play, Plus } from "@lucide/svelte";
   import { api, errorMessage, type ModuleRow, type RecallRow, type Schedule, type TopicRow } from "../lib/api";
+  import { toast } from "../lib/celebrations.svelte";
   import PageHeader from "../components/PageHeader.svelte";
   import Ladder from "../components/Ladder.svelte";
   import ScheduleDialog from "../components/ScheduleDialog.svelte";
@@ -56,6 +57,7 @@
     try {
       const checklist = await api.createChecklist(kind === "module" ? { Module: Number(id) } : { Topic: Number(id) });
       creating = false;
+      toast({ text: "Checklist created", icon: "plus" });
       onChanged();
       onOpen(checklist);
     } catch (failure) {
