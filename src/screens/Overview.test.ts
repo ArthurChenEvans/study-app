@@ -62,7 +62,7 @@ describe("Overview", () => {
     render(Overview, { onNavigate, onQuizTopics });
     const hero = await screen.findByRole("region", { name: "2 quizzes due today" });
     expect(hero).toHaveTextContent("CPU and OSI model are ready");
-    // The pink banner is the one primary, so nothing else is pink
+    // The orange banner is the one primary, so nothing else is orange
     expect(document.querySelectorAll(".btn-primary, .hero")).toHaveLength(1);
     await u.click(within(hero).getByRole("button", { name: "Start quiz" }));
     expect(onQuizTopics).toHaveBeenCalledWith([1, 3]);

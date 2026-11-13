@@ -1,13 +1,13 @@
 # Study App Design Rules
 
-The rules every screen follows. Since 12 Nov 2026 the look is the playful one from `design/playful-redesign/` (chunky, game-like, Gleam's colours). Built from Refactoring UI, Nielsen's 10 usability heuristics, Laws of UX, WCAG 2.2 and Butterick's Practical Typography. When a rule and a "looks nice" instinct disagree, the rule wins until the rule is changed here.
+The rules every screen follows. Since 12 Nov 2026 the look is the playful one from `design/playful-redesign/` (chunky, game-like). Since 13 Nov 2026 the colours are Rust's, from the Rust Foundation brand guide, since the app is built in Rust. Built from Refactoring UI, Nielsen's 10 usability heuristics, Laws of UX, WCAG 2.2 and Butterick's Practical Typography. When a rule and a "looks nice" instinct disagree, the rule wins until the rule is changed here.
 
 ## 1. Core principles
 
 1. **Hierarchy before decoration.** Every screen has one primary thing. Make it obvious with size, weight and contrast, then de-emphasise everything else (Refactoring UI: emphasise by de-emphasising).
 2. **Design the feature, not the layout.** Start from the job (write a question, answer a question), not from a page shell with a navbar and a hero.
 3. **Constrained choices only.** Spacing, type sizes, colours, radii and shadows come from the scales below. No one-off values.
-4. **Colour is a shared resource.** Most of the UI is Gleam's yellow (light) or underwater blue (dark) neutrals. Colour is spent on actions and states (the main action in faff pink, right, wrong, guessed, due in amber), never on decoration.
+4. **Colour is a shared resource.** Most of the UI is warm off-white (light) or Rust dark blue (dark) neutrals. Colour is spent on actions and states (the main action in Rust orange, right, wrong, guessed, due in amber), never on decoration.
 7. **Chunky, not loud.** Thick 2px borders, big radii and a pressed-down ledge under buttons make things feel like they can be picked up. That's the whole playfulness budget: no confetti, no bounce, no mascots.
 5. **Group with space, not boxes.** Proximity and whitespace separate content first. Borders and cards are a last resort.
 6. **Keyboard first in the quiz.** The quiz is the most used screen and should be fully usable without the mouse.
@@ -61,26 +61,26 @@ Tailwind classes: `1, 2, 3, 4, 6, 8, 12, 16, 24`.
 
 ## 5. Colour palette
 
-Gleam's own colours for the general theme, one main-action colour, amber for anything due, and a right / wrong / guessed set with a colour-blind safe alternative. Every text pairing below was checked against WCAG 2.2 AA (4.5:1 for text, 3:1 for UI component boundaries).
+Rust's brand colours for the general theme (Rust Dark Blue #1E2650, Rust Orange #D34516, Rust Blue #28607F, Rust Silver #67737A), one main-action colour, amber for anything due, and a right / wrong / guessed set with a colour-blind safe alternative. Every text pairing below was checked against WCAG 2.2 AA (4.5:1 for text, 3:1 for UI component boundaries).
 
-### General theme (Gleam)
+### General theme (Rust)
 
 | Token | Light | Dark | Use | Contrast (light / dark) |
 |---|---|---|---|---|
-| base-100 | #fffbe8 aged plastic yellow | #292d3e underwater blue | Page | |
-| base-200 | #f6efd3 | #1f2230 | Sidebar, panes, hover | |
-| base-300 | #e6dcc0 | #474d66 | Borders, dividers, empty bar track | decorative only |
-| surface | #fefefc | #32374b | Tiles, rows, fields, dialogs | |
-| base-content | #1e1e1e | #fefefc | Main text | 16.5 / 11.7 on surface |
-| muted | #584355 | #c9cbd8 | Secondary text | 8.9 / 7.3 on surface |
-| field border | #8b7a88 | #7c829c | Input and checkbox borders | 4.0 / 3.1 on surface |
-| primary | #ffaff3 faff pink, #1e1e1e on it | same | The one main action, the logo, today's ledge | label 10.1 |
-| primary ink | #a3348e | #ffaff3 | Pink as text, links, tabs, focus rings, chart lines | 6.0 / 7.1 on surface |
+| base-100 | #f6f3ef warm off-white | #1e2650 Rust dark blue | Page | |
+| base-200 | #eeeae5 | #171d40 | Sidebar, panes, hover | |
+| base-300 | #ded8d0 | #3d4775 | Borders, dividers, empty bar track | decorative only |
+| surface | #ffffff | #283163 | Tiles, rows, fields, dialogs | |
+| base-content | #1e2650 Rust dark blue | #f6f3ef | Main text | 14.5 / 11.1 on surface |
+| muted | #5a656c | #c3c8da | Secondary text | 6.0 / 7.4 on surface |
+| field border | #67737a Rust silver | #7d86b0 | Input and checkbox borders | 4.9 / 3.5 on surface |
+| primary | #d34516 Rust orange, #ffffff on it | same | The one main action, the logo, today's ledge | label 4.5 |
+| primary ink | #b03a12 | #f7915f | Orange as text, links, tabs, focus rings | 6.1 / 5.4 on surface |
 | accent (due) | oklch(78% 0.13 78), dark text | oklch(80% 0.13 80) | Due counts, due chips, "to review" | |
-| neutral | #2f2f2f, #fefefc on it | #fefefc, #1e1e1e on it | Selected segment, chosen chip | |
-| info | #1c6f80 | #a6f0fc | Neutral notices, links to sources | 5.7 / 9.2 on surface |
+| neutral | #1e2650, #ffffff on it | #f6f3ef, #1e2650 on it | Selected segment, chosen chip | |
+| info | #28607f Rust blue | #8cc4e2 | Neutral notices, links to sources, chart lines | 6.8 / 6.5 on surface |
 
-Pale pink is too light to read as text on the yellow page (1.6:1), so light mode uses the darker primary ink for anything pink that has to be read or seen as a boundary. The pink button itself is told apart by its dark label and its darker ledge.
+Rust orange as text is just under 4.5:1 on the light page, and too dark on the dark page, so orange text, links and focus rings use the primary ink (darker in light, lighter in dark). Chart lines use Rust blue rather than orange, so a score trend never reads as wrong.
 
 ### Right, wrong and guessed
 
@@ -90,8 +90,8 @@ A setting in the sidebar switches between the standard pair and the colour-blind
 |---|---|---|---|---|
 | Right fill / text on it | #0f7b55 / #fff | #35b37e / #06140d | #025884 / #fff | #0573aa / #fff |
 | Right ink | #0b6645 (6.9) | #7fe0b3 (7.4) | #004d77 (8.9) | #87c6f2 (6.4) |
-| Wrong fill / text on it | #c8321f / #fff | #e8604c / #1a0805 | #cc6c13 / #140d08 | #d67523 / #140d08 |
-| Wrong ink | #a32614 (7.3) | #ff9d8c (5.9) | #853900 (8.1) | #f9b379 (6.6) |
+| Wrong fill / text on it | #b81f3f / #fff | #f0587a / #1a0509 | #cc6c13 / #140d08 | #d67523 / #140d08 |
+| Wrong ink | #9e1735 (8.0) | #ff9fb2 (6.4) | #853900 (8.1) | #f9b379 (6.6) |
 | Guessed tint / ink | #c5e8d6 / #0a5238 (7.0) | #173d2e / #b6f0d4 (9.4) | #c1dcf0 / #013658 (8.8) | #163c54 / #bbddf6 (8.2) |
 
 Ink contrasts are on the surface. Fills carry their own text colour, at least 5.2:1.
@@ -99,7 +99,7 @@ Ink contrasts are on the surface. Fills carry their own text colour, at least 5.
 Rules:
 - Right, wrong and guessed are **never shown by colour alone**. Always an icon and a word ("Correct", "Wrong", "Guessed"), and guessed is always hatched. That's what makes the standard green and red acceptable: the greyscale test and the colour-blind switch both still work.
 - In the standard pair a wrong answer and a destructive action share red. Destructive actions only appear inside a confirmation dialog that names what goes, so the two never sit side by side.
-- Primary (pink) is never used for right or wrong, so "this is the main button" and "you got it right" can't be confused.
+- Primary (Rust orange) is never used for right or wrong, so "this is the main button" and "you got it right" can't be confused. The standard wrong is a crimson rather than a plain red, so it stays clearly apart from the orange. The colour-blind wrong is still orange (the blue and orange pair is what makes it safe), so there the icon and word carry the difference.
 - Amber means due and nothing else. It stays off decoration.
 - No gradients (the guessed hatch is a pattern, not a gradient). No pure black.
 - Dark is the default, with the same token names. See section 11.
@@ -108,7 +108,7 @@ Rules:
 
 **Buttons**
 - Uppercase, 800 weight, 48px tall (38px small), 14px radius (12px small), with a solid 4px ledge underneath in the button's own colour mixed 70% with black. Pressing moves it down onto the ledge.
-- One primary (pink, `btn-primary`) per screen or dialog. Everything else is the ghost style: surface fill, a 2px border-coloured ring and a border-coloured ledge (`btn-ghost`, `btn-outline`). Quiet text buttons (`btn-link`, menu items) have no ledge.
+- One primary (Rust orange, `btn-primary`) per screen or dialog. Everything else is the ghost style: surface fill, a 2px border-coloured ring and a border-coloured ledge (`btn-ghost`, `btn-outline`). Quiet text buttons (`btn-link`, menu items) have no ledge.
 - Right and wrong coloured buttons are for answering only (Continue on the feedback sheet, card ratings).
 - Destructive actions are `btn-error` and only appear inside a confirmation dialog, never as the first button you see.
 - Labels are verbs ("Start quiz", "Save question"), never "OK" or "Submit".
@@ -203,7 +203,7 @@ Charts show progress from saved attempts only. They never invent data the app do
 | `--chart-right` | the right fill (section 5) | Right and sure |
 | `--guessed-fill` | 135° hatch, right fill 2px on the guessed tint 4px | Right but flagged as guessed |
 | `--chart-wrong` | the wrong fill | Wrong |
-| `--chart-ink` | primary ink (#a3348e light, #ffaff3 dark) | Any single-series chart (score trend, reason counts, forecast) |
+| `--chart-ink` | info, Rust blue (#28607f light, #8cc4e2 dark) | Any single-series chart (score trend, reason counts, forecast) |
 | `--chart-grid` | base-300 | Gridlines, hairline and solid |
 
 Both palettes keep right darker than wrong in greyscale, and guessed adds the hatch, so the three separate without colour. Labels inside fills use the fill's own text colour, and guessed counts sit on a small surface-coloured label because text over the hatch is hard to read.
@@ -224,11 +224,11 @@ Both palettes keep right darker than wrong in greyscale, and guessed adds the ha
 - Page: base-100. Sidebar: base-200, with a 2px base-300 border.
 - Tile (`.panel`): surface fill, 2px base-300 border, 16px radius, no shadow. Used for things read or pressed as a unit: charts, stat tiles, the quiz summary, grouped settings, tables.
 - Nested radii: things inside a tile use 12px or less.
-- The one hero on a screen (Overview's due banner) is a pink tile with a ledge.
+- The one hero on a screen (Overview's due banner) is an orange tile with a ledge.
 
 ## 11. Dark theme
 
-Dark is the default. A Dark / Light switch sits at the bottom of the sidebar and the choice is remembered on the device. Dark is Gleam's underwater blue, not an inversion: raised things get lighter (sidebar #1f2230, page #292d3e, tiles #32374b). Values and contrasts are in section 5.
+Dark is the default. A Dark / Light switch sits at the bottom of the sidebar and the choice is remembered on the device. Dark is Rust's dark blue, not an inversion: raised things get lighter (sidebar #171d40, page #1e2650, tiles #283163). Values and contrasts are in section 5.
 
 Code blocks use Shiki's min-dark theme in dark and min-light in light. Some of their token colours are under 4.5:1 (light comments are 1.7:1), so `src/lib/markdown.ts` mixes any failing colour toward black (light) or white (dark), keeping its hue, until it clears 4.6:1 on base-100 in light and the panel in dark. Both themes ship as CSS variables, so the switch recolours code without rendering it again.
 
@@ -241,5 +241,5 @@ Code blocks use Shiki's min-dark theme in dark and min-light in light. Some of t
 - Butterick, M. *Practical Typography*. https://practicaltypography.com
 - The Fountain Institute. 7 Signs a UI Has Been Vibe Coded. https://www.thefountaininstitute.com/blog/signs-vibe-coded-ui
 - daisyUI theme reference. https://daisyui.com/SKILL.md
-- Gleam brand colours. https://gleam.run/branding/
+- Rust Foundation brand guide (colours). https://rustfoundation.org/brand-guide
 - Nunito. https://fonts.google.com/specimen/Nunito
