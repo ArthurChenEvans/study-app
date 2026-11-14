@@ -1,14 +1,38 @@
-# study-app
+# Shudhana
 
-Vibecoded study app to help study for exams. All-in-one tool for MCQ quizzes, built with Tauri 2, Svelte 5 and Rust (SQLite). Linux first.
+An all-in-one study app for exams: quizzes (multiple choice and short answer), flashcards on FSRS, free recall checklists, and a practice log for hands-on work, all on one calendar. Built with Tauri 2, Svelte 5 and Rust (SQLite). Everything stays on your computers.
 
-## Run it (NixOS)
+## What's in it
+
+- **Quizzes:** each topic's questions make a quiz. Tick a few to mix them. Write questions with your slides, PDFs, Word files or EPUBs open beside you, and note which source each fact came from. Each topic climbs a quiz schedule.
+- **Cards:** basic, reversed and cloze flashcards scheduled with FSRS. Cards opens on today's review, and Browse all lists every card with search and filters (answers of cards due today stay hidden). Missed quiz questions and recall points become suggested cards, never added without asking.
+- **Free Recall:** checklists about a module or a topic. Write or say everything you remember, tick what you got, and the next check is scheduled from how you did.
+- **Practice Log:** note what trips you up while coding, doing a past paper or anything hands-on, review it at the end of the session, and turn it into cards or drills.
+- **Calendar:** everything due, plus exam dates that can tighten reviews before them.
+- **Manage:** Topics & Modules, Import & Export (Anki decks, spreadsheets, JSON, Markdown, GIFT, Aiken), Bibliography and History.
+- Nine colour themes, light and dark, each with a colour-blind safe right and wrong. Daily backups, and sync through any shared folder.
+
+## Install
+
+Grab the latest release from [Releases](https://github.com/ArthurChenEvans/study-app/releases):
+
+| System | File |
+|---|---|
+| Fedora, openSUSE and other RPM distros | `shudhana-<version>.x86_64.rpm` |
+| Debian, Ubuntu, Mint | `shudhana_<version>_amd64.deb` |
+| Windows | `shudhana-<version>-setup.exe` |
+| macOS (Apple silicon and Intel) | `shudhana-<version>-universal.dmg` |
+
+Installed copies update themselves. The Mac app isn't notarised, so the first time you open it, go to System Settings, Privacy & Security, and press Open Anyway.
+
+## Run it from source
 
 ```bash
-nix develop          # Rust, Node, pnpm, WebKitGTK, LibreOffice
 pnpm install
 pnpm tauri dev       # opens the app
 ```
+
+You need Rust, Node with pnpm, and WebKitGTK 4.1 (`webkit2gtk4.1-devel` on Fedora, `libwebkit2gtk-4.1-dev` on Debian). LibreOffice is optional, for PowerPoint previews. On NixOS, `nix develop` gives you all of it.
 
 ## Try it with demo data
 
@@ -56,15 +80,17 @@ The app backs itself up once a day (once there's something in it), and before a 
 - **Desktop:** `~/.local/share/com.arthurchenevans.studyapp/backups`
 - **Browser version:** `backups` next to its database, so `/data/backups` in the container's volume (`down -v` deletes them too). `STUDY_BACKUPS` points it somewhere else.
 
-"Your data" in the sidebar lists them, backs up by hand, restores, sets how many to keep (7 days, 4 weeks and 12 months to start with) and can copy every backup to a second folder, like a USB stick. Each backup is an ordinary SQLite file, so you can also copy one into place by hand while the app is closed.
+"Your data" (from Settings, or the backup line at the bottom of the sidebar) lists them, backs up by hand, restores, sets how many to keep (7 days, 4 weeks and 12 months to start with) and can copy every backup to a second folder, like a USB stick. Each backup is an ordinary SQLite file, so you can also copy one into place by hand while the app is closed.
 
 Every record has an ID that's the same on every computer, a "last changed" stamp and, once deleted, a marker. The database's triggers fill these in using functions the app provides, so other SQLite tools can read the database but can't add or change rows in it.
 
-## Export and import
+## Import and export
 
-"Your data" exports everything, or some topics to share, as one `.studyapp` file: a zip of readable JSON (`manifest.json`, `data/topics.jsonl` and so on) plus the images, so the data is never locked inside the app. The desktop app saves it to your Downloads folder, and the browser version downloads it.
+Import & Export (under Manage in the sidebar) exports everything, or some topics to share, as one `.studyapp` file: a zip of readable JSON (`manifest.json`, `data/topics.jsonl` and so on) plus the images, so the data is never locked inside the app. The desktop app saves it to your Downloads folder, and the browser version downloads it.
 
 Importing shows what's new, what's here already and what's changed in both places before anything changes, then makes a backup and adds it all at once. Records are matched by ID, so importing a newer version of a shared file updates it instead of copying it. History is only ever added, and nothing here is deleted.
+
+It also reads Anki decks and collections (`.apkg`, `.colpkg`, old or new format, with images, maths and optionally Anki's progress, filtered by tag and with suspended cards left out or kept paused), spreadsheets (`.csv`, `.tsv`), JSON, Markdown, GIFT and Aiken. It exports to an Anki deck, a spreadsheet, JSON, Markdown, GIFT or Aiken too. You can also drop a file anywhere on the window. The last import can be undone.
 
 ## Sync
 
@@ -83,7 +109,7 @@ nix --extra-experimental-features "nix-command flakes" build
 ./result/bin/study-app
 ```
 
-Or add it to your system flake: `inputs.study-app.url = "github:ArthurChenEvans/study-app/mvp-planning";` and put `study-app.packages.x86_64-linux.default` in `environment.systemPackages`. LibreOffice comes with it for PowerPoint previews.
+Or add it to your system flake: `inputs.study-app.url = "github:ArthurChenEvans/study-app";` and put `study-app.packages.x86_64-linux.default` in `environment.systemPackages`. LibreOffice comes with it for PowerPoint previews.
 
 The first build stops with a hash mismatch for the pnpm dependencies. Copy the `got: sha256-...` value into `hash =` in `flake.nix` and build again. Do the same whenever `pnpm-lock.yaml` changes.
 
@@ -128,7 +154,7 @@ What the robustness tests cover (added by the November 2026 audit):
 
 | Path | What it is |
 |---|---|
-| `specs/` | Requirements (R1 to R34), Gherkin feature files, open questions |
+| `specs/` | Requirements (R1 to R191) and Gherkin feature files |
 | `docs/design-rules.md` | Design system: tokens, type, colour, charts, both themes |
 | `design/` | Clickable HTML prototype of every screen |
 | `crates/study-core` | Domain rules, no IO |
@@ -136,6 +162,9 @@ What the robustness tests cover (added by the November 2026 audit):
 | `crates/study-api` | Everything the app's commands do, as testable functions |
 | `src-tauri` | Desktop shell, forwards commands to study-api |
 | `src` | Svelte frontend |
+| `crates/study-web` | The browser version's server, the demo seeder and the robustness tests |
+| `e2e/` | Tests and a UI sweep that drive the real app window |
+| `.github/workflows` | Release builds (.rpm, .deb, .exe, .dmg) and the package check on pull requests |
 
 ## End-to-end tests
 
@@ -143,6 +172,7 @@ Drive the real app window through tauri-driver, on a fresh throwaway database:
 
 - `e2e/slides_test.py` converts a slide deck over the same IPC the preview uses
 - `e2e/rich_content_test.py` writes a question with a pasted image, a picked image and highlighted code, then takes a quiz on it and checks the images decode and the code is coloured in both themes
+- `e2e/sweep.py` opens every screen at desktop, tablet and phone widths in both themes, empty and with a large seeded profile, and checks contrast, tap target sizes, layout spill and accessibility (axe). `SCREENS=cards,quizzes` limits it to some screens
 
 ```sh
 cargo install tauri-driver   # once; also needs WebKitWebDriver from webkitgtk and python selenium
