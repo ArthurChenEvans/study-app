@@ -244,12 +244,14 @@ pub fn build(snapshot: &Snapshot, options: AnkiOptions, today: i64) -> ApiResult
         // A Basic note's extra cues become their own Basic notes: Anki's Basic has no cues.
         let all = schedules(note);
         let cards_now: Vec<_> = if kind == "Basic" { all.iter().take(1).cloned().collect() } else { all.clone() };
-        writer.add_note(&note.uid, model, deck, &fields, &[], &cards_now)?;
+        // R192: the note's own tags go to Anki as its tags.
+        let tags: Vec<String> = note.note.get("tags").and_then(Value::as_array).map(|tags| tags.iter().filter_map(Value::as_str).map(String::from).collect()).unwrap_or_default();
+        writer.add_note(&note.uid, model, deck, &fields, &tags, &cards_now)?;
         if kind == "Basic" {
             let cues: Vec<String> = note.note.get("cues").and_then(Value::as_array).map(|cues| cues.iter().filter_map(Value::as_str).map(String::from).collect()).unwrap_or_default();
             for (index, cue) in cues.iter().enumerate() {
                 let fields = vec![writer.html(cue), fields[1].clone()];
-                writer.add_note(&format!("{}:cue:{index}", note.uid), model, deck, &fields, &[], &[all.get(index + 1).cloned().flatten()])?;
+                writer.add_note(&format!("{}:cue:{index}", note.uid), model, deck, &fields, &tags, &[all.get(index + 1).cloned().flatten()])?;
             }
         }
     }

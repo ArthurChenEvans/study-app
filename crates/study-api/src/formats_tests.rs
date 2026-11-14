@@ -44,8 +44,8 @@ fn written() -> App {
     let mut short = mcq(cpu, "What does ALU stand for?", &[], "");
     short.short = Some(ShortAnswer { check: Check::Keywords { keywords: vec![Keyword { word: "arithmetic".into(), also: vec![] }, Keyword { word: "logic".into(), also: vec!["logical".into()] }], needed: None }, model_answer: "Arithmetic Logic Unit".into() });
     app.save_question(short).unwrap();
-    app.save_note(None, NoteInput { note: Note { topic: cpu, kind: NoteKind::Cloze, front: String::new(), back: String::new(), cues: vec![], text: "The {{c1::program counter}} holds the next address".into(), extra: String::new() }, suggestion: None }, TODAY).unwrap();
-    app.save_note(None, NoteInput { note: Note { topic: cpu, kind: NoteKind::Basic, front: "Clock speed unit?".into(), back: "Hertz".into(), cues: vec![], text: String::new(), extra: String::new() }, suggestion: None }, TODAY).unwrap();
+    app.save_note(None, NoteInput { note: Note { topic: cpu, kind: NoteKind::Cloze, front: String::new(), back: String::new(), cues: vec![], text: "The {{c1::program counter}} holds the next address".into(), extra: String::new(), tags: vec![] }, suggestion: None }, TODAY).unwrap();
+    app.save_note(None, NoteInput { note: Note { topic: cpu, kind: NoteKind::Basic, front: "Clock speed unit?".into(), back: "Hertz".into(), cues: vec![], text: String::new(), extra: String::new(), tags: vec![] }, suggestion: None }, TODAY).unwrap();
     let checklist = app.create_checklist(study_store::recall::Subject::Topic(cpu), TODAY).unwrap();
     app.save_points(checklist, vec![crate::recall::PointInput { text: "Fetch, decode, execute".into(), question: None, note: None }]).unwrap();
     app

@@ -160,7 +160,7 @@ export interface Schedule { steps: ScheduleStep[]; pass_mark: number; under_pass
 
 // ---------- Flashcards (R62 to R77) ----------
 export type NoteKind = "Basic" | "Reversed" | "Cloze";
-export interface Note { topic: Id; kind: NoteKind; front: string; back: string; cues: string[]; text: string; extra: string }
+export interface Note { topic: Id; kind: NoteKind; front: string; back: string; cues: string[]; text: string; extra: string; tags?: string[] }
 export interface NoteInput { note: Note; suggestion: string | null }
 export interface DueCounts { new: number; learning: number; review: number }
 export interface TopicCounts { topic: Id; name: string; module: string | null; due: DueCounts; total: number; retention: number | null }

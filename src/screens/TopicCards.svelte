@@ -50,12 +50,17 @@
   async function open(id: number | null) {
     error = "";
     status = "";
-    if (id === null) editing = { id: null, note: blank(), view: null };
+    if (id === null) { editing = { id: null, note: blank(), view: null }; tagText = ""; }
     else {
       const view = await api.noteView(id);
       editing = { id, note: structuredClone(view.note), view };
+      tagText = (view.note.tags ?? []).join(", ");
     }
   }
+
+  // R192: a card's own tags, typed with commas between. A new card keeps the last ones.
+  let tagText = $state("");
+  const tagList = () => tagText.split(",").map((tag) => tag.trim()).filter(Boolean);
 
   /** A new card stays open for the next one unless `andClose`. An edit always closes. */
   async function save(event?: Event, andClose = false) {
@@ -63,13 +68,16 @@
     if (!editing) return;
     error = "";
     try {
-      const note = $state.snapshot(editing.note);
+      const tags = tagList();
+      const { tags: _old, ...rest } = $state.snapshot(editing.note);
+      const note = tags.length ? { ...rest, tags } : rest;
       await api.saveNote(editing.id, { note, suggestion: null });
       const isNew = editing.id === null;
       status = isNew ? `${count(note)} added` : "Changes saved";
       if (isNew && !andClose) {
         // flashcards.feature: write the next card straight away, same type and topic.
         editing = { id: null, note: { ...blank(note.kind), topic: note.topic }, view: null };
+        tagText = tags.join(", ");
         images.clear();
         await tick();
         firstField()?.focus();
@@ -257,6 +265,12 @@
               </fieldset>
             {/if}
           {/if}
+
+          <div>
+            <label class="text-sm font-semibold" for="note-tags">Tags <span class="font-normal text-muted">(optional)</span></label>
+            <input id="note-tags" class="input mt-1 w-full" bind:value={tagText} placeholder="e.g. exam, boolean::algebra" aria-label="Tags" aria-describedby="note-tags-help" />
+            <p id="note-tags-help" class="mt-1 text-xs text-muted">Separate tags with commas. :: nests a tag, like boolean::algebra.</p>
+          </div>
 
           <div class="flex flex-wrap items-center justify-between gap-2">
             <p class="text-sm text-muted">Markdown, <code>code</code>, maths in <code>$…$</code> and images. Paste or drop an image into any field, or add one from a file.</p>

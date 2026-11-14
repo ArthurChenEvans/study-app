@@ -26,6 +26,9 @@ pub struct Note {
     pub text: String,
     /// Cloze only: shown under the answer.
     pub extra: String,
+    /// The note's own tags (R192), as Anki has them. `::` makes a hierarchy.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tags: Vec<String>,
 }
 
 /// One card's two sides, as Markdown. `key` names the card within its note, so editing
@@ -517,10 +520,22 @@ mod tests {
             cues: vec![],
             text: String::new(),
             extra: String::new(),
+            tags: vec![],
         }
     }
 
     // flashcards.feature: One note makes one or more cards (outline)
+    // R192: a note has its own tags. Notes saved before tags existed load with none.
+    #[test]
+    fn notes_keep_their_own_tags_and_old_ones_have_none() {
+        let old = r#"{"topic":1,"kind":"Basic","front":"F","back":"B","cues":[],"text":"","extra":""}"#;
+        let note: Note = serde_json::from_str(old).unwrap();
+        assert!(note.tags.is_empty());
+        let tagged = Note { tags: vec!["boolean::algebra".into()], ..note };
+        let round: Note = serde_json::from_str(&serde_json::to_string(&tagged).unwrap()).unwrap();
+        assert_eq!(round.tags, vec!["boolean::algebra".to_string()]);
+    }
+
     #[test]
     fn notes_make_the_right_cards() {
         assert_eq!(note(NoteKind::Basic).faces().unwrap().len(), 1);

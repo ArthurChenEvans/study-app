@@ -442,6 +442,7 @@ impl App {
         let topics = self.store.topics()?;
         let modules = self.store.modules()?;
         let cards = self.cards_now(self.store.cards()?, &self.now(today)?);
+        let note_tags = self.store.note_tags()?;
         Ok(cards
             .into_iter()
             .filter_map(|card| {
@@ -460,7 +461,16 @@ impl App {
                     topic_name: topic.name.clone(),
                     module: topic.module,
                     module_name: module.map(|row| row.name.clone()),
-                    tags: topic.tags.clone(),
+                    // The topic's tags, then the note's own (R192), each once.
+                    tags: {
+                        let mut tags = topic.tags.clone();
+                        for tag in note_tags.get(&card.note).into_iter().flatten() {
+                            if !tags.iter().any(|known| known.eq_ignore_ascii_case(tag)) {
+                                tags.push(tag.clone());
+                            }
+                        }
+                        tags
+                    },
                     back: (!due_today).then(|| card.back.clone()),
                     front: card.front,
                     kind: kind.into(),
@@ -960,6 +970,7 @@ mod tests {
                 cues: vec![],
                 text: String::new(),
                 extra: String::new(),
+                tags: vec![],
             },
             suggestion: None,
         }
@@ -1115,6 +1126,18 @@ mod tests {
         assert!(off.archived);
         assert_eq!(off.back.as_deref(), Some("Back"), "a paused card isn't in today's review");
         assert!(rows.iter().filter(|row| row.kind == "Reversed").count() == 2);
+    }
+
+    // R192: Browse all sees a card's own tags as well as its topic's
+    #[test]
+    fn browsing_merges_a_notes_own_tags_with_its_topics() {
+        let (mut app, cpu) = app();
+        app.set_topic_tags(cpu, vec!["exam".into()]).unwrap();
+        let mut input = basic(cpu, "Tagged");
+        input.note.tags = vec!["boolean::algebra".into(), "exam".into()];
+        app.save_note(None, input, TODAY).unwrap();
+        let rows = app.browse_cards(TODAY).unwrap();
+        assert_eq!(rows[0].tags, vec!["exam".to_string(), "boolean::algebra".to_string()]);
     }
 
     // flashcards.feature: Archived cards are left out

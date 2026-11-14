@@ -167,7 +167,7 @@ use crate::{OptionInput, QuestionInput};
 use study_core::cards::Note;
 
 fn note(topic: TopicId, kind: NoteKind, front: &str, back: &str, text: &str) -> NoteInput {
-    NoteInput { note: Note { topic, kind, front: front.into(), back: back.into(), cues: vec![], text: text.into(), extra: String::new() }, suggestion: None }
+    NoteInput { note: Note { topic, kind, front: front.into(), back: back.into(), cues: vec![], text: text.into(), extra: String::new(), tags: vec![] }, suggestion: None }
 }
 
 fn written() -> (App, TopicId) {
@@ -331,4 +331,35 @@ fn suspended_cards_are_left_out_unless_kept_and_kept_ones_stay_paused() {
     let topic = kept.topics().unwrap().into_iter().find(|row| row.name == "Everything").unwrap().id;
     let archived = kept.topic_cards(topic, TODAY).unwrap().cards.iter().filter(|card| card.archived).count();
     assert_eq!(archived, 2, "kept suspended cards stay paused, like in Anki");
+}
+
+// R192: a note's Anki tags come across as the card's own tags, hierarchy and all
+#[test]
+fn anki_tags_become_the_notes_own_tags() {
+    let mut app = app();
+    app.anki_preview(TAGGED, "Everything.apkg").unwrap();
+    app.anki_apply(AnkiChoice::default(), at(TODAY)).unwrap();
+    let notes = notes_in(&app, "Everything");
+    let algebra = notes.iter().find(|note| note.front == "2 + 2").unwrap();
+    assert_eq!(algebra.tags, vec!["Maths::Algebra".to_string()]);
+    let untagged = notes.iter().find(|note| note.front == "Untagged note").unwrap();
+    assert!(untagged.tags.is_empty());
+    assert!(app.modules().unwrap().is_empty(), "tags never make modules");
+    assert_eq!(app.topics().unwrap().len(), 1, "one deck, one topic");
+}
+
+// R192: a card's own tags go out in an Anki export and come back in
+#[test]
+fn a_cards_tags_survive_an_anki_export() {
+    let (mut app, dns) = written();
+    let mut tagged = note(dns, NoteKind::Basic, "Tagged card", "Back", "");
+    tagged.note.tags = vec!["boolean::algebra".into()];
+    app.save_note(None, tagged, TODAY).unwrap();
+    let (name, bytes) = exported(&app, false);
+    let mut other = self::app();
+    let preview = other.anki_preview(&bytes, &name).unwrap();
+    assert!(preview.tags.iter().any(|tag| tag.name == "boolean::algebra"), "{:?}", preview.tags);
+    other.anki_apply(AnkiChoice::default(), at(TODAY)).unwrap();
+    let back = notes_in(&other, "DNS").into_iter().find(|note| note.front == "Tagged card").unwrap();
+    assert_eq!(back.tags, vec!["boolean::algebra".to_string()]);
 }

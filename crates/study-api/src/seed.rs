@@ -299,9 +299,9 @@ pub fn seed_profile(app: &mut App, today: i64) -> ApiResult<SeedSummary> {
                 Some(rest) => (NoteKind::Reversed, rest),
                 None => (NoteKind::Basic, *front),
             };
-            Note { topic: *topic, kind, front: front.into(), back: back.to_string(), cues: vec![], text: String::new(), extra: String::new() }
+            Note { topic: *topic, kind, front: front.into(), back: back.to_string(), cues: vec![], text: String::new(), extra: String::new(), tags: vec![] }
         });
-        let clozes = seed.clozes.iter().map(|text| Note { topic: *topic, kind: NoteKind::Cloze, front: String::new(), back: String::new(), cues: vec![], text: text.to_string(), extra: String::new() });
+        let clozes = seed.clozes.iter().map(|text| Note { topic: *topic, kind: NoteKind::Cloze, front: String::new(), back: String::new(), cues: vec![], text: text.to_string(), extra: String::new(), tags: vec![] });
         for (index, note) in notes.chain(clozes).enumerate() {
             let day = match (topic_index + index) % 9 {
                 7 => today - 3,
