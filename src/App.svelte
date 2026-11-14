@@ -27,6 +27,8 @@
   import Celebration from "./components/Celebration.svelte";
   import Pops from "./components/Pops.svelte";
   import Toasts from "./components/Toasts.svelte";
+  import ImportHost from "./components/ImportHost.svelte";
+  import { onImportChanged } from "./lib/importer.svelte";
   import { flushPendingDeletes, loadPrefs } from "./lib/celebrations.svelte";
   import { startUpdates } from "./lib/updates.svelte";
   import { listen } from "@tauri-apps/api/event";
@@ -137,6 +139,12 @@
     }
   }
   refreshDue();
+  // R177: an import or its undo changes what every screen shows.
+  $effect(() => onImportChanged(() => {
+    if (RELOADS.includes(route.screen)) dataVersion++;
+    refreshDue();
+    syncTick();
+  }));
   // The review's top bar names what is being reviewed.
   let scopeName = $state("All topics");
   async function startCards(scope: Subject | null) {
@@ -177,13 +185,13 @@
   // celebrations.feature (R150): load which moments you want, and finish any deletes still
   // waiting on their undo window if the app closes.
   // updates.feature (R166): check for a new release on open, and say so plainly if one is
-  // being installed as the app closes (the system asks for a password).
-  let installingOnClose = $state(false);
+  // being installed as the app closes. The event says whether the system asks for a password.
+  let installingOnClose = $state<{ asksPassword: boolean } | null>(null);
   onMount(() => {
     loadPrefs();
     startUpdates();
     let stop: (() => void) | undefined;
-    listen("updating-on-close", () => (installingOnClose = true)).then((unlisten) => (stop = unlisten)).catch(() => {});
+    listen<boolean>("updating-on-close", (event) => (installingOnClose = { asksPassword: event.payload !== false })).then((unlisten) => (stop = unlisten)).catch(() => {});
     return () => stop?.();
   });
   onMount(() => {
@@ -200,6 +208,8 @@
   {#if !["quiz", "recall-session", "card-review", "session-review", "drills"].includes(route.screen)}<Sidebar current={navScreen} {due} {backup} {sync} {mode} onNavigate={(screen) => go({ screen })} />{/if}
   <main class="min-w-0 flex-1" class:pb-24={mode === "dock"}>
     {#key dataVersion}
+    <!-- R186: every screen comes in the same way, once, when you go to it -->
+    {#key route.screen}<div class="screen-enter">
     {#if route.screen === "topics"}
       <Topics onCards={(topic) => go({ screen: "topic-cards", topic, note: null })} onSearch={(text) => go({ screen: "search", text })} onEdit={(topic) => go({ screen: "editor", topic })} onQuiz={(topic) => go({ screen: "setup-for", topics: [topic] })} onQuizTopics={(topics) => go({ screen: "setup-for", topics })} />
     {:else if route.screen === "editor"}
@@ -249,12 +259,14 @@
     {:else}
       <Overview onNavigate={(screen) => go({ screen })} onQuizTopics={(topics) => go({ screen: "setup-for", topics })} />
     {/if}
+    </div>{/key}
     {/key}
   </main>
 </div>
 
 <Celebration />
 <Pops />
+<ImportHost />
 <Toasts />
 
 {#if installingOnClose}
@@ -262,7 +274,7 @@
     <div class="modal-box max-w-md text-center">
       <Download class="mx-auto size-8" />
       <h2 id="closing-h" class="mt-3 text-lg font-black">Installing the update</h2>
-      <p class="mt-2 text-muted">Your computer will ask for your password. The app closes when it's done, and your study data was backed up first.</p>
+      <p class="mt-2 text-muted">{installingOnClose.asksPassword ? "Your computer will ask for your password. " : ""}The app closes when it's done, and your study data was backed up first.</p>
     </div>
   </div>
 {/if}

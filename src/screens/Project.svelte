@@ -4,6 +4,9 @@
   import { onDestroy, tick } from "svelte";
   import { api, errorMessage, type Id, type ProjectView, type StruggleKind, type StruggleView, type TopicRow } from "../lib/api";
   import { fullLabel, onDay, pastOn } from "../lib/dates";
+  import RowMenu from "../components/RowMenu.svelte";
+  import RenameDialog from "../components/RenameDialog.svelte";
+  import { toast } from "../lib/celebrations.svelte";
 
   let { id, onBack = () => {}, onReview = () => {} }: { id: Id; onBack?: () => void; onReview?: (project: Id) => void } = $props();
 
@@ -39,6 +42,52 @@
     }
     return groups;
   });
+
+  // R185: renaming and deleting the project, and deleting a struggle, each after asking
+  let renaming = $state(false);
+  let deletingProject = $state(false);
+  let deletingStruggle = $state<StruggleView | null>(null);
+  let editingStruggle = $state<StruggleView | null>(null);
+
+  async function saveStruggle(what: string, why: string) {
+    if (!editingStruggle) return;
+    await api.updateStruggle(editingStruggle.id, what, why);
+    editingStruggle = null;
+    toast({ text: "Struggle saved", icon: "check" });
+    await load();
+  }
+
+  async function rename(name: string, kind: string) {
+    await api.updateProject(id, name, kind);
+    renaming = false;
+    toast({ text: "Project renamed", sub: name, icon: "check" });
+    await load();
+  }
+
+  async function removeProject() {
+    deletingProject = false;
+    const name = view?.row.name ?? "";
+    try {
+      await api.deleteProject(id);
+      toast({ text: "Project deleted", sub: name, icon: "trash" });
+      onBack();
+    } catch (failure) {
+      toast({ text: "Couldn't delete the project", sub: errorMessage(failure), icon: "alert", error: true });
+    }
+  }
+
+  async function removeStruggle() {
+    if (!deletingStruggle) return;
+    const struggleId = deletingStruggle.id;
+    deletingStruggle = null;
+    try {
+      await api.deleteStruggle(struggleId);
+      toast({ text: "Struggle deleted", icon: "trash" });
+      await load();
+    } catch (failure) {
+      toast({ text: "Couldn't delete the struggle", sub: errorMessage(failure), icon: "alert", error: true });
+    }
+  }
 
   async function load() {
     [view, topics, today] = await Promise.all([api.project(id), api.topics(), api.today()]);
@@ -137,6 +186,7 @@
           {#if view.row.to_review}<button class="btn btn-ghost" onclick={() => onReview(id)}><ListChecks class="size-4" />Review {view.row.to_review} {view.row.to_review === 1 ? "struggle" : "struggles"}</button>{/if}
           <button class="btn btn-primary" onclick={start}><Play class="size-4" />Start a session</button>
         {/if}
+        <RowMenu label="Project actions" items={[{ label: "Rename project…", onSelect: () => (renaming = true) }, { label: "Delete project…", danger: true, onSelect: () => (deletingProject = true) }]} />
       </div>
     </div>
     {#if error}<p role="alert" class="mb-4 text-sm text-error">{error}</p>{/if}
@@ -185,9 +235,44 @@
             <div class="flex-1"><p class="text-[16px] font-extrabold">{struggle.what}</p>{#if struggle.why}<p class="mt-1 text-sm text-muted">Why it wasn't obvious: {struggle.why}</p>{/if}
               <div class="mt-2 flex flex-wrap items-center gap-2"><span class="chip">{kindLabel[struggle.kind]}</span>{#if struggle.topic_name}<span class="chip chip-primary">{struggle.topic_name}</span>{/if}<span class="text-xs font-extrabold tabular-nums text-muted">{time(struggle.minute)}</span></div></div>
             <span class="max-w-72 text-right text-sm">{@render outcomeOf(struggle)}</span>
+            <RowMenu small label="Struggle actions: {struggle.what}" items={[{ label: "Edit struggle…", onSelect: () => (editingStruggle = struggle) }, { label: "Delete struggle…", danger: true, onSelect: () => (deletingStruggle = struggle) }]} />
           </li>
         {/each}
       </ul>
     {/each}
   {/if}
 </div>
+
+{#if renaming && view}
+  <RenameDialog title="Rename project" value={view.row.name} extra={{ label: "Kind", value: view.row.kind, placeholder: "Coding, Blender, Music…" }} onSave={rename} onClose={() => (renaming = false)} />
+{/if}
+
+{#if editingStruggle}
+  <RenameDialog title="Edit struggle" label="What tripped you up" value={editingStruggle.what} extra={{ label: "Why it wasn't obvious", value: editingStruggle.why }} onSave={saveStruggle} onClose={() => (editingStruggle = null)} />
+{/if}
+
+{#if deletingProject && view}
+  <dialog open class="modal modal-open" aria-labelledby="delete-project-h">
+    <div class="modal-box max-w-md">
+      <h3 id="delete-project-h" class="text-lg font-semibold">Delete {view.row.name}?</h3>
+      <p class="mt-2 text-sm">Its sessions and struggles go too. Drills already made from its issues stay, since other projects can share them.</p>
+      <div class="modal-action">
+        <button class="btn btn-ghost" onclick={() => (deletingProject = false)}>Keep it</button>
+        <button class="btn btn-error" onclick={removeProject}>Delete project</button>
+      </div>
+    </div>
+  </dialog>
+{/if}
+
+{#if deletingStruggle}
+  <dialog open class="modal modal-open" aria-labelledby="delete-struggle-h">
+    <div class="modal-box max-w-md">
+      <h3 id="delete-struggle-h" class="text-lg font-semibold">Delete this struggle?</h3>
+      <p class="mt-2 text-sm">"{deletingStruggle.what}" goes from the project. A drill already made from it stays.</p>
+      <div class="modal-action">
+        <button class="btn btn-ghost" onclick={() => (deletingStruggle = null)}>Keep it</button>
+        <button class="btn btn-error" onclick={removeStruggle}>Delete struggle</button>
+      </div>
+    </div>
+  </dialog>
+{/if}

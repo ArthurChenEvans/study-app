@@ -426,3 +426,21 @@ fn refuses_files_that_are_not_images_with_a_message() {
     assert_eq!(error.message, "that file isn't a PNG, JPEG, GIF or WebP image");
     assert_eq!(app.image(study_core::image::ImageId(42)).unwrap_err().message, "image not found");
 }
+
+// R185: modules and topics can be renamed, and a recall checklist on one takes the new name
+#[test]
+fn modules_and_topics_can_be_renamed() {
+    let mut app = app();
+    let arch = app.create_module("Arch").unwrap();
+    let gpu = app.create_topic("GPU", Some(arch)).unwrap();
+    let checklist = app.create_checklist(study_store::recall::Subject::Module(arch), 0).unwrap();
+    app.rename_module(arch, "  Architecture ").unwrap();
+    assert_eq!(app.modules().unwrap()[0].name, "Architecture");
+    assert_eq!(app.checklist(checklist, 0).unwrap().row.subject_name, "Architecture");
+    app.rename_topic(gpu, "Graphics cards").unwrap();
+    assert_eq!(app.topics().unwrap()[0].name, "Graphics cards");
+    assert!(app.rename_module(arch, " ").is_err());
+    assert!(app.rename_topic(gpu, "").is_err());
+    assert!(app.rename_module(ModuleId(999), "X").is_err());
+    assert!(app.rename_topic(TopicId(999), "X").is_err());
+}

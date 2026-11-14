@@ -22,6 +22,8 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
           version: 10
@@ -48,17 +50,24 @@ jobs:
       - name: Build the old and new versions
         run: |
           mkdir -p out
-          for pair in "old:$OLD" "new:$NEW"; do
-            name=${pair%%:*}; v=${pair#*:}
+          # The old one is the newest published release, the app people actually have installed
+          # (before any release, this branch). The new one is this branch.
+          last=$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)
+          git worktree add "$RUNNER_TEMP/old" "${last:-HEAD}"
+          echo "Old version built from ${last:-this branch}"
+          for pair in "old:$OLD:$RUNNER_TEMP/old" "new:$NEW:$PWD"; do
+            IFS=: read -r name v dir <<< "$pair"
             # Trust the throwaway key, and allow the plain http feed this test serves locally.
             jq -n --arg v "$v" --arg k "$(cat "$RUNNER_TEMP/test.key.pub")" \
               '{version: $v, plugins: {updater: {pubkey: $k, dangerousInsecureTransportProtocol: true}}}' > "$RUNNER_TEMP/ci.json"
-            pnpm tauri build --bundles rpm --config "$RUNNER_TEMP/ci.json"
-            rpm=$(ls target/release/bundle/rpm/*-"$v"-*.rpm)
+            (cd "$dir" && pnpm install --frozen-lockfile && pnpm tauri build --bundles rpm --config "$RUNNER_TEMP/ci.json")
+            rpm=$(ls "$dir"/target/release/bundle/rpm/*-"$v"-*.rpm)
             [ -f "$rpm.sig" ] || pnpm tauri signer sign "$rpm"
             cp "$rpm" "out/$name.rpm"; cp "$rpm.sig" "out/$name.rpm.sig"
           done
           ls -la out
+          rpm -qp --qf 'old package: %{NAME} %{VERSION}\n' out/old.rpm
+          rpm -qp --qf 'new package: %{NAME} %{VERSION}\n' out/new.rpm
 
       - uses: actions/upload-artifact@v4
         with:

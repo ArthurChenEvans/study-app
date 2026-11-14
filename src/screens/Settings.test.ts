@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/svelte";
+import { render, screen, within } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../lib/api", async (original) => {
@@ -8,6 +8,7 @@ vi.mock("../lib/api", async (original) => {
 
 import { api } from "../lib/api";
 import { updates } from "../lib/updates.svelte";
+import { buildColours } from "../lib/colours";
 import Settings from "./Settings.svelte";
 
 const mocked = vi.mocked(api);
@@ -29,6 +30,22 @@ describe("Settings", () => {
     await userEvent.click(screen.getByRole("radio", { name: "Light" }));
     expect(document.documentElement.dataset.theme).toBe("studyapp");
     expect(screen.getByRole("radio", { name: "Light" })).toHaveAttribute("aria-checked", "true");
+  });
+
+  // appearance.feature: Colour themes (R183, R184)
+  it("picks a colour theme, previewing each one in the current mode", async () => {
+    const u = userEvent.setup();
+    render(Settings, { onNavigate: vi.fn() });
+    const group = screen.getByRole("radiogroup", { name: "Colours" });
+    const options = within(group).getAllByRole("radio");
+    expect(options.map((option) => option.getAttribute("aria-label"))).toEqual(["Mono", "Coffee", "Honey", "Brick", "Rose", "Lavender", "Ocean", "Miku", "Sage"]);
+    expect(within(group).getByRole("radio", { name: "Coffee" })).toHaveAttribute("aria-checked", "true");
+    await u.click(within(group).getByRole("radio", { name: "Sage" }));
+    expect(within(group).getByRole("radio", { name: "Sage" })).toHaveAttribute("aria-checked", "true");
+    expect(document.documentElement.style.getPropertyValue("--color-primary")).toBe(buildColours("sage", true, false)["--color-primary"]);
+    expect(localStorage.getItem("studyapp-colours")).toBe("sage");
+    await u.click(screen.getByRole("radio", { name: "Light" }));
+    expect(document.documentElement.style.getPropertyValue("--color-primary")).toBe(buildColours("sage", false, false)["--color-primary"]);
   });
 
   // appearance.feature: Colour-blind safe colours (R129)
@@ -71,15 +88,24 @@ describe("Settings", () => {
 
   // updates.feature (R167, R168): updates live in Settings
   it("shows the version, checks by hand and shows the new version's notes", async () => {
-    mocked.updateCheck.mockResolvedValue({ version: "0.1.5", current: "0.1.4", notes: "Week view on phones.", date: null, ready: false });
+    mocked.updateCheck.mockResolvedValue({ version: "0.1.5", current: "0.1.4", notes: "Week view on phones.", date: null, ready: false, asks_password: true });
     render(Settings, { onNavigate: vi.fn() });
     const section = screen.getByRole("region", { name: "Updates" });
-    expect(section).toHaveTextContent("Study App 0.1.4");
+    expect(section).toHaveTextContent("Shudhana 0.1.4");
     await userEvent.click(screen.getByRole("button", { name: "Check for updates" }));
     expect(await screen.findByText("Version 0.1.5 is available")).toBeInTheDocument();
     expect(section).toHaveTextContent("Week view on phones.");
     expect(section).toHaveTextContent(/asks for your password/);
     expect(screen.getByRole("button", { name: "Update to 0.1.5" })).toBeInTheDocument();
+  });
+
+  it("doesn't mention a password where installing doesn't ask for one (Windows)", async () => {
+    mocked.updateCheck.mockResolvedValue({ version: "0.1.5", current: "0.1.4", notes: null, date: null, ready: false, asks_password: false });
+    render(Settings, { onNavigate: vi.fn() });
+    await userEvent.click(screen.getByRole("button", { name: "Check for updates" }));
+    const section = await screen.findByRole("region", { name: "Updates" });
+    await screen.findByText("Version 0.1.5 is available");
+    expect(section).not.toHaveTextContent(/password/);
   });
 
   it("says when you're up to date, and turns auto update off", async () => {

@@ -1,9 +1,12 @@
 <script lang="ts">
   // questions.feature, sources.feature, short-answer.feature (R4 to R10, R14, R48, R49, R78 to R82)
-  import { BookOpen, Check, CircleCheck, CircleX, ImagePlus, Plus, X } from "@lucide/svelte";
+  import { BookOpen, Check, CircleCheck, CircleX, Eye, ImagePlus, Plus, Trash2, X } from "@lucide/svelte";
   import Preview from "../components/Preview.svelte";
+  import { showCitation } from "../lib/sourceFiles.svelte";
+  import { locationTarget } from "../lib/toc";
   import Rich from "../components/Rich.svelte";
   import { api, errorMessage, type Id, type Marking, type QuestionInput, type ShortAnswer, type SourceRow } from "../lib/api";
+  import { toast } from "../lib/celebrations.svelte";
   import { IMAGE_TYPES, imageInput, listenForDrops } from "../lib/imageInput.svelte";
 
   let { topic }: { topic: Id } = $props();
@@ -108,6 +111,23 @@
     }
   }
 
+  // R185: deleting the question being edited, after asking. Past quiz results keep their own copy.
+  let deletingQuestion = $state(false);
+
+  async function removeQuestion() {
+    if (editing === null) return;
+    const id = editing;
+    deletingQuestion = false;
+    try {
+      await api.deleteQuestion(id);
+      questions = await api.questionsIn(topic);
+      startNew();
+      toast({ text: "Question deleted", icon: "trash" });
+    } catch (failure) {
+      error = errorMessage(failure);
+    }
+  }
+
   async function edit(id: Id) {
     const question = await api.question(id);
     editing = id;
@@ -148,6 +168,11 @@
   }
 
   /** Only preview when there's something Markdown can't show as plain text. */
+  // "Kirk (2022)": the first author's surname and the year, for the preview to name the source.
+  const shortCite = (source: SourceRow) => {
+    const first = source.fields.authors.split(/[,;&]| and /)[0].trim() || source.fields.title;
+    return source.fields.year ? `${first} (${source.fields.year})` : first;
+  };
   const worthPreviewing = (text: string) => /image:\d|```|\$[^$]+\$|!\[/.test(text);
 
   function startNew() {
@@ -317,6 +342,11 @@
               {#each sources as source (source.id)}<option value={String(source.id)}>{source.apa}</option>{/each}
             </select>
             <input class="input input-sm w-32" aria-label="Page, slide or line" placeholder="p. 42…" bind:value={citation.location} />
+            {#if citation.source && locationTarget(citation.location)}
+              {@const source = sources.find((row) => String(row.id) === citation.source)}
+              {@const target = locationTarget(citation.location)!}
+              <button type="button" class="btn btn-quiet btn-sm btn-square" aria-label="Show {"line" in target ? `line ${target.line}` : `page ${target.page}`} in the preview" title="Show in the preview" onclick={() => source && showCitation(source.id, shortCite(source), citation.location)}><Eye class="size-4" /></button>
+            {/if}
             <button type="button" class="btn btn-quiet btn-sm btn-square" aria-label="Remove citation {index + 1}" onclick={() => (draft.citations = draft.citations.filter((_, position) => position !== index))}><X class="size-4" /></button>
           </div>
         {/each}
@@ -335,7 +365,21 @@
       <div class="flex items-center gap-3 border-t border-base-300 pt-6">
         <button type="submit" class="btn btn-primary">Save question</button>
         {#if editing !== null}<button type="button" class="btn btn-ghost" onclick={startNew}>Cancel</button>{/if}
+        {#if editing !== null}<button type="button" class="btn btn-ghost ml-auto text-error" onclick={() => (deletingQuestion = true)}><Trash2 class="size-4" />Delete question</button>{/if}
       </div>
     </form>
   </section>
 </div>
+
+{#if deletingQuestion}
+  <dialog open class="modal modal-open" aria-labelledby="delete-question-h">
+    <div class="modal-box max-w-md">
+      <h3 id="delete-question-h" class="text-lg font-semibold">Delete this question?</h3>
+      <p class="mt-2 text-sm">Past quiz results keep their answers. Recall points made from it stay, without the link.</p>
+      <div class="modal-action">
+        <button class="btn btn-ghost" onclick={() => (deletingQuestion = false)}>Keep it</button>
+        <button class="btn btn-error" onclick={removeQuestion}>Delete question</button>
+      </div>
+    </div>
+  </dialog>
+{/if}

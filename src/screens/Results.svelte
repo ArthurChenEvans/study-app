@@ -112,7 +112,7 @@
     <div class="grid grid-cols-[minmax(0,1fr)] wide:grid-cols-[minmax(0,1fr)_20rem] items-start gap-6">
       <div class="flex min-w-0 flex-col gap-4">
         <!-- The score splits into four framed tiles: score, right, guessed (hatched) and wrong -->
-        <section class="rise grid grid-cols-4 gap-3" aria-label="Score">
+        <section class="grid grid-cols-4 gap-3" aria-label="Score">
           <div class="score-tile" style="--tile: var(--color-neutral); --tile-on: var(--color-neutral-content); --tile-ink: var(--color-base-content)" role="group" aria-labelledby="score-label">
             <span id="score-label" class="score-label">Score</span>
             <b><Star class="size-5 fill-current" aria-hidden="true" /><span><CountUp value={right(overall)} /></span>{" "}<span>/ {total(overall)}</span></b>
@@ -132,7 +132,7 @@
           </div>
         </section>
 
-        <section class="panel rise rise-2 p-5">
+        <section class="panel p-5">
           <h2 class="text-[18px]">By topic</h2>
           <ul class="mt-2 space-y-2" aria-label="By topic">
             {#each Object.entries(results.summary.per_topic) as [id, tally] (id)}

@@ -22,7 +22,8 @@ PASS=0
 say() { printf '\n== %s\n' "$*"; }
 fail() { printf 'FAIL: %s\n' "$*"; exit 1; }
 ok() { printf 'ok: %s\n' "$*"; PASS=$((PASS + 1)); }
-version() { rpm -qa --qf '%{NAME} %{VERSION}\n' | awk '/study/ {print $2}'; }
+version() { rpm -qa --qf '%{NAME} %{VERSION}\n' | awk '/study|shudhana/ {print $2}'; }
+packages() { rpm -qa --qf '%{NAME}\n' | grep -E 'study|shudhana' | sort | tr '\n' ' '; }
 
 say "Fedora $(rpm -E %fedora), a user with a password prompt they can't see (sudo)"
 dnf -y -q install sqlite python3 sudo xorg-x11-server-Xvfb xvfb-run dbus-daemon --skip-unavailable >/dev/null
@@ -45,10 +46,10 @@ printf '\xff' | dd of="$FEED/tampered.rpm" bs=1 seek=$((size - 100)) conv=notrun
 cp "$ART/new.rpm.sig" "$FEED/tampered.rpm.sig"
 echo "Notes for $NEW." > /tmp/notes
 url=http://127.0.0.1:$PORT
-python3 "$HERE/../scripts/latest-json.py" "$NEW" "$FEED/new.rpm" "$url/new.rpm" /tmp/notes "$FEED/newer.json" >/dev/null
-python3 "$HERE/../scripts/latest-json.py" "$OLD" "$FEED/new.rpm" "$url/new.rpm" /tmp/notes "$FEED/same.json" >/dev/null
-python3 "$HERE/../scripts/latest-json.py" "0.0.1" "$FEED/new.rpm" "$url/new.rpm" /tmp/notes "$FEED/older.json" >/dev/null
-python3 "$HERE/../scripts/latest-json.py" "$NEW" "$FEED/tampered.rpm" "$url/tampered.rpm" /tmp/notes "$FEED/tampered.json" >/dev/null
+python3 "$HERE/../scripts/latest-json.py" "$NEW" /tmp/notes "$FEED/newer.json" "linux-x86_64-rpm=$FEED/new.rpm=$url/new.rpm" >/dev/null
+python3 "$HERE/../scripts/latest-json.py" "$OLD" /tmp/notes "$FEED/same.json" "linux-x86_64-rpm=$FEED/new.rpm=$url/new.rpm" >/dev/null
+python3 "$HERE/../scripts/latest-json.py" "0.0.1" /tmp/notes "$FEED/older.json" "linux-x86_64-rpm=$FEED/new.rpm=$url/new.rpm" >/dev/null
+python3 "$HERE/../scripts/latest-json.py" "$NEW" /tmp/notes "$FEED/tampered.json" "linux-x86_64-rpm=$FEED/tampered.rpm=$url/tampered.rpm" >/dev/null
 python3 -m http.server "$PORT" -d "$FEED" >/tmp/http.log 2>&1 &
 sleep 1
 
@@ -106,6 +107,9 @@ run "$url/newer.json"
 [ "$CODE" = 0 ] || { cat /tmp/run.log; fail "exit $CODE, expected 0"; }
 [ "$(version)" = "$NEW" ] || fail "installed $(version), expected $NEW"
 ok "updated $OLD -> $NEW"
+# A rename (study-app to shudhana) must replace the old package, not sit beside it.
+[ "$(rpm -qa --qf '%{NAME}\n' | grep -cE 'study|shudhana')" = 1 ] || fail "two copies installed: $(packages)"
+ok "one copy installed: $(packages)"
 
 kept=$(sudo -u chen sqlite3 "$DATA/study.sqlite" "SELECT count(*) FROM modules WHERE name = 'Kept through the update';")
 [ "$kept" = 1 ] || fail "the study data is gone"

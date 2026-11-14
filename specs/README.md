@@ -1,4 +1,4 @@
-# Study App MVP Specs
+# Shudhana Specs
 
 Behaviour specs in Gherkin for everything a user does in the MVP. Every scenario traces to an approved requirement below. Anything that couldn't be traced is listed under Open questions instead of being specified.
 
@@ -313,3 +313,53 @@ Decided with the design: keywords are checked in any order, every answer is righ
 | R166 | With Auto update on (the default), the app checks on open and downloads a newer release in the background, then says "Version X is ready" with Install now, and that it installs on close and the computer will ask for a password. On close it installs a downloaded update, or checks first if the last check was over an hour ago, showing "Installing the update" while it does |
 | R167 | Settings shows the installed version, an Auto update switch and Check for updates. A found update shows its version, its notes, the password note and an Update button. Being up to date, offline or a failed install each say so in plain words |
 | R168 | Before installing, the database is backed up (a "before update" backup). A package whose signature doesn't match the public key built into the app is refused and never installed. Being offline is quiet on open and close, and only shown when checking by hand. `study-app --update-now` does the same with no window (exit 0 installed, 3 nothing newer, 4 failed) for the end-to-end test |
+
+## Shudhana and Windows (approved 13 Nov 2026)
+
+| ID | Requirement |
+|---|---|
+| R169 | The app is called Shudhana everywhere it shows its name. Its internal ID stays com.arthurchenevans.studyapp so it keeps the same data folder, and its .rpm (now `shudhana`) obsoletes `study-app`, so an update from Study App replaces it rather than installing beside it. `.studyapp` files keep their extension |
+| R170 | Each release also builds a signed Windows installer (.exe) and publishes it beside the .rpm, with both in latest.json, so Windows copies update too. Only Linux installs mention a password |
+
+
+## Importing and exporting other files (approved 13 Nov 2026)
+
+| ID | Requirement |
+|---|---|
+| R171 | An Anki `.apkg` or `.colpkg`, old or new format, imports with its notes, images and maths. Each deck becomes a topic (a parent deck becomes its module), or goes into a topic already here, or is skipped. Card types that don't map cleanly (like Image Occlusion) are flagged "Check these". Sounds are left out and said so |
+| R172 | Importing from Anki can keep Anki's progress (when each card is due) or start fresh. Notes imported before are matched by their Anki ID and stay as they are |
+| R173 | Export writes an Anki `.apkg` that Anki opens: cards and cloze as Anki notes, images as media, maths as MathJax, and optionally quiz questions as cards and my progress |
+| R174 | A `.csv` or `.tsv` imports as questions or cards. Columns are matched by their names, each can be changed, and rows with problems are listed with why and left out |
+| R175 | JSON, Markdown checklists, and Moodle GIFT and Aiken files import and export. Exporting to them never includes history |
+| R176 | Every import shows what it will add before anything changes, and backs up first |
+| R177 | After an import a toast offers Undo, and Your data shows the last import with Undo. Undo puts everything back to the backup made just before. The last import is kept beside the backups, never in the data, so it never travels with an export or sync |
+| R178 | A file can be imported from the Import button, by dropping it anywhere on the window (except a card or question field, which takes images), or by opening a `.studyapp` with the app. A big import shows its progress and can be stopped, which adds nothing. A file it can't read says why and offers another |
+
+## Finding your place in a source (approved 13 Nov 2026)
+
+| ID | Requirement |
+|---|---|
+| R179 | The source preview has a table of contents: a PDF's bookmarks, an EPUB's own contents (or its chapter titles), each slide's title, or a Markdown file's headings. The entry for where you're reading is marked, and picking one goes there |
+| R180 | A box goes straight to a page, slide or line, and Ctrl+G jumps to it. PDF pages are drawn only as they come near the screen, so going to page 300 doesn't wait for the pages before it |
+| R181 | A citation with a page, slide or line has a button that shows that spot in the preview |
+| R182 | The first time, it asks which open file is that source and remembers the file's name on this computer. The file itself is never stored. When that file isn't open, it says which file to open, and opening it shows the spot |
+
+## Colour themes (approved 14 Nov 2026)
+
+| ID | Requirement |
+|---|---|
+| R183 | Nine colour themes, built in OKLCH: Mono, Coffee, Honey, Brick, Rose, Lavender, Ocean, Miku and Sage, each in light and dark. Coffee is the default. In every theme, mode and palette, text passes 4.5:1 (and APCA Lc 60 for body text, Lc 45 for muted and bold labels), fills pass 3:1, and colour-blind safe right and wrong stay apart under protanopia, deuteranopia and tritanopia |
+| R184 | Settings picks the colour theme. Each option previews itself in the current mode and palette, picking one applies it straight away, and the choice is remembered on this computer |
+
+## Editing and deleting everything you make (approved 14 Nov 2026)
+
+| ID | Requirement |
+|---|---|
+| R185 | Everything you make can be renamed or edited and deleted where it lives. Modules (from a labelled Module menu on Topics) and topics can be renamed, and a recall checklist on one takes the new name. Quiz questions can be deleted from the editor, and past quiz results keep their own copy. Recall checklists can be deleted from the Recall list. Projects can be renamed (name and kind) and deleted. Struggles can be edited and deleted. Issues can be renamed (not to a name another issue has) and deleted, with their drills. Drills can be edited (task and hints) and deleted. Every delete asks first and says what goes with it |
+| R186 | Every screen comes in with the same entrance, once, when you go to it. Nothing inside a screen adds a second entrance of its own |
+
+## Every platform (approved 14 Nov 2026)
+
+| ID | Requirement |
+|---|---|
+| R187 | Each release publishes an .rpm, a .deb, a Windows .exe and a macOS .dmg (one universal app for Apple silicon and Intel), and latest.json lists each, so installed copies update themselves whichever they came from. The Mac app isn't notarised, so the first open goes through Open Anyway |

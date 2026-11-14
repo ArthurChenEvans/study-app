@@ -1,10 +1,10 @@
 <script lang="ts">
   // toasts.feature (R155): calm notes about what just happened, bottom centre so they never
   // sit on the primary button. Errors are announced straight away and stay until closed.
-  import { CalendarDays, Check, CircleAlert, Copy, Download, Move, Plus, RefreshCw, Trash2, Undo2, X } from "@lucide/svelte";
+  import { CalendarDays, Check, CircleAlert, Copy, Download, FileOutput, Info, Move, Plus, RefreshCw, Trash2, Undo2, X } from "@lucide/svelte";
   import { calm, dismissToast, live, type ToastItem } from "../lib/celebrations.svelte";
 
-  const ICONS = { plus: Plus, check: Check, trash: Trash2, move: Move, calendar: CalendarDays, download: Download, refresh: RefreshCw, copy: Copy, alert: CircleAlert, undo: Undo2 };
+  const ICONS = { plus: Plus, check: Check, trash: Trash2, move: Move, calendar: CalendarDays, download: Download, refresh: RefreshCw, copy: Copy, alert: CircleAlert, undo: Undo2, info: Info, export: FileOutput };
   const quiet = $derived(calm());
   const normal = $derived(live.toasts.filter((item) => !item.error));
   const errors = $derived(live.toasts.filter((item) => item.error));

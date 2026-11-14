@@ -358,6 +358,15 @@ impl Store {
         self.projects()?.into_iter().find(|project| project.id == id).ok_or(StoreError::NotFound("project"))
     }
 
+    pub fn update_project(&mut self, id: ProjectId, name: &str, kind: &str) -> Result<()> {
+        if self.connection.execute("UPDATE projects SET name = ?2, kind = ?3 WHERE id = ?1 AND (name IS NOT ?2 OR kind IS NOT ?3)", params![id.0, name, kind])? == 0
+            && !self.connection.query_row("SELECT EXISTS (SELECT 1 FROM projects WHERE id = ?1)", [id.0], |row| row.get::<_, bool>(0))?
+        {
+            return Err(StoreError::NotFound("project"));
+        }
+        Ok(())
+    }
+
     pub fn delete_project(&mut self, id: ProjectId) -> Result<()> {
         if self.connection.execute("DELETE FROM projects WHERE id = ?1", [id.0])? == 0 {
             return Err(StoreError::NotFound("project"));
@@ -449,6 +458,13 @@ impl Store {
         Ok(())
     }
 
+    pub fn update_struggle(&mut self, id: StruggleId, what: &str, why: &str) -> Result<()> {
+        if self.connection.execute("UPDATE struggles SET what = ?2, why = ?3 WHERE id = ?1", params![id.0, what, why])? == 0 {
+            return Err(StoreError::NotFound("struggle"));
+        }
+        Ok(())
+    }
+
     pub fn delete_struggle(&mut self, id: StruggleId) -> Result<()> {
         if self.connection.execute("DELETE FROM struggles WHERE id = ?1", [id.0])? == 0 {
             return Err(StoreError::NotFound("struggle"));
@@ -498,6 +514,49 @@ impl Store {
     /// The issue's most recent drill (R91).
     pub fn latest_drill(&self, issue: IssueId) -> Result<Option<DrillRecord>> {
         Ok(self.drills()?.into_iter().filter(|drill| drill.issue == Some(issue)).max_by_key(|drill| drill.id.0))
+    }
+
+    pub fn update_drill(&mut self, id: DrillId, task: &str, hints: &str) -> Result<()> {
+        if self.connection.execute("UPDATE drills SET task = ?2, hints = ?3 WHERE id = ?1", params![id.0, task, hints])? == 0 {
+            return Err(StoreError::NotFound("drill"));
+        }
+        Ok(())
+    }
+
+    /// Its runs go with it. A struggle that made it keeps its outcome, with no drill to open.
+    pub fn delete_drill(&mut self, id: DrillId) -> Result<()> {
+        if self.connection.execute("DELETE FROM drills WHERE id = ?1", [id.0])? == 0 {
+            return Err(StoreError::NotFound("drill"));
+        }
+        Ok(())
+    }
+
+    /// The issue already using this name, ignoring case and spacing, if it isn't this one.
+    pub fn issue_name_taken(&self, id: IssueId, name: &str) -> Result<Option<String>> {
+        Ok(self
+            .connection
+            .query_row("SELECT name FROM issues WHERE key = ?1 AND id != ?2", params![issue_key(&issue_name(name)), id.0], |row| row.get(0))
+            .optional()?)
+    }
+
+    pub fn rename_issue(&mut self, id: IssueId, name: &str) -> Result<()> {
+        let name = issue_name(name);
+        if self.connection.execute("UPDATE issues SET name = ?2, key = ?3 WHERE id = ?1", params![id.0, name, issue_key(&name)])? == 0 {
+            return Err(StoreError::NotFound("issue"));
+        }
+        Ok(())
+    }
+
+    /// Its drills go with it (they're only reachable from the issue). Struggles that named it
+    /// keep going, without an issue.
+    pub fn delete_issue(&mut self, id: IssueId) -> Result<()> {
+        let tx = self.connection.transaction()?;
+        tx.execute("DELETE FROM drills WHERE issue_id = ?1", [id.0])?;
+        if tx.execute("DELETE FROM issues WHERE id = ?1", [id.0])? == 0 {
+            return Err(StoreError::NotFound("issue"));
+        }
+        tx.commit()?;
+        Ok(())
     }
 
     /// None ticks it off.

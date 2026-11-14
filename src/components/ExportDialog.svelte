@@ -1,10 +1,21 @@
 <script lang="ts">
   // transfer.feature (R112, R113). The dialog's goal: get the right things into one file.
   // Most important: what's going in, said in words before you press Export.
+  // import-export.feature (R173 to R176): the kind of file, from a .studyapp to Anki or Moodle.
   import { FileOutput } from "@lucide/svelte";
-  import { api, errorMessage, type ExportFile, type ExportSummary, type Id, type ModuleRow, type TopicRow } from "../lib/api";
-  import { toast } from "../lib/celebrations.svelte";
+  import { api, errorMessage, type ExportFile, type ExportFormat, type ExportSummary, type Id, type ModuleRow, type TopicRow } from "../lib/api";
   import { countList } from "../lib/transfer";
+
+  const FORMATS: { id: ExportFormat; name: string; file: string; for: string }[] = [
+    { id: "StudyApp", name: "Shudhana", file: ".studyapp", for: "Everything, to import here again or on another computer." },
+    { id: "Anki", name: "Anki deck", file: ".apkg", for: "Cards and cloze, with images and maths. Opens in Anki and AnkiDroid." },
+    { id: "QuestionsCsv", name: "Questions spreadsheet", file: ".csv", for: "Multiple choice and short answer questions, one per row." },
+    { id: "CardsCsv", name: "Cards spreadsheet", file: ".csv", for: "Front, back and cloze cards, one per row." },
+    { id: "Json", name: "JSON", file: ".json", for: "Questions, cards and checklists, for scripts and other apps." },
+    { id: "Markdown", name: "Markdown checklists", file: ".md", for: "Recall checklists as ticked lists. Opens in Obsidian or any notes app." },
+    { id: "Gift", name: "Moodle GIFT", file: ".txt", for: "Questions for a Moodle quiz, with feedback." },
+    { id: "Aiken", name: "Moodle Aiken", file: ".txt", for: "Single answer questions only, the simplest Moodle format." },
+  ];
 
   let { onClose, onDone }: { onClose: () => void; onDone: (file: ExportFile) => void } = $props();
 
@@ -16,6 +27,9 @@
   let modules = $state<ModuleRow[]>([]);
   let summary = $state<ExportSummary | null>(null);
   let busy = $state(false);
+  let format = $state<ExportFormat>("StudyApp");
+  let quizzesAsCards = $state(false);
+  const keepsHistory = $derived(format === "StudyApp" || format === "Anki");
   let error = $state("");
 
   Promise.all([api.topics(), api.modules()]).then(([allTopics, allModules]) => {
@@ -23,7 +37,13 @@
     modules = allModules;
   });
 
-  const request = $derived({ topics: everything ? null : [...ticked].sort((a, b) => a - b), history });
+  // A .studyapp request stays as it always was, so older versions read the same thing.
+  const request = $derived({
+    topics: everything ? null : [...ticked].sort((a, b) => a - b),
+    history: keepsHistory && history,
+    ...(format === "StudyApp" ? {} : { format }),
+    ...(format === "Anki" ? { quizzes_as_cards: quizzesAsCards } : {}),
+  });
   const ready = $derived(everything || ticked.length > 0);
 
   // Says what's going in whenever the choice changes.
@@ -61,9 +81,7 @@
     busy = true;
     error = "";
     try {
-      const file = await api.exportFile(request);
-      toast({ text: "Exported", icon: "download" });
-      onDone(file);
+      onDone(await api.exportFile(request));
     } catch (failure) {
       error = errorMessage(failure);
     } finally {
@@ -77,6 +95,13 @@
 <dialog open class="modal modal-open" aria-labelledby="export-h">
   <div class="modal-box max-w-xl">
     <h3 id="export-h" class="text-lg font-semibold">Export</h3>
+    <label class="mt-5 block">
+      <span class="text-sm font-semibold">Kind of file</span>
+      <select class="select mt-2 w-full" bind:value={format} aria-label="Kind of file">
+        {#each FORMATS as option (option.id)}<option value={option.id}>{option.name} ({option.file})</option>{/each}
+      </select>
+      <span class="mt-1 block text-sm text-muted">{FORMATS.find((option) => option.id === format)?.for}</span>
+    </label>
     <fieldset class="mt-5">
       <legend class="text-sm font-semibold">What to export</legend>
       <label class="mt-2 flex items-start gap-3"><input type="radio" name="export-what" class="radio mt-0.5" checked={everything} onchange={() => choose(true)} /><span><span class="block text-[15px]">Everything</span><span class="block text-sm text-muted">To move to another computer, or keep a copy somewhere else.</span></span></label>
@@ -107,7 +132,14 @@
       </div>
     {/if}
 
-    <label class="mt-5 flex items-start gap-3"><input type="checkbox" class="checkbox mt-0.5" bind:checked={history} /><span><span class="block text-sm font-semibold">Include my history</span><span class="block text-sm text-muted">{everything ? "Reviews, quiz results, recall checks, projects and schedules." : "Card reviews, recall checks and quiz steps. Leave it off when sharing, so your friend starts fresh."}</span></span></label>
+    {#if format === "Anki"}
+      <label class="mt-5 flex items-start gap-3"><input type="checkbox" class="checkbox mt-0.5" bind:checked={quizzesAsCards} /><span><span class="block text-sm font-semibold">Quiz questions as cards too</span><span class="block text-sm text-muted">Each question becomes a card with its answer on the back.</span></span></label>
+      <label class="mt-3 flex items-start gap-3"><input type="checkbox" class="checkbox mt-0.5" bind:checked={history} /><span><span class="block text-sm font-semibold">Keep my progress</span><span class="block text-sm text-muted">Cards keep when they're due. Leave it off when sharing, so your friend starts fresh.</span></span></label>
+    {:else if format === "StudyApp"}
+      <label class="mt-5 flex items-start gap-3"><input type="checkbox" class="checkbox mt-0.5" bind:checked={history} /><span><span class="block text-sm font-semibold">Include my history</span><span class="block text-sm text-muted">{everything ? "Reviews, quiz results, recall checks, projects and schedules." : "Card reviews, recall checks and quiz steps. Leave it off when sharing, so your friend starts fresh."}</span></span></label>
+    {:else}
+      <p class="mt-5 text-sm text-muted">Your history stays here. Only {format === "Markdown" ? "checklists" : format.includes("Cards") ? "cards" : format === "Json" ? "questions, cards and checklists" : "questions"} go in.</p>
+    {/if}
 
     <p class="mt-5 min-h-6 text-sm text-muted" aria-live="polite">
       {#if !ready}Tick the topics to share.{:else if summary}Saves {summary.name}: {countList(summary.counts)}.{/if}

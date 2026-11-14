@@ -11,7 +11,7 @@ export interface BigDetails { title: string; line: string; stats: Stat[]; score?
 export interface BigMoment extends BigDetails { id: number; kind: Big }
 export type PopIcon = "check" | "trophy" | "list" | "layers" | "flame" | "flag" | "sparkles";
 export interface PopItem { id: number; text: string; sub?: string; icon: PopIcon; step: number; burst: number }
-export type ToastIcon = "plus" | "check" | "trash" | "move" | "calendar" | "download" | "refresh" | "copy" | "alert" | "undo";
+export type ToastIcon = "plus" | "check" | "trash" | "move" | "calendar" | "download" | "refresh" | "copy" | "alert" | "undo" | "info" | "export";
 export interface ToastAction { label: string; run: () => void }
 export interface ToastOptions { text: string; sub?: string; icon?: ToastIcon; error?: boolean; action?: ToastAction; ms?: number; drain?: boolean }
 export interface ToastItem extends ToastOptions { id: number }

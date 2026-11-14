@@ -11,7 +11,7 @@ import { api, type UpdateInfo } from "./api";
 import { checkNow, getUpdate, installNow, setAuto, startUpdates, updates } from "./updates.svelte";
 
 const mocked = vi.mocked(api);
-const newer: UpdateInfo = { version: "0.1.5", current: "0.1.4", notes: "Week view on phones.", date: "2026-11-14", ready: false };
+const newer: UpdateInfo = { version: "0.1.5", current: "0.1.4", notes: "Week view on phones.", date: "2026-11-14", ready: false, asks_password: true };
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -32,6 +32,13 @@ describe("startUpdates", () => {
     expect(mocked.updateDownload).toHaveBeenCalled();
     expect(updates.status).toBe("ready");
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ text: "Version 0.1.5 is ready", sub: expect.stringContaining("password"), action: expect.objectContaining({ label: "Install now" }) }), true);
+  });
+
+  it("leaves the password out of the ready note where installing doesn't ask (Windows)", async () => {
+    mocked.updateCheck.mockResolvedValue({ ...newer, asks_password: false });
+    mocked.updateDownload.mockResolvedValue({ ...newer, asks_password: false, ready: true });
+    await startUpdates();
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ sub: "It installs when you close the app." }), true);
   });
 
   it("does nothing more when the installed version is the newest (same or older on the feed)", async () => {

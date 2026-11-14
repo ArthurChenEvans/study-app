@@ -50,7 +50,11 @@ pub struct UpdateInfo {
     pub notes: Option<String>,
     pub date: Option<String>,
     pub ready: bool,
+    /// Installing an .rpm needs admin rights, so Linux asks for a password. Windows doesn't.
+    pub asks_password: bool,
 }
+
+const ASKS_PASSWORD: bool = cfg!(target_os = "linux");
 
 fn failed(error: impl std::fmt::Display) -> ApiError {
     ApiError { message: error.to_string() }
@@ -63,6 +67,7 @@ fn info(pending: &Pending) -> UpdateInfo {
         notes: pending.update.body.clone().filter(|notes| !notes.trim().is_empty()),
         date: pending.update.date.map(|date| date.to_string()),
         ready: pending.bytes.is_some(),
+        asks_password: ASKS_PASSWORD,
     }
 }
 
@@ -146,7 +151,7 @@ pub fn on_close<R: Runtime>(app: &AppHandle<R>) -> bool {
     }
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
-        let _ = app.emit("updating-on-close", ());
+        let _ = app.emit("updating-on-close", ASKS_PASSWORD);
         if !ready {
             // Quietly give up when offline or nothing's new.
             let found = matches!(check(&app).await, Ok(Some(_)));

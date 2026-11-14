@@ -238,6 +238,8 @@ export const api = {
   modules: () => invoke<ModuleRow[]>("modules"),
   createModule: (name: string) => invoke<Id>("create_module", { name }),
   deleteModule: (module: Id) => invoke<void>("delete_module", { module }),
+  renameModule: (module: Id, name: string) => invoke<void>("rename_module", { module, name }),
+  renameTopic: (topic: Id, name: string) => invoke<void>("rename_topic", { topic, name }),
   topics: () => invoke<TopicRow[]>("topics"),
   createTopic: (name: string, module: Id | null) => invoke<Id>("create_topic", { name, module }),
   moveTopic: (topic: Id, module: Id | null) => invoke<void>("move_topic", { topic, module }),
@@ -319,11 +321,17 @@ export const api = {
   projects: () => invoke<ProjectRow[]>("projects"),
   createProject: (name: string, kind: string) => invoke<Id>("create_project", { name, kind }),
   deleteProject: (id: Id) => invoke<void>("delete_project", { id }),
+  updateProject: (id: Id, name: string, kind: string) => invoke<void>("update_project", { id, name, kind }),
   project: (id: Id) => invoke<ProjectView>("project", { id }),
   startProjectSession: (project: Id) => invoke<ProjectView>("start_project_session", { project }),
   endProjectSession: (project: Id) => invoke<Id>("end_project_session", { project }),
   logStruggle: (project: Id, input: StruggleInput) => invoke<StruggleView>("log_struggle", { project, input }),
   deleteStruggle: (id: Id) => invoke<void>("delete_struggle", { id }),
+  updateStruggle: (id: Id, what: string, why: string) => invoke<void>("update_struggle", { id, what, why }),
+  renameIssue: (id: Id, name: string) => invoke<void>("rename_issue", { id, name }),
+  deleteIssue: (id: Id) => invoke<void>("delete_issue", { id }),
+  updateDrill: (id: Id, task: string, hints: string) => invoke<void>("update_drill", { id, task, hints }),
+  deleteDrill: (id: Id) => invoke<void>("delete_drill", { id }),
   strugglesToReview: (project: Id) => invoke<StruggleView[]>("struggles_to_review", { project }),
   reviewStruggle: (id: Id, choice: ReviewChoice) => invoke<StruggleView>("review_struggle", { id, choice }),
   issues: () => invoke<IssueView[]>("issues"),
@@ -370,6 +378,16 @@ export const api = {
   importPreview: async (file: Blob, name: string) => invoke<ImportPreview>("import_preview", { name, data: await toBase64(file) }),
   importApply: (choice: ImportChoice) => invoke<ImportResult>("import_apply", { choice }),
   cancelImport: () => invoke<void>("cancel_import"),
+  ankiPreview: async (file: Blob, name: string) => invoke<AnkiPreview>("anki_preview", { name, data: await toBase64(file) }),
+  ankiApply: (choice: AnkiChoice) => invoke<ImportResult>("anki_apply", { choice }),
+  itemsPreview: async (file: Blob, name: string, mapping: CsvMapping | null = null) => invoke<ItemsPreview>("items_preview", { name, data: await toBase64(file), mapping }),
+  itemsApply: (choice: ItemsChoice) => invoke<ImportResult>("items_apply", { choice }),
+  stopImport: () => invoke<void>("stop_import"),
+  lastImport: () => invoke<LastImport | null>("last_import"),
+  undoLastImport: () => invoke<BackupInfo>("undo_last_import"),
+  showInFolder: (path: string) => invoke<void>("show_in_folder", { path }),
+  readFileAt: (path: string) => invoke<PickedFile>("read_file_at", { path }),
+  takeOpenedFile: () => invoke<string | null>("take_opened_file"),
   // Sync (R119 to R128)
   syncStatus: () => invoke<SyncStatus>("sync_status"),
   syncNow: (auto: boolean) => invoke<SyncResult>("sync_now", { auto }),
@@ -404,7 +422,8 @@ export interface Undone { count: number; one: string; many: string }
 export interface RestorePreview { backup: BackupInfo; undone: Undone[]; older: boolean }
 
 // ---------- Export and import (R112 to R118) ----------
-export interface ExportRequest { topics: Id[] | null; history: boolean }
+export type ExportFormat = "StudyApp" | "Anki" | "QuestionsCsv" | "CardsCsv" | "Json" | "Markdown" | "Gift" | "Aiken";
+export interface ExportRequest { topics: Id[] | null; history: boolean; format?: ExportFormat; quizzes_as_cards?: boolean }
 export interface Count { what: string; count: number }
 export interface ExportSummary { name: string; counts: Count[] }
 export interface ExportFile { name: string; path: string | null; data: string | null }
@@ -415,6 +434,24 @@ export interface ImportPreview { file_name: string; everything: boolean; history
 export interface ImportChoice { rule: ClashRule; theirs: string[] }
 export interface ImportResult { added: Count[]; replaced: number; backup: BackupInfo | null }
 
+// ---------- Anki, spreadsheets and the rest (R171 to R178) ----------
+export type Target = { kind: "NewTopic"; name: string; module: string | null } | { kind: "Topic"; topic: Id } | { kind: "Skip" };
+export interface DeckRow { name: string; notes: number; target: Target }
+export interface TypeRow { name: string; notes: number; becomes: string; check: boolean }
+export interface AnkiPreview { file_name: string; notes: number; decks: DeckRow[]; types: TypeRow[]; images: number; sounds: number; has_progress: boolean; already_here: number }
+export interface AnkiChoice { decks: [string, Target][]; keep_progress: boolean }
+export type CsvKind = "Mcq" | "Short" | "Card";
+export type CsvRole = "Question" | "Option" | "Correct" | "Explanation" | "Type" | "ModelAnswer" | "Keywords" | "Front" | "Back" | "Text" | "Extra" | "CardKind" | "Topic" | "Module" | "Tags" | "Ignore";
+export interface CsvMapping { kind: CsvKind; header: boolean; roles: CsvRole[] }
+export interface CsvInfo extends CsvMapping { columns: string[]; sample: string[][]; total_rows: number }
+export interface Problem { at: string; text: string; why: string }
+export interface ItemsTopicRow { key: string; name: string; module: string | null; questions: number; cards: number; checklists: number; target: Target }
+export interface ItemsPreview { file_name: string; format: "csv" | "json" | "markdown" | "gift" | "aiken"; csv: CsvInfo | null; topics: ItemsTopicRow[]; problems: Problem[]; ready: number; already_here: number }
+export interface ItemsChoice { targets: [string, Target][] }
+export interface LastImport { file_name: string; day: number; minute: number; summary: string; backup: string }
+export interface ImportProgress { what: string; done: number; total: number }
+export interface PickedFile { name: string; data: string }
+
 // ---------- Sync (R119 to R128) ----------
 export interface SyncSetup { folder: string; name: string }
 export interface SyncDevice { id: string; name: string; this_one: boolean; last_seen: number | null; waiting: number; newer_app: boolean }
@@ -423,4 +460,4 @@ export interface SyncResult { sent: number; received: number; deferred: boolean;
 export interface ToCheck { n: number; record: string; what: string; label: string; context: string | null; field: string; deleted: boolean; kept: string | null; other: string | null; kept_by: string; kept_when: number; other_by: string; other_when: number }
 
 // ---------- Updates (R165 to R168) ----------
-export interface UpdateInfo { version: string; current: string; notes: string | null; date: string | null; ready: boolean }
+export interface UpdateInfo { version: string; current: string; notes: string | null; date: string | null; ready: boolean; /** Linux installs ask for a password, Windows ones don't. */ asks_password: boolean }

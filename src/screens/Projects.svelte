@@ -4,6 +4,8 @@
   import { Box, Clock, Code, Dumbbell, FileUp, Hammer, Play, Plus } from "@lucide/svelte";
   import { api, errorMessage, type Id, type IssueView, type ProjectRow } from "../lib/api";
   import { toast } from "../lib/celebrations.svelte";
+  import RowMenu from "../components/RowMenu.svelte";
+  import RenameDialog from "../components/RenameDialog.svelte";
   import PageHeader from "../components/PageHeader.svelte";
   import { dayLabel, dueLabel, pastOn } from "../lib/dates";
 
@@ -23,6 +25,61 @@
   let issueQuery = $state("");
   let issueFilter = $state<"all" | "due" | "drilling" | "solid" | "none">("all");
   const KINDS = ["Coding", "Blender", "Past paper", "Writing"];
+
+  // R185: editing and deleting an issue and its drill
+  let editingDrill = $state<IssueView | null>(null);
+  let renamingIssue = $state<IssueView | null>(null);
+  let deletingDrill = $state<IssueView | null>(null);
+  let deletingIssue = $state<IssueView | null>(null);
+
+  const issueMenu = (issue: IssueView) => [
+    ...(issue.drill ? [{ label: "Edit drill…", onSelect: () => (editingDrill = issue) }] : []),
+    { label: "Rename issue…", onSelect: () => (renamingIssue = issue) },
+    ...(issue.drill ? [{ label: "Delete drill…", danger: true, onSelect: () => (deletingDrill = issue) }] : []),
+    { label: "Delete issue…", danger: true, onSelect: () => (deletingIssue = issue) },
+  ];
+
+  async function saveDrill(task: string, hints: string) {
+    if (!editingDrill?.drill) return;
+    await api.updateDrill(editingDrill.drill.id, task, hints);
+    editingDrill = null;
+    toast({ text: "Drill saved", sub: task, icon: "check" });
+    await load();
+  }
+
+  async function saveIssue(name: string) {
+    if (!renamingIssue) return;
+    await api.renameIssue(renamingIssue.id, name);
+    renamingIssue = null;
+    toast({ text: "Issue renamed", sub: name, icon: "check" });
+    await load();
+  }
+
+  async function removeDrill() {
+    const drillId = deletingDrill?.drill?.id;
+    deletingDrill = null;
+    if (drillId === undefined) return;
+    try {
+      await api.deleteDrill(drillId);
+      toast({ text: "Drill deleted", icon: "trash" });
+      await load();
+    } catch (failure) {
+      toast({ text: "Couldn't delete the drill", sub: errorMessage(failure), icon: "alert", error: true });
+    }
+  }
+
+  async function removeIssue() {
+    if (!deletingIssue) return;
+    const { id: issueId, name } = deletingIssue;
+    deletingIssue = null;
+    try {
+      await api.deleteIssue(issueId);
+      toast({ text: "Issue deleted", sub: name, icon: "trash" });
+      await load();
+    } catch (failure) {
+      toast({ text: "Couldn't delete the issue", sub: errorMessage(failure), icon: "alert", error: true });
+    }
+  }
 
   async function load() {
     [projects, issues, today] = await Promise.all([api.projects(), api.issues(), api.today()]);
@@ -148,7 +205,7 @@
         {/if}
         <div class="panel overflow-hidden">
           <table class="table" aria-label="Issues" use:stackTable>
-            <thead><tr class="text-muted"><th>Issue</th><th aria-sort="descending">Seen</th><th>Last seen</th><th>Drill</th></tr></thead>
+            <thead><tr class="text-muted"><th>Issue</th><th aria-sort="descending">Seen</th><th>Last seen</th><th>Drill</th><th><span class="sr-only">Actions</span></th></tr></thead>
             <tbody>
               {#each shownIssues as issue (issue.id)}
                 <tr class="hover:bg-base-100">
@@ -160,6 +217,7 @@
                       <span class="flex items-center gap-3"><span class="flex items-center gap-1.5 font-semibold"><span class="due-dot" aria-hidden="true"></span>{drillState(issue)}</span><button class="btn btn-outline btn-sm" aria-label="Do the drill for {issue.name}" onclick={() => onDrills([issue.drill!.id])}>Do drill</button></span>
                     {:else}<span class={issue.drill ? "" : "text-muted"}>{drillState(issue)}</span>{/if}
                   </td>
+                  <td class="w-14 text-right"><RowMenu small label="{issue.name} actions" items={issueMenu(issue)} /></td>
                 </tr>
               {/each}
             </tbody>
@@ -198,5 +256,39 @@
         <button type="submit" class="btn btn-primary">Create project</button>
       </div>
     </form>
+  </dialog>
+{/if}
+
+{#if editingDrill?.drill}
+  <RenameDialog title="Edit drill" label="Task" value={editingDrill.drill.task} extra={{ label: "Hints", value: editingDrill.drill.hints, placeholder: "Optional, shown if you get stuck" }} onSave={saveDrill} onClose={() => (editingDrill = null)} />
+{/if}
+
+{#if renamingIssue}
+  <RenameDialog title="Rename issue" value={renamingIssue.name} onSave={saveIssue} onClose={() => (renamingIssue = null)} />
+{/if}
+
+{#if deletingDrill}
+  <dialog open class="modal modal-open" aria-labelledby="delete-drill-h">
+    <div class="modal-box max-w-md">
+      <h3 id="delete-drill-h" class="text-lg font-semibold">Delete this drill?</h3>
+      <p class="mt-2 text-sm">"{deletingDrill.drill?.task}" and its past runs go. The issue stays, so a later review can make a new drill.</p>
+      <div class="modal-action">
+        <button class="btn btn-ghost" onclick={() => (deletingDrill = null)}>Keep it</button>
+        <button class="btn btn-error" onclick={removeDrill}>Delete drill</button>
+      </div>
+    </div>
+  </dialog>
+{/if}
+
+{#if deletingIssue}
+  <dialog open class="modal modal-open" aria-labelledby="delete-issue-h">
+    <div class="modal-box max-w-md">
+      <h3 id="delete-issue-h" class="text-lg font-semibold">Delete the issue {deletingIssue.name}?</h3>
+      <p class="mt-2 text-sm">Struggles that named it keep going, without an issue.{deletingIssue.drill ? " Its drill and the drill's past runs go too." : ""}</p>
+      <div class="modal-action">
+        <button class="btn btn-ghost" onclick={() => (deletingIssue = null)}>Keep it</button>
+        <button class="btn btn-error" onclick={removeIssue}>Delete issue</button>
+      </div>
+    </div>
   </dialog>
 {/if}

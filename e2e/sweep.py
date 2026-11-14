@@ -108,7 +108,7 @@ axe.run(scope, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a'
 
 WIDTHS = {"desk": (1440, 900), "tablet": (1000, 800), "phone": (390, 844)}
 THEMES = ["studyapp-dark", "studyapp"]
-SCREENS = ["overview", "calendar", "topics", "cards", "recall", "projects", "bibliography", "history", "search", "setup", "data", "settings"]
+SCREENS = os.environ["SCREENS"].split(",") if os.environ.get("SCREENS") else ["overview", "calendar", "topics", "cards", "recall", "projects", "bibliography", "history", "search", "setup", "data", "settings"]
 LONG_TOPIC = "Instruction-level parallelism, superscalar pipelines and out-of-order execution in modern CPUs"
 LONG_MODULE = "Computer Systems Architecture and Operating Systems Fundamentals (Year 2)"
 
@@ -208,14 +208,23 @@ STATES = {
     # screen: [(state, action)] where the action opens that state from the screen's normal view
     "topics": [("picked", "//table[@aria-label='Topics']//tbody//tr[1]//button"),
                ("dialog", "//button[contains(normalize-space(), 'New topic')]"),
-               ("error", "NEW_TOPIC_EMPTY")],
+               ("error", "NEW_TOPIC_EMPTY"),
+               ("module-menu", "MODULE_MENU"),
+               ("rename", "RENAME_TOPIC")],
     "bibliography": [("picked", "//table//tbody//tr[1]//button"), ("dialog", "//button[contains(normalize-space(), 'Add a source') or contains(normalize-space(), 'Add source')]")],
     "calendar": [("week", "//button[@role='radio' and normalize-space()='Week']"), ("dialog", "//button[contains(normalize-space(), 'Add a date')]"), ("day", "TODAY_CELL")],
-    "recall": [("dialog", "//button[contains(normalize-space(), 'New checklist')]")],
+    "recall": [("dialog", "//button[contains(normalize-space(), 'New checklist')]"),
+               ("delete", "RECALL_DELETE")],
     "projects": [("dialog", "//button[contains(normalize-space(), 'New project')]")],
     "settings": [("dialog", "//button[contains(normalize-space(), 'Celebrations')]")],
     "overview": [("table", "//details[contains(@class,'table-view')]/summary")],
     "history": [("table", "//details[contains(@class,'table-view')]/summary")],
+    "data": [("export", "//button[contains(normalize-space(), 'Export')]"),
+             ("export-anki", "EXPORT_ANKI"),
+             ("import-anki", "UPLOAD:crates/study-api/tests/fixtures/anki/networks-modern.apkg"),
+             ("import-csv", "UPLOAD:e2e/fixtures/cpu-questions.csv"),
+             ("import-problems", "CSV_PROBLEMS"),
+             ("import-unreadable", "UPLOAD:e2e/fixtures/lecture-notes.zip")],
     "cards": [("table", "//details[contains(@class,'table-view')]/summary"), ("dialog", "//button[contains(normalize-space(), 'Settings') or contains(normalize-space(), 'Card settings')]")],
 }
 
@@ -227,6 +236,40 @@ def run_state(driver, screen: str, state: str, action: str) -> bool:
         return click(driver, "//dialog[@open]//button[@type='submit']")
     if action == "TODAY_CELL":
         return click(driver, "//*[@role='grid']//button[@aria-current='date'] | //ol[contains(@aria-label, 'Week of')]//button[@aria-current='date']")
+    if action.startswith("UPLOAD:"):
+        # WebKitWebDriver can't upload files, so the page is handed one built from its bytes.
+        import base64
+        path = root / action[7:]
+        driver.execute_script(
+            "const [name, data] = arguments; const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));"
+            "const input = document.querySelector(\"input[aria-label='Import a file']\"); const list = new DataTransfer();"
+            "list.items.add(new File([bytes], name)); input.files = list.files; input.dispatchEvent(new Event('change', { bubbles: true }));",
+            path.name, base64.b64encode(path.read_bytes()).decode())
+        settle(driver, 1.5)
+        return bool(driver.find_elements(By.CSS_SELECTOR, "dialog[open]"))
+    if action == "MODULE_MENU":
+        # The first module in the rail, then its labelled Module menu (R185).
+        if not click(driver, "//nav//button[@aria-pressed][2] | //aside//button[@aria-pressed][2]"):
+            return False
+        return click(driver, "//button[contains(@aria-label, 'module actions')]")
+    if action == "RENAME_TOPIC":
+        if not click(driver, "//table[@aria-label='Topics']//tbody//tr[1]//button"):
+            return False
+        return click(driver, "//button[starts-with(@aria-label, 'Rename ')]")
+    if action == "RECALL_DELETE":
+        if not click(driver, "(//button[contains(@aria-label, ' actions')])[1]"):
+            return False
+        return click(driver, "//*[@role='menuitem'][contains(., 'Delete checklist')]")
+    if action == "EXPORT_ANKI":
+        if not click(driver, "//button[contains(normalize-space(), 'Export')]"):
+            return False
+        driver.execute_script("const s = document.querySelector('dialog[open] select[aria-label=\"Kind of file\"]'); s.value = 'Anki'; s.dispatchEvent(new Event('change', { bubbles: true }));")
+        settle(driver, 0.6)
+        return True
+    if action == "CSV_PROBLEMS":
+        if not run_state(driver, screen, state, "UPLOAD:e2e/fixtures/cpu-questions.csv"):
+            return False
+        return click(driver, "//dialog[@open]//button[normalize-space()='See which']")
     return click(driver, action)
 
 

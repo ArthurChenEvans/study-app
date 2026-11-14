@@ -301,7 +301,7 @@ impl Backups {
         Ok(BackupInfo { name, day: clock.day, minute: clock.minute, reason, bytes })
     }
 
-    fn find(&self, name: &str) -> ApiResult<BackupInfo> {
+    pub(crate) fn find(&self, name: &str) -> ApiResult<BackupInfo> {
         self.list().into_iter().find(|backup| backup.name == name).ok_or_else(|| ApiError::new("that backup isn't there any more"))
     }
 
@@ -348,7 +348,7 @@ impl App {
         self.backups = Some(Backups::new(dir));
     }
 
-    fn backups_folder(&self) -> ApiResult<&Backups> {
+    pub(crate) fn backups_folder(&self) -> ApiResult<&Backups> {
         self.backups.as_ref().ok_or_else(|| ApiError::new("backups aren't set up in this version of the app"))
     }
 

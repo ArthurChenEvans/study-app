@@ -18,6 +18,8 @@ vi.mock("../lib/api", async (original) => {
       createModule: vi.fn(),
       deleteTopic: vi.fn(),
       deleteModule: vi.fn(),
+      renameModule: vi.fn(),
+      renameTopic: vi.fn(),
       setTopicTags: vi.fn(),
       moveTopic: vi.fn(),
       quizQueue: vi.fn().mockResolvedValue({ daily: 5, today: [], waiting: [], clears_by: null, next_four_weeks: 0 }),
@@ -138,7 +140,9 @@ describe("Topics screen", () => {
     const u = userEvent.setup();
     render(Topics);
     await u.click(await screen.findByRole("button", { name: /^Computer Architecture/ }));
-    await u.click(screen.getByRole("button", { name: "Computer Architecture module actions" }));
+    const menu = screen.getByRole("button", { name: "Computer Architecture module actions" });
+    expect(menu).toHaveTextContent("Module");
+    await u.click(menu);
     await u.click(screen.getByRole("menuitem", { name: "Delete module…" }));
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveTextContent('moved to "No module"');

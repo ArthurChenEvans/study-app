@@ -20,7 +20,7 @@ fn seeded() -> App {
 }
 
 fn everything() -> ExportRequest {
-    ExportRequest { topics: None, history: true }
+    ExportRequest { topics: None, history: true, ..Default::default() }
 }
 
 fn topic_named(app: &App, name: &str) -> TopicId {
@@ -66,7 +66,7 @@ fn everything_comes_back_the_same_in_a_database_that_already_has_other_things() 
     let quiz_mistake = original.card_suggestions(TODAY).unwrap().into_iter().find(|suggestion| suggestion.key.starts_with("quiz:")).expect("a quiz mistake to dismiss");
     original.dismiss_suggestion(&quiz_mistake.key).unwrap();
     let (name, file) = original.export(&everything(), TODAY).unwrap();
-    assert_eq!(name, "Study App 2026-11-04.studyapp");
+    assert_eq!(name, "Shudhana 2026-11-04.studyapp");
 
     // Something here first, so every row number the file's records get is different.
     let mut other = App::with_seed(Store::in_memory().unwrap(), 4);
@@ -142,7 +142,7 @@ fn importing_the_same_file_twice_adds_nothing_the_second_time() {
 fn sharing_topics_takes_their_questions_cards_checklists_and_sources_but_not_history() {
     let original = seeded();
     let osi = topic_named(&original, "OSI model");
-    let request = ExportRequest { topics: Some(vec![osi]), history: false };
+    let request = ExportRequest { topics: Some(vec![osi]), history: false, ..Default::default() };
     let summary = original.export_summary(&request, TODAY).unwrap();
     assert_eq!(summary.name, "OSI model.studyapp");
     let (_, file) = original.export(&request, TODAY).unwrap();
@@ -172,7 +172,7 @@ fn sharing_topics_takes_their_questions_cards_checklists_and_sources_but_not_his
 fn a_newer_version_of_a_shared_topic_updates_it_instead_of_copying_and_clashes_are_settled_as_chosen() {
     let mut original = seeded();
     let osi = topic_named(&original, "OSI model");
-    let share = ExportRequest { topics: Some(vec![osi]), history: false };
+    let share = ExportRequest { topics: Some(vec![osi]), history: false, ..Default::default() };
     let (_, first) = original.export(&share, TODAY).unwrap();
     let mut friend = App::with_seed(Store::in_memory().unwrap(), 5);
     import(&mut friend, &first, ClashRule::KeepMine);
@@ -209,7 +209,7 @@ fn a_newer_version_of_a_shared_topic_updates_it_instead_of_copying_and_clashes_a
 fn whichever_changed_last_wins_with_the_newer_rule() {
     let mut original = seeded();
     let osi = topic_named(&original, "OSI model");
-    let share = ExportRequest { topics: Some(vec![osi]), history: false };
+    let share = ExportRequest { topics: Some(vec![osi]), history: false, ..Default::default() };
     let (_, first) = original.export(&share, TODAY).unwrap();
     let mut friend = App::with_seed(Store::in_memory().unwrap(), 5);
     import(&mut friend, &first, ClashRule::KeepMine);
@@ -278,7 +278,7 @@ fn images_travel_with_the_questions_and_point_at_the_right_image_after() {
             short: None,
         })
         .unwrap();
-    let (_, file) = original.export(&ExportRequest { topics: Some(vec![topic]), history: false }, TODAY).unwrap();
+    let (_, file) = original.export(&ExportRequest { topics: Some(vec![topic]), history: false, ..Default::default() }, TODAY).unwrap();
     let (_, snapshot) = unpack(&file).unwrap();
     assert_eq!(snapshot.images.len(), 1, "only the image that's used");
     assert!(snapshot.questions[0].text.contains(&format!("image:{}", snapshot.images[0].uid)));
@@ -298,7 +298,7 @@ fn an_import_backs_up_first_and_a_bad_file_changes_nothing() {
     let dir = std::env::temp_dir().join(format!("study-transfer-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     let original = seeded();
-    let (_, file) = original.export(&ExportRequest { topics: Some(vec![topic_named(&original, "OSI model")]), history: false }, TODAY).unwrap();
+    let (_, file) = original.export(&ExportRequest { topics: Some(vec![topic_named(&original, "OSI model")]), history: false, ..Default::default() }, TODAY).unwrap();
     let mut friend = App::with_seed(Store::in_memory().unwrap(), 5);
     friend.set_backups(dir.join("backups"));
     friend.create_topic("Mine", None).unwrap();
@@ -387,7 +387,7 @@ fn keeping_my_version_of_a_note_keeps_my_cards_too() {
     let topic = original.create_topic("Caches", None).unwrap();
     let cloze = |text: &str| NoteInput { note: Note { topic, kind: NoteKind::Cloze, front: String::new(), back: String::new(), cues: vec![], text: text.into(), extra: String::new() }, suggestion: None };
     let note = original.save_note(None, cloze("L1 takes {{c1::4}} cycles"), TODAY).unwrap();
-    let share = ExportRequest { topics: Some(vec![topic]), history: false };
+    let share = ExportRequest { topics: Some(vec![topic]), history: false, ..Default::default() };
     let (_, first) = original.export(&share, TODAY).unwrap();
     let mut friend = App::with_seed(Store::in_memory().unwrap(), 7);
     import(&mut friend, &first, ClashRule::KeepMine);

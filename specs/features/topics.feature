@@ -45,3 +45,11 @@ Feature: Organise topics into modules and tags
     When I delete "CPU" and confirm
     Then "CPU" no longer appears in my topics
     And the attempt in history still shows the "CPU" questions as they were
+
+  Scenario: Renaming a module or a topic (R185)
+    Given the module "Computer Architecture" with the topic "CPU"
+    When I pick the module in the rail and choose Module, then Rename module…
+    And I call it "Architecture"
+    Then the rail and its recall checklist both say "Architecture"
+    When I pick CPU and choose Rename
+    Then I can give it a new name, and an empty name says why it can't be saved

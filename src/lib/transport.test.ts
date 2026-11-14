@@ -40,6 +40,6 @@ describe("transport", () => {
     expect(new Uint8Array(await invoke<ArrayBuffer>("image", { id: 1 }))).toEqual(new Uint8Array([37, 80]));
     await expect(invoke("create_topic")).rejects.toEqual({ message: "a topic needs a name" });
     await expect(invoke("topics")).rejects.toEqual({ message: "the server said 502" });
-    await expect(invoke("topics")).rejects.toEqual({ message: "couldn't reach the Study App server, check it's running" });
+    await expect(invoke("topics")).rejects.toEqual({ message: "couldn't reach the Shudhana server, check it's running" });
   });
 });

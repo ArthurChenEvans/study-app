@@ -1,4 +1,4 @@
-# Study App Design Rules
+# Shudhana Design Rules
 
 The rules every screen follows. Since 12 Nov 2026 the look is the playful one from `design/playful-redesign/` (chunky, game-like). Since 13 Nov 2026 the colours are Rust's, from the Rust Foundation brand guide, since the app is built in Rust. Built from Refactoring UI, Nielsen's 10 usability heuristics, Laws of UX, WCAG 2.2 and Butterick's Practical Typography. When a rule and a "looks nice" instinct disagree, the rule wins until the rule is changed here.
 

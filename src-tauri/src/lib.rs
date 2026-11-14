@@ -7,7 +7,7 @@ mod clipboard;
 mod updates;
 
 use chrono::{Local, NaiveDate};
-use tauri::{Manager, State};
+use tauri::{Emitter, Manager, State};
 
 use study_api::{
     AnswerResult, ApiError, ApiResult, App, QuestionInput, QuizSetupInput, QuizView, ResultsView,
@@ -29,7 +29,7 @@ use study_store::dates::DateId;
 use study_api::transfer::{ExportFile, ExportRequest, ExportSummary, ImportChoice, ImportPreview, ImportResult};
 use study_api::practice::{DrillView, IssueView, ProjectRow, ProjectView, QuizQueue, ReviewChoice, StruggleInput, StruggleView, TopicQuizView};
 use study_core::practice::DrillRating;
-use study_store::practice::{DrillId, ProjectId, SessionId, StruggleId};
+use study_store::practice::{DrillId, IssueId, ProjectId, SessionId, StruggleId};
 use study_store::recall::{ChecklistId, Point, Subject};
 use study_store::search::{Hit, SearchQuery};
 use study_store::{AttemptId, HistoryRow, ModuleId, ModuleRow, SourceRow, Store, TopicRow};
@@ -192,6 +192,18 @@ fn update_source(state: AppState, id: SourceId, fields: SourceFields) -> ApiResu
 #[tauri::command]
 fn delete_source(state: AppState, id: SourceId) -> ApiResult<usize> {
     with(state, |app| app.delete_source(id))
+}
+#[tauri::command]
+fn rename_module(state: AppState, module: ModuleId, name: String) -> ApiResult<()> {
+    with(state, |app| app.rename_module(module, &name))
+}
+#[tauri::command]
+fn rename_topic(state: AppState, topic: TopicId, name: String) -> ApiResult<()> {
+    with(state, |app| app.rename_topic(topic, &name))
+}
+#[tauri::command]
+fn update_project(state: AppState, id: ProjectId, name: String, kind: String) -> ApiResult<()> {
+    with(state, |app| app.update_project(id, &name, &kind))
 }
 #[tauri::command]
 fn delete_module(state: AppState, module: ModuleId) -> ApiResult<()> {
@@ -454,6 +466,26 @@ fn delete_struggle(state: AppState, id: StruggleId) -> ApiResult<()> {
     with(state, |app| app.delete_struggle(id))
 }
 #[tauri::command]
+fn update_struggle(state: AppState, id: StruggleId, what: String, why: String) -> ApiResult<()> {
+    with(state, |app| app.update_struggle(id, &what, &why))
+}
+#[tauri::command]
+fn rename_issue(state: AppState, id: IssueId, name: String) -> ApiResult<()> {
+    with(state, |app| app.rename_issue(id, &name))
+}
+#[tauri::command]
+fn delete_issue(state: AppState, id: IssueId) -> ApiResult<()> {
+    with(state, |app| app.delete_issue(id))
+}
+#[tauri::command]
+fn update_drill(state: AppState, id: DrillId, task: String, hints: String) -> ApiResult<()> {
+    with(state, |app| app.update_drill(id, &task, &hints))
+}
+#[tauri::command]
+fn delete_drill(state: AppState, id: DrillId) -> ApiResult<()> {
+    with(state, |app| app.delete_drill(id))
+}
+#[tauri::command]
 fn struggles_to_review(state: AppState, project: ProjectId) -> ApiResult<Vec<StruggleView>> {
     with(state, |app| app.struggles_to_review(project))
 }
@@ -630,6 +662,105 @@ fn cancel_import(state: AppState) -> ApiResult<()> {
         Ok(())
     })
 }
+// ---------- import-export.feature: Anki, spreadsheets and the rest (R171 to R178) ----------
+
+fn decoded(data: &str) -> ApiResult<Vec<u8>> {
+    use base64::Engine;
+    base64::engine::general_purpose::STANDARD.decode(data).map_err(|_| ApiError { message: "that file couldn't be read, try picking it again".into() })
+}
+
+/// Set while an import runs, so Stop can reach it without waiting for the app.
+#[derive(Default)]
+struct ImportStop(std::sync::Arc<std::sync::atomic::AtomicBool>);
+
+/// A long import runs off the window's thread, telling the window how it's going.
+async fn importing<T: Send + 'static>(handle: tauri::AppHandle, work: impl FnOnce(&mut App) -> ApiResult<T> + Send + 'static) -> ApiResult<T> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let stop = handle.state::<ImportStop>().0.clone();
+        stop.store(false, std::sync::atomic::Ordering::SeqCst);
+        let state = handle.state::<Mutex<App>>();
+        let mut app = study_api::locked(&state);
+        let reporter = handle.clone();
+        app.set_progress(Some(study_api::Progress {
+            report: std::sync::Arc::new(move |what: &str, done, total| {
+                let _ = reporter.emit("import-progress", serde_json::json!({ "what": what, "done": done, "total": total }));
+            }),
+            stop,
+        }));
+        let result = work(&mut app);
+        app.set_progress(None);
+        result
+    })
+    .await
+    .map_err(|error| ApiError { message: format!("the import stopped unexpectedly: {error}") })?
+}
+
+#[tauri::command]
+async fn anki_preview(handle: tauri::AppHandle, name: String, data: String) -> ApiResult<study_api::anki::AnkiPreview> {
+    let bytes = decoded(&data)?;
+    importing(handle, move |app| app.anki_preview(&bytes, &name)).await
+}
+#[tauri::command]
+async fn anki_apply(handle: tauri::AppHandle, choice: study_api::anki::AnkiChoice) -> ApiResult<ImportResult> {
+    importing(handle, move |app| app.anki_apply(choice, clock())).await
+}
+#[tauri::command]
+async fn items_preview(handle: tauri::AppHandle, name: String, data: String, mapping: Option<study_api::formats::CsvMapping>) -> ApiResult<study_api::formats::ItemsPreview> {
+    let bytes = decoded(&data)?;
+    importing(handle, move |app| app.items_preview(&bytes, &name, mapping)).await
+}
+#[tauri::command]
+async fn items_apply(handle: tauri::AppHandle, choice: study_api::formats::ItemsChoice) -> ApiResult<ImportResult> {
+    importing(handle, move |app| app.items_apply(choice, clock())).await
+}
+#[tauri::command]
+fn stop_import(stop: State<ImportStop>) {
+    stop.0.store(true, std::sync::atomic::Ordering::SeqCst);
+}
+#[tauri::command]
+fn last_import(state: AppState) -> ApiResult<Option<study_api::transfer::LastImport>> {
+    with(state, |app| app.last_import())
+}
+#[tauri::command]
+fn undo_last_import(state: AppState) -> ApiResult<BackupInfo> {
+    with(state, |app| app.undo_last_import(clock()))
+}
+/// "Show in folder" after an export.
+#[tauri::command]
+fn show_in_folder(path: String) -> ApiResult<()> {
+    tauri_plugin_opener::reveal_item_in_dir(&path).map_err(|error| ApiError { message: format!("couldn't open the folder: {error}") })
+}
+
+#[derive(serde::Serialize)]
+struct PickedFile {
+    name: String,
+    data: String,
+}
+
+/// A file dropped on the window, or opened with the app, read for importing.
+#[tauri::command]
+fn read_file_at(path: String) -> ApiResult<PickedFile> {
+    use base64::Engine;
+    let path = std::path::PathBuf::from(path);
+    let bytes = std::fs::read(&path).map_err(|error| ApiError { message: format!("couldn't read {}: {error}", path.display()) })?;
+    let name = path.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_else(|| "file".into());
+    Ok(PickedFile { name, data: base64::engine::general_purpose::STANDARD.encode(bytes) })
+}
+
+/// The file the app was opened with (double-clicking a .studyapp), once.
+#[derive(Default)]
+struct OpenedWith(Mutex<Option<String>>);
+
+#[tauri::command]
+fn take_opened_file(opened: State<OpenedWith>) -> Option<String> {
+    opened.0.lock().ok().and_then(|mut path| path.take())
+}
+
+/// A file named on the command line (the desktop passes the file that was opened).
+fn file_argument(args: &[String]) -> Option<String> {
+    args.iter().skip(1).find(|arg| !arg.starts_with('-') && std::path::Path::new(arg).is_file()).cloned()
+}
+
 #[tauri::command]
 fn set_backup_settings(state: AppState, settings: BackupSettings) -> ApiResult<BackupStatus> {
     with(state, |app| app.set_backup_settings(settings, clock()))
@@ -673,7 +804,19 @@ fn sync_settle(state: AppState, n: i64, other: bool) -> ApiResult<Vec<study_api:
 
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            // A second launch (double-clicking a .studyapp) hands its file to this window.
+            if let Some(path) = file_argument(&args) {
+                let _ = app.emit("open-file", path);
+            }
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_opener::init())
+        .manage(ImportStop::default())
+        .manage(OpenedWith(Mutex::new(file_argument(&std::env::args().collect::<Vec<_>>()))))
         .manage(updates::Updates::with_feed(std::env::var(updates::FEED_OVERRIDE).ok()))
         .on_window_event(|window, event| {
             // Auto update installs a ready update as the app closes (R166).
@@ -738,6 +881,11 @@ pub fn run() {
             end_project_session,
             log_struggle,
             delete_struggle,
+            rename_issue,
+            update_struggle,
+            delete_issue,
+            update_drill,
+            delete_drill,
             struggles_to_review,
             review_struggle,
             issues,
@@ -800,6 +948,9 @@ pub fn run() {
             modules,
             create_module,
             delete_module,
+            rename_module,
+            rename_topic,
+            update_project,
             update_source,
             delete_source,
             topics,
@@ -814,6 +965,16 @@ pub fn run() {
             delete_question,
             add_image,
             paste_image,
+            anki_preview,
+            anki_apply,
+            items_preview,
+            items_apply,
+            stop_import,
+            last_import,
+            undo_last_import,
+            show_in_folder,
+            read_file_at,
+            take_opened_file,
             add_image_files,
             image,
             add_source,
@@ -838,5 +999,5 @@ pub fn run() {
             search
         ])
         .run(tauri::generate_context!())
-        .expect("error while running the Study App");
+        .expect("error while running Shudhana");
 }

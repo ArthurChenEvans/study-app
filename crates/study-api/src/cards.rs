@@ -595,7 +595,7 @@ impl App {
         }
         session.answers += 1;
         session.new_seen += usize::from(was_new);
-        session.seconds += seconds;
+        session.seconds = session.seconds.saturating_add(seconds);
         session.undo.push(Undo {
             card: id,
             previous: card.schedule,

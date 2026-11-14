@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { DARK, LIGHT, applyPalette, applyTheme, initialPalette, initialTheme } from "./theme";
+import { DARK, LIGHT, applyPalette, applyTheme, followTheme, initialPalette, initialTheme } from "./theme";
+import { buildColours } from "./colours";
 
 // appearance.feature
 describe("theme", () => {
@@ -45,5 +46,17 @@ describe("theme", () => {
     applyPalette("standard");
     expect(document.documentElement.dataset.palette).toBeUndefined();
     expect(initialPalette()).toBe("standard");
+  });
+
+  // appearance.feature: Colour themes (R183). However light or dark gets set, the colours follow.
+  it("keeps the colours in step when the mode is set some other way", async () => {
+    const stop = followTheme();
+    document.documentElement.dataset.theme = LIGHT;
+    await Promise.resolve();
+    expect(document.documentElement.style.getPropertyValue("--color-base-100")).toBe(buildColours("coffee", false, false)["--color-base-100"]);
+    document.documentElement.dataset.theme = DARK;
+    await Promise.resolve();
+    expect(document.documentElement.style.getPropertyValue("--color-base-100")).toBe(buildColours("coffee", true, false)["--color-base-100"]);
+    stop();
   });
 });

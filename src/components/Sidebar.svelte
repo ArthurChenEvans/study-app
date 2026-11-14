@@ -143,7 +143,7 @@
   <nav class="sticky top-0 flex h-screen w-60 shrink-0 flex-col gap-1 overflow-y-auto border-r-2 border-base-300 bg-base-200 p-3" aria-label="Main">
     <div class="flex items-center gap-2.5 px-2.5 pt-2 pb-3">
       <span class="logo-mark"><Layers class="size-5" /></span>
-      <span class="text-[22px] font-black">Study App</span>
+      <span class="text-[22px] font-black">Shudhana</span>
     </div>
     <a href="#search" class="nav-search" aria-current={current === "search" ? "page" : undefined} onclick={(event) => go(event, "search")}>
       <Search class="size-4" /><span class="flex-1">Search</span><kbd class="kbd kbd-sm" title="Press / to search">/</kbd>

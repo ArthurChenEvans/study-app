@@ -230,6 +230,15 @@ impl App {
         Ok(self.store.create_project(name, kind.trim(), today)?)
     }
 
+    /// R185
+    pub fn update_project(&mut self, id: ProjectId, name: &str, kind: &str) -> ApiResult<()> {
+        let name = name.trim();
+        if name.is_empty() {
+            return Err(PracticeError::NoProjectName.into());
+        }
+        Ok(self.store.update_project(id, name, kind.trim())?)
+    }
+
     pub fn delete_project(&mut self, id: ProjectId) -> ApiResult<()> {
         Ok(self.store.delete_project(id)?)
     }
@@ -274,6 +283,15 @@ impl App {
             topic: input.topic,
         })?;
         self.struggle_view(self.store.struggle(id)?)
+    }
+
+    /// R185
+    pub fn update_struggle(&mut self, id: StruggleId, what: &str, why: &str) -> ApiResult<()> {
+        let what = what.trim();
+        if what.is_empty() {
+            return Err(PracticeError::NoWhat.into());
+        }
+        Ok(self.store.update_struggle(id, what, why.trim())?)
     }
 
     pub fn delete_struggle(&mut self, id: StruggleId) -> ApiResult<()> {
@@ -400,6 +418,36 @@ impl App {
                 })
             })
             .collect()
+    }
+
+    /// R185
+    pub fn rename_issue(&mut self, id: IssueId, name: &str) -> ApiResult<()> {
+        if issue_key(name).is_empty() {
+            return Err(PracticeError::NoIssue.into());
+        }
+        if let Some(taken) = self.store.issue_name_taken(id, name)? {
+            return Err(PracticeError::IssueTaken(taken).into());
+        }
+        Ok(self.store.rename_issue(id, name)?)
+    }
+
+    /// R185
+    pub fn delete_issue(&mut self, id: IssueId) -> ApiResult<()> {
+        Ok(self.store.delete_issue(id)?)
+    }
+
+    /// R185
+    pub fn update_drill(&mut self, id: DrillId, task: &str, hints: &str) -> ApiResult<()> {
+        let task = task.trim();
+        if task.is_empty() {
+            return Err(PracticeError::NoTask.into());
+        }
+        Ok(self.store.update_drill(id, task, hints.trim())?)
+    }
+
+    /// R185
+    pub fn delete_drill(&mut self, id: DrillId) -> ApiResult<()> {
+        Ok(self.store.delete_drill(id)?)
     }
 
     /// The drill to offer again when a review names this issue, if it has one (R91).

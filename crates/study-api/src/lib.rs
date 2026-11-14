@@ -4,11 +4,15 @@
 //! Security rule: a `QuizView` never says which options are correct. Correct answers
 //! only leave the backend in study-mode feedback after answering, and in results.
 
+pub mod anki;
+pub mod anki_export;
 pub mod backup;
 pub mod calendar;
 pub mod cards;
 pub mod convert;
 pub mod dates;
+pub mod formats;
+pub mod markup;
 pub mod practice;
 pub mod recall;
 pub mod seed;
@@ -252,7 +256,37 @@ pub struct App {
     card_session: Option<cards::CardSession>,
     backups: Option<backup::Backups>,
     pending_import: Option<transfer::PendingImport>,
+    pending_anki: Option<(String, anki::Package)>,
+    pending_items: Option<formats::PendingItems>,
+    progress: Option<Progress>,
     sync: sync::Sync,
+}
+
+/// Reports how a long import is going ("Notes", done, total), and says whether to stop.
+/// Set by the desktop app around an import so the window can show progress and Stop.
+#[derive(Clone)]
+pub struct Progress {
+    pub report: std::sync::Arc<dyn Fn(&str, usize, usize) + Send + Sync>,
+    pub stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
+}
+
+impl App {
+    pub fn set_progress(&mut self, progress: Option<Progress>) {
+        self.progress = progress;
+    }
+
+    /// Reports progress every so often, and stops the import (adding nothing) if asked to.
+    pub(crate) fn step(&self, what: &str, done: usize, total: usize) -> ApiResult<()> {
+        if let Some(progress) = &self.progress {
+            if progress.stop.load(std::sync::atomic::Ordering::SeqCst) {
+                return Err(ApiError::new("stopped, so nothing was imported"));
+            }
+            if done == total || done % 100 == 0 {
+                (progress.report)(what, done, total);
+            }
+        }
+        Ok(())
+    }
 }
 
 /// No quiz timer runs longer than a week. Keeps the arithmetic on timers from overflowing.
@@ -303,6 +337,9 @@ impl App {
             card_session: None,
             backups: None,
             pending_import: None,
+            pending_anki: None,
+            pending_items: None,
+            progress: None,
             sync: sync::Sync::default(),
         }
     }
@@ -317,6 +354,9 @@ impl App {
             card_session: None,
             backups: None,
             pending_import: None,
+            pending_anki: None,
+            pending_items: None,
+            progress: None,
             sync: sync::Sync::default(),
         }
     }
@@ -331,6 +371,16 @@ impl App {
         Ok(self
             .store
             .create_module(required(name, "give the module a name")?)?)
+    }
+
+    /// R185
+    pub fn rename_module(&mut self, module: ModuleId, name: &str) -> ApiResult<()> {
+        Ok(self.store.rename_module(module, required(name, "give the module a name")?)?)
+    }
+
+    /// R185
+    pub fn rename_topic(&mut self, topic: TopicId, name: &str) -> ApiResult<()> {
+        Ok(self.store.rename_topic(topic, required(name, "give the topic a name")?)?)
     }
 
     pub fn delete_module(&mut self, module: ModuleId) -> ApiResult<()> {
@@ -445,8 +495,12 @@ impl App {
     // ---------- Quiz ----------
 
     pub fn start_quiz(&mut self, setup: QuizSetupInput) -> ApiResult<QuizView> {
+        // A topic named twice is still one topic (and a list of thousands mustn't stall).
+        let mut topics = setup.topics;
+        let mut seen = std::collections::HashSet::new();
+        topics.retain(|topic| seen.insert(*topic));
         let settings = QuizSettings {
-            topics: setup.topics,
+            topics,
             amount: setup.count.map_or(Amount::All, Amount::Count),
             pick: if setup.even { Pick::Even } else { Pick::Random },
             question_order: if setup.shuffle_questions {
@@ -928,6 +982,10 @@ mod practice_tests;
 mod ids_tests;
 #[cfg(test)]
 mod transfer_tests;
+#[cfg(test)]
+mod anki_tests;
+#[cfg(test)]
+mod formats_tests;
 #[cfg(test)]
 mod sync_tests;
 #[cfg(test)]

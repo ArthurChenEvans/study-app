@@ -1,10 +1,11 @@
 <script lang="ts">
   // navigation.feature (R158): every preference in one place, so the navigation only holds
   // places you go. Appearance and sound stay on this computer. Celebrations sync.
-  import { ChevronRight, CircleCheck, Database, Download, Eye, Moon, PartyPopper, RefreshCw, Sun, TriangleAlert, Volume2 } from "@lucide/svelte";
+  import { Check, ChevronRight, CircleCheck, Database, Download, Eye, Moon, Palette, PartyPopper, RefreshCw, Sun, TriangleAlert, Volume2 } from "@lucide/svelte";
   import PageHeader from "../components/PageHeader.svelte";
   import CelebrationsDialog from "../components/CelebrationsDialog.svelte";
   import { DARK, LIGHT, applyPalette, applyTheme, initialPalette, type Theme } from "../lib/theme";
+  import { COLOURS, applyColours, buildColours, initialColours, type ColoursId } from "../lib/colours";
   import { isSoundOn, setSoundOn } from "../lib/sound";
   import type { Screen } from "../lib/router";
   import { checkNow, installNow, setAuto, updates } from "../lib/updates.svelte";
@@ -15,6 +16,14 @@
   let sound = $state(isSoundOn());
   let colourBlind = $state(initialPalette() === "colour-blind");
   let celebrations = $state(false);
+  let colours = $state<ColoursId>(initialColours());
+  // Each option previews itself in the current mode and palette (R184).
+  const previews = $derived(COLOURS.map((option) => ({ ...option, c: buildColours(option.id, theme !== LIGHT, colourBlind) })));
+
+  function pick(id: ColoursId) {
+    colours = id;
+    applyColours(id, theme !== LIGHT, colourBlind);
+  }
 
   function choose(next: Theme) {
     theme = next;
@@ -34,7 +43,26 @@
         <button type="button" role="radio" class="flex items-center gap-1.5" aria-checked={theme === LIGHT} onclick={() => choose(LIGHT)}><Sun class="size-3.5" />Light</button>
       </div>
     </div>
-    <label class="mt-3 flex min-h-11 cursor-pointer items-center gap-3">
+    <div class="mt-5">
+      <p id="colours-h" class="flex items-center gap-3 font-bold"><Palette class="size-5 text-muted" />Colours</p>
+      <div class="colour-grid mt-3" role="radiogroup" aria-labelledby="colours-h">
+        {#each previews as option (option.id)}
+          <button type="button" role="radio" aria-checked={colours === option.id} aria-label={option.name} class="colour-option" style="background: {option.c['--color-base-100']}; color: {option.c['--color-base-content']}; border-color: {colours === option.id ? option.c['--color-primary'] : option.c['--color-base-300']}" onclick={() => pick(option.id)}>
+            <span class="flex items-center justify-between gap-2">
+              <span class="font-extrabold">{option.name}</span>
+              {#if colours === option.id}<Check class="size-4" />{/if}
+            </span>
+            <span class="colour-option-card" style="background: {option.c['--surface']}; border-color: {option.c['--color-base-300']}" aria-hidden="true">
+              <span class="colour-option-bar" style="background: {option.c['--chart-right']}; flex: 3"></span>
+              <span class="colour-option-bar" style="background: {option.c['--chart-wrong']}; flex: 1"></span>
+            </span>
+            <span class="colour-option-button" style="background: {option.c['--color-primary']}; color: {option.c['--color-primary-content']}; border-color: {option.c['--primary-edge']}" aria-hidden="true">Start</span>
+            <span class="text-xs font-semibold" style="color: {option.c['--muted']}">{option.blurb}</span>
+          </button>
+        {/each}
+      </div>
+    </div>
+    <label class="mt-4 flex min-h-11 cursor-pointer items-center gap-3">
       <Eye class="size-5 text-muted" />
       <span class="flex-1"><span class="block font-bold">Colour-blind safe</span><span id="cb-help" class="block text-sm text-muted">Right and wrong in blue and orange instead of green and red. Icons and words always go with them.</span></span>
       <input type="checkbox" role="switch" class="toggle" aria-label="Colour-blind safe" aria-describedby="cb-help" checked={colourBlind} onchange={() => { colourBlind = !colourBlind; applyPalette(colourBlind ? "colour-blind" : "standard"); }} />
@@ -57,7 +85,7 @@
 
   <section class="panel mt-5 p-5" aria-labelledby="updates-h">
     <h2 id="updates-h" class="eyebrow">Updates</h2>
-    <p class="mt-3 font-bold">Study App {updates.current || "(desktop app only)"}</p>
+    <p class="mt-3 font-bold">Shudhana {updates.current || "(desktop app only)"}</p>
     <label class="mt-2 flex min-h-11 cursor-pointer items-center gap-3">
       <RefreshCw class="size-5 text-muted" />
       <span class="flex-1"><span class="block font-bold">Auto update</span><span id="auto-help" class="block text-sm text-muted">Checks for a new release when the app opens and closes, downloads it in the background, and installs it as you close the app.</span></span>
@@ -75,7 +103,7 @@
       <div class="note-box mt-4 p-4">
         <p class="font-extrabold">Version {updates.info.version} is available</p>
         {#if updates.info.notes}<p class="mt-1 whitespace-pre-line text-sm">{updates.info.notes}</p>{/if}
-        <p class="mt-2 text-sm text-muted">Installing asks for your password, because it updates the app for everyone on this computer. Your study data is backed up first.</p>
+        <p class="mt-2 text-sm text-muted">{updates.info.asks_password ? "Installing asks for your password, because it updates the app for everyone on this computer. " : ""}Your study data is backed up first.</p>
         <button type="button" class="btn btn-primary btn-sm mt-3" onclick={installNow}><Download class="size-4" />Update to {updates.info.version}</button>
       </div>
     {/if}

@@ -125,6 +125,14 @@ impl Store {
     }
 
     /// This computer's ID, which ends every change stamp made here (R110).
+    /// A record's ID that means the same on any computer, from its row number here.
+    pub fn uid_of(&self, table: &str, id: i64) -> Result<Option<String>> {
+        if !crate::ids::STAMPED.contains(&table) {
+            return Err(StoreError::Invalid("not a table with IDs"));
+        }
+        Ok(self.connection.query_row(&format!("SELECT uid FROM {table} WHERE id = ?1"), [id], |row| row.get(0)).optional()?.flatten())
+    }
+
     pub fn device_id(&self) -> String {
         self.clock.lock().map(|clock| clock.device().to_string()).unwrap_or_default()
     }
@@ -193,6 +201,24 @@ impl Store {
             return Err(StoreError::NotFound("module"));
         }
         tx.commit()?;
+        Ok(())
+    }
+
+    pub fn rename_module(&mut self, module: ModuleId, name: &str) -> Result<()> {
+        if self.connection.execute("UPDATE modules SET name = ?2 WHERE id = ?1 AND name IS NOT ?2", params![module.0, name.trim()])? == 0
+            && !self.connection.query_row("SELECT EXISTS (SELECT 1 FROM modules WHERE id = ?1)", [module.0], |row| row.get::<_, bool>(0))?
+        {
+            return Err(StoreError::NotFound("module"));
+        }
+        Ok(())
+    }
+
+    pub fn rename_topic(&mut self, topic: TopicId, name: &str) -> Result<()> {
+        if self.connection.execute("UPDATE topics SET name = ?2 WHERE id = ?1 AND name IS NOT ?2", params![topic.0, name.trim()])? == 0
+            && !self.connection.query_row("SELECT EXISTS (SELECT 1 FROM topics WHERE id = ?1)", [topic.0], |row| row.get::<_, bool>(0))?
+        {
+            return Err(StoreError::NotFound("topic"));
+        }
         Ok(())
     }
 

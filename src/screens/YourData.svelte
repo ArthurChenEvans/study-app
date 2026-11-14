@@ -8,10 +8,10 @@
   import { keptLabel, madeDay, madeInline, madeLabel, reasonLabel, sizeLabel, statusLine } from "../lib/backup";
   import PageHeader from "../components/PageHeader.svelte";
   import ExportDialog from "../components/ExportDialog.svelte";
-  import ImportDialog from "../components/ImportDialog.svelte";
-  import { FileInput, FileOutput } from "@lucide/svelte";
-  import type { ExportFile, ImportPreview, ImportResult } from "../lib/api";
-  import { countList } from "../lib/transfer";
+  import { FileInput, FileOutput, Undo2 } from "@lucide/svelte";
+  import type { ExportFile, LastImport } from "../lib/api";
+  import { toast } from "../lib/celebrations.svelte";
+  import { ACCEPT, onImportChanged, startImport, undoImport } from "../lib/importer.svelte";
   import type { SyncStatus, ToCheck } from "../lib/api";
   import { syncLine } from "../lib/sync";
   import SyncSection from "../components/SyncSection.svelte";
@@ -27,9 +27,10 @@
   let error = $state("");
   let notice = $state("");
 
-  // ---------- Export and import (R112 to R118) ----------
+  // ---------- Export and import (R112 to R118, R171 to R178) ----------
   let exporting = $state(false);
-  let importing = $state<ImportPreview | null>(null);
+  let lastImport = $state<LastImport | null>(null);
+  let undoing = $state(false);
 
   function exported(file: ExportFile) {
     exporting = false;
@@ -37,15 +38,16 @@
     if (file.data) {
       // The browser version hands the file to the browser to save.
       const bytes = Uint8Array.from(atob(file.data), (letter) => letter.charCodeAt(0));
-      const url = URL.createObjectURL(new Blob([bytes], { type: "application/zip" }));
+      const url = URL.createObjectURL(new Blob([bytes], { type: "application/octet-stream" }));
       const link = document.createElement("a");
       link.href = url;
       link.download = file.name;
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 10_000);
-      notice = `Downloaded ${file.name}.`;
+      toast({ text: `Downloaded ${file.name}`, icon: "export" });
     } else {
-      notice = `Saved ${file.name} to ${file.path}.`;
+      const path = file.path;
+      toast({ text: `Exported ${file.name}`, sub: path ? `Saved to ${path.slice(0, path.length - file.name.length - 1)}` : undefined, icon: "export", ms: 8000, action: path ? { label: "Show in folder", run: () => void Promise.resolve(api.showInFolder(path)).catch(() => {}) } : undefined });
     }
   }
 
@@ -53,30 +55,24 @@
     const input = event.currentTarget as HTMLInputElement;
     const file = input.files?.[0];
     input.value = "";
-    if (!file) return;
-    error = "";
-    notice = "";
+    if (file) await startImport(file);
+  }
+
+  async function loadLastImport() {
     try {
-      importing = await api.importPreview(file, file.name);
-    } catch (failure) {
-      error = errorMessage(failure);
+      lastImport = (await api.lastImport()) ?? null;
+    } catch {
+      lastImport = null;
     }
   }
 
-  function closeImport() {
-    importing = null;
-    Promise.resolve(api.cancelImport()).catch(() => {});
+  async function undoLast() {
+    undoing = false;
+    await undoImport();
   }
 
-  async function imported(result: ImportResult) {
-    importing = null;
-    const replaced = result.replaced ? `, and used the file's version of ${result.replaced} ${result.replaced === 1 ? "thing" : "things"}` : "";
-    await load();
-    const backup = result.backup;
-    const undo = backup ? ` To undo it, restore the backup from ${madeDay(backup, today)} at ${madeLabel(backup, today).split(", ")[1]}.` : "";
-    notice = `Imported ${countList(result.added)}${replaced}.${undo}`;
-    onRestored();
-  }
+  // The app itself refreshes the counts, so this only reloads the page.
+  $effect(() => onImportChanged(() => void load()));
 
   let restoring = $state<RestorePreview | null>(null);
   let keeping = $state<{ keep_days: number; keep_weeks: number; keep_months: number } | null>(null);
@@ -87,6 +83,7 @@
   async function load() {
     [status, list, today] = await Promise.all([api.backupStatus(), api.backups(), api.today()]);
     await loadSync();
+    await loadLastImport();
   }
 
   // ---------- Sync (R119 to R128) ----------
@@ -278,18 +275,38 @@
 
       <section class="panel p-6" aria-labelledby="transfer-h">
         <h2 id="transfer-h" class="text-lg font-semibold">Export and import</h2>
-        <p class="mt-1 text-sm text-muted">One <span class="path">.studyapp</span> file: readable JSON inside a zip, with images. Share topics with a friend, or move everything to another computer.</p>
-        <div class="mt-5 flex gap-2">
+        <p class="mt-1 text-sm text-muted">Move everything to another computer, share topics with a friend, or bring in Anki decks, spreadsheets and Moodle questions. You can also drop a file anywhere on the window.</p>
+        <div class="mt-5 flex flex-wrap gap-2">
           <button class="btn btn-outline" onclick={() => { notice = ""; exporting = true; }}><FileOutput class="size-4" />Export…</button>
-          <label class="btn btn-outline file-button"><FileInput class="size-4" />Import…<input type="file" accept=".studyapp,application/zip" class="sr-only" aria-label="Import a .studyapp file" onchange={pickFile} /></label>
+          <label class="btn btn-outline file-button"><FileInput class="size-4" />Import…<input type="file" accept={ACCEPT} class="sr-only" aria-label="Import a file" onchange={pickFile} /></label>
         </div>
+        {#if lastImport}
+          <div class="mt-5 flex flex-wrap items-center gap-3 border-t-2 border-base-300 pt-4">
+            <div class="min-w-0 flex-1">
+              <p class="text-sm font-semibold">Last import</p>
+              <p class="text-sm text-muted"><span class="path break-all">{lastImport.file_name}</span>, {madeDay(lastImport, today)} at {madeLabel(lastImport, today).split(", ")[1]}: {lastImport.summary}</p>
+            </div>
+            <button class="btn btn-sm btn-ghost" onclick={() => (undoing = true)}><Undo2 class="size-4" />Undo it</button>
+          </div>
+        {/if}
       </section>
     </div>
   {/if}
 </div>
 
 {#if exporting}<ExportDialog onClose={() => (exporting = false)} onDone={exported} />{/if}
-{#if importing}<ImportDialog preview={importing} {today} onClose={closeImport} onDone={imported} />{/if}
+{#if undoing && lastImport}
+  <dialog open class="modal modal-open" role="alertdialog" aria-labelledby="undo-h" aria-describedby="undo-d">
+    <div class="modal-box max-w-md">
+      <h2 id="undo-h" class="text-lg font-black">Undo the import of <span class="path break-all">{lastImport.file_name}</span>?</h2>
+      <p id="undo-d" class="mt-2 text-[15px]">Everything goes back to how it was just before it. Anything you changed since then is undone too.</p>
+      <div class="modal-action">
+        <button class="btn btn-ghost" onclick={() => (undoing = false)}>Keep it</button>
+        <button class="btn btn-error" onclick={undoLast}>Undo the import</button>
+      </div>
+    </div>
+  </dialog>
+{/if}
 
 {#if restoring}
   {@const chosen = restoring.backup}

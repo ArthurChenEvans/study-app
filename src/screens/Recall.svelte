@@ -7,6 +7,7 @@
   import PageHeader from "../components/PageHeader.svelte";
   import Ladder from "../components/Ladder.svelte";
   import ScheduleDialog from "../components/ScheduleDialog.svelte";
+  import RowMenu from "../components/RowMenu.svelte";
   import { dueLabel, onDay } from "../lib/dates";
 
   let { onOpen, onStart, onChanged = () => {} }: { onOpen: (id: number) => void; onStart: (id: number) => void; onChanged?: () => void } = $props();
@@ -34,6 +35,23 @@
 
   const due = $derived(rows.filter((row) => row.due_today));
   const later = $derived(rows.filter((row) => !row.due_today));
+
+  // R185: deleting a checklist from the list, after asking
+  let deleting = $state<RecallRow | null>(null);
+
+  async function remove() {
+    if (!deleting) return;
+    const { id, subject_name } = deleting;
+    deleting = null;
+    try {
+      await api.deleteChecklist(id);
+      toast({ text: "Checklist deleted", sub: subject_name, icon: "trash" });
+      onChanged();
+      await load();
+    } catch (failure) {
+      toast({ text: "Couldn't delete the checklist", sub: errorMessage(failure), icon: "alert", error: true });
+    }
+  }
 
   async function load() {
     [rows, schedule, today] = await Promise.all([api.recallList(), api.recallSchedule(), api.today()]);
@@ -115,6 +133,7 @@
             {:else}
               <button class="btn btn-ghost" onclick={() => onOpen(row.id)}><Plus class="size-4" />Add points</button>
             {/if}
+            <RowMenu label="{row.subject_name} actions" items={[{ label: "Open checklist", onSelect: () => onOpen(row.id) }, { label: "Delete checklist…", danger: true, onSelect: () => (deleting = row) }]} />
           </article>
         {/each}
       </div>
@@ -131,8 +150,8 @@
       <h2 id="later-h" class="eyebrow mb-3">{due.length ? "Coming up" : "All checklists"}</h2>
       <div class="panel overflow-hidden">
         <table class="table table-fixed" aria-label="Checklists" use:stackTable>
-          <colgroup><col class="w-[28%]" /><col class="w-[12%]" /><col class="w-[30%]" /><col class="w-[15%]" /><col class="w-[15%]" /></colgroup>
-          <thead><tr class="text-muted"><th>Checklist</th><th>Points</th><th>Step</th><th>Last check</th><th>Next</th></tr></thead>
+          <colgroup><col class="w-[27%]" /><col class="w-[11%]" /><col class="w-[28%]" /><col class="w-[15%]" /><col class="w-[13%]" /><col class="w-14" /></colgroup>
+          <thead><tr class="text-muted"><th>Checklist</th><th>Points</th><th>Step</th><th>Last check</th><th>Next</th><th><span class="sr-only">Actions</span></th></tr></thead>
           <tbody>
             {#each later as row (row.id)}
               <tr class="hover:bg-base-100">
@@ -141,6 +160,7 @@
                 <td><div class="flex items-center gap-3"><div class="w-28"><Ladder compact steps={schedule.steps} position={row.position} step={row.step} next={row.next_step} /></div><span class="text-sm">{row.step ?? "Not started"}</span></div></td>
                 <td class="tabular-nums">{#if row.last_score === null}<span class="text-muted">None yet</span>{:else}<span class="flex min-w-0 items-center gap-2"><span class="inline-block h-3 w-24 min-w-6 shrink overflow-hidden rounded-full bg-base-300" aria-hidden="true"><span class="block h-full rounded-full" style="width: {row.last_score}%; background: var(--chart-right)"></span></span>{row.last_score}%</span>{/if}</td>
                 <td class="tabular-nums">{dueLabel(row.due, today)}</td>
+                <td class="text-right"><RowMenu small label="{row.subject_name} actions" items={[{ label: "Open checklist", onSelect: () => onOpen(row.id) }, { label: "Delete checklist…", danger: true, onSelect: () => (deleting = row) }]} /></td>
               </tr>
             {/each}
           </tbody>
@@ -189,4 +209,17 @@
 {#if editing}
   <ScheduleDialog title="Recall schedule" intro="Every checklist climbs these steps. Passing moves it up one, and the next date counts from the day you did the check." passWhat="points recalled" applies="Changes apply from each checklist's next check." schedule={editing}
     onSave={async (next) => { await api.setRecallSchedule(next); editing = null; await load(); }} onReset={() => api.resetRecallSchedule()} onClose={() => (editing = null)} />
+{/if}
+
+{#if deleting}
+  <dialog open class="modal modal-open" aria-labelledby="delete-checklist-h">
+    <div class="modal-box max-w-md">
+      <h3 id="delete-checklist-h" class="text-lg font-semibold">Delete the {deleting.subject_name} checklist?</h3>
+      <p class="mt-2 text-sm">Its points and past checks go too. The {deleting.module ? "module" : "topic"} itself stays.</p>
+      <div class="modal-action">
+        <button class="btn btn-ghost" onclick={() => (deleting = null)}>Keep it</button>
+        <button class="btn btn-error" onclick={remove}>Delete checklist</button>
+      </div>
+    </div>
+  </dialog>
 {/if}

@@ -25,11 +25,44 @@ pub const MAX_FILE: usize = 200 * 1024 * 1024;
 pub const MAX_UNPACKED: u64 = if cfg!(test) { 64 * 1024 * 1024 } else { 1024 * 1024 * 1024 };
 const MAX_ENTRIES: usize = 200_000;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ExportRequest {
     /// `None` exports everything. Otherwise these topics, to share.
     pub topics: Option<Vec<TopicId>>,
     pub history: bool,
+    /// The kind of file (R173 to R176). A `.studyapp` unless asked otherwise.
+    #[serde(default)]
+    pub format: ExportFormat,
+    /// Anki only: quiz questions as cards too.
+    #[serde(default)]
+    pub quizzes_as_cards: bool,
+}
+
+/// The kinds of file the app exports (import-export.feature).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ExportFormat {
+    #[default]
+    StudyApp,
+    Anki,
+    QuestionsCsv,
+    CardsCsv,
+    Json,
+    Markdown,
+    Gift,
+    Aiken,
+}
+
+impl ExportFormat {
+    pub fn extension(self) -> &'static str {
+        match self {
+            ExportFormat::StudyApp => "studyapp",
+            ExportFormat::Anki => "apkg",
+            ExportFormat::QuestionsCsv | ExportFormat::CardsCsv => "csv",
+            ExportFormat::Json => "json",
+            ExportFormat::Markdown => "md",
+            ExportFormat::Gift | ExportFormat::Aiken => "txt",
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -107,6 +140,20 @@ pub struct ImportChoice {
     pub theirs: Vec<String>,
 }
 
+/// Where the last import came from, for "Undo this import" (R177). Kept beside the backups,
+/// not in the database, so it never travels to another computer with an export or sync.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LastImport {
+    pub file_name: String,
+    pub day: i64,
+    pub minute: u32,
+    /// "230 cards and 4 topics".
+    pub summary: String,
+    pub backup: String,
+}
+
+const LAST_IMPORT: &str = "last-import.json";
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ImportResult {
     pub added: Vec<Count>,
@@ -136,6 +183,7 @@ pub fn free_path(folder: &std::path::Path, name: &str) -> std::path::PathBuf {
 pub struct PendingImport {
     snapshot: Snapshot,
     clashes: Vec<Clash>,
+    file_name: String,
 }
 
 // ---------- Kinds of record ----------
@@ -387,7 +435,7 @@ fn check(snapshot: &Snapshot) -> ApiResult<()> {
 fn file_name(app: &App, request: &ExportRequest, today: i64) -> ApiResult<String> {
     let date = crate::backup::date_label(today);
     let name = match &request.topics {
-        None => format!("Study App {date}"),
+        None => format!("Shudhana {date}"),
         Some(picked) => {
             let topics = app.topics()?;
             let chosen: Vec<_> = topics.iter().filter(|topic| picked.contains(&topic.id)).collect();
@@ -403,7 +451,7 @@ fn file_name(app: &App, request: &ExportRequest, today: i64) -> ApiResult<String
         }
     };
     let safe: String = name.chars().map(|letter| if letter.is_alphanumeric() || " -_,()'".contains(letter) { letter } else { '-' }).collect();
-    Ok(format!("{}.studyapp", safe.trim()))
+    Ok(format!("{}.{}", safe.trim(), request.format.extension()))
 }
 
 impl App {
@@ -422,9 +470,18 @@ impl App {
         Ok(ExportSummary { name: file_name(self, request, today)?, counts: counts(&snapshot) })
     }
 
-    /// The `.studyapp` file, and its name (R112, R113).
+    /// The exported file, and its name (R112, R113, R173 to R176).
     pub fn export(&self, request: &ExportRequest, today: i64) -> ApiResult<(String, Vec<u8>)> {
         let snapshot = self.store.snapshot(&self.scope(request)?)?;
+        let name = file_name(self, request, today)?;
+        match request.format {
+            ExportFormat::StudyApp => {}
+            ExportFormat::Anki => {
+                let options = crate::anki_export::AnkiOptions { quizzes_as_cards: request.quizzes_as_cards, keep_progress: request.history };
+                return Ok((name, crate::anki_export::build(&snapshot, options, today)?));
+            }
+            other => return Ok((name, crate::formats::export(&snapshot, other)?)),
+        }
         let manifest = Manifest {
             format: FORMAT.into(),
             version: VERSION,
@@ -435,7 +492,7 @@ impl App {
             history: request.history,
             counts: counts(&snapshot),
         };
-        Ok((file_name(self, request, today)?, pack(&snapshot, &manifest)?))
+        Ok((name, pack(&snapshot, &manifest)?))
     }
 
     /// Reads a file and says what importing it would do, changing nothing yet (R114, R115).
@@ -485,12 +542,15 @@ impl App {
             clashes: clashes.clone(),
             suggested: if manifest.everything { ClashRule::Newer } else { ClashRule::KeepMine },
         };
-        self.pending_import = Some(PendingImport { snapshot, clashes });
+        self.pending_import = Some(PendingImport { snapshot, clashes, file_name: file_name.to_string() });
         Ok(preview)
     }
 
+    /// Forgets a previewed file of any kind.
     pub fn cancel_import(&mut self) {
         self.pending_import = None;
+        self.pending_anki = None;
+        self.pending_items = None;
     }
 
     /// Imports the previewed file: a backup first, then everything at once (R116, R117).
@@ -507,12 +567,65 @@ impl App {
             })
             .map(|clash| clash.uid.clone())
             .collect();
+        let result = self.apply_snapshot(pending.snapshot, theirs, clock)?;
+        self.remember_import(&pending.file_name, &result, clock);
+        Ok(result)
+    }
+
+    /// The last import, while its backup is still there to undo it with (R177).
+    pub fn last_import(&self) -> ApiResult<Option<LastImport>> {
+        let Ok(backups) = self.backups_folder() else { return Ok(None) };
+        let Ok(text) = std::fs::read_to_string(backups.dir().join(LAST_IMPORT)) else { return Ok(None) };
+        let Ok(last) = serde_json::from_str::<LastImport>(&text) else { return Ok(None) };
+        Ok(backups.find(&last.backup).is_ok().then_some(last))
+    }
+
+    /// Puts everything back to how it was just before the last import, from the backup made
+    /// then (R177). Anything changed since goes too, as the dialog says.
+    pub fn undo_last_import(&mut self, clock: Clock) -> ApiResult<crate::backup::BackupInfo> {
+        let last = self.last_import()?.ok_or_else(|| ApiError::new("there's no import to undo"))?;
+        let restored = self.restore_backup(&last.backup, clock)?;
+        if let Ok(backups) = self.backups_folder() {
+            let _ = std::fs::remove_file(backups.dir().join(LAST_IMPORT));
+        }
+        Ok(restored)
+    }
+
+    pub(crate) fn remember_import(&self, file_name: &str, result: &ImportResult, clock: Clock) {
+        let (Some(backup), Ok(backups)) = (result.backup.as_ref(), self.backups_folder()) else { return };
+        let summary = result
+            .added
+            .iter()
+            .filter(|count| count.count > 0 && count.what != "notes")
+            .map(|count| {
+                let what = match count.what.as_str() {
+                    "checklists" => "recall checklists".to_string(),
+                    other => other.to_lowercase(),
+                };
+                let what = if count.count == 1 { what.strip_suffix('s').unwrap_or(&what).to_string() } else { what };
+                format!("{} {what}", count.count)
+            })
+            .collect::<Vec<_>>();
+        let summary = match summary.as_slice() {
+            [] => "Nothing new".to_string(),
+            [only] => only.clone(),
+            [start @ .., last] => format!("{} and {last}", start.join(", ")),
+        };
+        let last = LastImport { file_name: file_name.to_string(), day: clock.day, minute: clock.minute, summary, backup: backup.name.clone() };
+        if let Ok(text) = serde_json::to_string(&last) {
+            let _ = std::fs::write(backups.dir().join(LAST_IMPORT), text);
+        }
+    }
+
+    /// Adds the records of any import (a `.studyapp`, an Anki deck, a spreadsheet): a backup
+    /// first, then everything at once, so it can be undone (R116, R117, R172).
+    pub(crate) fn apply_snapshot(&mut self, snapshot: Snapshot, theirs: std::collections::HashSet<String>, clock: Clock) -> ApiResult<ImportResult> {
         let backup = match self.backups.as_ref() {
             Some(_) => Some(self.make_backup(clock, Reason::BeforeImport)?),
             None => None,
         };
         let plan = Plan { theirs, today: clock.day, history_edits: false };
-        let added = self.kept_only_if_readable(clock.day, "that file has something in it this version of the app can't read, so nothing was imported", |_| true, |app| Ok(app.store.apply(&pending.snapshot, &plan)?))?;
+        let added = self.kept_only_if_readable(clock.day, "that file has something in it this version of the app can't read, so nothing was imported", |_| true, |app| Ok(app.store.apply(&snapshot, &plan)?))?;
         self.forget_running_quiz()?;
         self.card_session = None;
         Ok(ImportResult { added: added.counts.into_iter().map(|(what, count)| Count { what, count }).collect(), replaced: added.replaced, backup })

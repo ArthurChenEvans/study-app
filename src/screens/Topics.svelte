@@ -3,9 +3,10 @@
   // calendar.feature (R96, R97): each topic's quiz step and next quiz, and the schedule.
   // lists.feature (R138 to R144): a module rail, a filter, sortable columns in their own pane,
   // an item card for the picked topic, and ticks for acting on several at once.
-  import { X, CalendarCog, FolderInput, FolderPlus, GraduationCap, Library, Pencil, Play, Plus, Search, SquareStack, Tag, Trash2 } from "@lucide/svelte";
+  import { X, CalendarCog, FolderInput, FolderPlus, GraduationCap, Library, Pencil, PencilLine, Play, Plus, Search, SquareStack, Tag, Trash2 } from "@lucide/svelte";
   import { tick as settle } from "svelte";
   import RowMenu from "../components/RowMenu.svelte";
+  import RenameDialog from "../components/RenameDialog.svelte";
   import Highlight from "../components/Highlight.svelte";
   import Rail, { type RailItem } from "../components/list/Rail.svelte";
   import FilterBox from "../components/list/FilterBox.svelte";
@@ -210,6 +211,19 @@
     });
   }
 
+  // R185: renaming a module or a topic
+  let renaming = $state<{ kind: "module" | "topic"; id: Id; name: string } | null>(null);
+
+  async function rename(name: string) {
+    if (!renaming) return;
+    const { kind, id } = renaming;
+    if (kind === "module") await api.renameModule(id, name);
+    else await api.renameTopic(id, name);
+    renaming = null;
+    toast({ text: kind === "module" ? "Module renamed" : "Topic renamed", sub: name, icon: "check" });
+    await load();
+  }
+
   let creatingModule = $state(false);
   let moduleNameInput = $state("");
   let moduleError = $state("");
@@ -333,7 +347,7 @@
           {#if railModule}
             {@const id = railModule.id}
             {@const name = railModule.name}
-            <RowMenu small label="{name} module actions" items={[{ label: "Delete module…", danger: true, onSelect: () => (deletingModule = { id, name, count: topics.filter((t) => t.module === id).length }) }]} />
+            <RowMenu small text="Module" label="{name} module actions" items={[{ label: "Rename module…", onSelect: () => (renaming = { kind: "module", id, name }) }, { label: "Delete module…", danger: true, onSelect: () => (deletingModule = { id, name, count: topics.filter((t) => t.module === id).length }) }]} />
           {/if}
           <ColumnsMenu options={[{ key: "tags", label: "Tags" }, { key: "questions", label: "Questions" }, { key: "short", label: "Short answers" }, { key: "step", label: "Quiz step" }, { key: "next", label: "Next quiz" }]} bind:value={columns} />
         </div>
@@ -412,6 +426,7 @@
             <div class="action-row mt-3 border-t-2 border-base-300 pt-3">
               <button class="btn btn-quiet btn-xs" onclick={() => openMove([picked!.id])}><FolderInput class="size-3.5" />Move</button>
               <button class="btn btn-quiet btn-xs" onclick={() => openTags(picked!)}><Tag class="size-3.5" />Tags</button>
+              <button class="btn btn-quiet btn-xs" aria-label="Rename {picked.name}" onclick={() => (renaming = { kind: "topic", id: picked!.id, name: picked!.name })}><PencilLine class="size-3.5" />Rename</button>
               <button class="btn btn-quiet btn-xs text-error" onclick={() => requestDelete(picked!)}><Trash2 class="size-3.5" />Delete</button>
             </div>
           </div>
@@ -547,4 +562,8 @@
 {#if editingSchedule}
   <ScheduleDialog title="Quiz schedule" intro="Every topic climbs these steps, starting the first time you quiz it. Each topic in a quiz is scored on its own questions, and the next date counts from the quiz day. Retries don't move it." passWhat="the topic's questions right" applies="Changes apply from each topic's next quiz." schedule={editingSchedule} daily={daily}
     onSave={async (next, perDay) => { await api.setQuizSchedule(next); if (perDay !== undefined) await api.setQuizzesADay(perDay); editingSchedule = null; await load(); }} onReset={() => api.resetQuizSchedule()} onClose={() => (editingSchedule = null)} />
+{/if}
+
+{#if renaming}
+  <RenameDialog title={renaming.kind === "module" ? "Rename module" : "Rename topic"} value={renaming.name} onSave={rename} onClose={() => (renaming = null)} />
 {/if}
