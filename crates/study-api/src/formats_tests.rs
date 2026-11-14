@@ -106,7 +106,7 @@ fn a_question_spreadsheet_is_matched_by_its_column_names() {
     assert_eq!(problems.len(), 2, "{problems:?}");
     assert!(problems[0].0 == "Row 6" && problems[0].1.contains("E") && problems[0].1.contains("3 options"), "{problems:?}");
     assert!(problems[1].0 == "Row 7" && problems[1].1.contains("question is empty"), "{problems:?}");
-    app.items_apply(ItemsChoice { targets: vec![("cpu-questions".into(), DeckTarget::Topic(cpu))] }, at(TODAY)).unwrap();
+    app.items_apply(ItemsChoice { targets: vec![("cpu-questions".into(), DeckTarget::Topic { topic: cpu })] }, at(TODAY)).unwrap();
     let questions = questions_in(&app, "CPU");
     assert_eq!(questions.len(), 4);
     let harvard = questions.iter().find(|question| question.text.starts_with("Which design")).unwrap();
@@ -120,7 +120,7 @@ fn a_question_spreadsheet_is_matched_by_its_column_names() {
     // Fixed and imported again: what came in the first time isn't doubled up.
     let fixed = csv.replace(",L1,L2,L3,E,", ",L1,L2,L3,A,");
     app.items_preview(fixed.as_bytes(), "cpu-questions.csv", None).unwrap();
-    app.items_apply(ItemsChoice { targets: vec![("cpu-questions".into(), DeckTarget::Topic(cpu))] }, at(TODAY)).unwrap();
+    app.items_apply(ItemsChoice { targets: vec![("cpu-questions".into(), DeckTarget::Topic { topic: cpu })] }, at(TODAY)).unwrap();
     assert_eq!(questions_in(&app, "CPU").len(), 5);
 }
 

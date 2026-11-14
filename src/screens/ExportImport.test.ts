@@ -9,11 +9,15 @@ vi.mock("../lib/api", async (original) => {
     api: {
       today: vi.fn(), backupStatus: vi.fn(), backups: vi.fn(), backUpNow: vi.fn(), restorePreview: vi.fn(), restoreBackup: vi.fn(), setBackupSettings: vi.fn(),
       topics: vi.fn(), modules: vi.fn(), exportSummary: vi.fn(), exportFile: vi.fn(), importPreview: vi.fn(), importApply: vi.fn(), cancelImport: vi.fn(),
+      lastImport: vi.fn(), undoLastImport: vi.fn(), showInFolder: vi.fn(),
     },
   };
 });
+const toast = vi.hoisted(() => vi.fn());
+vi.mock("../lib/celebrations.svelte", async (original) => ({ ...(await original<typeof import("../lib/celebrations.svelte")>()), toast }));
 
 import { api, type BackupStatus, type ImportPreview } from "../lib/api";
+import ImportHost from "../components/ImportHost.svelte";
 import YourData from "./YourData.svelte";
 
 const mocked = vi.mocked(api);
@@ -43,6 +47,7 @@ beforeEach(() => {
     { id: 11, name: "TCP/IP", module: 1, tags: [], question_count: 4, short_count: 1 },
     { id: 12, name: "Cryptography", module: 2, tags: [], question_count: 5, short_count: 1 },
   ]);
+  mocked.lastImport.mockResolvedValue(null);
   mocked.exportSummary.mockResolvedValue({ name: "Study App 2026-11-04.studyapp", counts: [{ what: "Topics", count: 3 }, { what: "Questions", count: 15 }, { what: "Quizzes", count: 1 }] });
 });
 
@@ -60,7 +65,10 @@ describe("Export", () => {
     await u.click(within(dialog).getByRole("button", { name: "Export everything" }));
     expect(mocked.exportFile).toHaveBeenCalledWith({ topics: null, history: true });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(await screen.findByRole("alert")).toHaveTextContent("Saved Study App 2026-11-04.studyapp to /home/chen/Downloads/Study App 2026-11-04.studyapp");
+    const shown = toast.mock.calls.at(-1)![0];
+    expect(shown).toMatchObject({ text: "Exported Study App 2026-11-04.studyapp", sub: "Saved to /home/chen/Downloads", action: { label: "Show in folder" } });
+    shown.action.run();
+    expect(mocked.showInFolder).toHaveBeenCalledWith("/home/chen/Downloads/Study App 2026-11-04.studyapp");
   });
 
   // transfer.feature: Sharing some topics (R113)
@@ -87,8 +95,29 @@ describe("Export", () => {
     expect(mocked.exportFile).toHaveBeenCalledWith({ topics: [10, 11], history: false });
     expect(click).toHaveBeenCalled();
     expect(await created[0].text()).toBe("zip bytes");
-    expect(await screen.findByRole("alert")).toHaveTextContent("Downloaded Networks.studyapp");
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ text: "Downloaded Networks.studyapp" }));
     click.mockRestore();
+  });
+});
+
+// import-export.feature: Exporting for Anki and Moodle (R173, R175)
+describe("Export to another app", () => {
+  it("sends the kind of file and its options, and history only where it means something", async () => {
+    const u = userEvent.setup();
+    render(YourData);
+    await u.click(await screen.findByRole("button", { name: /^Export/ }));
+    const dialog = screen.getByRole("dialog", { name: "Export" });
+    await u.selectOptions(within(dialog).getByRole("combobox", { name: "Kind of file" }), "Anki");
+    expect(within(dialog).getByRole("checkbox", { name: /Keep my progress/ })).toBeChecked();
+    await u.click(within(dialog).getByRole("checkbox", { name: /Quiz questions as cards too/ }));
+    mocked.exportFile.mockResolvedValue({ name: "Shudhana.apkg", path: "/d/Shudhana.apkg", data: null });
+    await u.click(within(dialog).getByRole("button", { name: "Export everything" }));
+    expect(mocked.exportFile).toHaveBeenCalledWith({ topics: null, history: true, format: "Anki", quizzes_as_cards: true });
+    await u.click(screen.getByRole("button", { name: /^Export/ }));
+    await u.selectOptions(screen.getByRole("combobox", { name: "Kind of file" }), "Gift");
+    expect(screen.queryByRole("checkbox", { name: /history/ })).not.toBeInTheDocument();
+    await u.click(screen.getByRole("button", { name: "Export everything" }));
+    expect(mocked.exportFile).toHaveBeenLastCalledWith({ topics: null, history: false, format: "Gift" });
   });
 });
 
@@ -100,8 +129,9 @@ describe("Import", () => {
     mocked.importApply.mockResolvedValue({ added: [{ what: "topics", count: 1 }, { what: "questions", count: 18 }, { what: "cards", count: 12 }], replaced: 1, backup: { name: "study 2026-11-04 14-20 before-import.sqlite", day: TODAY, minute: 860, reason: "BeforeImport", bytes: 6_000_000 } });
     const onChanged = vi.fn();
     render(YourData, { onRestored: onChanged });
+    render(ImportHost);
     const file = new File(["zip"], "Networks.studyapp", { type: "application/zip" });
-    await u.upload(await screen.findByLabelText("Import a .studyapp file"), file);
+    await u.upload(await screen.findByLabelText("Import a file"), file);
     expect(mocked.importPreview).toHaveBeenCalledWith(file, "Networks.studyapp");
     const dialog = await screen.findByRole("dialog", { name: "Import Networks.studyapp" });
     expect(dialog).toHaveTextContent("Some topics, no history · exported Mon 2 Nov");
@@ -117,15 +147,16 @@ describe("Import", () => {
     expect(within(dialog).getByText("A backup is made first.")).toBeInTheDocument();
     await u.click(within(dialog).getByRole("button", { name: "Import" }));
     expect(mocked.importApply).toHaveBeenCalledWith({ rule: "EachOne", theirs: ["q2"] });
-    expect(onChanged).toHaveBeenCalled();
-    expect(await screen.findByRole("alert")).toHaveTextContent("Imported 1 topic, 18 questions and 12 cards, and used the file's version of 1 thing. To undo it, restore the backup from today at 14:20.");
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ text: "Imported 1 topic, 18 questions and 12 cards", sub: "From Networks.studyapp", action: expect.objectContaining({ label: "Undo" }) }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("says so when nothing in the file is new, and lets it go", async () => {
     const u = userEvent.setup();
     mocked.importPreview.mockResolvedValue(preview({ rows: [{ what: "Topics", new: 0, same: 3, changed: 0 }], clashes: [], from_here: true, everything: true, history: true, suggested: "Newer" }));
     render(YourData);
-    await u.upload(await screen.findByLabelText("Import a .studyapp file"), new File(["zip"], "Study App.studyapp"));
+    render(ImportHost);
+    await u.upload(await screen.findByLabelText("Import a file"), new File(["zip"], "Study App.studyapp"));
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveTextContent("Everything, with history · exported Mon 2 Nov from this computer");
     expect(dialog).toHaveTextContent("Everything in this file is here already.");
@@ -139,8 +170,21 @@ describe("Import", () => {
     const u = userEvent.setup();
     mocked.importPreview.mockRejectedValue({ message: "that file couldn't be imported: it isn't a .studyapp file" });
     render(YourData);
-    await u.upload(await screen.findByLabelText("Import a .studyapp file"), new File(["nope"], "notes.zip", { type: "application/zip" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("that file couldn't be imported: it isn't a .studyapp file");
-    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    render(ImportHost);
+    await u.upload(await screen.findByLabelText("Import a file"), new File(["nope"], "notes.studyapp"));
+    expect(await screen.findByRole("alertdialog", { name: "Couldn't import notes.studyapp" })).toHaveTextContent("That file couldn't be imported: it isn't a .studyapp file.");
+  });
+
+  // import-export.feature: Undoing the last import (R177)
+  it("shows the last import and undoes it after asking", async () => {
+    const u = userEvent.setup();
+    mocked.lastImport.mockResolvedValue({ file_name: "Networks.apkg", day: TODAY, minute: 860, summary: "2 topics and 190 cards", backup: "b" });
+    mocked.undoLastImport.mockResolvedValue({ name: "b", day: TODAY, minute: 860, reason: "BeforeImport", bytes: 1 });
+    render(YourData);
+    expect(await screen.findByText(/2 topics and 190 cards/)).toHaveTextContent("Networks.apkg, today at 14:20: 2 topics and 190 cards");
+    await u.click(screen.getByRole("button", { name: "Undo it" }));
+    await u.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Undo the import" }));
+    expect(mocked.undoLastImport).toHaveBeenCalled();
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ text: "Import undone" }));
   });
 });

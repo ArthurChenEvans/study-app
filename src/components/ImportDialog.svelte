@@ -3,11 +3,11 @@
   // anything changes. Most important: how much is new and what clashes, in a table a
   // screen reader can read cell by cell.
   import { FileInput, ShieldCheck } from "@lucide/svelte";
-  import { api, errorMessage, type ClashRule, type ImportPreview, type ImportResult } from "../lib/api";
-  import { toast } from "../lib/celebrations.svelte";
+  import { api, type ClashRule, type ImportPreview } from "../lib/api";
+  import { runImport } from "../lib/importer.svelte";
   import { fullLabel } from "../lib/dates";
 
-  let { preview, today, onClose, onDone }: { preview: ImportPreview; today: number; onClose: () => void; onDone: (result: ImportResult) => void } = $props();
+  let { preview, today, onClose, onDone }: { preview: ImportPreview; today: number; onClose: () => void; onDone: () => void } = $props();
 
   // svelte-ignore state_referenced_locally
   let rule = $state<ClashRule>(preview.suggested);
@@ -27,15 +27,9 @@
   async function bring() {
     busy = true;
     error = "";
-    try {
-      const result = await api.importApply({ rule, theirs: rule === "EachOne" ? theirs : [] });
-      const added = result.added.filter((count) => count.count > 0);
-      toast({ text: "Import finished", sub: added.length ? `Added ${added.map((count) => `${count.count} ${count.what}`).join(", ")}${result.replaced ? `, replaced ${result.replaced}` : ""}` : result.replaced ? `Replaced ${result.replaced}` : "Nothing new to add", icon: "download", ms: 5000 });
-      onDone(result);
-    } catch (failure) {
-      error = errorMessage(failure);
-      busy = false;
-    }
+    // The same ending as every import: a toast with Undo (R177).
+    if (await runImport(preview.file_name, () => api.importApply({ rule, theirs: rule === "EachOne" ? theirs : [] }))) onDone();
+    else busy = false;
   }
 
   const RULES: [ClashRule, string, string][] = [

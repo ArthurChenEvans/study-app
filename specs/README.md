@@ -321,3 +321,16 @@ Decided with the design: keywords are checked in any order, every answer is righ
 | R169 | The app is called Shudhana everywhere it shows its name. Its internal ID stays com.arthurchenevans.studyapp so it keeps the same data folder, and its .rpm (now `shudhana`) obsoletes `study-app`, so an update from Study App replaces it rather than installing beside it. `.studyapp` files keep their extension |
 | R170 | Each release also builds a signed Windows installer (.exe) and publishes it beside the .rpm, with both in latest.json, so Windows copies update too. Only Linux installs mention a password |
 
+
+## Importing and exporting other files (approved 13 Nov 2026)
+
+| ID | Requirement |
+|---|---|
+| R171 | An Anki `.apkg` or `.colpkg`, old or new format, imports with its notes, images and maths. Each deck becomes a topic (a parent deck becomes its module), or goes into a topic already here, or is skipped. Card types that don't map cleanly (like Image Occlusion) are flagged "Check these". Sounds are left out and said so |
+| R172 | Importing from Anki can keep Anki's progress (when each card is due) or start fresh. Notes imported before are matched by their Anki ID and stay as they are |
+| R173 | Export writes an Anki `.apkg` that Anki opens: cards and cloze as Anki notes, images as media, maths as MathJax, and optionally quiz questions as cards and my progress |
+| R174 | A `.csv` or `.tsv` imports as questions or cards. Columns are matched by their names, each can be changed, and rows with problems are listed with why and left out |
+| R175 | JSON, Markdown checklists, and Moodle GIFT and Aiken files import and export. Exporting to them never includes history |
+| R176 | Every import shows what it will add before anything changes, and backs up first |
+| R177 | After an import a toast offers Undo, and Your data shows the last import with Undo. Undo puts everything back to the backup made just before. The last import is kept beside the backups, never in the data, so it never travels with an export or sync |
+| R178 | A file can be imported from the Import button, by dropping it anywhere on the window (except a card or question field, which takes images), or by opening a `.studyapp` with the app. A big import shows its progress and can be stopped, which adds nothing. A file it can't read says why and offers another |

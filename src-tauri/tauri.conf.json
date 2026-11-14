@@ -57,7 +57,18 @@
         "installMode": "currentUser"
       }
     },
-    "createUpdaterArtifacts": true
+    "createUpdaterArtifacts": true,
+    "fileAssociations": [
+      {
+        "ext": [
+          "studyapp"
+        ],
+        "name": "Shudhana file",
+        "description": "Shudhana study data",
+        "mimeType": "application/x-shudhana",
+        "role": "Editor"
+      }
+    ]
   },
   "plugins": {
     "updater": {

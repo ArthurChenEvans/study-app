@@ -77,7 +77,7 @@ fn importing_puts_each_deck_where_you_chose_converting_html_images_and_cloze() {
             AnkiChoice {
                 decks: vec![
                     ("Networks::DNS".into(), DeckTarget::NewTopic { name: "DNS".into(), module: Some("Networks".into()) }),
-                    ("Networks::TLS".into(), DeckTarget::Topic(tls)),
+                    ("Networks::TLS".into(), DeckTarget::Topic { topic: tls }),
                     ("Misc".into(), DeckTarget::Skip),
                 ],
                 keep_progress: false,
@@ -267,4 +267,12 @@ fn an_import_reports_progress_and_stopping_adds_nothing() {
     let error = other.anki_apply(AnkiChoice { decks: vec![], keep_progress: false }, at(TODAY)).unwrap_err();
     assert!(error.message.contains("nothing was imported"));
     assert!(other.topics().unwrap().is_empty());
+}
+
+#[test]
+fn a_target_reads_and_writes_as_the_window_sends_it() {
+    let target = DeckTarget::Topic { topic: TopicId(12) };
+    assert_eq!(serde_json::to_value(&target).unwrap(), serde_json::json!({ "kind": "Topic", "topic": 12 }));
+    let choice: AnkiChoice = serde_json::from_value(serde_json::json!({ "decks": [["Networks::DNS", { "kind": "Skip" }], ["Misc", { "kind": "NewTopic", "name": "Misc", "module": null }]], "keep_progress": true })).unwrap();
+    assert_eq!(choice.decks[0].1, DeckTarget::Skip);
 }

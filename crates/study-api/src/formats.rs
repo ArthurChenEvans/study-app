@@ -758,7 +758,7 @@ impl App {
             let target = chosen.get(key.as_str()).map(|target| (*target).clone()).unwrap_or_else(|| DeckTarget::NewTopic { name: topic.name.clone(), module: topic.module.clone() });
             let (topic_uid, topic_name) = match target {
                 DeckTarget::Skip => continue,
-                DeckTarget::Topic(id) => {
+                DeckTarget::Topic { topic: id } => {
                     let name = self.topics()?.into_iter().find(|row| row.id == id).map(|row| row.name).unwrap_or_else(|| topic.name.clone());
                     (self.store.uid_of("topics", id.0)?.ok_or_else(|| ApiError::new("one of the chosen topics is gone, pick again"))?, name)
                 }

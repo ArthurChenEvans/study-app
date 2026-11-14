@@ -27,6 +27,8 @@
   import Celebration from "./components/Celebration.svelte";
   import Pops from "./components/Pops.svelte";
   import Toasts from "./components/Toasts.svelte";
+  import ImportHost from "./components/ImportHost.svelte";
+  import { onImportChanged } from "./lib/importer.svelte";
   import { flushPendingDeletes, loadPrefs } from "./lib/celebrations.svelte";
   import { startUpdates } from "./lib/updates.svelte";
   import { listen } from "@tauri-apps/api/event";
@@ -137,6 +139,12 @@
     }
   }
   refreshDue();
+  // R177: an import or its undo changes what every screen shows.
+  $effect(() => onImportChanged(() => {
+    if (RELOADS.includes(route.screen)) dataVersion++;
+    refreshDue();
+    syncTick();
+  }));
   // The review's top bar names what is being reviewed.
   let scopeName = $state("All topics");
   async function startCards(scope: Subject | null) {
@@ -255,6 +263,7 @@
 
 <Celebration />
 <Pops />
+<ImportHost />
 <Toasts />
 
 {#if installingOnClose}

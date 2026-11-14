@@ -259,7 +259,7 @@ pub enum DeckTarget {
     /// A topic named after the deck, in a module named after its parent deck. If they're
     /// here already (a module of that name, or this deck from an earlier import), they're used.
     NewTopic { name: String, module: Option<String> },
-    Topic(TopicId),
+    Topic { topic: TopicId },
     Skip,
 }
 
@@ -422,7 +422,7 @@ impl App {
             let target = chosen.get(deck).map(|target| (*target).clone()).unwrap_or_else(|| suggested(deck));
             let uid = match target {
                 DeckTarget::Skip => None,
-                DeckTarget::Topic(id) => Some(self.store.uid_of("topics", id.0)?.ok_or_else(|| ApiError::new("one of the chosen topics is gone, pick again"))?),
+                DeckTarget::Topic { topic: id } => Some(self.store.uid_of("topics", id.0)?.ok_or_else(|| ApiError::new("one of the chosen topics is gone, pick again"))?),
                 DeckTarget::NewTopic { name, module } => {
                     let module = match module {
                         None => None,
