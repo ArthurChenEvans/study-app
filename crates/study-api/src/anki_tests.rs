@@ -245,3 +245,26 @@ fn write_an_anki_export() {
     let (_, bytes) = exported(&app, true);
     std::fs::write(std::env::var("ANKI_OUT").expect("set ANKI_OUT"), bytes).unwrap();
 }
+
+// import-export.feature: a big import shows progress and can be stopped (R178)
+#[test]
+fn an_import_reports_progress_and_stopping_adds_nothing() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::{Arc, Mutex};
+    let mut app = app();
+    let seen = Arc::new(Mutex::new(vec![]));
+    let stop = Arc::new(AtomicBool::new(false));
+    let log = seen.clone();
+    app.set_progress(Some(Progress { report: Arc::new(move |what: &str, done, total| log.lock().unwrap().push((what.to_string(), done, total))), stop: stop.clone() }));
+    app.anki_preview(MODERN, "Networks.apkg").unwrap();
+    app.anki_apply(AnkiChoice { decks: vec![], keep_progress: false }, at(TODAY)).unwrap();
+    assert_eq!(seen.lock().unwrap().last(), Some(&("Notes".to_string(), 6, 6)));
+
+    let mut other = self::app();
+    stop.store(true, Ordering::SeqCst);
+    other.set_progress(Some(Progress { report: Arc::new(|_: &str, _, _| {}), stop }));
+    other.anki_preview(MODERN, "Networks.apkg").unwrap();
+    let error = other.anki_apply(AnkiChoice { decks: vec![], keep_progress: false }, at(TODAY)).unwrap_err();
+    assert!(error.message.contains("nothing was imported"));
+    assert!(other.topics().unwrap().is_empty());
+}

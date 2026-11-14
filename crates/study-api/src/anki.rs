@@ -398,6 +398,7 @@ impl App {
     pub fn anki_apply(&mut self, choice: AnkiChoice, clock: Clock) -> ApiResult<crate::transfer::ImportResult> {
         let (file_name, package) = self.pending_anki.take().ok_or_else(|| ApiError::new("pick the Anki file to import again"))?;
         let snapshot = self.anki_snapshot(&package, &choice, clock)?;
+        self.step("Notes", package.notes.len(), package.notes.len())?;
         let result = self.apply_snapshot(snapshot, HashSet::new(), clock)?;
         self.remember_import(&file_name, &result, clock);
         Ok(result)
@@ -450,7 +451,9 @@ impl App {
             map.entry(card.note).or_insert_with(Vec::new).push(card);
             map
         });
-        for (id, raw) in &package.notes {
+        let total = package.notes.len();
+        for (done, (id, raw)) in package.notes.iter().enumerate() {
+            self.step("Notes", done, total)?;
             let deck = deck_of.get(id).and_then(|deck| package.decks.get(deck)).cloned().unwrap_or_else(|| "Default".into());
             let Some(topic) = topic_for(&deck, &mut snapshot)? else { continue };
             let kind = package.types.get(&raw.kind).cloned().unwrap_or(NoteType { name: "Note".into(), cloze: false, fields: raw.fields.len(), templates: 1 });

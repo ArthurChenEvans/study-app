@@ -135,6 +135,18 @@ pub fn dispatch_at(app: &mut App, command: &str, args: &Value, today: i64, clock
         })),
         "import_preview" => json(app.import_preview(&base64(a, "file")?, &arg::<String>(a, "name")?)),
         "import_apply" => json(app.import_apply(arg(a, "choice")?, clock)),
+        // Anki, spreadsheets and the rest (R171 to R178)
+        "anki_preview" => json(app.anki_preview(&base64(a, "file")?, &arg::<String>(a, "name")?)),
+        "anki_apply" => json(app.anki_apply(arg(a, "choice")?, clock)),
+        "items_preview" => json(app.items_preview(&base64(a, "file")?, &arg::<String>(a, "name")?, a.get("mapping").cloned().filter(|value| !value.is_null()).map(serde_json::from_value).transpose().map_err(|error| ApiError::new(error.to_string()))?)),
+        "items_apply" => json(app.items_apply(arg(a, "choice")?, clock)),
+        "stop_import" => json::<()>(Ok(())),
+        "last_import" => json(app.last_import()),
+        "undo_last_import" => json(app.undo_last_import(clock)),
+        // The browser has no folders or launch files to read.
+        "show_in_folder" => json::<()>(Err(ApiError::new("the browser saves files itself"))),
+        "read_file_at" => json::<()>(Err(ApiError::new("dropping files on the window is for the desktop app"))),
+        "take_opened_file" => json::<Option<String>>(Ok(None)),
         // Sync (R119 to R128)
         "sync_status" => json(app.sync_status(clock)),
         "sync_now" => json(app.sync_now(arg(a, "auto")?, clock)),

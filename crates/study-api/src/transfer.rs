@@ -546,8 +546,11 @@ impl App {
         Ok(preview)
     }
 
+    /// Forgets a previewed file of any kind.
     pub fn cancel_import(&mut self) {
         self.pending_import = None;
+        self.pending_anki = None;
+        self.pending_items = None;
     }
 
     /// Imports the previewed file: a backup first, then everything at once (R116, R117).

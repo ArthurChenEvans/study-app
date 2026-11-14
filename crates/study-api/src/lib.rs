@@ -258,7 +258,35 @@ pub struct App {
     pending_import: Option<transfer::PendingImport>,
     pending_anki: Option<(String, anki::Package)>,
     pending_items: Option<formats::PendingItems>,
+    progress: Option<Progress>,
     sync: sync::Sync,
+}
+
+/// Reports how a long import is going ("Notes", done, total), and says whether to stop.
+/// Set by the desktop app around an import so the window can show progress and Stop.
+#[derive(Clone)]
+pub struct Progress {
+    pub report: std::sync::Arc<dyn Fn(&str, usize, usize) + Send + Sync>,
+    pub stop: std::sync::Arc<std::sync::atomic::AtomicBool>,
+}
+
+impl App {
+    pub fn set_progress(&mut self, progress: Option<Progress>) {
+        self.progress = progress;
+    }
+
+    /// Reports progress every so often, and stops the import (adding nothing) if asked to.
+    pub(crate) fn step(&self, what: &str, done: usize, total: usize) -> ApiResult<()> {
+        if let Some(progress) = &self.progress {
+            if progress.stop.load(std::sync::atomic::Ordering::SeqCst) {
+                return Err(ApiError::new("stopped, so nothing was imported"));
+            }
+            if done == total || done % 100 == 0 {
+                (progress.report)(what, done, total);
+            }
+        }
+        Ok(())
+    }
 }
 
 /// No quiz timer runs longer than a week. Keeps the arithmetic on timers from overflowing.
@@ -311,6 +339,7 @@ impl App {
             pending_import: None,
             pending_anki: None,
             pending_items: None,
+            progress: None,
             sync: sync::Sync::default(),
         }
     }
@@ -327,6 +356,7 @@ impl App {
             pending_import: None,
             pending_anki: None,
             pending_items: None,
+            progress: None,
             sync: sync::Sync::default(),
         }
     }
