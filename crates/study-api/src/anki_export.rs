@@ -166,7 +166,7 @@ impl Writer<'_> {
 
 fn question_fields(question: &Question, html: &mut dyn FnMut(&str) -> String) -> (String, String) {
     let letters = ["A", "B", "C", "D", "E"];
-    if question.kind == "Short" || question.short.is_some() {
+    if question.kind == "short" || question.short.is_some() {
         let model = question.short.as_ref().and_then(|short| short.get("model_answer")).and_then(Value::as_str).unwrap_or("").to_string();
         let back = [model, question.explanation.clone()].into_iter().filter(|part| !part.trim().is_empty()).collect::<Vec<_>>().join("\n\n");
         return (html(&question.text), html(&back));

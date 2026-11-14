@@ -17,6 +17,7 @@ zstd = "0.13"
 rusqlite = { version = "0.41.1", features = ["bundled", "collation"] }
 tempfile = "3.27.0"
 pulldown-cmark = { version = "0.13", default-features = false, features = ["html"] }
+csv = "1"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

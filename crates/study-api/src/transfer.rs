@@ -140,6 +140,20 @@ pub struct ImportChoice {
     pub theirs: Vec<String>,
 }
 
+/// Where the last import came from, for "Undo this import" (R177). Kept beside the backups,
+/// not in the database, so it never travels to another computer with an export or sync.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LastImport {
+    pub file_name: String,
+    pub day: i64,
+    pub minute: u32,
+    /// "230 cards and 4 topics".
+    pub summary: String,
+    pub backup: String,
+}
+
+const LAST_IMPORT: &str = "last-import.json";
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ImportResult {
     pub added: Vec<Count>,
@@ -169,6 +183,7 @@ pub fn free_path(folder: &std::path::Path, name: &str) -> std::path::PathBuf {
 pub struct PendingImport {
     snapshot: Snapshot,
     clashes: Vec<Clash>,
+    file_name: String,
 }
 
 // ---------- Kinds of record ----------
@@ -527,7 +542,7 @@ impl App {
             clashes: clashes.clone(),
             suggested: if manifest.everything { ClashRule::Newer } else { ClashRule::KeepMine },
         };
-        self.pending_import = Some(PendingImport { snapshot, clashes });
+        self.pending_import = Some(PendingImport { snapshot, clashes, file_name: file_name.to_string() });
         Ok(preview)
     }
 
@@ -549,7 +564,54 @@ impl App {
             })
             .map(|clash| clash.uid.clone())
             .collect();
-        self.apply_snapshot(pending.snapshot, theirs, clock)
+        let result = self.apply_snapshot(pending.snapshot, theirs, clock)?;
+        self.remember_import(&pending.file_name, &result, clock);
+        Ok(result)
+    }
+
+    /// The last import, while its backup is still there to undo it with (R177).
+    pub fn last_import(&self) -> ApiResult<Option<LastImport>> {
+        let Ok(backups) = self.backups_folder() else { return Ok(None) };
+        let Ok(text) = std::fs::read_to_string(backups.dir().join(LAST_IMPORT)) else { return Ok(None) };
+        let Ok(last) = serde_json::from_str::<LastImport>(&text) else { return Ok(None) };
+        Ok(backups.find(&last.backup).is_ok().then_some(last))
+    }
+
+    /// Puts everything back to how it was just before the last import, from the backup made
+    /// then (R177). Anything changed since goes too, as the dialog says.
+    pub fn undo_last_import(&mut self, clock: Clock) -> ApiResult<crate::backup::BackupInfo> {
+        let last = self.last_import()?.ok_or_else(|| ApiError::new("there's no import to undo"))?;
+        let restored = self.restore_backup(&last.backup, clock)?;
+        if let Ok(backups) = self.backups_folder() {
+            let _ = std::fs::remove_file(backups.dir().join(LAST_IMPORT));
+        }
+        Ok(restored)
+    }
+
+    pub(crate) fn remember_import(&self, file_name: &str, result: &ImportResult, clock: Clock) {
+        let (Some(backup), Ok(backups)) = (result.backup.as_ref(), self.backups_folder()) else { return };
+        let summary = result
+            .added
+            .iter()
+            .filter(|count| count.count > 0 && count.what != "notes")
+            .map(|count| {
+                let what = match count.what.as_str() {
+                    "checklists" => "recall checklists".to_string(),
+                    other => other.to_lowercase(),
+                };
+                let what = if count.count == 1 { what.strip_suffix('s').unwrap_or(&what).to_string() } else { what };
+                format!("{} {what}", count.count)
+            })
+            .collect::<Vec<_>>();
+        let summary = match summary.as_slice() {
+            [] => "Nothing new".to_string(),
+            [only] => only.clone(),
+            [start @ .., last] => format!("{} and {last}", start.join(", ")),
+        };
+        let last = LastImport { file_name: file_name.to_string(), day: clock.day, minute: clock.minute, summary, backup: backup.name.clone() };
+        if let Ok(text) = serde_json::to_string(&last) {
+            let _ = std::fs::write(backups.dir().join(LAST_IMPORT), text);
+        }
     }
 
     /// Adds the records of any import (a `.studyapp`, an Anki deck, a spreadsheet): a backup

@@ -256,7 +256,8 @@ pub struct App {
     card_session: Option<cards::CardSession>,
     backups: Option<backup::Backups>,
     pending_import: Option<transfer::PendingImport>,
-    pending_anki: Option<anki::Package>,
+    pending_anki: Option<(String, anki::Package)>,
+    pending_items: Option<formats::PendingItems>,
     sync: sync::Sync,
 }
 
@@ -309,6 +310,7 @@ impl App {
             backups: None,
             pending_import: None,
             pending_anki: None,
+            pending_items: None,
             sync: sync::Sync::default(),
         }
     }
@@ -324,6 +326,7 @@ impl App {
             backups: None,
             pending_import: None,
             pending_anki: None,
+            pending_items: None,
             sync: sync::Sync::default(),
         }
     }
@@ -937,6 +940,8 @@ mod ids_tests;
 mod transfer_tests;
 #[cfg(test)]
 mod anki_tests;
+#[cfg(test)]
+mod formats_tests;
 #[cfg(test)]
 mod sync_tests;
 #[cfg(test)]

@@ -390,15 +390,17 @@ impl App {
             has_progress,
             already_here,
         };
-        self.pending_anki = Some(package);
+        self.pending_anki = Some((file_name.to_string(), package));
         Ok(preview)
     }
 
     /// Imports the previewed Anki file as chosen: a backup first, then everything at once (R172).
     pub fn anki_apply(&mut self, choice: AnkiChoice, clock: Clock) -> ApiResult<crate::transfer::ImportResult> {
-        let package = self.pending_anki.take().ok_or_else(|| ApiError::new("pick the Anki file to import again"))?;
+        let (file_name, package) = self.pending_anki.take().ok_or_else(|| ApiError::new("pick the Anki file to import again"))?;
         let snapshot = self.anki_snapshot(&package, &choice, clock)?;
-        self.apply_snapshot(snapshot, HashSet::new(), clock)
+        let result = self.apply_snapshot(snapshot, HashSet::new(), clock)?;
+        self.remember_import(&file_name, &result, clock);
+        Ok(result)
     }
 
     fn anki_snapshot(&self, package: &Package, choice: &AnkiChoice, clock: Clock) -> ApiResult<Snapshot> {
