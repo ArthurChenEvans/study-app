@@ -2,6 +2,8 @@
   import { onMount, tick } from "svelte";
   import Sidebar, { type NavMode } from "./components/Sidebar.svelte";
   import Topics from "./screens/Topics.svelte";
+  import Quizzes from "./screens/Quizzes.svelte";
+  import Transfer from "./screens/Transfer.svelte";
   import Editor from "./screens/Editor.svelte";
   import Setup from "./screens/Setup.svelte";
   import Quiz from "./screens/Quiz.svelte";
@@ -74,12 +76,12 @@
   let runs = 0;
 
   const navScreen = $derived<Screen>(
-    route.screen === "calendar-day" ? "calendar" : route.screen === "project" || route.screen === "session-review" || route.screen === "drills" ? "projects" : route.screen === "editor" ? "topics" : route.screen === "topic-cards" || route.screen === "card-review" || route.screen === "suggestions" ? "cards" : route.screen === "checklist" || route.screen === "recall-session" ? "recall" : route.screen === "setup-for" || route.screen === "quiz" || route.screen === "results" ? "setup" : route.screen,
+    route.screen === "calendar-day" ? "calendar" : route.screen === "project" || route.screen === "session-review" || route.screen === "drills" ? "projects" : route.screen === "editor" ? "quizzes" : route.screen === "topic-cards" || route.screen === "card-review" || route.screen === "suggestions" ? "cards" : route.screen === "checklist" || route.screen === "recall-session" ? "recall" : route.screen === "setup-for" || route.screen === "quiz" || route.screen === "results" ? "setup" : route.screen,
   );
 
   function go(next: Route) {
     route = next;
-    if (["overview", "calendar", "topics", "cards", "recall", "projects", "bibliography", "history", "search", "setup", "data", "settings"].includes(next.screen)) history.replaceState(null, "", `#${next.screen}`);
+    if (["overview", "calendar", "quizzes", "topics", "transfer", "cards", "recall", "projects", "bibliography", "history", "search", "setup", "data", "settings"].includes(next.screen)) history.replaceState(null, "", `#${next.screen}`);
     window.scrollTo?.(0, 0);
     refreshDue();
   }
@@ -106,7 +108,7 @@
   let sync = $state<{ ok: boolean; short: string; icon: string } | null>(null);
   const showSync = (status: SyncStatus | null) => (sync = status?.on ? syncLine(status, Math.floor(Date.now() / 1000)) : null);
   let dataVersion = $state(0);
-  const RELOADS = ["overview", "calendar", "topics", "cards", "recall", "projects", "bibliography", "history"];
+  const RELOADS = ["overview", "calendar", "quizzes", "topics", "transfer", "cards", "recall", "projects", "bibliography", "history"];
   async function syncTick(auto = true) {
     try {
       let status = await api.syncStatus();
@@ -133,7 +135,7 @@
   async function refreshCounts() {
     try {
       const today = await api.dueToday();
-      due = today && typeof today === "object" ? { calendar: today.total, topics: today.quizzes, cards: today.cards, recall: today.checklists, projects: today.drills } : {};
+      due = today && typeof today === "object" ? { calendar: today.total, quizzes: today.quizzes, cards: today.cards, recall: today.checklists, projects: today.drills } : {};
     } catch {
       due = {};
     }
@@ -210,8 +212,12 @@
     {#key dataVersion}
     <!-- R186: every screen comes in the same way, once, when you go to it -->
     {#key route.screen}<div class="screen-enter">
-    {#if route.screen === "topics"}
-      <Topics onCards={(topic) => go({ screen: "topic-cards", topic, note: null })} onSearch={(text) => go({ screen: "search", text })} onEdit={(topic) => go({ screen: "editor", topic })} onQuiz={(topic) => go({ screen: "setup-for", topics: [topic] })} onQuizTopics={(topics) => go({ screen: "setup-for", topics })} />
+    {#if route.screen === "quizzes"}
+      <Quizzes onCards={(topic) => go({ screen: "topic-cards", topic, note: null })} onSearch={(text) => go({ screen: "search", text })} onEdit={(topic) => go({ screen: "editor", topic })} onQuiz={(topic) => go({ screen: "setup-for", topics: [topic] })} onQuizTopics={(topics) => go({ screen: "setup-for", topics })} />
+    {:else if route.screen === "topics"}
+      <Topics onEdit={(topic) => go({ screen: "editor", topic })} onCards={(topic) => go({ screen: "topic-cards", topic, note: null })} onRecall={() => go({ screen: "recall" })} />
+    {:else if route.screen === "transfer"}
+      <Transfer onBackups={() => go({ screen: "data" })} />
     {:else if route.screen === "editor"}
       {#key route.topic}<Editor topic={route.topic} />{/key}
     {:else if route.screen === "setup" || route.screen === "setup-for"}

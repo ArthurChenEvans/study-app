@@ -18,7 +18,7 @@ vi.mock("../lib/celebrations.svelte", async (original) => ({ ...(await original<
 
 import { api, type BackupStatus, type ImportPreview } from "../lib/api";
 import ImportHost from "../components/ImportHost.svelte";
-import YourData from "./YourData.svelte";
+import Transfer from "./Transfer.svelte";
 
 const mocked = vi.mocked(api);
 const TODAY = 20_761; // Wed 4 Nov 2026
@@ -51,11 +51,28 @@ beforeEach(() => {
   mocked.exportSummary.mockResolvedValue({ name: "Study App 2026-11-04.studyapp", counts: [{ what: "Topics", count: 3 }, { what: "Questions", count: 15 }, { what: "Quizzes", count: 1 }] });
 });
 
+// R189: Import & Export is its own page, not tucked away at the bottom of Your data.
+describe("Import & Export page", () => {
+  it("shows importing and exporting side by side, with backups a link away", async () => {
+    const u = userEvent.setup();
+    const onBackups = vi.fn();
+    render(Transfer, { onBackups });
+    expect(await screen.findByRole("heading", { level: 1, name: "Import & Export" })).toBeInTheDocument();
+    const importing = screen.getByRole("region", { name: "Import" });
+    expect(within(importing).getByLabelText("Import a file")).toBeInTheDocument();
+    expect(within(importing).getByRole("list", { name: "It can read" })).toHaveTextContent("Anki");
+    const exporting = screen.getByRole("region", { name: "Export" });
+    expect(within(exporting).getByRole("button", { name: /^Export/ })).toBeInTheDocument();
+    await u.click(screen.getByRole("button", { name: "Your data" }));
+    expect(onBackups).toHaveBeenCalled();
+  });
+});
+
 describe("Export", () => {
   // transfer.feature: Moving everything to another computer (R112)
   it("exports everything with history and says where it went", async () => {
     const u = userEvent.setup();
-    render(YourData);
+    render(Transfer);
     await u.click(await screen.findByRole("button", { name: /^Export/ }));
     const dialog = screen.getByRole("dialog", { name: "Export" });
     expect(within(dialog).getByRole("radio", { name: /Everything/ })).toBeChecked();
@@ -78,7 +95,7 @@ describe("Export", () => {
     URL.createObjectURL = vi.fn((blob: Blob) => { created.push(blob); return "blob:x"; });
     URL.revokeObjectURL = vi.fn();
     const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
-    render(YourData);
+    render(Transfer);
     await u.click(await screen.findByRole("button", { name: /^Export/ }));
     const dialog = screen.getByRole("dialog", { name: "Export" });
     await u.click(within(dialog).getByRole("radio", { name: /Some topics, to share/ }));
@@ -104,7 +121,7 @@ describe("Export", () => {
 describe("Export to another app", () => {
   it("sends the kind of file and its options, and history only where it means something", async () => {
     const u = userEvent.setup();
-    render(YourData);
+    render(Transfer);
     await u.click(await screen.findByRole("button", { name: /^Export/ }));
     const dialog = screen.getByRole("dialog", { name: "Export" });
     await u.selectOptions(within(dialog).getByRole("combobox", { name: "Kind of file" }), "Anki");
@@ -128,7 +145,7 @@ describe("Import", () => {
     mocked.importPreview.mockResolvedValue(preview());
     mocked.importApply.mockResolvedValue({ added: [{ what: "topics", count: 1 }, { what: "questions", count: 18 }, { what: "cards", count: 12 }], replaced: 1, backup: { name: "study 2026-11-04 14-20 before-import.sqlite", day: TODAY, minute: 860, reason: "BeforeImport", bytes: 6_000_000 } });
     const onChanged = vi.fn();
-    render(YourData, { onRestored: onChanged });
+    render(Transfer, { onRestored: onChanged });
     render(ImportHost);
     const file = new File(["zip"], "Networks.studyapp", { type: "application/zip" });
     await u.upload(await screen.findByLabelText("Import a file"), file);
@@ -154,7 +171,7 @@ describe("Import", () => {
   it("says so when nothing in the file is new, and lets it go", async () => {
     const u = userEvent.setup();
     mocked.importPreview.mockResolvedValue(preview({ rows: [{ what: "Topics", new: 0, same: 3, changed: 0 }], clashes: [], from_here: true, everything: true, history: true, suggested: "Newer" }));
-    render(YourData);
+    render(Transfer);
     render(ImportHost);
     await u.upload(await screen.findByLabelText("Import a file"), new File(["zip"], "Study App.studyapp"));
     const dialog = await screen.findByRole("dialog");
@@ -169,7 +186,7 @@ describe("Import", () => {
   it("shows why a file can't be imported", async () => {
     const u = userEvent.setup();
     mocked.importPreview.mockRejectedValue({ message: "that file couldn't be imported: it isn't a .studyapp file" });
-    render(YourData);
+    render(Transfer);
     render(ImportHost);
     await u.upload(await screen.findByLabelText("Import a file"), new File(["nope"], "notes.studyapp"));
     expect(await screen.findByRole("alertdialog", { name: "Couldn't import notes.studyapp" })).toHaveTextContent("That file couldn't be imported: it isn't a .studyapp file.");
@@ -180,7 +197,7 @@ describe("Import", () => {
     const u = userEvent.setup();
     mocked.lastImport.mockResolvedValue({ file_name: "Networks.apkg", day: TODAY, minute: 860, summary: "2 topics and 190 cards", backup: "b" });
     mocked.undoLastImport.mockResolvedValue({ name: "b", day: TODAY, minute: 860, reason: "BeforeImport", bytes: 1 });
-    render(YourData);
+    render(Transfer);
     expect(await screen.findByText(/2 topics and 190 cards/)).toHaveTextContent("Networks.apkg, today at 14:20: 2 topics and 190 cards");
     await u.click(screen.getByRole("button", { name: "Undo it" }));
     await u.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Undo the import" }));

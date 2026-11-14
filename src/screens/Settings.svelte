@@ -114,7 +114,7 @@
     <h2 id="data-h" class="eyebrow">Your study data</h2>
     <a href="#data" class="settings-row mt-2" onclick={(event) => { event.preventDefault(); onNavigate("data"); }}>
       <Database class="size-5 text-muted" />
-      <span class="flex-1"><span class="block font-bold">Your data</span><span class="block text-sm font-semibold text-muted">Backups, sync, and export and import</span></span>
+      <span class="flex-1"><span class="block font-bold">Your data</span><span class="block text-sm font-semibold text-muted">Backups and sync</span></span>
       <ChevronRight class="size-5 text-muted" />
     </a>
   </section>
