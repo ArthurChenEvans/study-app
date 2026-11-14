@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../lib/api", async (original) => {
   const actual = await original<typeof import("../lib/api")>();
-  return { ...actual, api: { slidesToPdf: vi.fn(), fetchPage: vi.fn() } };
+  return { ...actual, api: { slidesToPdf: vi.fn(), fetchPage: vi.fn(), sources: vi.fn(), addSource: vi.fn(), updateSource: vi.fn(), deleteSource: vi.fn() } };
 });
 
 import { api } from "../lib/api";
@@ -24,6 +24,8 @@ async function open(...files: File[]) {
 
 beforeEach(() => {
   vi.resetAllMocks();
+  mocked.sources.mockResolvedValue([]);
+  mocked.addSource.mockResolvedValue(77);
   forget(5);
   Element.prototype.scrollIntoView = vi.fn();
 });
@@ -48,6 +50,46 @@ describe("Source preview", () => {
     const contents = screen.getByRole("navigation", { name: "Contents of How DNS works" });
     await u.click(within(contents).getByRole("button", { name: "Caching" }));
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+  });
+
+  // R202: anything opened becomes a source, filled in from its details, to check when you like
+  it("adds what you open to your sources and lets you check it", async () => {
+    const u = userEvent.setup();
+    mocked.fetchPage.mockResolvedValue({ url: "https://blog.example.com/dns", html: '<head><meta property="og:site_name" content="Example Blog"></head><article><h1>How DNS works</h1></article>' });
+    render(Preview);
+    await u.click(screen.getByRole("button", { name: "Open a link" }));
+    await u.type(screen.getByRole("textbox", { name: "Web address" }), "blog.example.com/dns{Enter}");
+    const note = await screen.findByRole("status", { name: "New source" });
+    expect(mocked.addSource).toHaveBeenCalledWith({ authors: "", year: null, title: "How DNS works", edition: null, description: null, publisher: "Example Blog", url: "https://blog.example.com/dns" });
+    expect(note).toHaveTextContent("Added to your sources");
+    await u.click(within(note).getByRole("button", { name: "Check it" }));
+    const dialog = screen.getByRole("dialog", { name: "Check this source" });
+    expect(within(dialog).getByText(/Filled in from https:\/\/blog.example.com\/dns/)).toBeInTheDocument();
+    expect(within(dialog).getByLabelText(/^Title/)).toHaveValue("How DNS works");
+    expect(within(dialog).getByText("From the file", { selector: "[data-field=title] *" })).toBeInTheDocument();
+    expect(within(dialog).getByText("Not in the file", { selector: "[data-field=authors] *" })).toBeInTheDocument();
+    await u.type(within(dialog).getByLabelText(/^Authors/), "Doe, J.");
+    expect(within(dialog).getByText(/Doe, J\. \(n\.d\.\)/)).toBeInTheDocument();
+    await u.click(within(dialog).getByRole("button", { name: "Save source" }));
+    expect(mocked.updateSource).toHaveBeenCalledWith(77, expect.objectContaining({ authors: "Doe, J.", title: "How DNS works" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("status", { name: "New source" })).not.toBeInTheDocument();
+  });
+
+  it("takes the new source back if you don't keep it, and doesn't add one it already has", async () => {
+    const u = userEvent.setup();
+    mocked.deleteSource.mockResolvedValue(0);
+    render(Preview);
+    await open(file("networks.md", NOTES));
+    await u.click(within(await screen.findByRole("status", { name: "New source" })).getByRole("button", { name: "Check it" }));
+    await u.click(screen.getByRole("button", { name: "Don't keep it" }));
+    expect(mocked.deleteSource).toHaveBeenCalledWith(77);
+    mocked.addSource.mockClear();
+    mocked.sources.mockResolvedValue([{ id: 3, fields: { authors: "", year: null, title: "networks", edition: null, description: null, publisher: null, url: null }, apa: "", used_by: [], cited_by_questions: 0 }]);
+    await open(file("networks.md", NOTES));
+    await screen.findAllByRole("tab", { name: /networks\.md/ });
+    await new Promise((done) => setTimeout(done, 20));
+    expect(mocked.addSource).not.toHaveBeenCalled();
   });
 
   it("says why a link couldn't open", async () => {

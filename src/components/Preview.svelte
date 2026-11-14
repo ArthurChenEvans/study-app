@@ -9,7 +9,10 @@
   import { closeTab, kindOf, numberLines, openTab, type Tab } from "../lib/preview";
   import { readEpub, type Epub } from "../lib/epub";
   import { openInBrowser, safeLinks } from "../lib/links";
-  import { fileFor, remember, showing } from "../lib/sourceFiles.svelte";
+  import { fileFor, reading, remember, showing } from "../lib/sourceFiles.svelte";
+  import { apaPreview, detailsFromEpub, detailsFromOffice, detailsFromPdfInfo, detailsFromWeb, sameSource, titleFromName, type FoundDetails } from "../lib/fileDetails";
+  import SourceCheck from "./SourceCheck.svelte";
+  import type { SourceFields } from "../lib/api";
   import { locationTarget, markdownHeadings } from "../lib/toc";
   import PdfView from "./PdfView.svelte";
   import Contents from "./PreviewContents.svelte";
@@ -118,6 +121,59 @@
     remember(asking.source, tab.name);
     show(tab, asking.location);
   }
+  // R202: whatever you open becomes a source, from the file's own details, unless it's one
+  // you already have. A line says so, and Check it opens the fields to fix.
+  let tabSource = $state<Record<number, number>>({});
+  let added = $state<{ tab: number; source: number; found: FoundDetails } | null>(null);
+  let checking = $state(false);
+  let pageNow = $state<Record<number, number>>({});
+  async function autoSource(tab: number, found: FoundDetails) {
+    try {
+      const name = tabs.find((open) => open.id === tab)?.name ?? found.from;
+      const existing = (await api.sources()) ?? [];
+      const match = existing.find((source) => fileFor(source.id) === name) ?? existing.find((source) => sameSource(source.fields, found.fields));
+      if (match) {
+        remember(match.id, name);
+        tabSource[tab] = match.id;
+        return;
+      }
+      const source = await api.addSource(found.fields);
+      remember(source, name);
+      tabSource[tab] = source;
+      reading.added += 1;
+      added = { tab, source, found };
+    } catch {
+      // A source is a convenience: the file still opens.
+    }
+  }
+  async function keepChecked(fields: SourceFields) {
+    if (!added) return;
+    const { source } = added;
+    checking = false;
+    added = null;
+    try { await api.updateSource(source, fields); } catch { /* kept as it was */ }
+    reading.added += 1;
+  }
+  async function dropAdded() {
+    if (!added) return;
+    const { source, tab } = added;
+    checking = false;
+    added = null;
+    delete tabSource[tab];
+    try { await api.deleteSource(source); } catch { /* left in the bibliography */ }
+    reading.added += 1;
+  }
+  // Only a reader with a file open says what's being read, so an empty one leaves it be.
+  let saidReading = false;
+  $effect(() => {
+    const id = active;
+    const kind = current?.kind;
+    if (id === null && !saidReading) return;
+    saidReading = id !== null;
+    reading.source = id === null ? null : (tabSource[id] ?? null);
+    reading.location = id === null ? "" : kind === "pdf" || kind === "slides" ? (pageNow[id] ? `${kind === "slides" ? "slide" : "p."} ${pageNow[id]}` : "") : lineAt[id] ? `line ${lineAt[id]}` : "";
+  });
+
   const icon = { pdf: FileText, slides: Presentation, epub: BookOpen, markdown: FileText, text: FileText, web: Globe };
 
   // R201: a web page opens as a reading view. Fetched once, kept only while the tab is open.
@@ -138,6 +194,7 @@
       const fetched = await api.fetchPage(typed);
       const page = readWebPage(fetched.html, fetched.url);
       contents[id] = { state: "web", page };
+      void autoSource(id, detailsFromWeb(page.details));
       tabs = tabs.map((tab) => (tab.id === id ? { ...tab, name: page.title || fetched.url } : tab));
     } catch (failure) {
       contents[id] = { state: "error", message: `Couldn't open that page: ${errorMessage(failure)}` };
@@ -152,9 +209,17 @@
     try {
       if (file.size > MAX_BYTES) throw new Error("that file is too big to preview (the limit is 200 MB)");
       if (kind === "pdf") contents[id] = { state: "pdf", data: new Uint8Array(await file.arrayBuffer()) };
-      else if (kind === "slides") contents[id] = { state: "pdf", data: await api.slidesToPdf(file) };
-      else if (kind === "epub") contents[id] = { state: "epub", epub: await readEpub(await file.arrayBuffer()) };
-      else contents[id] = { state: "text", text: await file.text() };
+      else if (kind === "slides") {
+        void detailsFromOffice(await file.arrayBuffer(), file.name).then((found) => autoSource(id, found));
+        contents[id] = { state: "pdf", data: await api.slidesToPdf(file) };
+      } else if (kind === "epub") {
+        const epub = await readEpub(await file.arrayBuffer());
+        contents[id] = { state: "epub", epub };
+        void autoSource(id, detailsFromEpub(epub, file.name));
+      } else {
+        contents[id] = { state: "text", text: await file.text() };
+        void autoSource(id, { fields: { authors: "", year: null, title: titleFromName(file.name), edition: null, description: null, publisher: null, url: null }, fromFile: [], from: file.name });
+      }
     } catch (failure) {
       contents[id] = { state: "error", message: errorMessage(failure) };
     }
@@ -281,6 +346,17 @@
     {#if refused}<p role="alert" class="mx-6 mt-3 text-sm text-error">{refused}</p>{/if}
     {@render citationNotes()}
 
+    {#if added && added.tab === active}
+      <div role="status" aria-label="New source" class="mx-3 mt-3 flex items-center gap-3 rounded-xl border-2 border-base-300 bg-base-200 px-3 py-2 text-sm">
+        <span class="min-w-0 flex-1"><span class="font-extrabold">Added to your sources</span> <span class="text-muted">· {apaPreview(added.found.fields).replace(/\*/g, "")} From the file's details.</span></span>
+        <button type="button" class="btn btn-ghost btn-sm" onclick={() => (checking = true)}>Check it</button>
+        <button type="button" class="btn btn-quiet btn-sm btn-square" aria-label="Dismiss" onclick={() => (added = null)}><X class="size-4" /></button>
+      </div>
+    {/if}
+    {#if checking && added}
+      <SourceCheck found={added.found} onSave={keepChecked} onDiscard={dropAdded} onClose={() => (checking = false)} />
+    {/if}
+
     {#if current}
       {@const content = contents[current.id]}
       {#key current.id}
@@ -290,7 +366,7 @@
           {:else if content.state === "error"}
             <p role="alert" class="p-6 text-sm text-error">{content.message}</p>
           {:else if content.state === "pdf"}
-            <PdfView data={content.data} name={current.name} slides={current.kind === "slides"} target={pageAt[current.id] ?? null} {focusAt} />
+            <PdfView data={content.data} name={current.name} slides={current.kind === "slides"} target={pageAt[current.id] ?? null} {focusAt} onPage={(page) => (pageNow[current.id] = page)} onInfo={current.kind === "pdf" ? (info) => autoSource(current.id, detailsFromPdfInfo(info, current.name)) : undefined} />
           {:else if content.state === "text"}
             {@const lines = numberLines(content.text)}
             {@const headings = current.kind === "markdown" ? markdownHeadings(content.text).map((heading) => ({ title: heading.title, depth: heading.depth, at: heading.line })) : []}

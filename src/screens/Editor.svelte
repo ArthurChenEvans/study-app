@@ -2,7 +2,7 @@
   // questions.feature, sources.feature, short-answer.feature (R4 to R10, R14, R48, R49, R78 to R82)
   import { ArrowLeft, BookOpen, Check, CircleCheck, CircleX, Eye, ImagePlus, Plus, Trash2, X } from "@lucide/svelte";
   import Preview from "../components/Preview.svelte";
-  import { showCitation } from "../lib/sourceFiles.svelte";
+  import { reading, showCitation } from "../lib/sourceFiles.svelte";
   import { locationTarget } from "../lib/toc";
   import Rich from "../components/Rich.svelte";
   import { api, errorMessage, type Id, type Marking, type QuestionInput, type ShortAnswer, type SourceRow } from "../lib/api";
@@ -31,6 +31,25 @@
   let draft = $state<Draft>(blank());
   let error = $state("");
   let saved = $state("");
+  // R202: a new question's "Fact came from" follows what you're reading, until you change it.
+  let autoCite = $state<{ source: string; location: string } | null>(null);
+  let citeTouched = $state(false);
+  $effect(() => {
+    const source = reading.source;
+    const location = reading.location;
+    if (editing !== null || citeTouched || source === null) return;
+    const first = draft.citations[0];
+    const next = { source: String(source), location };
+    if (first && first.source === next.source && first.location === next.location) return;
+    if (draft.citations.length === 0 || (autoCite && first && first.source === autoCite.source && first.location === autoCite.location)) {
+      autoCite = next;
+      draft.citations = [{ ...next }, ...draft.citations.slice(1)];
+    }
+  });
+  // Sources the reader adds show up here without leaving the page.
+  $effect(() => {
+    if (reading.added) api.sources().then((rows) => (sources = rows ?? sources)).catch(() => {});
+  });
 
   async function load() {
     const [topics, list, sourceRows] = await Promise.all([api.topics(), api.questionsIn(topic), api.sources()]);
@@ -108,6 +127,8 @@
       editing = null;
       const kind = draft.kind;
       draft = { ...blank(), kind };
+      autoCite = null;
+      citeTouched = false;
       tryText = "";
       await load();
     } catch (failure) {
@@ -339,7 +360,7 @@
       </div>
 
       <fieldset class="space-y-3">
-        <legend class="text-sm font-semibold">Sources <span class="font-normal text-muted">(optional)</span></legend>
+        <legend class="text-sm font-semibold">Fact came from <span class="font-normal text-muted">(optional)</span></legend>
         {#each draft.citations as citation, index (index)}
           <div class="flex items-center gap-3" role="group" aria-label="Citation {index + 1}">
             <BookOpen class="size-4 shrink-0" />
@@ -353,9 +374,10 @@
               {@const target = locationTarget(citation.location)!}
               <button type="button" class="btn btn-quiet btn-sm btn-square" aria-label="Show {"line" in target ? `line ${target.line}` : `page ${target.page}`} in the preview" title="Show in the preview" onclick={() => source && showCitation(source.id, shortCite(source), citation.location)}><Eye class="size-4" /></button>
             {/if}
-            <button type="button" class="btn btn-quiet btn-sm btn-square" aria-label="Remove citation {index + 1}" onclick={() => (draft.citations = draft.citations.filter((_, position) => position !== index))}><X class="size-4" /></button>
+            <button type="button" class="btn btn-quiet btn-sm btn-square" aria-label="Remove citation {index + 1}" onclick={() => { citeTouched = true; draft.citations = draft.citations.filter((_, position) => position !== index); }}><X class="size-4" /></button>
           </div>
         {/each}
+        {#if autoCite && draft.citations[0]?.source === autoCite.source}<p class="text-sm text-muted">Filled in from what you're reading. Change it if the fact came from somewhere else.</p>{/if}
         <button type="button" class="btn btn-ghost btn-sm" onclick={() => (draft.citations = [...draft.citations, { source: "", location: "" }])}><Plus class="size-4" />Cite a source</button>
         {#if sources.length === 0}<p class="text-sm text-muted">Add sources in the Bibliography first.</p>{/if}
       </fieldset>

@@ -5,7 +5,7 @@ import JSZip from "jszip";
 import { sanitiseForeign } from "./sanitise";
 
 export interface TocEntry { title: string; depth: number; at: number; anchor: string | null }
-export interface Epub { title: string; chapters: { title: string; html: string }[]; toc: TocEntry[] }
+export interface Epub { title: string; creator?: string; date?: string; publisher?: string; chapters: { title: string; html: string }[]; toc: TocEntry[] }
 
 const NOT_EPUB = "This doesn't look like an EPUB book.";
 
@@ -95,6 +95,11 @@ export async function readEpub(data: ArrayBuffer): Promise<Epub> {
 
   const opf = xml(opfText);
   const title = byLocalName(opf, "title")[0]?.textContent?.trim() ?? "Untitled book";
+  // R202: what a reference needs, when the book says.
+  const dc = (name: string) => byLocalName(opf, name).map((node) => node.textContent?.trim() ?? "").filter(Boolean);
+  const creator = dc("creator").join(", ");
+  const date = dc("date")[0] ?? "";
+  const publisher = dc("publisher")[0] ?? "";
   const manifest = new Map(byLocalName(opf, "item").map((item) => [item.getAttribute("id"), { href: item.getAttribute("href") ?? "", type: item.getAttribute("media-type") ?? "", properties: item.getAttribute("properties") ?? "" }]));
   const navItem = [...manifest.values()].find((item) => item.properties.split(/\s+/).includes("nav"));
   const ncxItem = manifest.get(byLocalName(opf, "spine")[0]?.getAttribute("toc") ?? "");
@@ -175,5 +180,5 @@ export async function readEpub(data: ArrayBuffer): Promise<Epub> {
     if (map) walk(map, 1);
   }
   if (toc.length === 0) chapters.forEach((chapter, at) => toc.push({ title: chapter.title, depth: 1, at, anchor: null }));
-  return { title, chapters, toc };
+  return { title, creator, date, publisher, chapters, toc };
 }

@@ -8,7 +8,8 @@
   import Contents from "./PreviewContents.svelte";
   import type { PDFDocumentProxy } from "pdfjs-dist";
 
-  let { data, name, slides = false, target = null, focusAt = 0 }: { data: Uint8Array; name: string; slides?: boolean; target?: { page: number; at: number } | null; focusAt?: number } = $props();
+  let { data, name, slides = false, target = null, focusAt = 0, onPage, onInfo }: { data: Uint8Array; name: string; slides?: boolean; target?: { page: number; at: number } | null; focusAt?: number; onPage?: (page: number) => void; onInfo?: (info: Record<string, unknown>) => void } = $props();
+  $effect(() => onPage?.(current));
 
   let container = $state<HTMLDivElement>();
   let goBox = $state<HTMLInputElement>();
@@ -118,6 +119,8 @@
       pages = pdf.numPages;
       if (target) void goTo(target.page);
       outline(pdf).then((rows) => (toc = rows)).catch(() => {});
+      // R202: the PDF's own details, for its source.
+      if (onInfo) pdf.getMetadata().then((meta) => onInfo((meta.info ?? {}) as Record<string, unknown>)).catch(() => onInfo({}));
     } catch (failure) {
       error = `${name} couldn't be opened: ${failure instanceof Error ? failure.message : String(failure)}`;
     }

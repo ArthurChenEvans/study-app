@@ -40,3 +40,7 @@ export const showing = $state<{ request: { source: Id; title: string; location: 
 export function showCitation(source: Id, title: string, location: string): void {
   showing.request = { source, title, location, at: Date.now() };
 }
+
+/** R202: the source of the tab being read and where, so a new question's "Fact came from"
+ *  can fill itself in; and a count that goes up whenever the reader adds a source. */
+export const reading = $state<{ source: Id | null; location: string; added: number }>({ source: null, location: "", added: 0 });
