@@ -86,7 +86,7 @@
                 {#each csv.columns as column, index (index)}
                   <th class="min-w-36 align-top">
                     <span class="block truncate font-semibold normal-case">{column}</span>
-                    <select class="select select-xs mt-1 w-full" aria-label="Column {index + 1} is" value={csv.roles[index]} onchange={(event) => setRole(index, (event.target as HTMLSelectElement).value as CsvRole)}>
+                    <select class="select select-sm mt-1 w-full" aria-label="Column {index + 1} is" value={csv.roles[index]} onchange={(event) => setRole(index, (event.target as HTMLSelectElement).value as CsvRole)}>
                       {#each [...ROLES[csv.kind], ...SHARED] as [role, label] (role)}<option value={role}>{label}</option>{/each}
                     </select>
                   </th>
