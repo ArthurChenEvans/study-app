@@ -86,14 +86,21 @@ describe("Source preview", () => {
   });
 
   // sources.feature: A table of contents (R179)
+  // R197: the contents sit beside the file and stay open, with a search box
   it("lists a Markdown file's headings and jumps to one", async () => {
+    localStorage.clear();
     render(Preview);
     const u = await open(file("notes.md", NOTES));
-    await u.click(await screen.findByRole("button", { name: "Contents" }));
-    const contents = screen.getByRole("navigation", { name: "Contents of notes.md" });
+    const contents = await screen.findByRole("navigation", { name: "Contents of notes.md" });
+    expect(screen.getByRole("button", { name: "Contents" })).toHaveAttribute("aria-expanded", "true");
+    await u.type(within(contents).getByRole("searchbox", { name: "Find a heading" }), "tl");
+    expect(within(contents).queryByRole("button", { name: "DNS" })).not.toBeInTheDocument();
     await u.click(within(contents).getByRole("button", { name: "TLS" }));
     expect(current(screen.getByRole("list", { name: "notes.md" }))).toBe("5## TLS");
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+    await u.click(screen.getByRole("button", { name: "Contents" }));
+    expect(screen.queryByRole("navigation", { name: "Contents of notes.md" })).not.toBeInTheDocument();
+    expect(localStorage.getItem("studyapp-contents")).toBe("shut");
   });
 
   // sources.feature: Going straight to a page (R180)

@@ -37,7 +37,7 @@
   let lineAt = $state<Record<number, number>>({});
   let pageAt = $state<Record<number, { page: number; at: number }>>({});
   let focusAt = $state(0);
-  let showContents = $state(false);
+  import { contentsPanel, toggleContents } from "../lib/contentsPanel.svelte";
   let typed = $state("");
   let lineBox = $state<HTMLInputElement>();
   let chapterAt = $state(0);
@@ -220,7 +220,7 @@
       {#each tabs as tab (tab.id)}
         {@const Icon = icon[tab.kind]}
         <div class="flex items-center border-b-2 {tab.id === active ? 'border-primary-ink' : 'border-transparent'}">
-          <button role="tab" aria-selected={tab.id === active} class="flex max-w-56 items-center gap-2 py-2 pl-3 pr-1 text-sm {tab.id === active ? 'font-semibold' : 'text-muted'}" onclick={() => { active = tab.id; showContents = false; }}>
+          <button role="tab" aria-selected={tab.id === active} class="flex max-w-56 items-center gap-2 py-2 pl-3 pr-1 text-sm {tab.id === active ? 'font-semibold' : 'text-muted'}" onclick={() => { active = tab.id; }}>
             <Icon class="size-4 shrink-0" /><span class="truncate">{tab.name}</span>
           </button>
           <button class="btn btn-ghost btn-xs btn-square" aria-label="Close {tab.name}" onclick={() => close(tab.id)}><X class="size-3" /></button>
@@ -247,31 +247,34 @@
             {@const id = current.id}
             <div class="flex h-full min-h-0 flex-col">
               <div class="flex flex-wrap items-center gap-2 border-b border-base-300 px-4 py-2">
-                {#if headings.length}<button type="button" class="btn btn-ghost btn-sm" aria-expanded={showContents} onclick={() => (showContents = !showContents)}>Contents</button>{/if}
+                {#if headings.length}<button type="button" class="btn btn-ghost btn-sm" aria-expanded={contentsPanel.open} onclick={toggleContents}>Contents</button>{/if}
                 <form class="ml-auto flex items-center gap-2 text-sm" onsubmit={(event) => event.preventDefault()}>
                   <label class="text-muted" for="go-line">Line</label>
                   <input id="go-line" bind:this={lineBox} type="number" min="1" max={lines.length} class="input input-sm w-20 tabular-nums" aria-label="Go to line" placeholder={String(lineAt[id] ?? 1)} bind:value={typed} onkeydown={(event) => { if (event.key === "Enter" && typed) { event.preventDefault(); void goToLine(id, Number(typed), lines.length); } }} />
                   <span class="text-muted tabular-nums">of {lines.length}</span>
                 </form>
               </div>
-              {#if showContents && headings.length}
-                <Contents label="Contents of {current.name}" items={headings} current={lineAt[id] ?? 0} onPick={(line) => { void goToLine(id, line, lines.length); if (window.innerWidth < 768) showContents = false; }} />
+              <div class="reader-body">
+              {#if contentsPanel.open && headings.length}
+                <Contents label="Contents of {current.name}" items={headings} current={lineAt[id] ?? 0} onPick={(line) => { void goToLine(id, line, lines.length); }} />
               {/if}
               <ol class="min-h-0 flex-1 overflow-auto bg-surface py-4 font-mono text-sm" aria-label={current.name}>
                 {#each lines as line (line.number)}
                   <li data-line="{id}-{line.number}" aria-current={lineAt[id] === line.number ? "location" : undefined} class="flex gap-4 px-4 leading-6 {lineAt[id] === line.number ? 'bg-[color-mix(in_oklch,var(--primary-ink)_14%,transparent)]' : ''}"><span class="w-10 shrink-0 select-none text-right text-muted tabular-nums">{line.number}</span><span class="whitespace-pre-wrap break-words">{line.text}</span></li>
                 {/each}
               </ol>
+              </div>
             </div>
           {:else if content.state === "epub"}
             {@const epub = content.epub}
             <div class="flex h-full min-h-0 flex-col">
               <div class="flex items-center gap-2 border-b border-base-300 px-4 py-2">
-                <button type="button" class="btn btn-ghost btn-sm" aria-expanded={showContents} onclick={() => (showContents = !showContents)}>Contents</button>
+                <button type="button" class="btn btn-ghost btn-sm" aria-expanded={contentsPanel.open} onclick={toggleContents}>Contents</button>
                 <span class="ml-auto truncate text-sm text-muted">{epub.chapters[chapterAt]?.title}</span>
               </div>
-              {#if showContents}
-                <Contents label="Contents of {current.name}" items={epub.toc} current={chapterAt} onPick={(at) => { const entry = epub.toc.find((item) => item.at === at); void goToChapter(at, entry?.anchor ?? null); if (window.innerWidth < 768) showContents = false; }} />
+              <div class="reader-body">
+              {#if contentsPanel.open}
+                <Contents label="Contents of {current.name}" items={epub.toc} current={chapterAt} onPick={(at) => { const entry = epub.toc.find((item) => item.at === at); void goToChapter(at, entry?.anchor ?? null); }} />
               {/if}
               <div class="min-h-0 flex-1 overflow-auto p-4 sm:p-8">
                 <article class="rich mx-auto max-w-prose rounded-lg bg-surface p-5 sm:p-8" aria-label={epub.title}>
@@ -280,6 +283,7 @@
                     <section class="epub-chapter" data-chapter={index} aria-label={chapter.title} use:safeLinks>{@html chapter.html}</section>
                   {/each}
                 </article>
+              </div>
               </div>
             </div>
           {/if}

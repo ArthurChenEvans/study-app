@@ -17,7 +17,9 @@
   let typed = $state("");
   let error = $state("");
   let toc = $state<{ title: string; depth: number; at: number }[]>([]);
-  let showContents = $state(false);
+  import { contentsPanel, toggleContents } from "../lib/contentsPanel.svelte";
+  import { pageHeadings } from "../lib/toc";
+  let tocNote = $state("");
   let destroyed = false;
   let loading: { destroy: () => Promise<void> } | null = null;
   let pdf: PDFDocumentProxy | null = null;
@@ -67,7 +69,18 @@
       }
     };
     await walk(items, 1);
-    if (rows.length || !slides) return rows;
+    if (rows.length) return rows;
+    if (!slides) {
+      // R197: no bookmarks, so each page's biggest text stands in as its heading.
+      const pages = [];
+      for (let number = 1; number <= Math.min(document.numPages, 500) && !destroyed; number++) {
+        const content = await (await document.getPage(number)).getTextContent();
+        pages.push(content.items.flatMap((item) => ("str" in item ? [{ str: item.str, height: item.height || Math.abs(item.transform[3]) }] : [])));
+      }
+      const made = pageHeadings(pages);
+      if (made.length) tocNote = "Made from each page's heading, as this file has no outline.";
+      return made;
+    }
     // Slides have no bookmarks, so each slide's first line of text is its title.
     for (let number = 1; number <= Math.min(document.numPages, 500) && !destroyed; number++) {
       const page = await document.getPage(number);
@@ -152,7 +165,7 @@
   {#if pages}
     <div class="flex flex-wrap items-center gap-2 border-b border-base-300 px-4 py-2">
       {#if toc.length}
-        <button type="button" class="btn btn-ghost btn-sm" aria-expanded={showContents} onclick={() => (showContents = !showContents)}>Contents</button>
+        <button type="button" class="btn btn-ghost btn-sm" aria-expanded={contentsPanel.open} onclick={toggleContents}>Contents</button>
       {/if}
       <form class="ml-auto flex items-center gap-2 text-sm" onsubmit={(event) => event.preventDefault()}>
         <label class="text-muted" for="go-page">{slides ? "Slide" : "Page"}</label>
@@ -160,12 +173,14 @@
         <span class="text-muted tabular-nums" aria-live="polite">of {pages}</span>
       </form>
     </div>
-    {#if showContents}
-      <Contents label="Contents of {name}" items={toc} {current} unit={word} onPick={(at) => { void goTo(at); if (window.innerWidth < 768) showContents = false; }} />
-    {/if}
   {/if}
   {#if error}<p role="alert" class="m-6 text-sm text-error">{error}</p>{/if}
-  <div bind:this={container} onscroll={onScroll} class="pdf-pages min-h-0 flex-1 space-y-4 overflow-auto p-6" aria-label="{name} pages"></div>
+  <div class="reader-body">
+    {#if pages && contentsPanel.open && toc.length}
+      <Contents label="Contents of {name}" items={toc} {current} unit={word} note={tocNote} onPick={(at) => { void goTo(at); }} />
+    {/if}
+    <div bind:this={container} onscroll={onScroll} class="pdf-pages min-h-0 flex-1 space-y-4 overflow-auto p-6" aria-label="{name} pages"></div>
+  </div>
 </div>
 
 <style>
