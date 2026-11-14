@@ -71,7 +71,7 @@
       <span class="dock-start-disc"><Play class="size-5 fill-current" strokeWidth={2.4} /></span><span aria-hidden="true">Start</span>
     </button>
   {:else}
-    <button bind:this={button} type="button" class="btn {variant === 'fab' ? 'start-fab' : 'btn-primary w-full'}" aria-label="Start, {total} due" aria-haspopup="menu" aria-expanded={open} title="Start (S)" onclick={() => (open ? close() : show())}>
+    <button bind:this={button} type="button" class="btn {variant === 'fab' ? 'start-fab' : 'btn-outline w-full'}" aria-label="Start, {total} due" aria-haspopup="menu" aria-expanded={open} title="Start (S)" onclick={() => (open ? close() : show())}>
       <Play class="size-4 fill-current" />START{#if total}<span class="start-count" aria-hidden="true">{total}</span>{/if}{#if variant === "side"}<ChevronDown class="ml-auto size-4" aria-hidden="true" />{/if}
     </button>
   {/if}
