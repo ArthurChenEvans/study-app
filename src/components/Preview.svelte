@@ -2,12 +2,13 @@
   // Source preview (R11, R12): files are read into memory for this session only, never stored.
   // R179 to R182: a table of contents, going straight to a page or line (Ctrl+G), and showing
   // where a question cites, remembering which file is which source by its name only.
-  import { FileText, FileUp, Plus, Presentation, BookOpen, X } from "@lucide/svelte";
+  import { ExternalLink, FileText, FileUp, Globe, Link, Plus, Presentation, BookOpen, X } from "@lucide/svelte";
+  import { readWebPage, type WebPage } from "../lib/webPage";
   import { tick } from "svelte";
   import { api, errorMessage } from "../lib/api";
   import { closeTab, kindOf, numberLines, openTab, type Tab } from "../lib/preview";
   import { readEpub, type Epub } from "../lib/epub";
-  import { safeLinks } from "../lib/links";
+  import { openInBrowser, safeLinks } from "../lib/links";
   import { fileFor, remember, showing } from "../lib/sourceFiles.svelte";
   import { locationTarget, markdownHeadings } from "../lib/toc";
   import PdfView from "./PdfView.svelte";
@@ -19,7 +20,8 @@
     | { state: "error"; message: string }
     | { state: "pdf"; data: Uint8Array }
     | { state: "text"; text: string }
-    | { state: "epub"; epub: Epub };
+    | { state: "epub"; epub: Epub }
+    | { state: "web"; page: WebPage };
 
   const ACCEPT = ".pdf,.pptx,.ppt,.odp,.epub,.md,.markdown,.txt";
   const MAX_BYTES = 200 * 1024 * 1024;
@@ -116,7 +118,35 @@
     remember(asking.source, tab.name);
     show(tab, asking.location);
   }
-  const icon = { pdf: FileText, slides: Presentation, epub: BookOpen, markdown: FileText, text: FileText };
+  const icon = { pdf: FileText, slides: Presentation, epub: BookOpen, markdown: FileText, text: FileText, web: Globe };
+
+  // R201: a web page opens as a reading view. Fetched once, kept only while the tab is open.
+  let linking = $state(false);
+  let address = $state("");
+  let linkError = $state("");
+  async function openLink(event: SubmitEvent) {
+    event.preventDefault();
+    const typed = address.trim();
+    if (!typed) return (linkError = "Type or paste a web address");
+    linkError = "";
+    linking = false;
+    address = "";
+    const id = nextId++;
+    contents[id] = { state: "loading" };
+    ({ tabs, active } = openTab(tabs, { id, name: typed, kind: "web" }));
+    try {
+      const fetched = await api.fetchPage(typed);
+      const page = readWebPage(fetched.html, fetched.url);
+      contents[id] = { state: "web", page };
+      tabs = tabs.map((tab) => (tab.id === id ? { ...tab, name: page.title || fetched.url } : tab));
+    } catch (failure) {
+      contents[id] = { state: "error", message: `Couldn't open that page: ${errorMessage(failure)}` };
+    }
+  }
+  async function goToHeading(at: number) {
+    await tick();
+    document.querySelector<HTMLElement>(`[data-web-page] [data-heading="${at}"]`)?.scrollIntoView({ block: "start" });
+  }
 
   async function load(id: number, file: File, kind: NonNullable<ReturnType<typeof kindOf>>) {
     try {
@@ -202,6 +232,20 @@
 
 <input bind:this={input} type="file" class="hidden" accept={ACCEPT} multiple aria-label="Open file" onchange={onFiles} />
 
+{#snippet linkForm()}
+  {#if linking}
+    <form class="link-pop" onsubmit={openLink}>
+      <label class="text-sm font-bold" for="web-address">Web address</label>
+      <div class="mt-1 flex gap-2">
+        <input id="web-address" class="input input-sm flex-1" type="text" inputmode="url" autocomplete="url" placeholder="https://…" bind:value={address} onkeydown={(event) => { if (event.key === "Escape") linking = false; }} />
+        <button type="submit" class="btn btn-primary btn-sm">Open</button>
+      </div>
+      {#if linkError}<p role="alert" class="mt-2 text-sm text-error">{linkError}</p>{/if}
+      <p class="mt-2 text-xs text-muted">Shows a reading view of the page. Nothing is stored.</p>
+    </form>
+  {/if}
+{/snippet}
+
 <div class="contents h-full" data-reader-drop role="region" aria-label="Reader" ondragover={(event) => event.preventDefault()} ondrop={dropped}>
 {#if tabs.length === 0}
   <div class="grid h-full place-items-center p-12">
@@ -209,7 +253,11 @@
       <span class="well mx-auto" aria-hidden="true"><FileUp class="size-5" /></span>
       <h2 class="mt-4 text-lg font-semibold">Read alongside as you write</h2>
       <p class="mt-2 text-sm text-muted">Markdown, txt, PDF, PowerPoint or EPUB. Files are only shown while you write, they aren't stored.</p>
-      <button class="btn btn-outline btn-sm mt-5" onclick={() => input.click()}><FileUp class="size-4" />Open file</button>
+      <div class="mt-5 flex flex-wrap justify-center gap-2">
+        <button class="btn btn-outline btn-sm" onclick={() => input.click()}><FileUp class="size-4" />Open file</button>
+        <button class="btn btn-ghost btn-sm" aria-label="Open a link" aria-expanded={linking} onclick={() => (linking = !linking)}><Link class="size-4" />Open a link</button>
+      </div>
+      <div class="text-left">{@render linkForm()}</div>
       {#if refused}<p role="alert" class="mt-4 text-sm text-error">{refused}</p>{/if}
       {@render citationNotes()}
     </div>
@@ -227,7 +275,9 @@
         </div>
       {/each}
       <button class="btn btn-ghost btn-xs ml-1" aria-label="Open another file" onclick={() => input.click()}><Plus class="size-4" /></button>
+      <button class="btn btn-ghost btn-xs" aria-label="Open a link" aria-expanded={linking} onclick={() => (linking = !linking)}><Link class="size-4" /></button>
     </div>
+    <div class="px-3">{@render linkForm()}</div>
     {#if refused}<p role="alert" class="mx-6 mt-3 text-sm text-error">{refused}</p>{/if}
     {@render citationNotes()}
 
@@ -263,6 +313,23 @@
                   <li data-line="{id}-{line.number}" aria-current={lineAt[id] === line.number ? "location" : undefined} class="flex gap-4 px-4 leading-6 {lineAt[id] === line.number ? 'bg-[color-mix(in_oklch,var(--primary-ink)_14%,transparent)]' : ''}"><span class="w-10 shrink-0 select-none text-right text-muted tabular-nums">{line.number}</span><span class="whitespace-pre-wrap break-words">{line.text}</span></li>
                 {/each}
               </ol>
+              </div>
+            </div>
+          {:else if content.state === "web"}
+            {@const page = content.page}
+            <div class="flex h-full min-h-0 flex-col">
+              <div class="flex items-center gap-2 border-b border-base-300 px-4 py-2">
+                {#if page.headings.length}<button type="button" class="btn btn-ghost btn-sm" aria-expanded={contentsPanel.open} onclick={toggleContents}>Contents</button>{/if}
+                <span class="min-w-0 flex-1 truncate text-sm text-muted">{page.details.site}</span>
+                <a class="btn btn-ghost btn-sm" href={page.details.url} onclick={(event) => { event.preventDefault(); openInBrowser(page.details.url); }}><ExternalLink class="size-4" />Open in browser</a>
+              </div>
+              <div class="reader-body">
+                {#if contentsPanel.open && page.headings.length}
+                  <Contents label="Contents of {page.title}" items={page.headings} onPick={(at) => void goToHeading(at)} />
+                {/if}
+                <div class="min-h-0 flex-1 overflow-auto p-4 sm:p-8" data-web-page>
+                  <article class="rich mx-auto max-w-prose rounded-lg bg-surface p-5 sm:p-8" aria-label={page.title} use:safeLinks>{@html page.html}</article>
+                </div>
               </div>
             </div>
           {:else if content.state === "epub"}

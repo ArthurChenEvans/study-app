@@ -147,6 +147,14 @@ async fn command(State(shared): State<Shared>, UrlPath(name): UrlPath<String>, b
     if name == "slides_to_pdf" {
         return slides(args).await;
     }
+    if name == "fetch_page" {
+        let url = args.get("url").and_then(Value::as_str).unwrap_or("").to_string();
+        return match tokio::task::spawn_blocking(move || study_api::web::fetch_page(&url)).await {
+            Ok(Ok(page)) => axum::Json(page).into_response(),
+            Ok(Err(failure)) => error(StatusCode::BAD_REQUEST, failure),
+            Err(_) => error(StatusCode::INTERNAL_SERVER_ERROR, "the page stopped loading unexpectedly"),
+        };
+    }
     let today = (shared.today)();
     let result = tokio::task::spawn_blocking(move || {
         // A panic in an earlier command doesn't lock the app for good (see study_api::locked).

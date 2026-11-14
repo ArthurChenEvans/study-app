@@ -193,6 +193,8 @@ pub fn dispatch_at(app: &mut App, command: &str, args: &Value, today: i64, clock
         // Updates are for the desktop app (R165): the web build is always the newest.
         "paste_image" => json::<Vec<i64>>(Ok(vec![])), // no system clipboard in the browser build
         "add_image_files" => json::<Vec<i64>>(Ok(vec![])), // the browser can't read files by path
+        // Normally answered before the app is locked (see lib.rs), so a slow site holds nothing up.
+        "fetch_page" => json(study_api::web::fetch_page(&arg::<String>(args, "url")?).map_err(ApiError::new)),
         "app_version" => json::<&str>(Ok(env!("CARGO_PKG_VERSION"))),
         "update_set_auto" => json::<()>(Ok(())),
         "update_check" => json::<Option<()>>(Ok(None)),

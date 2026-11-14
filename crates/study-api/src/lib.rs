@@ -19,6 +19,7 @@ pub mod seed;
 pub mod seed_large;
 pub mod sync;
 pub mod transfer;
+pub mod web;
 
 use rand::SeedableRng;
 use rand::rngs::StdRng;

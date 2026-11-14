@@ -51,6 +51,25 @@ async fn slides_to_pdf(name: String, data: String) -> ApiResult<tauri::ipc::Resp
     Ok(tauri::ipc::Response::new(pdf))
 }
 
+/// R201: a web page opened as a source. Fetched off the main thread, nothing stored.
+#[tauri::command]
+async fn fetch_page(url: String) -> ApiResult<study_api::web::FetchedPage> {
+    tauri::async_runtime::spawn_blocking(move || study_api::web::fetch_page(&url))
+        .await
+        .map_err(|_| ApiError { message: "the page stopped loading unexpectedly".into() })?
+        .map_err(|message| ApiError { message })
+}
+
+/// R201: "Open in browser" for a web source. Only web addresses, never files or programs.
+#[tauri::command]
+fn open_in_browser(url: String) -> ApiResult<()> {
+    let lower = url.to_ascii_lowercase();
+    if !(lower.starts_with("https://") || lower.starts_with("http://")) {
+        return Err(ApiError { message: "only web addresses open in the browser".into() });
+    }
+    tauri_plugin_opener::open_url(&url, None::<&str>).map_err(|error| ApiError { message: format!("couldn't open the browser: {error}") })
+}
+
 // ---------- Updates (R165 to R168) ----------
 
 #[tauri::command]
@@ -852,6 +871,8 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            fetch_page,
+            open_in_browser,
             app_version,
             update_set_auto,
             update_check,

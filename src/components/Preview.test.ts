@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../lib/api", async (original) => {
   const actual = await original<typeof import("../lib/api")>();
-  return { ...actual, api: { slidesToPdf: vi.fn() } };
+  return { ...actual, api: { slidesToPdf: vi.fn(), fetchPage: vi.fn() } };
 });
 
 import { api } from "../lib/api";
@@ -31,6 +31,34 @@ const NOTES = "# Networks\nintro\n## DNS\nnames\n## TLS\nhandshakes";
 const current = (list: HTMLElement) => within(list).getAllByRole("listitem").find((line) => line.getAttribute("aria-current") === "location")?.textContent;
 
 describe("Source preview", () => {
+  // R201: a web page opens as a reading view, with its headings as contents
+  it("opens a link as a reading view with contents and a way to the browser", async () => {
+    const u = userEvent.setup();
+    mocked.fetchPage.mockResolvedValue({ url: "https://blog.example.com/dns", html: "<title>DNS | Blog</title><body><nav>Menu</nav><article><h1>How DNS works</h1><p>Resolvers ask.</p><h2>Caching</h2><p>TTL.</p></article></body>" });
+    render(Preview);
+    await u.click(screen.getByRole("button", { name: "Open a link" }));
+    const box = screen.getByRole("textbox", { name: "Web address" });
+    await u.type(box, "blog.example.com/dns{Enter}");
+    expect(mocked.fetchPage).toHaveBeenCalledWith("blog.example.com/dns");
+    const article = await screen.findByRole("article", { name: "How DNS works" });
+    expect(article).toHaveTextContent("Resolvers ask.");
+    expect(article).not.toHaveTextContent("Menu");
+    expect(screen.getByRole("tab", { name: /How DNS works/ })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Open in browser/ })).toHaveAttribute("href", "https://blog.example.com/dns");
+    const contents = screen.getByRole("navigation", { name: "Contents of How DNS works" });
+    await u.click(within(contents).getByRole("button", { name: "Caching" }));
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+  });
+
+  it("says why a link couldn't open", async () => {
+    const u = userEvent.setup();
+    mocked.fetchPage.mockRejectedValue({ message: "that page wasn't found (404)" });
+    render(Preview);
+    await u.click(screen.getByRole("button", { name: "Open a link" }));
+    await u.type(screen.getByRole("textbox", { name: "Web address" }), "example.com/gone{Enter}");
+    expect(await screen.findByRole("alert")).toHaveTextContent("that page wasn't found (404)");
+  });
+
   it("starts empty with a way to open a file", () => {
     render(Preview);
     expect(screen.getByText("Read alongside as you write")).toBeInTheDocument();
