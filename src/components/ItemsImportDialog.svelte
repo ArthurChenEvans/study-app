@@ -73,33 +73,26 @@
           <legend class="text-sm font-bold">Each row is</legend>
           <div class="mt-2 flex flex-wrap gap-x-5 gap-y-1">
             {#each KINDS as [kind, label] (kind)}
-              <label class="flex items-center gap-2"><input type="radio" class="radio radio-sm" name="csv-kind" checked={csv.kind === kind} onchange={() => void remap({ kind, header: csv.header, roles: csv.roles })} /> {label}</label>
+              <label class="flex items-center gap-2"><input type="radio" class="radio" name="csv-kind" checked={csv.kind === kind} onchange={() => void remap({ kind, header: csv.header, roles: csv.roles })} /> {label}</label>
             {/each}
           </div>
         </fieldset>
-        <label class="mt-3 flex items-center gap-2 text-[15px]"><input type="checkbox" class="checkbox checkbox-sm" checked={csv.header} onchange={(event) => void remap({ kind: csv.kind, header: (event.target as HTMLInputElement).checked, roles: csv.roles })} /> The first row is column names</label>
+        <label class="mt-3 flex items-center gap-2 text-[15px]"><input type="checkbox" class="checkbox" checked={csv.header} onchange={(event) => void remap({ kind: csv.kind, header: (event.target as HTMLInputElement).checked, roles: csv.roles })} /> The first row is column names</label>
 
-        <div class="mt-4 overflow-x-auto">
-          <table class="table table-sm">
-            <thead>
-              <tr>
-                {#each csv.columns as column, index (index)}
-                  <th class="min-w-36 align-top">
-                    <span class="block truncate font-semibold normal-case">{column}</span>
-                    <select class="select select-sm mt-1 w-full" aria-label="Column {index + 1} is" value={csv.roles[index]} onchange={(event) => setRole(index, (event.target as HTMLSelectElement).value as CsvRole)}>
-                      {#each [...ROLES[csv.kind], ...SHARED] as [role, label] (role)}<option value={role}>{label}</option>{/each}
-                    </select>
-                  </th>
-                {/each}
-              </tr>
-            </thead>
-            <tbody>
-              {#each csv.sample as row, index (index)}
-                <tr>{#each row as cell, at (at)}<td class="max-w-48 truncate">{cell}</td>{/each}</tr>
-              {/each}
-            </tbody>
-          </table>
-        </div>
+        <!-- One row per column, with the first row's value, so it fits a phone without scrolling sideways. -->
+        <ul class="mt-4 space-y-2" aria-label="Columns">
+          {#each csv.columns as column, index (index)}
+            <li class="grid grid-cols-1 items-center gap-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,14rem)] sm:gap-3">
+              <div class="min-w-0">
+                <span class="block truncate font-semibold">{column}</span>
+                {#if csv.sample[0]?.[index]}<span class="block truncate text-sm text-muted">{csv.sample[0][index]}</span>{/if}
+              </div>
+              <select class="select select-sm w-full" aria-label="Column {index + 1} is" value={csv.roles[index]} onchange={(event) => setRole(index, (event.target as HTMLSelectElement).value as CsvRole)}>
+                {#each [...ROLES[csv.kind], ...SHARED] as [role, label] (role)}<option value={role}>{label}</option>{/each}
+              </select>
+            </li>
+          {/each}
+        </ul>
       {/if}
 
       {#if preview.problems.length}

@@ -108,7 +108,7 @@ axe.run(scope, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a'
 
 WIDTHS = {"desk": (1440, 900), "tablet": (1000, 800), "phone": (390, 844)}
 THEMES = ["studyapp-dark", "studyapp"]
-SCREENS = ["overview", "calendar", "topics", "cards", "recall", "projects", "bibliography", "history", "search", "setup", "data", "settings"]
+SCREENS = os.environ["SCREENS"].split(",") if os.environ.get("SCREENS") else ["overview", "calendar", "topics", "cards", "recall", "projects", "bibliography", "history", "search", "setup", "data", "settings"]
 LONG_TOPIC = "Instruction-level parallelism, superscalar pipelines and out-of-order execution in modern CPUs"
 LONG_MODULE = "Computer Systems Architecture and Operating Systems Fundamentals (Year 2)"
 

@@ -61,8 +61,8 @@
     {#if preview.has_progress}
       <fieldset class="mt-5">
         <legend class="text-sm font-bold">Progress</legend>
-        <label class="mt-2 flex items-center gap-2"><input type="radio" class="radio radio-sm" name="anki-progress" checked={!keep} onchange={() => (keep = false)} /> Start fresh</label>
-        <label class="mt-1 flex items-center gap-2"><input type="radio" class="radio radio-sm" name="anki-progress" checked={keep} onchange={() => (keep = true)} /> Keep Anki's progress</label>
+        <label class="mt-2 flex items-center gap-2"><input type="radio" class="radio" name="anki-progress" checked={!keep} onchange={() => (keep = false)} /> Start fresh</label>
+        <label class="mt-1 flex items-center gap-2"><input type="radio" class="radio" name="anki-progress" checked={keep} onchange={() => (keep = true)} /> Keep Anki's progress</label>
       </fieldset>
     {/if}
 
