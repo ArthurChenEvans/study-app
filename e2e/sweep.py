@@ -208,10 +208,13 @@ STATES = {
     # screen: [(state, action)] where the action opens that state from the screen's normal view
     "topics": [("picked", "//table[@aria-label='Topics']//tbody//tr[1]//button"),
                ("dialog", "//button[contains(normalize-space(), 'New topic')]"),
-               ("error", "NEW_TOPIC_EMPTY")],
+               ("error", "NEW_TOPIC_EMPTY"),
+               ("module-menu", "MODULE_MENU"),
+               ("rename", "RENAME_TOPIC")],
     "bibliography": [("picked", "//table//tbody//tr[1]//button"), ("dialog", "//button[contains(normalize-space(), 'Add a source') or contains(normalize-space(), 'Add source')]")],
     "calendar": [("week", "//button[@role='radio' and normalize-space()='Week']"), ("dialog", "//button[contains(normalize-space(), 'Add a date')]"), ("day", "TODAY_CELL")],
-    "recall": [("dialog", "//button[contains(normalize-space(), 'New checklist')]")],
+    "recall": [("dialog", "//button[contains(normalize-space(), 'New checklist')]"),
+               ("delete", "RECALL_DELETE")],
     "projects": [("dialog", "//button[contains(normalize-space(), 'New project')]")],
     "settings": [("dialog", "//button[contains(normalize-space(), 'Celebrations')]")],
     "overview": [("table", "//details[contains(@class,'table-view')]/summary")],
@@ -244,6 +247,19 @@ def run_state(driver, screen: str, state: str, action: str) -> bool:
             path.name, base64.b64encode(path.read_bytes()).decode())
         settle(driver, 1.5)
         return bool(driver.find_elements(By.CSS_SELECTOR, "dialog[open]"))
+    if action == "MODULE_MENU":
+        # The first module in the rail, then its labelled Module menu (R185).
+        if not click(driver, "//nav//button[@aria-pressed][2] | //aside//button[@aria-pressed][2]"):
+            return False
+        return click(driver, "//button[contains(@aria-label, 'module actions')]")
+    if action == "RENAME_TOPIC":
+        if not click(driver, "//table[@aria-label='Topics']//tbody//tr[1]//button"):
+            return False
+        return click(driver, "//button[starts-with(@aria-label, 'Rename ')]")
+    if action == "RECALL_DELETE":
+        if not click(driver, "(//button[contains(@aria-label, ' actions')])[1]"):
+            return False
+        return click(driver, "//*[@role='menuitem'][contains(., 'Delete checklist')]")
     if action == "EXPORT_ANKI":
         if not click(driver, "//button[contains(normalize-space(), 'Export')]"):
             return False
