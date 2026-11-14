@@ -12,6 +12,13 @@
   // svelte-ignore state_referenced_locally
   let targets = $state<Target[]>(preview.decks.map((deck) => deck.target));
   let keep = $state(false);
+  // R188: a deck kept the Michael Nielsen way is one deck, filtered by tags.
+  let byTag = $state(false);
+  let picked = $state<number[]>([]);
+  let find = $state("");
+  let keepSuspended = $state(false);
+  const shownTags = $derived(preview.tags.map((tag, index) => ({ ...tag, index })).filter((tag) => tag.name.toLowerCase().includes(find.trim().toLowerCase())));
+  const toggle = (index: number) => (picked = picked.includes(index) ? picked.filter((one) => one !== index) : [...picked, index]);
 
   onMount(() => {
     Promise.resolve(api.topics()).then((rows) => (topics = rows ?? [])).catch(() => {});
@@ -21,10 +28,12 @@
   const plural = (count: number, word: string) => `${count.toLocaleString("en-GB")} ${word}${count === 1 ? "" : "s"}`;
   const kind = $derived(preview.file_name.toLowerCase().endsWith(".colpkg") ? "An Anki collection" : "An Anki deck");
   const extras = $derived([preview.images ? plural(preview.images, "image") : ""].filter(Boolean));
-  const chosen = $derived(Math.max(0, preview.decks.reduce((sum, deck, index) => sum + (targets[index].kind === "Skip" ? 0 : deck.notes), 0) - preview.already_here));
+  const chosen = $derived(
+    preview.rows.filter((row) => targets[row.deck]?.kind !== "Skip" && !row.here && (keepSuspended || !row.suspended) && (!byTag || row.tags.some((tag) => picked.includes(tag)))).length,
+  );
 
   function go() {
-    const choice = { decks: preview.decks.map((deck, index): [string, Target] => [deck.name, $state.snapshot(targets[index])]), keep_progress: keep };
+    const choice = { decks: preview.decks.map((deck, index): [string, Target] => [deck.name, $state.snapshot(targets[index])]), keep_progress: keep, tags: byTag ? picked.map((index) => preview.tags[index].name) : [], keep_suspended: keepSuspended };
     void runImport(preview.file_name, () => api.ankiApply(choice));
   }
 </script>
@@ -43,6 +52,40 @@
         </li>
       {/each}
     </ul>
+
+    {#if preview.tags.length}
+      <fieldset class="mt-5">
+        <legend class="text-sm font-bold">Tags</legend>
+        <label class="mt-2 flex items-center gap-2"><input type="radio" class="radio" name="anki-tags" checked={!byTag} onchange={() => (byTag = false)} /> Every note</label>
+        <label class="mt-1 flex items-center gap-2"><input type="radio" class="radio" name="anki-tags" checked={byTag} onchange={() => (byTag = true)} /> Only notes with these tags</label>
+        {#if byTag}
+          {#if preview.tags.length > 8}
+            <input type="search" class="input mt-2 w-full" aria-label="Find a tag" placeholder="Find a tag..." bind:value={find} />
+          {/if}
+          <ul class="mt-2 max-h-56 space-y-1 overflow-y-auto">
+            {#each shownTags as tag (tag.index)}
+              {@const depth = tag.name.split("::").length - 1}
+              <li style:padding-left="{depth * 1.25}rem">
+                <label class="flex items-center gap-2">
+                  <input type="checkbox" class="checkbox checkbox-sm" aria-label="{tag.name}, {plural(tag.notes, 'note')}" checked={picked.includes(tag.index)} onchange={() => toggle(tag.index)} />
+                  <span class="font-semibold">{tag.name.split("::").at(-1)}</span><span class="text-sm text-muted">{plural(tag.notes, "note")}</span>
+                </label>
+              </li>
+            {/each}
+          </ul>
+          <p class="mt-1 text-sm text-muted">A tag brings the tags under it too.</p>
+        {/if}
+      </fieldset>
+    {/if}
+
+    {#if preview.suspended}
+      <fieldset class="mt-5">
+        <legend class="text-sm font-bold">Suspended cards</legend>
+        <p class="mt-1 text-sm text-muted">{plural(preview.suspended, "card")} {preview.suspended === 1 ? "is" : "are"} suspended in Anki.</p>
+        <label class="mt-2 flex items-center gap-2"><input type="radio" class="radio" name="anki-suspended" checked={!keepSuspended} onchange={() => (keepSuspended = false)} /> Leave them out</label>
+        <label class="mt-1 flex items-center gap-2"><input type="radio" class="radio" name="anki-suspended" checked={keepSuspended} onchange={() => (keepSuspended = true)} /> Keep them, paused</label>
+      </fieldset>
+    {/if}
 
     <h3 class="mt-5 text-sm font-bold">Card types</h3>
     <ul class="mt-2 space-y-1 text-[15px]">

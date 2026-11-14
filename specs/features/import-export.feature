@@ -15,6 +15,12 @@ Feature: Importing and exporting other files (R171 to R178)
     Then a card due in 3 days in Anki is due in 3 days here
     And cards still being learned are due today
 
+  Scenario: One deck filtered by tags, with suspended cards
+    Given an Anki deck holding everything, tagged Maths::Algebra, Maths::Geometry and thai
+    When I import only the notes tagged Maths
+    Then the Algebra and Geometry notes come in and the thai ones don't
+    And notes whose cards are all suspended are left out unless I keep them, and kept ones are paused
+
   Scenario: Exporting for Anki
     When I export everything as an Anki deck
     Then Anki opens it with every card, cloze, image and formula

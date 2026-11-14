@@ -438,8 +438,11 @@ export interface ImportResult { added: Count[]; replaced: number; backup: Backup
 export type Target = { kind: "NewTopic"; name: string; module: string | null } | { kind: "Topic"; topic: Id } | { kind: "Skip" };
 export interface DeckRow { name: string; notes: number; target: Target }
 export interface TypeRow { name: string; notes: number; becomes: string; check: boolean }
-export interface AnkiPreview { file_name: string; notes: number; decks: DeckRow[]; types: TypeRow[]; images: number; sounds: number; has_progress: boolean; already_here: number }
-export interface AnkiChoice { decks: [string, Target][]; keep_progress: boolean }
+export interface AnkiPreview { file_name: string; notes: number; decks: DeckRow[]; types: TypeRow[]; images: number; sounds: number; has_progress: boolean; already_here: number; tags: TagRow[]; suspended: number; rows: NoteRow[] }
+export interface TagRow { name: string; notes: number }
+/** One note, so the window can count what a choice imports (R188). Indexes into decks and tags. */
+export interface NoteRow { deck: number; tags: number[]; suspended: boolean; here: boolean }
+export interface AnkiChoice { decks: [string, Target][]; keep_progress: boolean; tags: string[]; keep_suspended: boolean }
 export type CsvKind = "Mcq" | "Short" | "Card";
 export type CsvRole = "Question" | "Option" | "Correct" | "Explanation" | "Type" | "ModelAnswer" | "Keywords" | "Front" | "Back" | "Text" | "Extra" | "CardKind" | "Topic" | "Module" | "Tags" | "Ignore";
 export interface CsvMapping { kind: CsvKind; header: boolean; roles: CsvRole[] }
