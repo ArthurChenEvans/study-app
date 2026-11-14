@@ -110,3 +110,9 @@ Feature: Flashcards scheduled with FSRS
     When I search for "tag:exam is:new" and tick a topic in Filters
     Then only new exam cards in that topic are listed
     And folding the filters away keeps them applied
+
+  # R192
+  Scenario: A card's own tags
+    When I import an Anki note tagged boolean::algebra
+    Then the card is tagged boolean::algebra, and no module or topic is made from the tag
+    And tag:boolean::algebra in Browse all finds it

@@ -3,7 +3,8 @@
   // and get a little bigger the further you go. Each one is said in words.
   import { Check, Flag, Flame, Layers, ListChecks, Sparkles, Trophy } from "@lucide/svelte";
   import confetti from "canvas-confetti";
-  import { calm, live, type PopItem } from "../lib/celebrations.svelte";
+  import { calm, device, live, type PopItem } from "../lib/celebrations.svelte";
+  import { confettiColours } from "../lib/confettiColours";
 
   const ICONS = { check: Check, trophy: Trophy, list: ListChecks, layers: Layers, flame: Flame, flag: Flag, sparkles: Sparkles };
   const quiet = $derived(calm());
@@ -12,7 +13,7 @@
     if (pop.burst && !calm()) {
       setTimeout(() => {
         const box = node.getBoundingClientRect();
-        confetti({ particleCount: 30 * pop.burst, spread: 70, startVelocity: 25, scalar: 0.8, zIndex: 1200, colors: ["#d34516", "#f2c14e", "#f7915f", "#8cc4e2", "#7fd1ae"], origin: { x: (box.left + 30) / innerWidth, y: box.top / innerHeight } });
+        confetti({ particleCount: 30 * pop.burst, spread: 70, startVelocity: 25, scalar: 0.8, zIndex: 1200, colors: confettiColours(device.confetti).length ? confettiColours(device.confetti) : confettiColours("rainbow"), origin: { x: (box.left + 30) / innerWidth, y: box.top / innerHeight } });
       }, 250);
     }
   }

@@ -72,7 +72,7 @@ fn everything_comes_back_the_same_in_a_database_that_already_has_other_things() 
     let mut other = App::with_seed(Store::in_memory().unwrap(), 4);
     let unrelated = other.create_module("Unrelated").unwrap();
     let topic = other.create_topic("Already here", Some(unrelated)).unwrap();
-    other.save_note(None, NoteInput { note: Note { topic, kind: NoteKind::Basic, front: "Mine".into(), back: "Mine".into(), cues: vec![], text: String::new(), extra: String::new() }, suggestion: None }, TODAY).unwrap();
+    other.save_note(None, NoteInput { note: Note { topic, kind: NoteKind::Basic, front: "Mine".into(), back: "Mine".into(), cues: vec![], text: String::new(), extra: String::new(), tags: vec![] }, suggestion: None }, TODAY).unwrap();
     let question = other.save_question(QuestionInput { topic, text: "Mine too".into(), multiple: false, options: ["A", "B", "C"].iter().enumerate().map(|(i, text)| OptionInput { text: (*text).into(), correct: i == 0 }).collect(), explanation: String::new(), tags: vec![], citations: vec![], short: None }).unwrap();
     let mine: std::collections::HashSet<String> = [other.store.stamp_of("modules", unrelated.0).unwrap().uid, other.store.stamp_of("topics", topic.0).unwrap().uid, other.store.stamp_of("questions", question.0).unwrap().uid].into();
 
@@ -385,7 +385,7 @@ fn the_large_profile_exports_and_imports_in_reasonable_time() {
 fn keeping_my_version_of_a_note_keeps_my_cards_too() {
     let mut original = App::with_seed(Store::in_memory().unwrap(), 6);
     let topic = original.create_topic("Caches", None).unwrap();
-    let cloze = |text: &str| NoteInput { note: Note { topic, kind: NoteKind::Cloze, front: String::new(), back: String::new(), cues: vec![], text: text.into(), extra: String::new() }, suggestion: None };
+    let cloze = |text: &str| NoteInput { note: Note { topic, kind: NoteKind::Cloze, front: String::new(), back: String::new(), cues: vec![], text: text.into(), extra: String::new(), tags: vec![] }, suggestion: None };
     let note = original.save_note(None, cloze("L1 takes {{c1::4}} cycles"), TODAY).unwrap();
     let share = ExportRequest { topics: Some(vec![topic]), history: false, ..Default::default() };
     let (_, first) = original.export(&share, TODAY).unwrap();

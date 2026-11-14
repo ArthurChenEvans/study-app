@@ -105,6 +105,21 @@ describe("Topic cards", () => {
     expect(await screen.findByText("2 cards added")).toBeInTheDocument();
   });
 
+  // R192: a card has its own tags, kept for the next card you write
+  it("tags a card, and the next new card keeps the tags", async () => {
+    const u = userEvent.setup();
+    render(TopicCards, props());
+    await u.click(await screen.findByRole("button", { name: /New card/ }));
+    await u.type(screen.getByLabelText("Front"), "A + 0");
+    await u.type(screen.getByLabelText("Back"), "A");
+    const tags = screen.getByRole("textbox", { name: "Tags" });
+    expect(tags).toHaveAccessibleDescription(/Separate tags with commas/);
+    await u.type(tags, "boolean::algebra, exam ,");
+    await u.keyboard("{Control>}s{/Control}");
+    expect(mocked.saveNote).toHaveBeenLastCalledWith(null, { note: expect.objectContaining({ front: "A + 0", tags: ["boolean::algebra", "exam"] }), suggestion: null });
+    expect(await screen.findByRole("textbox", { name: "Tags" })).toHaveValue("boolean::algebra, exam");
+  });
+
   // flashcards.feature: Writing several cards in a row
   it("saving a new card keeps the editor open for the next one, same type and topic", async () => {
     const u = userEvent.setup();

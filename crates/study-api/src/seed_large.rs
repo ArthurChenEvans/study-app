@@ -139,9 +139,9 @@ pub fn seed_large_over(app: &mut App, today: i64, days: i64) -> ApiResult<SeedSu
         }
         for number in 0..rng.random_range(10..=40) {
             let note = if number % 6 == 5 {
-                Note { topic, kind: NoteKind::Cloze, front: String::new(), back: String::new(), cues: vec![], text: format!("In {}, the {{{{c1::first idea}}}} leads to the {{{{c2::second idea}}}} (card {number}).", names[topic_index]), extra: String::new() }
+                Note { topic, kind: NoteKind::Cloze, front: String::new(), back: String::new(), cues: vec![], text: format!("In {}, the {{{{c1::first idea}}}} leads to the {{{{c2::second idea}}}} (card {number}).", names[topic_index]), extra: String::new(), tags: vec![] }
             } else {
-                Note { topic, kind: if number % 9 == 4 { NoteKind::Reversed } else { NoteKind::Basic }, front: format!("{} card {number}: what does this term mean?", names[topic_index]), back: "Its generated definition.".into(), cues: vec![], text: String::new(), extra: String::new() }
+                Note { topic, kind: if number % 9 == 4 { NoteKind::Reversed } else { NoteKind::Basic }, front: format!("{} card {number}: what does this term mean?", names[topic_index]), back: "Its generated definition.".into(), cues: vec![], text: String::new(), extra: String::new(), tags: vec![] }
             };
             let day = start + rng.random_range(0..days);
             app.save_note(None, NoteInput { note, suggestion: None }, day)?;

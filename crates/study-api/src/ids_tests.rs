@@ -27,7 +27,7 @@ fn mcq(topic: TopicId, text: &str, wrong: &str) -> QuestionInput {
 }
 
 fn note(topic: TopicId, front: &str) -> NoteInput {
-    NoteInput { note: Note { topic, kind: NoteKind::Basic, front: front.into(), back: "Back".into(), cues: vec![], text: String::new(), extra: String::new() }, suggestion: None }
+    NoteInput { note: Note { topic, kind: NoteKind::Basic, front: front.into(), back: "Back".into(), cues: vec![], text: String::new(), extra: String::new(), tags: vec![] }, suggestion: None }
 }
 
 fn stamp(app: &App, table: &str, id: i64) -> Stamp {

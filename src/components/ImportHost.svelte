@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { dropOnReader } from "../lib/readerDrop.svelte";
   // import-export.feature (R171 to R178): every import dialog, wherever the file came from,
   // plus the progress of a big one and the overlay for a file dropped on the window.
   import { FileInput, FileX } from "@lucide/svelte";
@@ -26,11 +27,14 @@
         add(await listen<{ what: string; done: number; total: number }>("import-progress", (event) => (importer.progress = event.payload)));
         add(await listen<string>("open-file", (event) => void startImportAt(event.payload)));
         // A file dropped anywhere but a card or question field (those take images).
-        const field = (x: number, y: number) => {
+        const at = (x: number, y: number) => {
           const scale = window.devicePixelRatio || 1;
           const target = document.elementFromPoint(x / scale, y / scale);
-          return target instanceof HTMLElement && !!target.closest("[data-rich]");
+          return target instanceof HTMLElement ? target : null;
         };
+        const field = (x: number, y: number) => !!at(x, y)?.closest("[data-rich]");
+        // R195: over the reader beside the question editor, a file opens there instead.
+        const reader = (x: number, y: number) => !!at(x, y)?.closest("[data-reader-drop]");
         // Images are for card and question fields, so they never open an import.
         let ignoring = false;
         const image = (paths: string[]) => paths.length > 0 && paths.every((path) => /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(path));
@@ -43,11 +47,12 @@
             return;
           }
           if (payload.type === "enter") dropping = payload.paths[0]?.split(/[\\/]/).pop() ?? "the file";
-          else if (payload.type === "over") dropping = field(payload.position.x, payload.position.y) ? null : (dropping ?? "the file");
+          else if (payload.type === "over") dropping = field(payload.position.x, payload.position.y) || reader(payload.position.x, payload.position.y) ? null : (dropping ?? "the file");
           else if (payload.type === "leave") dropping = null;
           else if (payload.type === "drop") {
             dropping = null;
-            if (payload.paths.length && !field(payload.position.x, payload.position.y)) void startImportAt(payload.paths[0]);
+            if (payload.paths.length && reader(payload.position.x, payload.position.y)) void dropOnReader(payload.paths).catch(() => {});
+            else if (payload.paths.length && !field(payload.position.x, payload.position.y)) void startImportAt(payload.paths[0]);
           }
         }));
         const opened = await api.takeOpenedFile();

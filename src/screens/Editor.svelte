@@ -1,6 +1,6 @@
 <script lang="ts">
   // questions.feature, sources.feature, short-answer.feature (R4 to R10, R14, R48, R49, R78 to R82)
-  import { BookOpen, Check, CircleCheck, CircleX, Eye, ImagePlus, Plus, Trash2, X } from "@lucide/svelte";
+  import { ArrowLeft, BookOpen, Check, CircleCheck, CircleX, Eye, ImagePlus, Plus, Trash2, X } from "@lucide/svelte";
   import Preview from "../components/Preview.svelte";
   import { showCitation } from "../lib/sourceFiles.svelte";
   import { locationTarget } from "../lib/toc";
@@ -9,7 +9,7 @@
   import { toast } from "../lib/celebrations.svelte";
   import { IMAGE_TYPES, imageInput, listenForDrops } from "../lib/imageInput.svelte";
 
-  let { topic }: { topic: Id } = $props();
+  let { topic, onBack = () => {} }: { topic: Id; onBack?: () => void } = $props();
 
   const MIN = 3;
   const MAX = 5;
@@ -98,9 +98,13 @@
     error = "";
     switchNote = "";
     try {
-      if (editing === null) await api.saveQuestion(input());
-      else await api.updateQuestion(editing, input());
-      saved = editing === null ? "Question saved" : "Changes saved";
+      const isNew = editing === null;
+      const count = questions.length + (isNew ? 1 : 0);
+      if (isNew) await api.saveQuestion(input());
+      else await api.updateQuestion(editing!, input());
+      saved = isNew ? "Question saved" : "Changes saved";
+      // R194: say how it went
+      toast({ text: saved, sub: `${topicName} now has ${count} ${count === 1 ? "question" : "questions"}`, icon: "check" });
       editing = null;
       const kind = draft.kind;
       draft = { ...blank(), kind };
@@ -108,6 +112,7 @@
       await load();
     } catch (failure) {
       error = errorMessage(failure);
+      toast({ text: "Couldn't save the question", sub: error, icon: "alert", error: true });
     }
   }
 
@@ -201,6 +206,7 @@
   <section class="w-1/2 overflow-auto" aria-label="Question editor">
     <div class="flex items-end justify-between px-10 pb-6 pt-10">
       <div>
+        <button type="button" class="btn btn-ghost btn-sm -ml-3 mb-2" aria-label="Back to Quizzes" onclick={onBack}><ArrowLeft class="size-4" />Quizzes</button>
         <p class="text-sm text-muted">{topicName}</p>
         <h1 class="mt-1 text-2xl font-semibold">{editing === null ? "New question" : "Edit question"}</h1>
       </div>

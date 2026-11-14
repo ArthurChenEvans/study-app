@@ -19,6 +19,8 @@ beforeEach(() => {
   live.pops = [];
   live.toasts = [];
   device.motion = "full";
+  device.confetti = "theme";
+  document.documentElement.style.setProperty("--color-primary", "#db9068");
 });
 afterEach(() => vi.useRealTimers());
 
@@ -36,6 +38,8 @@ describe("Celebration", () => {
     expect(dialog).toHaveTextContent("100%");
     expect(dialog).toHaveTextContent("12/12");
     expect(confetti).toHaveBeenCalled();
+    // R193: in the theme's colours by default
+    expect(vi.mocked(confetti).mock.calls[0][0]?.colors).toContain("#db9068");
   });
 
   it("ignores a stray press in the first half second, then Continue closes it", async () => {

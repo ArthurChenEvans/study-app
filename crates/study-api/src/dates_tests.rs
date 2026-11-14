@@ -98,7 +98,7 @@ fn something_done_long_ago_is_due_today() {
 
 /// A card reviewed on `last`, due on `due`.
 fn reviewed_card(app: &mut App, topic: TopicId, front: &str, last: i64, due: i64) {
-    let note = app.save_note(None, NoteInput { note: Note { topic, kind: NoteKind::Basic, front: front.into(), back: "Back".into(), cues: vec![], text: String::new(), extra: String::new() }, suggestion: None }, last).unwrap();
+    let note = app.save_note(None, NoteInput { note: Note { topic, kind: NoteKind::Basic, front: front.into(), back: "Back".into(), cues: vec![], text: String::new(), extra: String::new(), tags: vec![] }, suggestion: None }, last).unwrap();
     let card = app.store.cards_of(note).unwrap()[0].id;
     let schedule = Schedule { memory: Some(Memory { stability: 30.0, difficulty: 5.0 }), due, last_review: Some(last), reps: 3, lapses: 0 };
     app.store.record_review(card, &schedule, &study_store::cards::ReviewRow { card, day: last, rating: 3, elapsed: 10, was_new: false, seconds: 5 }).unwrap();

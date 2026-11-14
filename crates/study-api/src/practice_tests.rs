@@ -258,7 +258,7 @@ fn the_calendar_shows_whats_due_and_what_was_done() {
     quiz(&mut app, vec![cpu], 1, TODAY - 2); // CPU next due TODAY - 1, so overdue today
     let checklist = app.create_checklist(Subject::Topic(cpu), TODAY + 3).unwrap();
     app.save_points(checklist, vec![PointInput { text: "Pipelines".into(), question: None, note: None }]).unwrap();
-    let note = NoteInput { note: Note { topic: cpu, kind: NoteKind::Basic, front: "f".into(), back: "b".into(), cues: vec![], text: String::new(), extra: String::new() }, suggestion: None };
+    let note = NoteInput { note: Note { topic: cpu, kind: NoteKind::Basic, front: "f".into(), back: "b".into(), cues: vec![], text: String::new(), extra: String::new(), tags: vec![] }, suggestion: None };
     app.save_note(None, note, TODAY).unwrap();
     let project = app.create_project("Study app", "Coding", TODAY - 2).unwrap();
     app.start_session(project, at(TODAY - 2, 0)).unwrap();

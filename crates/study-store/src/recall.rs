@@ -335,7 +335,7 @@ mod tests {
         use study_core::cards::{Note, NoteKind};
         let mut store = Store::in_memory().unwrap();
         let topic = store.create_topic("Memory", None).unwrap();
-        let note = Note { topic, kind: NoteKind::Basic, front: "What caches translations?".into(), back: "The TLB".into(), cues: vec![], text: String::new(), extra: String::new() };
+        let note = Note { topic, kind: NoteKind::Basic, front: "What caches translations?".into(), back: "The TLB".into(), cues: vec![], text: String::new(), extra: String::new(), tags: vec![] };
         let faces = note.faces().unwrap();
         let note_id = store.save_note(None, &note, &faces, None, TODAY).unwrap();
         let id = store.create_checklist(Subject::Topic(topic), TODAY).unwrap();

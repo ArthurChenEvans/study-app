@@ -5,10 +5,10 @@
   import { Check, ListChecks, Trophy } from "@lucide/svelte";
   import confetti from "canvas-confetti";
   import { onDestroy } from "svelte";
-  import { calm, closeBig, live, type BigMoment } from "../lib/celebrations.svelte";
+  import { calm, closeBig, device, live, type BigMoment } from "../lib/celebrations.svelte";
+  import { confettiColours } from "../lib/confettiColours";
   import { playTick } from "../lib/jingles";
 
-  const COLOURS = ["#d34516", "#f2c14e", "#f7915f", "#8cc4e2", "#7fd1ae", "#3d4775"];
   const moment = $derived<BigMoment | undefined>(live.big[0]);
 
   let shown = $state<number[]>([]);
@@ -25,7 +25,9 @@
   }
 
   function fire(options: confetti.Options) {
-    confetti({ colors: COLOURS, disableForReducedMotion: true, zIndex: 1200, ...options });
+    // R193: the theme's colours, or a rainbow
+    const colors = confettiColours(device.confetti);
+    confetti({ colors: colors.length ? colors : confettiColours("rainbow"), disableForReducedMotion: true, zIndex: 1200, ...options });
   }
   function landing(current: BigMoment) {
     if (current.kind === "recall") {

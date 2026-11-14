@@ -237,9 +237,21 @@
           <div>
             <h3 class="eyebrow">What's in it</h3>
             <div class="mt-2 grid grid-cols-1 gap-3 tab:grid-cols-3">
-              <div class="panel flex flex-col gap-1 p-4"><ListChecks class="size-5" aria-hidden="true" /><span class="font-extrabold">{plural(questionsIn(topic), "quiz question")}</span><button class="link mt-1 min-h-6 self-start text-left text-sm font-bold" onclick={() => onEdit(topic.id)}>Open in Quizzes</button></div>
-              <div class="panel flex flex-col gap-1 p-4"><SquareStack class="size-5" aria-hidden="true" /><span class="font-extrabold">{plural(cardsIn(topic), "card")}</span><button class="link mt-1 min-h-6 self-start text-left text-sm font-bold" onclick={() => onCards(topic.id)}>Open in Cards</button></div>
-              <div class="panel flex flex-col gap-1 p-4"><Brain class="size-5" aria-hidden="true" /><span class="font-extrabold">{plural(checklistsIn(topic), "free recall checklist")}</span><button class="link mt-1 min-h-6 self-start text-left text-sm font-bold" onclick={onRecall}>Open in Free Recall</button></div>
+              <div class="panel flex flex-col gap-1 p-4">
+                <span class="flex items-center gap-2 text-sm font-bold text-muted"><ListChecks class="size-4" aria-hidden="true" />Questions</span>
+                <span class="text-3xl font-black tabular-nums">{questionsIn(topic)}</span>
+                <button class="link mt-auto min-h-6 self-start text-sm font-bold" aria-label="Open in Quizzes" onclick={() => onEdit(topic.id)}>Open</button>
+              </div>
+              <div class="panel flex flex-col gap-1 p-4">
+                <span class="flex items-center gap-2 text-sm font-bold text-muted"><SquareStack class="size-4" aria-hidden="true" />Cards</span>
+                <span class="text-3xl font-black tabular-nums">{cardsIn(topic)}</span>
+                <button class="link mt-auto min-h-6 self-start text-sm font-bold" aria-label="Open in Cards" onclick={() => onCards(topic.id)}>Open</button>
+              </div>
+              <div class="panel flex flex-col gap-1 p-4">
+                <span class="flex items-center gap-2 text-sm font-bold text-muted"><Brain class="size-4" aria-hidden="true" />Checklists</span>
+                <span class="text-3xl font-black tabular-nums">{checklistsIn(topic)}</span>
+                <button class="link mt-auto min-h-6 self-start text-sm font-bold" aria-label="Open in Free Recall" onclick={onRecall}>Open</button>
+              </div>
             </div>
           </div>
         </section>

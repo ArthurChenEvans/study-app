@@ -17,8 +17,9 @@ export interface ToastOptions { text: string; sub?: string; icon?: ToastIcon; er
 export interface ToastItem extends ToastOptions { id: number }
 
 export type Motion = "system" | "full" | "calm";
-export interface DevicePrefs { motion: Motion; volume: number; bigSoundOnly: boolean }
+export interface DevicePrefs { motion: Motion; volume: number; bigSoundOnly: boolean; confetti: ConfettiColours }
 
+import type { ConfettiColours } from "./confettiColours";
 const DEVICE_KEY = "studyapp-celebrations-device";
 const UNDO_MS = 6000;
 const TOAST_MS = 4000;
@@ -35,13 +36,14 @@ export const live = $state<{ prefs: CelebrationPrefs; big: BigMoment[]; pops: Po
 });
 
 function loadDevice(): DevicePrefs {
-  const fallback: DevicePrefs = { motion: "system", volume: 0.8, bigSoundOnly: false };
+  const fallback: DevicePrefs = { motion: "system", volume: 0.8, bigSoundOnly: false, confetti: "theme" };
   try {
     const raw = JSON.parse(localStorage.getItem(DEVICE_KEY) ?? "{}");
     return {
       motion: ["system", "full", "calm"].includes(raw.motion) ? raw.motion : fallback.motion,
       volume: typeof raw.volume === "number" ? Math.min(1, Math.max(0, raw.volume)) : fallback.volume,
       bigSoundOnly: typeof raw.bigSoundOnly === "boolean" ? raw.bigSoundOnly : fallback.bigSoundOnly,
+      confetti: raw.confetti === "rainbow" ? "rainbow" : "theme",
     };
   } catch {
     return fallback;

@@ -629,7 +629,7 @@ fn card_note(card: &ItemCard) -> CardNote {
         "cloze" => NoteKind::Cloze,
         _ => NoteKind::Basic,
     };
-    CardNote { topic: TopicId(0), kind, front: card.front.clone(), back: card.back.clone(), cues: card.cues.clone(), text: card.text.clone(), extra: card.extra.clone() }
+    CardNote { topic: TopicId(0), kind, front: card.front.clone(), back: card.back.clone(), cues: card.cues.clone(), text: card.text.clone(), extra: card.extra.clone(), tags: vec![] }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]

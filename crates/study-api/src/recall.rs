@@ -649,7 +649,7 @@ mod tests {
         let memory = app.create_topic("Memory", Some(module)).unwrap();
         let other = app.create_topic("Networks", None).unwrap();
         let note = |topic, kind, front: &str, back: &str, text: &str| NoteInput {
-            note: Note { topic, kind, front: front.into(), back: back.into(), cues: vec![], text: text.into(), extra: String::new() },
+            note: Note { topic, kind, front: front.into(), back: back.into(), cues: vec![], text: text.into(), extra: String::new(), tags: vec![] },
             suggestion: None,
         };
         let basic = app.save_note(None, note(memory, NoteKind::Basic, "What caches translations?", "The TLB", ""), TODAY).unwrap();

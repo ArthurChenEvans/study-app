@@ -51,9 +51,10 @@ describe("Topics & Modules", () => {
     await u.click(within(tree).getByRole("button", { name: "TLS" }));
     const picked = screen.getByRole("region", { name: "TLS" });
     expect(within(picked).getByLabelText("Module")).toHaveValue("1");
-    expect(within(picked).getByText("22 quiz questions")).toBeInTheDocument();
-    expect(within(picked).getByText("96 cards")).toBeInTheDocument();
-    expect(within(picked).getByText("1 free recall checklist")).toBeInTheDocument();
+    // R189: each count is a big number with a short label, so nothing wraps in a narrow box
+    expect(within(picked).getByRole("button", { name: "Open in Quizzes" }).parentElement).toHaveTextContent("Questions 22 Open");
+    expect(within(picked).getByRole("button", { name: "Open in Cards" }).parentElement).toHaveTextContent("Cards 96 Open");
+    expect(within(picked).getByRole("button", { name: "Open in Free Recall" }).parentElement).toHaveTextContent("Checklists 1 Open");
     await u.click(within(picked).getByRole("button", { name: "Open in Quizzes" }));
     expect(onEdit).toHaveBeenCalledWith(3);
     await u.click(within(picked).getByRole("button", { name: "Open in Cards" }));

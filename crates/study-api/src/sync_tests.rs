@@ -128,7 +128,7 @@ fn small_profile(app: &mut App) -> (TopicId, NoteId) {
 }
 
 fn basic(topic: TopicId, front: &str, back: &str) -> NoteInput {
-    NoteInput { note: Note { topic, kind: NoteKind::Basic, front: front.into(), back: back.into(), cues: vec![], text: String::new(), extra: String::new() }, suggestion: None }
+    NoteInput { note: Note { topic, kind: NoteKind::Basic, front: front.into(), back: back.into(), cues: vec![], text: String::new(), extra: String::new(), tags: vec![] }, suggestion: None }
 }
 
 fn question(topic: TopicId, text: &str) -> QuestionInput {

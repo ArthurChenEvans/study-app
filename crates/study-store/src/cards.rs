@@ -114,6 +114,21 @@ impl Store {
         Ok(id)
     }
 
+    /// Every note's own tags (R192), for Browse all.
+    pub fn note_tags(&self) -> Result<std::collections::HashMap<NoteId, Vec<String>>> {
+        let mut statement = self.connection.prepare("SELECT id, note FROM notes")?;
+        let rows = statement.query_map([], |row| Ok((NoteId(row.get(0)?), row.get::<_, String>(1)?)))?;
+        let mut tags = std::collections::HashMap::new();
+        for row in rows {
+            let (id, json) = row?;
+            let note: Note = serde_json::from_str(&json)?;
+            if !note.tags.is_empty() {
+                tags.insert(id, note.tags);
+            }
+        }
+        Ok(tags)
+    }
+
     pub fn note(&self, id: NoteId) -> Result<(Note, Option<String>)> {
         let (json, source): (String, Option<String>) = self
             .connection
@@ -343,6 +358,7 @@ mod tests {
             cues: cues.iter().map(|c| c.to_string()).collect(),
             text: String::new(),
             extra: String::new(),
+            tags: vec![],
         }
     }
 

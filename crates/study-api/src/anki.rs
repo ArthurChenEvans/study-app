@@ -585,7 +585,7 @@ impl App {
                     &mut dropped,
                 )
             };
-            let mut note = CardNote { topic: TopicId(0), kind: note_kind, front: String::new(), back: String::new(), cues: vec![], text: String::new(), extra: String::new() };
+            let mut note = CardNote { topic: TopicId(0), kind: note_kind, front: String::new(), back: String::new(), cues: vec![], text: String::new(), extra: String::new(), tags: raw.tags.clone() };
             match note_kind {
                 NoteKind::Cloze => {
                     note.text = field(0, &mut snapshot);

@@ -219,7 +219,7 @@
     {:else if route.screen === "transfer"}
       <Transfer onBackups={() => go({ screen: "data" })} />
     {:else if route.screen === "editor"}
-      {#key route.topic}<Editor topic={route.topic} />{/key}
+      {#key route.topic}<Editor topic={route.topic} onBack={() => go({ screen: "quizzes" })} />{/key}
     {:else if route.screen === "setup" || route.screen === "setup-for"}
       <Setup preselected={route.screen === "setup-for" ? route.topics : []} onStarted={startQuiz} />
     {:else if route.screen === "quiz"}
