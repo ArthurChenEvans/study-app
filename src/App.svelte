@@ -233,7 +233,7 @@
     {:else if route.screen === "recall-session"}
       {#key route.run}<RecallSession id={route.id} onLeave={() => go({ screen: "recall" })} onEdit={(id) => go({ screen: "checklist", id })} onNext={startRecall} />{/key}
     {:else if route.screen === "cards"}
-      <Cards onReview={startCards} onTopic={(topic) => go({ screen: "topic-cards", topic, note: null })} onSuggestions={() => go({ screen: "suggestions" })} onNewCard={newCard} />
+      <Cards onReview={startCards} onEditNote={(topic, note) => go({ screen: "topic-cards", topic, note })} onTopic={(topic) => go({ screen: "topic-cards", topic, note: null })} onSuggestions={() => go({ screen: "suggestions" })} onNewCard={newCard} />
     {:else if route.screen === "topic-cards"}
       {#key `${route.topic}:${route.note}`}<TopicCards topic={route.topic} editNote={route.note} notice={route.notice} onTopic={(topic, notice) => go({ screen: "topic-cards", topic, note: null, notice })} onBack={() => go({ screen: "cards" })} onReview={startCards} />{/key}
     {:else if route.screen === "card-review"}

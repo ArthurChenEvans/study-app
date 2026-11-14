@@ -10,6 +10,7 @@ use study_core::cards::{
 };
 use study_core::question::TopicId;
 use study_store::cards::{CardId, CardRow, NoteId, ReviewRow};
+use study_store::ModuleId;
 use study_store::recall::Subject;
 
 use crate::{ApiError, ApiResult, App};
@@ -56,6 +57,27 @@ pub struct CardListRow {
     pub lapses: u32,
     pub leech: bool,
     pub archived: bool,
+}
+
+/// One card on Browse all (R191). `back` is left out while the card is due today.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct BrowseRow {
+    pub id: CardId,
+    pub note: NoteId,
+    pub topic: TopicId,
+    pub topic_name: String,
+    pub module: Option<ModuleId>,
+    pub module_name: Option<String>,
+    pub tags: Vec<String>,
+    pub front: String,
+    pub back: Option<String>,
+    /// "Basic", "Reversed" or "Cloze".
+    pub kind: String,
+    pub due: i64,
+    pub is_new: bool,
+    pub learning: bool,
+    pub archived: bool,
+    pub lapses: u32,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -412,6 +434,44 @@ impl App {
                 })
                 .collect(),
         })
+    }
+
+    /// Every card in every topic, for Browse all (R191). A card due today (and not paused)
+    /// keeps its answer back, so browsing can't give away today's review.
+    pub fn browse_cards(&self, today: i64) -> ApiResult<Vec<BrowseRow>> {
+        let topics = self.store.topics()?;
+        let modules = self.store.modules()?;
+        let cards = self.cards_now(self.store.cards()?, &self.now(today)?);
+        Ok(cards
+            .into_iter()
+            .filter_map(|card| {
+                let topic = topics.iter().find(|t| t.id == card.topic)?;
+                let module = topic.module.and_then(|m| modules.iter().find(|row| row.id == m));
+                let kind = match card.key.as_str() {
+                    "forward" | "reverse" => "Reversed",
+                    key if key.starts_with('c') && key[1..].parse::<u32>().is_ok() => "Cloze",
+                    _ => "Basic",
+                };
+                let due_today = !card.archived && card.schedule.due <= today;
+                Some(BrowseRow {
+                    id: card.id,
+                    note: card.note,
+                    topic: card.topic,
+                    topic_name: topic.name.clone(),
+                    module: topic.module,
+                    module_name: module.map(|row| row.name.clone()),
+                    tags: topic.tags.clone(),
+                    back: (!due_today).then(|| card.back.clone()),
+                    front: card.front,
+                    kind: kind.into(),
+                    due: card.schedule.due,
+                    is_new: card.schedule.is_new(),
+                    learning: card.schedule.is_learning(today),
+                    archived: card.archived,
+                    lapses: card.schedule.lapses,
+                })
+            })
+            .collect())
     }
 
     pub fn note_view(&self, id: NoteId, today: i64) -> ApiResult<NoteView> {
@@ -1015,6 +1075,46 @@ mod tests {
         assert_eq!(app.cards_home(TODAY).unwrap().due.new, 10);
         // Today's bar in the forecast is today's session, not every unseen card.
         assert_eq!(app.cards_home(TODAY).unwrap().forecast[0], 10);
+    }
+
+    // R191: Browse all lists every card in every topic, with each card's topic, module, tags
+    // and where it is in its schedule. A card due today keeps its answer back, so browsing
+    // never gives away today's review.
+    #[test]
+    fn browsing_lists_every_card_and_holds_back_answers_due_today() {
+        let (mut app, cpu) = app();
+        let networks = app.create_module("Networks").unwrap();
+        let dns = app.create_topic("DNS", Some(networks)).unwrap();
+        app.set_topic_tags(dns, vec!["exam".into()]).unwrap();
+        let reviewed = app.save_note(None, basic(dns, "Reviewed"), TODAY).unwrap();
+        app.save_note(None, basic(cpu, "Waiting"), TODAY).unwrap();
+        let paused = app.save_note(None, basic(cpu, "Paused"), TODAY).unwrap();
+        let paused_card = app.note_view(paused, TODAY).unwrap().cards[0].id;
+        app.archive_card(paused_card, true).unwrap();
+        let mut reversed = basic(cpu, "Front");
+        reversed.note.kind = NoteKind::Reversed;
+        app.save_note(None, reversed, TODAY).unwrap();
+        // Review "Reviewed" once so it's due another day.
+        app.start_review(Some(Subject::Topic(dns)), TODAY).unwrap();
+        app.grade_card(Rating::Good, 5, TODAY).unwrap();
+        app.leave_review();
+
+        let rows = app.browse_cards(TODAY).unwrap();
+        assert_eq!(rows.len(), 5, "every card, paused ones too");
+        let find = |front: &str| rows.iter().find(|row| row.front == front).unwrap_or_else(|| panic!("no {front} in {rows:?}"));
+        let done = find("Reviewed");
+        assert_eq!((done.topic_name.as_str(), done.module_name.as_deref(), done.tags.clone()), ("DNS", Some("Networks"), vec!["exam".to_string()]));
+        assert_eq!(done.note, reviewed);
+        assert!(done.due > TODAY && !done.is_new);
+        assert_eq!(done.back.as_deref(), Some("Back"), "not due today, so its answer shows");
+        let waiting = find("Waiting");
+        assert!(waiting.is_new && waiting.module_name.is_none());
+        assert_eq!(waiting.back, None, "due today, so its answer waits for the review");
+        assert_eq!(waiting.kind, "Basic");
+        let off = find("Paused");
+        assert!(off.archived);
+        assert_eq!(off.back.as_deref(), Some("Back"), "a paused card isn't in today's review");
+        assert!(rows.iter().filter(|row| row.kind == "Reversed").count() == 2);
     }
 
     // flashcards.feature: Archived cards are left out

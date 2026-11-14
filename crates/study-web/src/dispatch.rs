@@ -100,6 +100,7 @@ pub fn dispatch_at(app: &mut App, command: &str, args: &Value, today: i64, clock
         "cards_home" => json(app.cards_home(today)),
         "cards_due_count" => json(app.cards_due_count(today)),
         "topic_cards" => json(app.topic_cards(arg(a, "topic")?, today)),
+        "browse_cards" => json(app.browse_cards(today)),
         "note_view" => json(app.note_view(arg(a, "id")?, today)),
         "save_note" => json(app.save_note(arg(a, "id")?, arg(a, "input")?, today)),
         "delete_note" => json(app.delete_note(arg(a, "id")?)),
