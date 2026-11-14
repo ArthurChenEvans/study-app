@@ -1,24 +1,19 @@
 <script lang="ts">
-  import FilterBox from "../components/list/FilterBox.svelte";
-  import SortHeader, { type Sort } from "../components/list/SortHeader.svelte";
-  import Highlight from "../components/Highlight.svelte";
-  import { matchesFilter, sortBy } from "../lib/lists";
-  // flashcards.feature (R68, R74, R75): what's due today, the forecast, retention, per topic.
+  import CardBrowser from "../components/CardBrowser.svelte";
+  // flashcards.feature (R68, R74, R75): what's due today, the forecast, retention.
+  // R191: it opens on Review, and every card is a tab away in Browse all.
   import { CircleCheck, Inbox, Play, Plus, RefreshCw, RotateCcw, Settings2, SquareStack } from "@lucide/svelte";
   import { api, errorMessage, type CardSettings, type CardsHome, type ModuleRow, type Subject, type TopicRow } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
   import { dueLabel } from "../lib/dates";
 
-  let { onReview, onTopic, onSuggestions, onNewCard }: { onReview: (scope: Subject | null) => void; onTopic: (topic: number) => void; onSuggestions: () => void; onNewCard: () => void } = $props();
+  let { onReview, onSuggestions, onNewCard, onEditNote = () => {} }: { onReview: (scope: Subject | null) => void; onTopic?: (topic: number) => void; onSuggestions: () => void; onNewCard: () => void; onEditNote?: (topic: number, note: number) => void } = $props();
+  let tab = $state<"review" | "browse">("review");
 
   let home = $state<CardsHome | null>(null);
   let today = $state(0);
   let modules = $state<ModuleRow[]>([]);
   let topics = $state<TopicRow[]>([]);
-  // lists.feature (R138, R139, R141): the by-topic table filters and sorts, in its own pane.
-  let filter = $state("");
-  let sort = $state<Sort>({ key: "review", up: false });
-  const byTopic = $derived(home ? sortBy(home.per_topic.filter((row) => matchesFilter(filter, row.name, row.module)), (row) => (sort.key === "name" ? row.name : sort.key === "new" ? row.due.new : sort.key === "learning" ? row.due.learning : sort.key === "total" ? row.total : sort.key === "retention" ? row.retention : row.due.review), sort.up, (row) => row.name) : []);
   let scope = $state("");
   let editing = $state<CardSettings | null>(null);
   let noLimit = $state(false);
@@ -80,7 +75,7 @@
   load();
 </script>
 
-<svelte:window onkeydown={(event) => { if (event.key === "Enter" && !editing && total > 0 && (event.target as HTMLElement).tagName === "BODY") start(); }} />
+<svelte:window onkeydown={(event) => { if (event.key === "Enter" && tab === "review" && !editing && total > 0 && (event.target as HTMLElement).tagName === "BODY") start(); }} />
 
 <div class="mx-auto max-w-6xl px-12 pb-24">
   <PageHeader title="Cards" subtitle={home && home.total_cards ? (total ? `${total} due today` : "All reviewed for today") : ""}>
@@ -101,7 +96,14 @@
       </div>
     </div>
   {:else if home}
-    <div class="grid grid-cols-[minmax(0,1fr)] wide:grid-cols-[minmax(0,1fr)_20rem] items-start gap-6">
+    <div class="mb-5 flex gap-1 border-b border-base-300" role="tablist" aria-label="Cards">
+      <button type="button" role="tab" id="cards-tab-review" aria-selected={tab === "review"} aria-controls="cards-review" class="px-3 py-2 text-[15px] {tab === 'review' ? 'border-b-2 border-base-content font-extrabold' : 'text-muted'}" onclick={() => (tab = "review")}>Review</button>
+      <button type="button" role="tab" id="cards-tab-browse" aria-selected={tab === "browse"} aria-controls="cards-browse" class="px-3 py-2 text-[15px] {tab === 'browse' ? 'border-b-2 border-base-content font-extrabold' : 'text-muted'}" onclick={() => (tab = "browse")}>Browse all</button>
+    </div>
+    {#if tab === "browse"}
+      <div id="cards-browse" role="tabpanel" aria-labelledby="cards-tab-browse"><CardBrowser {today} {modules} onEdit={onEditNote} /></div>
+    {:else}
+    <div id="cards-review" role="tabpanel" aria-labelledby="cards-tab-review" class="grid grid-cols-[minmax(0,1fr)] wide:grid-cols-[minmax(0,1fr)_20rem] items-start gap-6">
       <div class="flex min-w-0 flex-col gap-4">
       <section class="panel p-6" aria-labelledby="today-h">
         <h2 id="today-h" class="eyebrow">Today</h2>
@@ -152,27 +154,6 @@
         </div>
       </section>
 
-    <section aria-labelledby="by-topic-h">
-      <h2 id="by-topic-h" class="sr-only">By topic</h2>
-      {#if home.per_topic.length > 8}<div class="mb-3"><FilterBox bind:value={filter} shown={byTopic.length} total={home.per_topic.length} placeholder="Filter topics…" /></div>{/if}
-      <div class="panel pane">
-        <table class="rows table-fixed" aria-label="Cards by topic">
-          <colgroup><col class="w-[27%]" /><col class="w-[11%]" /><col class="w-[14%]" /><col class="w-[15%]" /><col class="w-[11%]" /><col class="w-[22%]" /></colgroup>
-          <thead><tr><SortHeader key="name" label="Topic" bind:sort /><SortHeader key="new" label="New" bind:sort /><SortHeader key="learning" label="Learning" bind:sort /><SortHeader key="review" label="To review" bind:sort /><SortHeader key="total" label="Cards" bind:sort /><SortHeader key="retention" label="Retention" bind:sort /></tr></thead>
-          <tbody>
-            {#each byTopic as row (row.topic)}
-              <tr>
-                <td><button class="py-0.5 text-left font-semibold hover:underline" onclick={() => onTopic(row.topic)}><Highlight text={row.name} term={filter} /></button><div class="text-xs text-muted">{row.module ?? "No module"}</div></td>
-                <td class="tabular-nums" data-label="New">{row.due.new}</td><td class="tabular-nums" data-label="Learning">{row.due.learning}</td><td class="tabular-nums" data-label="To review">{row.due.review}</td>
-                <td class="tabular-nums" data-label="Cards">{row.total}</td>
-                <td class="tabular-nums" data-label="Retention">{#if row.retention === null}<span class="text-muted">None yet</span>{:else}<span class="flex items-center gap-2"><span class="inline-block h-3 w-14 shrink-0 overflow-hidden rounded-full bg-base-300" aria-hidden="true"><span class="block h-full rounded-full" style="width: {row.retention}%; background: var(--chart-ink)"></span></span>{row.retention}%</span>{/if}</td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      </div>
-      {#if topics.length > home.per_topic.length}<p class="mt-3 text-sm text-muted">Topics with no cards yet aren't listed. Open a topic from Topics to add cards to it.</p>{/if}
-    </section>
       </div>
 
       <aside class="flex flex-col gap-4">
@@ -191,6 +172,7 @@
         </section>
       </aside>
     </div>
+    {/if}
   {/if}
 </div>
 

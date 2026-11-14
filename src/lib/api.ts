@@ -166,6 +166,8 @@ export interface DueCounts { new: number; learning: number; review: number }
 export interface TopicCounts { topic: Id; name: string; module: string | null; due: DueCounts; total: number; retention: number | null }
 export interface CardsHome { due: DueCounts; total_cards: number; minutes: number; forecast: number[]; retention: number | null; target: number; per_topic: TopicCounts[]; suggestions: number }
 export interface CardListRow { id: Id; note: Id; front: string; kind: string; source: string | null; due: number; is_new: boolean; lapses: number; leech: boolean; archived: boolean }
+/** One card on Browse all (R191). `back` is null while the card is due today. */
+export interface BrowseRow { id: Id; note: Id; topic: Id; topic_name: string; module: Id | null; module_name: string | null; tags: string[]; front: string; back: string | null; kind: "Basic" | "Reversed" | "Cloze"; due: number; is_new: boolean; learning: boolean; archived: boolean; lapses: number }
 export interface TopicCards { topic: Id; name: string; module: string | null; due: number; cards: CardListRow[] }
 export interface CardDetail { id: Id; key: string; reps: number; lapses: number; leech: boolean; due: number; is_new: boolean; archived: boolean; remember_now: number | null }
 export interface NoteView { id: Id; note: Note; source: string | null; cards: CardDetail[] }
@@ -303,6 +305,7 @@ export const api = {
   cardsHome: () => invoke<CardsHome>("cards_home"),
   cardsDueCount: () => invoke<number>("cards_due_count"),
   topicCards: (topic: Id) => invoke<TopicCards>("topic_cards", { topic }),
+  browseCards: () => invoke<BrowseRow[]>("browse_cards"),
   noteView: (id: Id) => invoke<NoteView>("note_view", { id }),
   saveNote: (id: Id | null, input: NoteInput) => invoke<Id>("save_note", { id, input }),
   deleteNote: (id: Id) => invoke<void>("delete_note", { id }),

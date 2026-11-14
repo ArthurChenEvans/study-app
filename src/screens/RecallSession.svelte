@@ -234,7 +234,7 @@
         {#if nextDue}
           <button class="btn btn-primary" onclick={() => nextDue && onNext(nextDue.id)}><Play class="size-4" />Next: {nextDue.subject_name}</button>
         {:else}
-          <button class="btn btn-primary" onclick={onLeave}>Back to Recall</button>
+          <button class="btn btn-primary" onclick={onLeave}>Back to Free Recall</button>
         {/if}
       </div>
     </div>

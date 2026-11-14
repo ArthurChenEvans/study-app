@@ -53,3 +53,17 @@ Feature: Organise topics into modules and tags
     Then the rail and its recall checklist both say "Architecture"
     When I pick CPU and choose Rename
     Then I can give it a new name, and an empty name says why it can't be saved
+
+  # R189
+  Scenario: Making a quiz
+    When I make a new quiz called "GPU" in Computer Architecture
+    Then the question editor opens for GPU
+
+  Scenario: Deleting a quiz keeps the topic
+    When I delete the CPU quiz
+    Then its questions go, and CPU stays with its cards and checklists
+
+  Scenario: Looking after topics and modules
+    When I pick TLS on Topics & Modules
+    Then I see how many questions, cards and checklists it has
+    And I can rename it, move it, tag it or delete it

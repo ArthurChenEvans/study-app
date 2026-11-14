@@ -93,7 +93,7 @@
 </script>
 
 <div class="mx-auto max-w-6xl px-12 pb-24">
-  <PageHeader title="Recall" subtitle={loaded && rows.length ? (due.length ? `${due.length} due today` : "Nothing due today") : ""}>
+  <PageHeader title="Free Recall" subtitle={loaded && rows.length ? (due.length ? `${due.length} due today` : "Nothing due today") : ""}>
     {#if rows.length}
       <button class="btn btn-ghost" onclick={openSchedule}><CalendarCog class="size-4" />Schedule</button>
       <button class="btn btn-ghost" onclick={openCreate}><Plus class="size-4" />New checklist</button>

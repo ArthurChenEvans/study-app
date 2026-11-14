@@ -31,8 +31,8 @@ describe("App shortcuts", () => {
     await screen.findByRole("heading", { level: 1 });
     expect(entrance()).not.toBeNull();
     const first = entrance();
-    await u.click(screen.getAllByRole("link", { name: /^Topics/ })[0]);
-    await screen.findByRole("heading", { level: 1, name: "Topics" });
+    await u.click(screen.getAllByRole("link", { name: /^Quizzes/ })[0]);
+    await screen.findByRole("heading", { level: 1, name: "Quizzes" });
     expect(entrance()).not.toBe(first);
     expect(container.querySelectorAll("main .rise").length).toBe(0);
   });

@@ -173,7 +173,7 @@
             <label class="block text-sm font-semibold" for="review-issue">Issue</label>
             <input id="review-issue" class="input mt-1 w-full" list="known-issues" placeholder="Name the issue, or pick one you've had before…" bind:value={issue} onchange={findDrill} onblur={findDrill} />
             <datalist id="known-issues">{#each issues as row (row.id)}<option value={row.name}></option>{/each}</datalist>
-            <p class="mt-1 text-sm text-muted">{seenBefore ? `Seen ${seenBefore.seen} ${seenBefore.seen === 1 ? "time" : "times"} before, in ${seenBefore.projects.join(" and ")}.` : "Issues are shared by every project, so name it the way you'd recognise it again."}</p>
+            <p class="mt-1 text-sm text-muted">{seenBefore ? `Seen ${seenBefore.seen} ${seenBefore.seen === 1 ? "time" : "times"} before, in ${seenBefore.projects.join(" and ")}.` : "Issues are shared by every log, so name it the way you'd recognise it again."}</p>
           </div>
           {#if known}
             <div class="panel flex items-start gap-4 p-5" role="note"><Dumbbell class="mt-0.5 size-5 shrink-0" />

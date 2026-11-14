@@ -308,6 +308,11 @@ fn cards_due_count(state: AppState) -> ApiResult<usize> {
     with(state, |app| app.cards_due_count(today()))
 }
 #[tauri::command]
+fn browse_cards(state: AppState) -> ApiResult<Vec<study_api::cards::BrowseRow>> {
+    with(state, |app| app.browse_cards(today()))
+}
+
+#[tauri::command]
 fn topic_cards(state: AppState, topic: TopicId) -> ApiResult<TopicCards> {
     with(state, |app| app.topic_cards(topic, today()))
 }
@@ -916,6 +921,7 @@ pub fn run() {
             cards_home,
             cards_due_count,
             topic_cards,
+            browse_cards,
             note_view,
             save_note,
             delete_note,

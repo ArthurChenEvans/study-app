@@ -6,11 +6,12 @@ vi.mock("../lib/api", async (original) => {
   const actual = await original<typeof import("../lib/api")>();
   return {
     ...actual,
-    api: { cardsHome: vi.fn(), today: vi.fn(), modules: vi.fn(), topics: vi.fn(), cardSettings: vi.fn(), setCardSettings: vi.fn(), resetCardSettings: vi.fn(), fitScheduler: vi.fn() },
+    api: { cardsHome: vi.fn(), today: vi.fn(), modules: vi.fn(), topics: vi.fn(), browseCards: vi.fn(), noteView: vi.fn(), saveNote: vi.fn(), archiveCard: vi.fn(), deleteNote: vi.fn(), cardSettings: vi.fn(), setCardSettings: vi.fn(), resetCardSettings: vi.fn(), fitScheduler: vi.fn() },
   };
 });
 
-import { api, type CardsHome } from "../lib/api";
+import { api, type BrowseRow, type CardsHome } from "../lib/api";
+import { flushPendingDeletes, live } from "../lib/celebrations.svelte";
 import Cards from "./Cards.svelte";
 
 const mocked = vi.mocked(api);
@@ -30,7 +31,8 @@ beforeEach(() => {
   mocked.cardSettings.mockResolvedValue({ ...settings });
 });
 
-const props = () => ({ onReview: vi.fn(), onTopic: vi.fn(), onSuggestions: vi.fn(), onNewCard: vi.fn() });
+const props = () => ({ onReview: vi.fn(), onTopic: vi.fn(), onSuggestions: vi.fn(), onNewCard: vi.fn(), onEditNote: vi.fn() });
+const row = (over: Partial<BrowseRow>): BrowseRow => ({ id: 1, note: 1, topic: 1, topic_name: "CPU", module: 7, module_name: "Computer Architecture", tags: [], front: "Front", back: "Back", kind: "Basic", due: TODAY + 4, is_new: false, learning: false, archived: false, lapses: 0, ...over });
 
 describe("Cards home", () => {
   // flashcards.feature: See what's due today, Review one topic or module
@@ -51,20 +53,115 @@ describe("Cards home", () => {
     expect(handlers.onReview).toHaveBeenLastCalledWith({ Topic: 2 });
   });
 
-  it("shows retention, the forecast peak and the topics table", async () => {
+  // R191: Cards opens on Review, with no card fronts or answers in sight
+  it("opens on Review with retention and the forecast, and no cards listed", async () => {
     const u = userEvent.setup();
     const handlers = props();
     render(Cards, handlers);
     expect(await screen.findByText("88%")).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: "Review" })).toHaveAttribute("aria-selected", "true");
     expect(screen.getByText("aiming for 90%")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: /next 14 days: 27, 9, 4, 12, 31/ })).toBeInTheDocument();
     expect(within(screen.getByRole("table", { name: "Cards due per day" })).getByRole("row", { name: "Sat 7 Nov 31" })).toBeInTheDocument();
-    const table = screen.getByRole("table", { name: "Cards by topic" });
-    expect(within(table).getByText("None yet")).toBeInTheDocument();
-    await u.click(within(table).getByRole("button", { name: "OSI model" }));
-    expect(handlers.onTopic).toHaveBeenCalledWith(2);
+    expect(screen.queryByRole("table", { name: "Cards by topic" })).not.toBeInTheDocument();
+    expect(mocked.browseCards).not.toHaveBeenCalled();
     await u.click(screen.getByRole("button", { name: "Look through all 4" }));
     expect(handlers.onSuggestions).toHaveBeenCalled();
+  });
+
+  // R191: Browse all lists every card, filters fold away, and today's answers stay hidden
+  it("browses every card, hiding the answers of cards due today", async () => {
+    const u = userEvent.setup();
+    const handlers = props();
+    mocked.browseCards.mockResolvedValue([
+      row({ id: 1, note: 10, front: "What is a TLB?", back: null, due: TODAY }),
+      row({ id: 2, note: 11, front: "Cache line size", back: "64 bytes", topic: 2, topic_name: "OSI model", module: null, module_name: null, tags: ["exam"] }),
+      row({ id: 3, note: 12, front: "Paused one", back: "Hidden? No", archived: true }),
+    ]);
+    render(Cards, handlers);
+    await u.click(await screen.findByRole("tab", { name: "Browse all" }));
+    const table = await screen.findByRole("table", { name: "All cards" });
+    const first = within(table).getByRole("row", { name: /What is a TLB/ });
+    expect(first).toHaveTextContent("Hidden until you review it");
+    expect(within(table).getByRole("row", { name: /Cache line size/ })).toHaveTextContent("64 bytes");
+    expect(screen.getByText("3 of 3 cards")).toBeInTheDocument();
+    await u.click(within(first).getByRole("button", { name: "What is a TLB?" }));
+    expect(handlers.onEditNote).toHaveBeenCalledWith(1, 10);
+  });
+
+  it("narrows with the search box and the filter panel, which folds away and remembers it", async () => {
+    const u = userEvent.setup();
+    localStorage.clear();
+    mocked.browseCards.mockResolvedValue([
+      row({ id: 1, front: "TLB", tags: ["exam"] }),
+      row({ id: 2, front: "Subnet", topic: 2, topic_name: "OSI model", module: null, module_name: null, kind: "Cloze" }),
+      row({ id: 3, front: "Paused", archived: true }),
+    ]);
+    const { unmount } = render(Cards, props());
+    await u.click(await screen.findByRole("tab", { name: "Browse all" }));
+    const search = await screen.findByRole("searchbox", { name: "Search cards" });
+    await u.type(search, "type:cloze");
+    expect(screen.getByText("1 of 3 cards")).toBeInTheDocument();
+    await u.clear(search);
+    const filters = screen.getByRole("region", { name: "Filters" });
+    await u.click(within(filters).getByRole("checkbox", { name: /^Paused/ }));
+    expect(screen.getByText("1 of 3 cards")).toBeInTheDocument();
+    await u.click(screen.getByRole("button", { name: "Remove filter: Paused" }));
+    await u.click(within(filters).getByRole("checkbox", { name: /^OSI model/ }));
+    expect(screen.getByText("1 of 3 cards")).toBeInTheDocument();
+    const toggle = screen.getByRole("button", { name: /^Filters/ });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await u.click(toggle);
+    expect(screen.queryByRole("region", { name: "Filters" })).not.toBeInTheDocument();
+    expect(toggle).toHaveTextContent("1");
+    unmount();
+    render(Cards, props());
+    await u.click(await screen.findByRole("tab", { name: "Browse all" }));
+    expect(await screen.findByRole("button", { name: /^Filters/ })).toHaveAttribute("aria-expanded", "false");
+  });
+
+  // R191: a big collection shows 100 at a time, so the list stays quick
+  it("shows a long list 100 cards at a time", async () => {
+    const u = userEvent.setup();
+    mocked.browseCards.mockResolvedValue(Array.from({ length: 250 }, (_, n) => row({ id: n + 1, note: n + 1, front: `Card ${n + 1}` })));
+    render(Cards, props());
+    await u.click(await screen.findByRole("tab", { name: "Browse all" }));
+    const table = await screen.findByRole("table", { name: "All cards" });
+    expect(within(table).getAllByRole("row")).toHaveLength(101);
+    await u.click(screen.getByRole("button", { name: "Show 100 more (150 left)" }));
+    expect(within(table).getAllByRole("row")).toHaveLength(201);
+    await u.click(screen.getByRole("button", { name: "Show 50 more (50 left)" }));
+    expect(within(table).getAllByRole("row")).toHaveLength(251);
+    expect(screen.queryByRole("button", { name: /^Show \d+ more/ })).not.toBeInTheDocument();
+  });
+
+  it("pauses, moves and deletes ticked cards", async () => {
+    const u = userEvent.setup();
+    mocked.browseCards.mockResolvedValue([row({ id: 1, note: 10, front: "TLB" }), row({ id: 2, note: 10, front: "TLB reversed" }), row({ id: 3, note: 11, front: "Cache" })]);
+    mocked.topics.mockResolvedValue([{ id: 1, name: "CPU", module: 7, tags: [], question_count: 0, short_count: 0 }, { id: 2, name: "OSI model", module: null, tags: [], question_count: 0, short_count: 0 }]);
+    mocked.noteView.mockResolvedValue({ id: 10, note: { topic: 1, kind: "Basic", front: "TLB", back: "x", cues: [], text: "", extra: "" }, source: null, cards: [] });
+    render(Cards, props());
+    await u.click(await screen.findByRole("tab", { name: "Browse all" }));
+    await u.click(await screen.findByRole("checkbox", { name: "Tick TLB" }));
+    await u.click(screen.getByRole("checkbox", { name: "Tick TLB reversed" }));
+    const bar = screen.getByRole("region", { name: "Ticked cards" });
+    expect(bar).toHaveTextContent("2 ticked");
+    await u.click(within(bar).getByRole("button", { name: "Pause" }));
+    expect(mocked.archiveCard.mock.calls).toEqual([[1, true], [2, true]]);
+    await u.click(screen.getByRole("checkbox", { name: "Tick TLB" }));
+    await u.click(screen.getByRole("checkbox", { name: "Tick TLB reversed" }));
+    await u.click(within(screen.getByRole("region", { name: "Ticked cards" })).getByRole("button", { name: "Move to topic" }));
+    const dialog = screen.getByRole("dialog", { name: "Move 2 cards" });
+    await u.selectOptions(within(dialog).getByLabelText("To topic"), "OSI model");
+    await u.click(within(dialog).getByRole("button", { name: "Move" }));
+    expect(mocked.saveNote).toHaveBeenCalledTimes(1);
+    expect(mocked.saveNote).toHaveBeenCalledWith(10, { note: expect.objectContaining({ topic: 2, front: "TLB" }), suggestion: null });
+    await u.click(screen.getByRole("checkbox", { name: "Tick Cache" }));
+    await u.click(within(screen.getByRole("region", { name: "Ticked cards" })).getByRole("button", { name: "Delete" }));
+    expect(live.toasts.at(-1)).toMatchObject({ text: "Deleted 1 card", action: { label: "Undo" } });
+    expect(mocked.deleteNote).not.toHaveBeenCalled();
+    await flushPendingDeletes();
+    expect(mocked.deleteNote).toHaveBeenCalledWith(11);
   });
 
   it("says done when nothing is due, and has a first-time state", async () => {

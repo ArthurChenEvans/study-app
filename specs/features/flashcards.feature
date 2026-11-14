@@ -95,3 +95,18 @@ Feature: Flashcards scheduled with FSRS
     Given fewer than 50 reviews
     When I fit the scheduler
     Then I am told it needs more reviews first
+
+  # R191
+  Scenario: Review comes first
+    When I open Cards
+    Then I see what's due and can start a review, with no cards listed
+
+  Scenario: Browsing every card without spoiling today
+    When I open Browse all
+    Then every card is listed
+    And a card due today says "Hidden until you review it" instead of its answer
+
+  Scenario: Narrowing the list
+    When I search for "tag:exam is:new" and tick a topic in Filters
+    Then only new exam cards in that topic are listed
+    And folding the filters away keeps them applied

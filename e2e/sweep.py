@@ -108,7 +108,7 @@ axe.run(scope, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a'
 
 WIDTHS = {"desk": (1440, 900), "tablet": (1000, 800), "phone": (390, 844)}
 THEMES = ["studyapp-dark", "studyapp"]
-SCREENS = os.environ["SCREENS"].split(",") if os.environ.get("SCREENS") else ["overview", "calendar", "topics", "cards", "recall", "projects", "bibliography", "history", "search", "setup", "data", "settings"]
+SCREENS = os.environ["SCREENS"].split(",") if os.environ.get("SCREENS") else ["overview", "calendar", "quizzes", "topics", "transfer", "cards", "recall", "projects", "bibliography", "history", "search", "setup", "data", "settings"]
 LONG_TOPIC = "Instruction-level parallelism, superscalar pipelines and out-of-order execution in modern CPUs"
 LONG_MODULE = "Computer Systems Architecture and Operating Systems Fundamentals (Year 2)"
 
@@ -206,26 +206,32 @@ def check(driver, key: str):
 
 STATES = {
     # screen: [(state, action)] where the action opens that state from the screen's normal view
-    "topics": [("picked", "//table[@aria-label='Topics']//tbody//tr[1]//button"),
+    "quizzes": [("picked", "//table[@aria-label='Quizzes']//tbody//tr[1]//button"),
+                ("dialog", "//button[contains(normalize-space(), 'New quiz')]"),
+                ("error", "NEW_QUIZ_EMPTY"),
+                ("rename", "RENAME_QUIZ")],
+    "topics": [("picked", "//nav[@aria-label='Topics by module']//section//button[contains(@class,'nav-link')][1]"),
                ("dialog", "//button[contains(normalize-space(), 'New topic')]"),
                ("error", "NEW_TOPIC_EMPTY"),
-               ("module-menu", "MODULE_MENU"),
-               ("rename", "RENAME_TOPIC")],
+               ("module-menu", "//button[contains(@aria-label, 'module actions')]")],
     "bibliography": [("picked", "//table//tbody//tr[1]//button"), ("dialog", "//button[contains(normalize-space(), 'Add a source') or contains(normalize-space(), 'Add source')]")],
     "calendar": [("week", "//button[@role='radio' and normalize-space()='Week']"), ("dialog", "//button[contains(normalize-space(), 'Add a date')]"), ("day", "TODAY_CELL")],
     "recall": [("dialog", "//button[contains(normalize-space(), 'New checklist')]"),
                ("delete", "RECALL_DELETE")],
-    "projects": [("dialog", "//button[contains(normalize-space(), 'New project')]")],
+    "projects": [("dialog", "//button[contains(normalize-space(), 'New log')]")],
     "settings": [("dialog", "//button[contains(normalize-space(), 'Celebrations')]")],
     "overview": [("table", "//details[contains(@class,'table-view')]/summary")],
     "history": [("table", "//details[contains(@class,'table-view')]/summary")],
-    "data": [("export", "//button[contains(normalize-space(), 'Export')]"),
+    "transfer": [("export", "//button[contains(normalize-space(), 'Export')]"),
              ("export-anki", "EXPORT_ANKI"),
              ("import-anki", "UPLOAD:crates/study-api/tests/fixtures/anki/networks-modern.apkg"),
              ("import-csv", "UPLOAD:e2e/fixtures/cpu-questions.csv"),
              ("import-problems", "CSV_PROBLEMS"),
              ("import-unreadable", "UPLOAD:e2e/fixtures/lecture-notes.zip")],
-    "cards": [("table", "//details[contains(@class,'table-view')]/summary"), ("dialog", "//button[contains(normalize-space(), 'Settings') or contains(normalize-space(), 'Card settings')]")],
+    "cards": [("table", "//details[contains(@class,'table-view')]/summary"), ("dialog", "//button[contains(normalize-space(), 'Settings') or contains(normalize-space(), 'Card settings')]"),
+              ("browse", "//button[@role='tab' and normalize-space()='Browse all']"),
+              ("browse-ticked", "BROWSE_TICKED"),
+              ("browse-folded", "BROWSE_FOLDED")],
 }
 
 
@@ -247,15 +253,22 @@ def run_state(driver, screen: str, state: str, action: str) -> bool:
             path.name, base64.b64encode(path.read_bytes()).decode())
         settle(driver, 1.5)
         return bool(driver.find_elements(By.CSS_SELECTOR, "dialog[open]"))
-    if action == "MODULE_MENU":
-        # The first module in the rail, then its labelled Module menu (R185).
-        if not click(driver, "//nav//button[@aria-pressed][2] | //aside//button[@aria-pressed][2]"):
+    if action == "NEW_QUIZ_EMPTY":
+        if not click(driver, "//button[contains(normalize-space(), 'New quiz')]"):
             return False
-        return click(driver, "//button[contains(@aria-label, 'module actions')]")
-    if action == "RENAME_TOPIC":
-        if not click(driver, "//table[@aria-label='Topics']//tbody//tr[1]//button"):
+        return click(driver, "//dialog[@open]//button[@type='submit']")
+    if action == "RENAME_QUIZ":
+        if not click(driver, "//table[@aria-label='Quizzes']//tbody//tr[1]//button"):
             return False
         return click(driver, "//button[starts-with(@aria-label, 'Rename ')]")
+    if action == "BROWSE_TICKED":
+        if not click(driver, "//button[@role='tab' and normalize-space()='Browse all']"):
+            return False
+        return click(driver, "(//table[@aria-label='All cards']//tbody//input[@type='checkbox'])[1]")
+    if action == "BROWSE_FOLDED":
+        if not click(driver, "//button[@role='tab' and normalize-space()='Browse all']"):
+            return False
+        return click(driver, "//button[starts-with(normalize-space(), 'Filters')]")
     if action == "RECALL_DELETE":
         if not click(driver, "(//button[contains(@aria-label, ' actions')])[1]"):
             return False

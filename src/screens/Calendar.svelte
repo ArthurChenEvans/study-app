@@ -355,7 +355,7 @@
       {/if}
 
       {#if day.checklists.length || day.checks.length}
-        <section class="panel p-6" aria-labelledby="h-recall"><h2 id="h-recall" class="flex items-center gap-3 text-lg font-black"><span class="well size-10" aria-hidden="true"><Brain class="size-5" /></span>Recall</h2>
+        <section class="panel p-6" aria-labelledby="h-recall"><h2 id="h-recall" class="flex items-center gap-3 text-lg font-black"><span class="well size-10" aria-hidden="true"><Brain class="size-5" /></span>Free Recall</h2>
           <ul class="mt-3 divide-y">
             {#each day.checklists as checklist (checklist.id)}<li class="flex items-center justify-between gap-4 py-3"><div><p class="text-[15px] font-extrabold">{checklist.name}</p><p class="text-sm text-muted">Checklist · {checklist.step ? `${checklist.step} step` : "first check"} · {checklist.points} points</p></div>
               {#if day.when === "Today"}<button class="btn btn-outline btn-sm text-primary-ink" onclick={() => onRecall(checklist.id)}><Play class="size-4" />Start recall</button>{/if}</li>{/each}

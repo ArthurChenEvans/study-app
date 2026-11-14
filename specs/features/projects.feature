@@ -60,3 +60,8 @@ Feature: Projects, struggles and drills
     Given a session with 3 struggles
     When I review 1 and choose "Finish later"
     Then the project shows 2 struggles to review
+
+  # R190
+  Scenario: A kind of its own, nested
+    When I make a practice log and type the kind "Coding::Rust"
+    Then the Coding filter shows it with my other Coding logs

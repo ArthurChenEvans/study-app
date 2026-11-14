@@ -157,7 +157,7 @@
 </script>
 
 <div class="mx-auto max-w-6xl px-12 pb-24">
-  <button class="mt-8 inline-flex items-center gap-1 py-1 text-xs font-extrabold uppercase tracking-wider text-muted hover:underline" onclick={onBack}><ArrowLeft class="size-4" />Recall</button>
+  <button class="mt-8 inline-flex items-center gap-1 py-1 text-xs font-extrabold uppercase tracking-wider text-muted hover:underline" onclick={onBack}><ArrowLeft class="size-4" />Free Recall</button>
   {#if view && schedule}
     <div class="flex items-end justify-between gap-6 pb-6 pt-4">
       <div>

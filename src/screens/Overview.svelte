@@ -24,7 +24,7 @@
   const dueRows = $derived(
     due
       ? ([
-          { count: due.quizzes, text: `Quiz ${plural(due.quizzes, "topic")}`, screen: "topics", icon: Library, tone: "info" },
+          { count: due.quizzes, text: `Quiz ${plural(due.quizzes, "topic")}`, screen: "quizzes", icon: Library, tone: "info" },
           { count: due.cards, text: `Review ${plural(due.cards, "card")}`, screen: "cards", icon: SquareStack, tone: "primary" },
           { count: due.checklists, text: `Recall ${plural(due.checklists, "checklist")}`, screen: "recall", icon: Brain, tone: "due" },
           { count: due.drills, text: `Do ${plural(due.drills, "project drill")}`, screen: "projects", icon: Hammer, tone: "info" },

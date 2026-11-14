@@ -48,3 +48,14 @@ Feature: Navigation on every screen size
     When I press Next week
     Then the next seven days show
     And the app remembers Week next time
+
+  # R189
+  Scenario: Plain names and a Manage group
+    When I look at the sidebar
+    Then Study has Quizzes, Cards, Free Recall and Practice Log
+    And Manage has Topics & Modules, Import & Export, Bibliography and History
+
+  Scenario: Folding a group
+    When I fold Study from its heading
+    Then its links hide and it still shows how many are due
+    And it stays folded next time, unless I'm on one of its pages

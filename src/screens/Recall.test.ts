@@ -51,6 +51,8 @@ describe("Recall list", () => {
       row({ id: 3, subject_name: "GPU", due: TODAY + 72, due_today: false, step: "Monthly 3 of 6", position: [2, 3] }),
     ]);
     render(Recall, { onOpen: vi.fn(), onStart });
+    // R189: called Free Recall, so it says what you do
+    expect(await screen.findByRole("heading", { level: 1, name: "Free Recall" })).toBeInTheDocument();
     const card = await screen.findByRole("article", { name: "OSI model" });
     expect(card).toHaveTextContent("Due 1 day ago");
     expect(card).toHaveTextContent(/74%\s*Last check/);
