@@ -237,9 +237,9 @@
           <div>
             <h3 class="eyebrow">What's in it</h3>
             <div class="mt-2 grid grid-cols-1 gap-3 tab:grid-cols-3">
-              <div class="panel flex flex-col gap-1 p-4"><ListChecks class="size-5" aria-hidden="true" /><span class="font-extrabold">{plural(questionsIn(topic), "quiz question")}</span><button class="btn btn-ghost btn-sm mt-1 justify-start px-0" onclick={() => onEdit(topic.id)}>Open in Quizzes</button></div>
-              <div class="panel flex flex-col gap-1 p-4"><SquareStack class="size-5" aria-hidden="true" /><span class="font-extrabold">{plural(cardsIn(topic), "card")}</span><button class="btn btn-ghost btn-sm mt-1 justify-start px-0" onclick={() => onCards(topic.id)}>Open in Cards</button></div>
-              <div class="panel flex flex-col gap-1 p-4"><Brain class="size-5" aria-hidden="true" /><span class="font-extrabold">{plural(checklistsIn(topic), "free recall checklist")}</span><button class="btn btn-ghost btn-sm mt-1 justify-start px-0" onclick={onRecall}>Open in Free Recall</button></div>
+              <div class="panel flex flex-col gap-1 p-4"><ListChecks class="size-5" aria-hidden="true" /><span class="font-extrabold">{plural(questionsIn(topic), "quiz question")}</span><button class="link mt-1 min-h-6 self-start text-left text-sm font-bold" onclick={() => onEdit(topic.id)}>Open in Quizzes</button></div>
+              <div class="panel flex flex-col gap-1 p-4"><SquareStack class="size-5" aria-hidden="true" /><span class="font-extrabold">{plural(cardsIn(topic), "card")}</span><button class="link mt-1 min-h-6 self-start text-left text-sm font-bold" onclick={() => onCards(topic.id)}>Open in Cards</button></div>
+              <div class="panel flex flex-col gap-1 p-4"><Brain class="size-5" aria-hidden="true" /><span class="font-extrabold">{plural(checklistsIn(topic), "free recall checklist")}</span><button class="link mt-1 min-h-6 self-start text-left text-sm font-bold" onclick={onRecall}>Open in Free Recall</button></div>
             </div>
           </div>
         </section>

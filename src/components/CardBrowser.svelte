@@ -144,20 +144,20 @@
           {#each tree as group (group.name)}
             <span class="mt-1 text-[13px] font-black text-muted">{group.name}</span>
             {#each group.topics as topic (topic.id)}
-              <label class="flex items-center gap-2 pl-2 text-sm"><input type="checkbox" class="checkbox checkbox-sm" checked={pickedTopics.includes(topic.id)} onchange={() => (pickedTopics = flip(pickedTopics, topic.id))} /><span class="flex-1">{topic.name}</span><span class="text-xs text-muted tabular-nums">{countIn((row) => row.topic === topic.id)}</span></label>
+              <label class="flex items-center gap-2 pl-2 text-sm"><input type="checkbox" class="checkbox size-6" checked={pickedTopics.includes(topic.id)} onchange={() => (pickedTopics = flip(pickedTopics, topic.id))} /><span class="flex-1">{topic.name}</span><span class="text-xs text-muted tabular-nums">{countIn((row) => row.topic === topic.id)}</span></label>
             {/each}
           {/each}
         </fieldset>
         <fieldset class="flex flex-col gap-1.5">
           <legend class="eyebrow mb-1.5">Status</legend>
           {#each STATUSES as [key, label] (key)}
-            <label class="flex items-center gap-2 text-sm"><input type="checkbox" class="checkbox checkbox-sm" checked={status.includes(key)} onchange={() => (status = flip(status, key))} /><span class="flex-1">{label}</span><span class="text-xs text-muted tabular-nums">{statusCount(key)}</span></label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" class="checkbox size-6" checked={status.includes(key)} onchange={() => (status = flip(status, key))} /><span class="flex-1">{label}</span><span class="text-xs text-muted tabular-nums">{statusCount(key)}</span></label>
           {/each}
         </fieldset>
         <fieldset class="flex flex-col gap-1.5">
           <legend class="eyebrow mb-1.5">Card type</legend>
           {#each KINDS as kind (kind)}
-            <label class="flex items-center gap-2 text-sm"><input type="checkbox" class="checkbox checkbox-sm" checked={kinds.includes(kind)} onchange={() => (kinds = flip(kinds, kind))} /><span class="flex-1">{kind}</span><span class="text-xs text-muted tabular-nums">{countIn((row) => row.kind === kind)}</span></label>
+            <label class="flex items-center gap-2 text-sm"><input type="checkbox" class="checkbox size-6" checked={kinds.includes(kind)} onchange={() => (kinds = flip(kinds, kind))} /><span class="flex-1">{kind}</span><span class="text-xs text-muted tabular-nums">{countIn((row) => row.kind === kind)}</span></label>
           {/each}
         </fieldset>
         {#if allTags.length}
@@ -196,14 +196,14 @@
         <div class="panel pane">
           <table class="rows table-fixed" aria-label="All cards">
             <thead><tr>
-              <th class="w-12"><span><input type="checkbox" class="checkbox" aria-label="Tick all {Math.min(limit, shown.length)} shown" checked={allTicked} onchange={() => (ticked = allTicked ? [] : shown.slice(0, limit).map((row) => row.id))} /></span></th>
+              <th class="w-12"><span><input type="checkbox" class="checkbox size-6" aria-label="Tick all {Math.min(limit, shown.length)} shown" checked={allTicked} onchange={() => (ticked = allTicked ? [] : shown.slice(0, limit).map((row) => row.id))} /></span></th>
               <th><span>Front</span></th><th class="max-tab:hidden"><span>Answer</span></th><th class="w-44"><span>Topic</span></th><th class="w-28"><span>Due</span></th>
             </tr></thead>
             <tbody>
               {#each shown.slice(0, limit) as row (row.id)}
                 <tr aria-label={row.front}>
-                  <td><input type="checkbox" class="checkbox" aria-label="Tick {row.front}" checked={ticked.includes(row.id)} onchange={() => (ticked = flip(ticked, row.id))} /></td>
-                  <td class="max-w-0"><button type="button" class="block w-full truncate text-left font-extrabold" title={row.front} onclick={() => onEdit(row.topic, row.note)}>{row.front}</button><span class="block text-xs text-muted">{row.kind}</span></td>
+                  <td><input type="checkbox" class="checkbox size-6" aria-label="Tick {row.front}" checked={ticked.includes(row.id)} onchange={() => (ticked = flip(ticked, row.id))} /></td>
+                  <td class="max-w-0"><button type="button" class="block min-h-6 w-full truncate text-left font-extrabold" title={row.front} onclick={() => onEdit(row.topic, row.note)}>{row.front}</button><span class="block text-xs text-muted">{row.kind}</span></td>
                   <td class="max-w-0 max-tab:hidden">{#if row.back === null}<span class="inline-flex items-center gap-1.5 text-sm italic text-muted"><EyeOff class="size-3.5" aria-hidden="true" />Hidden until you review it</span>{:else}<span class="block truncate text-sm text-muted" title={row.back}>{row.back}</span>{/if}</td>
                   <td class="max-w-0"><span class="block truncate text-sm">{row.topic_name}</span><span class="block truncate text-xs text-muted">{row.module_name ?? "No module"}</span></td>
                   <td class="text-sm {whenDue(row) === 'Today' ? 'font-extrabold text-[var(--accent-ink)]' : 'text-muted'}">{whenDue(row)}</td>
