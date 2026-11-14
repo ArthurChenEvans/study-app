@@ -316,6 +316,8 @@ mark.hit { background: color-mix(in oklch, var(--primary-ink) 22%, transparent);
 /* New project: kind as one tap. The radio is visually hidden, the chip shows its state and focus */
 .kind-chip { display: inline-flex; align-items: center; height: 38px; padding: 0 14px; border: 2px solid var(--color-base-300); box-shadow: 0 2px 0 var(--color-base-300); border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; background: var(--surface); }
 .kind-chip:has(input:checked) { background: var(--color-neutral); border-color: var(--color-neutral); color: var(--color-neutral-content); box-shadow: 0 2px 0 color-mix(in oklch, var(--color-neutral) 70%, #000); }
+.kind-chip[aria-pressed="true"] { background: var(--color-neutral); border-color: var(--color-neutral); color: var(--color-neutral-content); box-shadow: 0 2px 0 color-mix(in oklch, var(--color-neutral) 70%, #000); }
+.kind-chip:focus-visible { outline: 3px solid var(--primary-ink); outline-offset: 2px; }
 .kind-chip:has(input:focus-visible) { outline: 3px solid var(--primary-ink); outline-offset: 2px; }
 
 /* Project: a struggle still to review */

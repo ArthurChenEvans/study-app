@@ -40,7 +40,7 @@ describe("Projects", () => {
     mocked.issues.mockResolvedValue([]);
     mocked.createProject.mockResolvedValue(7);
     render(Projects, { onOpen });
-    const table = await screen.findByRole("table", { name: "Projects" });
+    const table = await screen.findByRole("table", { name: "Practice logs" });
     // A running session comes first, then the most recently worked on.
     const [second, first] = within(table).getAllByRole("row").slice(1);
     expect(first).toHaveTextContent("Study appCoding");
@@ -51,28 +51,48 @@ describe("Projects", () => {
     expect(second).toHaveTextContent("None");
     await u.click(within(first).getByRole("button", { name: "Study app" }));
     expect(onOpen).toHaveBeenCalledWith(1);
-    await u.click(screen.getByRole("button", { name: /New project/ }));
-    const dialog = screen.getByRole("dialog");
+    await u.click(screen.getByRole("button", { name: /New log/ }));
+    const dialog = screen.getByRole("dialog", { name: "New practice log" });
     await u.type(within(dialog).getByLabelText("Name"), "Networks past paper");
-    await u.click(within(dialog).getByRole("radio", { name: "Past paper" }));
-    await u.click(within(dialog).getByRole("button", { name: "Create project" }));
+    // R190: a quick pick fills the kind box, which is always there
+    await u.click(within(dialog).getByRole("button", { name: "Past paper" }));
+    expect(within(dialog).getByRole("button", { name: "Past paper" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(dialog).getByRole("textbox", { name: /^Kind/ })).toHaveValue("Past paper");
+    await u.click(within(dialog).getByRole("button", { name: "Create log" }));
     expect(mocked.createProject).toHaveBeenCalledWith("Networks past paper", "Past paper");
     expect(onOpen).toHaveBeenLastCalledWith(7);
   });
 
-  it("takes a kind of its own under Something else", async () => {
+  // R190: the kind box always shows, with a placeholder and how to nest a kind with ::
+  it("takes a kind of its own, nested with ::", async () => {
     const u = userEvent.setup();
     mocked.projects.mockResolvedValue([row()]);
     mocked.issues.mockResolvedValue([]);
     mocked.createProject.mockResolvedValue(8);
     render(Projects, { onOpen: vi.fn() });
-    await u.click(await screen.findByRole("button", { name: /New project/ }));
-    const dialog = screen.getByRole("dialog");
+    await u.click(await screen.findByRole("button", { name: /New log/ }));
+    const dialog = screen.getByRole("dialog", { name: "New practice log" });
+    const kind = within(dialog).getByRole("textbox", { name: /^Kind/ });
+    expect(kind).toHaveAttribute("placeholder", "Type any kind, e.g. Coding::Rust or Past paper::Maths");
+    expect(kind).toHaveAccessibleDescription(/Put :: between levels to nest it, like Coding::Rust/);
     await u.type(within(dialog).getByLabelText("Name"), "Mug");
-    await u.click(within(dialog).getByRole("radio", { name: "Something else" }));
-    await u.type(within(dialog).getByLabelText("Kind"), "Pottery");
-    await u.click(within(dialog).getByRole("button", { name: "Create project" }));
-    expect(mocked.createProject).toHaveBeenCalledWith("Mug", "Pottery");
+    await u.click(within(dialog).getByRole("button", { name: "Coding" }));
+    await u.clear(kind);
+    await u.type(kind, "Pottery::Glazing");
+    expect(within(dialog).getByRole("button", { name: "Coding" })).toHaveAttribute("aria-pressed", "false");
+    await u.click(within(dialog).getByRole("button", { name: "Create log" }));
+    expect(mocked.createProject).toHaveBeenCalledWith("Mug", "Pottery::Glazing");
+  });
+
+  it("filters by the top of a nested kind", async () => {
+    const u = userEvent.setup();
+    mocked.projects.mockResolvedValue(Array.from({ length: 7 }, (_, n) => row({ id: n + 1, name: `Log ${n}`, kind: n < 2 ? "Coding::Rust" : n < 4 ? "Coding::Gleam" : "Blender", last_day: TODAY - n })));
+    mocked.issues.mockResolvedValue([]);
+    render(Projects, {});
+    const kinds = await screen.findByRole("radiogroup", { name: "Kind" });
+    expect(within(kinds).getAllByRole("radio").map((radio) => radio.textContent?.trim())).toEqual(["All 7", "Blender 3", "Coding 4"]);
+    await u.click(within(kinds).getByRole("radio", { name: /Coding/ }));
+    expect(within(screen.getByRole("table", { name: "Practice logs" })).getAllByRole("row")).toHaveLength(5);
   });
 
   it("finds a project and filters by kind once there are many", async () => {
@@ -80,10 +100,10 @@ describe("Projects", () => {
     mocked.projects.mockResolvedValue(Array.from({ length: 7 }, (_, n) => row({ id: n + 1, name: `Project ${n}`, kind: n < 4 ? "Coding" : "Blender", last_day: TODAY - n })));
     mocked.issues.mockResolvedValue([]);
     render(Projects, {});
-    const table = await screen.findByRole("table", { name: "Projects" });
+    const table = await screen.findByRole("table", { name: "Practice logs" });
     await u.click(screen.getByRole("radio", { name: "Blender 3" }));
     expect(within(table).getAllByRole("row")).toHaveLength(4);
-    await u.type(screen.getByRole("searchbox", { name: "Find a project" }), "Project 6");
+    await u.type(screen.getByRole("searchbox", { name: "Find a log" }), "Project 6");
     expect(within(table).getAllByRole("row")).toHaveLength(2);
   });
 
@@ -145,7 +165,7 @@ describe("Projects", () => {
     render(Projects, { onDrills });
     await u.click(await screen.findByRole("tab", { name: /Issues/ }));
     const rows = within(screen.getByRole("table", { name: "Issues" })).getAllByRole("row").slice(1);
-    expect(rows[0]).toHaveTextContent("4 times in 2 projects");
+    expect(rows[0]).toHaveTextContent("4 times in 2 logs");
     expect(rows[0]).toHaveTextContent("Due today");
     expect(rows[1]).toHaveTextContent("1 time in Blender mug");
     expect(rows[1]).toHaveTextContent("Solid on 28 Oct");
@@ -227,9 +247,9 @@ describe("A project", () => {
     const onBack = vi.fn();
     mocked.project.mockResolvedValue(view({}, [struggle()]));
     render(Project, { id: 1, onBack });
-    await u.click(await screen.findByRole("button", { name: "Project actions" }));
-    await u.click(screen.getByRole("menuitem", { name: "Rename project…" }));
-    const rename = screen.getByRole("dialog", { name: "Rename project" });
+    await u.click(await screen.findByRole("button", { name: "Log actions" }));
+    await u.click(screen.getByRole("menuitem", { name: "Rename log…" }));
+    const rename = screen.getByRole("dialog", { name: "Rename log" });
     expect(within(rename).getByRole("textbox", { name: "Name" })).toHaveValue("Study app");
     expect(within(rename).getByRole("textbox", { name: "Kind" })).toHaveValue("Coding");
     await u.clear(within(rename).getByRole("textbox", { name: "Name" }));
@@ -251,11 +271,11 @@ describe("A project", () => {
     await u.click(within(screen.getByRole("dialog", { name: "Delete this struggle?" })).getByRole("button", { name: "Delete struggle" }));
     expect(mocked.deleteStruggle).toHaveBeenCalledWith(1);
 
-    await u.click(screen.getByRole("button", { name: "Project actions" }));
-    await u.click(screen.getByRole("menuitem", { name: "Delete project…" }));
+    await u.click(screen.getByRole("button", { name: "Log actions" }));
+    await u.click(screen.getByRole("menuitem", { name: "Delete log…" }));
     const dialog = screen.getByRole("dialog", { name: /Delete .+\?/ });
     expect(dialog).toHaveTextContent("Its sessions and struggles go too.");
-    await u.click(within(dialog).getByRole("button", { name: "Delete project" }));
+    await u.click(within(dialog).getByRole("button", { name: "Delete log" }));
     expect(mocked.deleteProject).toHaveBeenCalledWith(1);
     expect(onBack).toHaveBeenCalled();
   });
