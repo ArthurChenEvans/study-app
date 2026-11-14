@@ -29,7 +29,7 @@ pub fn web_address(typed: &str) -> Result<String, String> {
     } else {
         format!("https://{typed}")
     };
-    let host = full.splitn(4, '/').nth(2).unwrap_or("");
+    let host = full.split('/').nth(2).unwrap_or("");
     if host.is_empty() || host.contains(' ') || (!host.contains('.') && !host.starts_with("localhost")) {
         return Err(format!("\"{typed}\" doesn't look like a web address"));
     }
