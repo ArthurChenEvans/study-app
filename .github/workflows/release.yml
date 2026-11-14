@@ -2,13 +2,17 @@
 #
 #   1. the Fedora update test runs first (a release that can't update itself isn't published)
 #   2. the version is 0.1.<run number>, so each release is newer than the last
-#   3. the .rpm and the .exe are built and signed with the key in the TAURI_SIGNING_PRIVATE_KEY secret
+#   3. the .rpm, .deb, Windows .exe and macOS .dmg are built, and signed with the key in the
+#      TAURI_SIGNING_PRIVATE_KEY secret
 #   4. it's published as a GitHub Release (tag v0.1.N) with latest.json, which is what the
 #      installed app checks on open and close
 #
-# The Windows installer (.exe) is built and published alongside, and latest.json lists both,
-# so installed copies on Linux and Windows both update. It can also be run by hand from the
-# Actions tab ("Release", then "Run workflow").
+# latest.json lists every one (R170, R187), so installed copies update themselves whichever
+# they came from: the .rpm and .deb through rpm and dpkg, Windows through the installer, and
+# macOS by swapping in the new app (one universal build for Apple silicon and Intel). The Mac
+# app isn't notarised (that needs a paid Apple developer account), so the first open is right
+# click, Open, or System Settings, Privacy and Security, Open Anyway. It can also be run by
+# hand from the Actions tab ("Release", then "Run workflow").
 name: Release
 
 on:
@@ -61,16 +65,19 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils rpm jq
       - run: pnpm install --frozen-lockfile
-      - name: Build the signed .rpm
+      - name: Build the signed .rpm and .deb
         run: |
           jq -n --arg v "$VERSION" '{version: $v}' > "$RUNNER_TEMP/version.json"
-          pnpm tauri build --bundles rpm --config "$RUNNER_TEMP/version.json"
-          built=$(ls target/release/bundle/rpm/*-"$VERSION"-*.rpm)
-          [ -f "$built.sig" ] || pnpm tauri signer sign "$built"
+          pnpm tauri build --bundles rpm,deb --config "$RUNNER_TEMP/version.json"
+          rpm=$(ls target/release/bundle/rpm/*-"$VERSION"-*.rpm)
+          deb=$(ls target/release/bundle/deb/*_"$VERSION"_*.deb)
+          for built in "$rpm" "$deb"; do [ -f "$built.sig" ] || pnpm tauri signer sign "$built"; done
           # Names without spaces, so the links in latest.json match what GitHub stores.
           mkdir -p out
-          cp "$built" "out/shudhana-$VERSION.x86_64.rpm"
-          cp "$built.sig" "out/shudhana-$VERSION.x86_64.rpm.sig"
+          cp "$rpm" "out/shudhana-$VERSION.x86_64.rpm"
+          cp "$rpm.sig" "out/shudhana-$VERSION.x86_64.rpm.sig"
+          cp "$deb" "out/shudhana_${VERSION}_amd64.deb"
+          cp "$deb.sig" "out/shudhana_${VERSION}_amd64.deb.sig"
       - uses: actions/upload-artifact@v4
         with:
           name: linux
@@ -112,8 +119,48 @@ jobs:
           name: windows
           path: out/
 
+  macos:
+    needs: [update-test, version]
+    runs-on: macos-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> target"
+      - run: pnpm install --frozen-lockfile
+      - name: Build the signed universal app and .dmg
+        run: |
+          echo "{\"version\": \"$VERSION\"}" > version.json
+          pnpm tauri build --target universal-apple-darwin --bundles app,dmg --config version.json
+          bundle=target/universal-apple-darwin/release/bundle
+          app=$(ls "$bundle"/macos/*.app.tar.gz)
+          dmg=$(ls "$bundle"/dmg/*.dmg)
+          [ -f "$app.sig" ] || pnpm tauri signer sign "$app"
+          mkdir -p out
+          cp "$dmg" "out/shudhana-$VERSION-universal.dmg"
+          cp "$app" "out/shudhana-$VERSION-universal.app.tar.gz"
+          cp "$app.sig" "out/shudhana-$VERSION-universal.app.tar.gz.sig"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: out/
+
   publish:
-    needs: [version, linux, windows]
+    needs: [version, linux, windows, macos]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -138,9 +185,16 @@ jobs:
         run: |
           base="https://github.com/${{ github.repository }}/releases/download/v$VERSION"
           rpm="packages/shudhana-$VERSION.x86_64.rpm"
+          deb="packages/shudhana_${VERSION}_amd64.deb"
           exe="packages/shudhana-$VERSION-setup.exe"
+          app="packages/shudhana-$VERSION-universal.app.tar.gz"
+          dmg="packages/shudhana-$VERSION-universal.dmg"
+          # One universal Mac build serves both Apple silicon and Intel.
           python3 scripts/latest-json.py "$VERSION" "$RUNNER_TEMP/notes.md" latest.json \
             "linux-x86_64-rpm=$rpm=$base/$(basename "$rpm")" \
-            "windows-x86_64-nsis=$exe=$base/$(basename "$exe")"
-          gh release create "v$VERSION" "$rpm" "$rpm.sig" "$exe" "$exe.sig" latest.json \
+            "linux-x86_64-deb=$deb=$base/$(basename "$deb")" \
+            "windows-x86_64-nsis=$exe=$base/$(basename "$exe")" \
+            "darwin-aarch64-app=$app=$base/$(basename "$app")" \
+            "darwin-x86_64-app=$app=$base/$(basename "$app")"
+          gh release create "v$VERSION" "$rpm" "$rpm.sig" "$deb" "$deb.sig" "$exe" "$exe.sig" "$dmg" "$app" "$app.sig" latest.json \
             --target "${{ github.sha }}" --title "Shudhana $VERSION" --notes-file "$RUNNER_TEMP/notes.md" --latest

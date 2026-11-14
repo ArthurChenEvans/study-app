@@ -357,3 +357,9 @@ Decided with the design: keywords are checked in any order, every answer is righ
 |---|---|
 | R185 | Everything you make can be renamed or edited and deleted where it lives. Modules (from a labelled Module menu on Topics) and topics can be renamed, and a recall checklist on one takes the new name. Quiz questions can be deleted from the editor, and past quiz results keep their own copy. Recall checklists can be deleted from the Recall list. Projects can be renamed (name and kind) and deleted. Struggles can be edited and deleted. Issues can be renamed (not to a name another issue has) and deleted, with their drills. Drills can be edited (task and hints) and deleted. Every delete asks first and says what goes with it |
 | R186 | Every screen comes in with the same entrance, once, when you go to it. Nothing inside a screen adds a second entrance of its own |
+
+## Every platform (approved 14 Nov 2026)
+
+| ID | Requirement |
+|---|---|
+| R187 | Each release publishes an .rpm, a .deb, a Windows .exe and a macOS .dmg (one universal app for Apple silicon and Intel), and latest.json lists each, so installed copies update themselves whichever they came from. The Mac app isn't notarised, so the first open goes through Open Anyway |
