@@ -21,6 +21,13 @@ export function refreshColours(): void {
   applyColours(initialColours(), root.dataset.theme !== LIGHT, root.dataset.palette === "cb");
 }
 
+/** Keeps the colours in step with the mode and palette, however they get set. */
+export function followTheme(): () => void {
+  const watcher = new MutationObserver(refreshColours);
+  watcher.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "data-palette"] });
+  return () => watcher.disconnect();
+}
+
 export function applyTheme(theme: Theme): void {
   document.documentElement.dataset.theme = theme;
   refreshColours();
