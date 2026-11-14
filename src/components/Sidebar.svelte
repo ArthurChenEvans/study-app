@@ -9,11 +9,13 @@
   // Settings, so the navigation only holds places you go.
   import { ArrowDownUp, BookOpen, Brain, CalendarDays, ChevronDown, ChevronRight, Database, FolderTree, ListChecks, Ellipsis, FolderX, GitCompare, Hammer, History, LayoutDashboard, Layers, Library, Play, RefreshCw, RefreshCwOff, Search, Settings2, ShieldAlert, ShieldCheck, SquareStack, X } from "@lucide/svelte";
   import type { Screen } from "../lib/router";
+  import StartMenu, { type StartKind } from "./StartMenu.svelte";
 
 
-  let { current, onNavigate, due = {}, backup = null, sync = null, mode = "full" }: {
+  let { current, onNavigate, onStart = () => onNavigate("setup"), due = {}, backup = null, sync = null, mode = "full" }: {
     current: Screen;
     onNavigate: (screen: Screen) => void;
+    onStart?: (kind: StartKind) => void;
     due?: Partial<Record<Screen, number>>;
     backup?: { safe: boolean; short: string } | null;
     sync?: { ok: boolean; short: string; icon?: string } | null;
@@ -36,15 +38,16 @@
   const ALL = GROUPS.flatMap((group) => group.items);
   const find = (screen: Screen) => ALL.find((entry) => entry.screen === screen)!;
   const SEARCH = item("search", "Search", Search, "plain");
-  const NEW_QUIZ = item("setup", "Start a quiz", Play, "plain");
   const DATA = item("data", "Your data", Database, "plain");
   const SETTINGS = item("settings", "Settings", Settings2, "plain");
 
   const RAIL = ["overview", "calendar", "quizzes", "cards", "recall", "projects"].map((screen) => find(screen as Screen));
-  const RAIL_MORE = [find("topics"), find("transfer"), find("bibliography"), find("history"), NEW_QUIZ, DATA];
+  const RAIL_MORE = [find("topics"), find("transfer"), find("bibliography"), find("history"), DATA];
   const DOCK_LEFT = [find("overview"), find("quizzes")];
-  const DOCK_RIGHT = [find("cards"), find("recall")];
-  const DOCK_MORE = [find("calendar"), find("projects"), find("topics"), find("transfer"), find("bibliography"), find("history"), SEARCH, NEW_QUIZ, DATA, SETTINGS];
+  const DOCK_RIGHT = [find("cards")];
+  const DOCK_MORE = [find("calendar"), find("recall"), find("projects"), find("topics"), find("transfer"), find("bibliography"), find("history"), SEARCH, DATA, SETTINGS];
+  // R198: Start goes straight to the session; anything due is in its menu.
+  const startDue = $derived({ calendar: due.calendar, cards: due.cards, recall: due.recall, quizzes: due.quizzes, projects: due.projects });
 
   // R189: a group folds from its heading and stays folded. Manage starts folded. A group holding
   // the page you're on always shows.
@@ -134,14 +137,15 @@
         <span class="dock-icon"><entry.icon class="size-5" strokeWidth={2.4} />{@render pill(entry)}</span><span>{entry.short ?? entry.label}</span>
       </a>
     {/each}
-    <button type="button" class="dock-tab" aria-expanded={moreOpen} aria-current={moreCurrent ? "page" : undefined} onclick={() => (moreOpen = !moreOpen)}>
-      <span class="dock-icon"><Ellipsis class="size-5" strokeWidth={2.4} />{#if moreDue}<span class="due-dot" aria-hidden="true"></span>{/if}</span><span>More</span>
-    </button>
+    <StartMenu variant="dock" due={startDue} {onStart} />
     {#each DOCK_RIGHT as entry (entry.screen)}
       <a href="#{entry.screen}" class="dock-tab" aria-current={current === entry.screen ? "page" : undefined} onclick={(event) => go(event, entry.screen)}>
         <span class="dock-icon"><entry.icon class="size-5" strokeWidth={2.4} />{@render pill(entry)}</span><span>{entry.short ?? entry.label}</span>
       </a>
     {/each}
+    <button type="button" class="dock-tab" aria-expanded={moreOpen} aria-current={moreCurrent ? "page" : undefined} onclick={() => (moreOpen = !moreOpen)}>
+      <span class="dock-icon"><Ellipsis class="size-5" strokeWidth={2.4} />{#if moreDue}<span class="due-dot" aria-hidden="true"></span>{/if}</span><span>More</span>
+    </button>
   </nav>
   {@render sheet()}
 {:else if mode === "rail"}
@@ -160,6 +164,7 @@
       <a href="#settings" class="rail-item" aria-label="Settings" title="Settings" aria-current={current === "settings" ? "page" : undefined} onclick={(event) => go(event, "settings")}><Settings2 class="size-5" strokeWidth={2.4} /><span aria-hidden="true">Settings</span></a>
     </div>
   </nav>
+  <StartMenu variant="fab" due={startDue} {onStart} />
   {@render sheet()}
 {:else}
   <nav class="sticky top-0 flex h-screen w-60 shrink-0 flex-col gap-1 overflow-y-auto border-r-2 border-base-300 bg-base-200 p-3" aria-label="Main">
@@ -189,7 +194,7 @@
       </div>
     {/each}
     <div class="mt-4 px-3">
-      <a href="#setup" class="btn btn-outline w-full" class:nav-current={current === "setup"} aria-current={current === "setup" ? "page" : undefined} onclick={(event) => go(event, "setup")}><Play class="size-4" />Start a quiz</a>
+      <StartMenu due={startDue} {onStart} />
     </div>
     <div class="mt-auto flex flex-col gap-1 px-3 pb-1 pt-4">
       {@render status()}
