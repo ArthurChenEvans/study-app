@@ -10,6 +10,7 @@ const TODAY: i64 = 20_771;
 const MODERN: &[u8] = include_bytes!("../tests/fixtures/anki/networks-modern.apkg");
 const LEGACY: &[u8] = include_bytes!("../tests/fixtures/anki/networks-legacy.apkg");
 const COLLECTION: &[u8] = include_bytes!("../tests/fixtures/anki/whole-collection.colpkg");
+const TAGGED: &[u8] = include_bytes!("../tests/fixtures/anki/one-deck-tagged.apkg");
 
 fn at(day: i64) -> Clock {
     Clock { day, minute: 600, unix: day * 86_400 + 36_000 }
@@ -81,6 +82,7 @@ fn importing_puts_each_deck_where_you_chose_converting_html_images_and_cloze() {
                     ("Misc".into(), DeckTarget::Skip),
                 ],
                 keep_progress: false,
+                ..Default::default()
             },
             at(TODAY),
         )
@@ -108,7 +110,7 @@ fn importing_puts_each_deck_where_you_chose_converting_html_images_and_cloze() {
 #[test]
 fn importing_the_same_deck_again_adds_nothing_new() {
     let mut app = app();
-    let choice = || AnkiChoice { decks: vec![], keep_progress: false };
+    let choice = || AnkiChoice { decks: vec![], keep_progress: false, ..Default::default() };
     app.anki_preview(MODERN, "Networks.apkg").unwrap();
     app.anki_apply(choice(), at(TODAY)).unwrap();
     let topics = app.topics().unwrap().len();
@@ -124,7 +126,7 @@ fn importing_the_same_deck_again_adds_nothing_new() {
 fn unknown_note_types_and_sounds_come_in_as_text() {
     let mut app = app();
     app.anki_preview(MODERN, "Networks.apkg").unwrap();
-    app.anki_apply(AnkiChoice { decks: vec![], keep_progress: false }, at(TODAY)).unwrap();
+    app.anki_apply(AnkiChoice { decks: vec![], keep_progress: false, ..Default::default() }, at(TODAY)).unwrap();
     let misc = notes_in(&app, "Misc");
     let vocab = misc.iter().find(|note| note.front == "จำ").expect("the Vocab note");
     assert_eq!((vocab.kind, vocab.back.as_str()), (NoteKind::Basic, "to remember"));
@@ -136,13 +138,13 @@ fn unknown_note_types_and_sounds_come_in_as_text() {
 fn keeping_progress_carries_a_reviewed_card_on_and_otherwise_cards_start_new() {
     let mut fresh = app();
     fresh.anki_preview(MODERN, "Networks.apkg").unwrap();
-    fresh.anki_apply(AnkiChoice { decks: vec![], keep_progress: false }, at(TODAY)).unwrap();
+    fresh.anki_apply(AnkiChoice { decks: vec![], keep_progress: false, ..Default::default() }, at(TODAY)).unwrap();
     let dns = fresh.topics().unwrap().into_iter().find(|row| row.name == "DNS").unwrap().id;
     assert!(fresh.topic_cards(dns, TODAY).unwrap().cards.iter().all(|card| card.is_new));
 
     let mut kept = app();
     kept.anki_preview(MODERN, "Networks.apkg").unwrap();
-    kept.anki_apply(AnkiChoice { decks: vec![], keep_progress: true }, at(TODAY)).unwrap();
+    kept.anki_apply(AnkiChoice { decks: vec![], keep_progress: true, ..Default::default() }, at(TODAY)).unwrap();
     let dns = kept.topics().unwrap().into_iter().find(|row| row.name == "DNS").unwrap().id;
     let cards = kept.topic_cards(dns, TODAY).unwrap().cards;
     assert_eq!(cards.iter().filter(|card| !card.is_new).count(), 1, "the one card reviewed in Anki keeps going");
@@ -205,7 +207,7 @@ fn an_anki_export_reads_back_with_the_same_cards_decks_and_images() {
     assert_eq!(preview.notes, 3);
     assert_eq!(preview.decks, vec![crate::anki::DeckRow { name: "Networks::DNS".into(), notes: 3, target: DeckTarget::NewTopic { name: "DNS".into(), module: Some("Networks".into()) } }]);
     assert_eq!(preview.images, 1);
-    other.anki_apply(AnkiChoice { decks: vec![], keep_progress: false }, at(TODAY)).unwrap();
+    other.anki_apply(AnkiChoice { decks: vec![], keep_progress: false, ..Default::default() }, at(TODAY)).unwrap();
     let notes = notes_in(&other, "DNS");
     let basic = notes.iter().find(|note| note.kind == NoteKind::Basic).unwrap();
     assert_eq!(basic.front, "What resolves **names**?");
@@ -222,7 +224,7 @@ fn quiz_questions_can_come_along_as_cards() {
     let mut other = self::app();
     assert_eq!(other.anki_preview(&without, "x.apkg").unwrap().notes, 3);
     assert_eq!(other.anki_preview(&with, "x.apkg").unwrap().notes, 4);
-    other.anki_apply(AnkiChoice { decks: vec![], keep_progress: false }, at(TODAY)).unwrap();
+    other.anki_apply(AnkiChoice { decks: vec![], keep_progress: false, ..Default::default() }, at(TODAY)).unwrap();
     let quiz = notes_in(&other, "DNS").into_iter().find(|note| note.front.starts_with("Which record")).unwrap();
     assert!(quiz.front.contains("A") && quiz.front.contains("AAAA") && quiz.front.contains("MX"), "{}", quiz.front);
     assert!(quiz.back.contains("AAAA") && quiz.back.contains("Four times the A."), "{}", quiz.back);
@@ -257,14 +259,14 @@ fn an_import_reports_progress_and_stopping_adds_nothing() {
     let log = seen.clone();
     app.set_progress(Some(Progress { report: Arc::new(move |what: &str, done, total| log.lock().unwrap().push((what.to_string(), done, total))), stop: stop.clone() }));
     app.anki_preview(MODERN, "Networks.apkg").unwrap();
-    app.anki_apply(AnkiChoice { decks: vec![], keep_progress: false }, at(TODAY)).unwrap();
+    app.anki_apply(AnkiChoice { decks: vec![], keep_progress: false, ..Default::default() }, at(TODAY)).unwrap();
     assert_eq!(seen.lock().unwrap().last(), Some(&("Notes".to_string(), 6, 6)));
 
     let mut other = self::app();
     stop.store(true, Ordering::SeqCst);
     other.set_progress(Some(Progress { report: Arc::new(|_: &str, _, _| {}), stop }));
     other.anki_preview(MODERN, "Networks.apkg").unwrap();
-    let error = other.anki_apply(AnkiChoice { decks: vec![], keep_progress: false }, at(TODAY)).unwrap_err();
+    let error = other.anki_apply(AnkiChoice { decks: vec![], keep_progress: false, ..Default::default() }, at(TODAY)).unwrap_err();
     assert!(error.message.contains("nothing was imported"));
     assert!(other.topics().unwrap().is_empty());
 }
@@ -275,4 +277,58 @@ fn a_target_reads_and_writes_as_the_window_sends_it() {
     assert_eq!(serde_json::to_value(&target).unwrap(), serde_json::json!({ "kind": "Topic", "topic": 12 }));
     let choice: AnkiChoice = serde_json::from_value(serde_json::json!({ "decks": [["Networks::DNS", { "kind": "Skip" }], ["Misc", { "kind": "NewTopic", "name": "Misc", "module": null }]], "keep_progress": true })).unwrap();
     assert_eq!(choice.decks[0].1, DeckTarget::Skip);
+}
+
+// R188: one deck holding everything, filtered by tags, with some cards suspended.
+fn fronts(app: &App, topic: &str) -> Vec<String> {
+    let mut fronts: Vec<String> = notes_in(app, topic).into_iter().map(|note| note.front).collect();
+    fronts.sort();
+    fronts
+}
+
+#[test]
+fn the_preview_lists_every_tag_with_parents_and_counts_suspended_cards() {
+    let mut app = app();
+    let preview = app.anki_preview(TAGGED, "Everything.apkg").unwrap();
+    let tags: Vec<(String, usize)> = preview.tags.iter().map(|tag| (tag.name.clone(), tag.notes)).collect();
+    assert_eq!(
+        tags,
+        vec![("Maths".into(), 4), ("Maths::Algebra".into(), 1), ("Maths::Calculus".into(), 1), ("Maths::Geometry".into(), 1), ("thai".into(), 3)],
+        "a parent tag counts its children's notes, and maths and Maths are one tag"
+    );
+    assert_eq!(preview.suspended, 2, "the one card of a suspended note and one reverse card");
+    assert_eq!(preview.rows.len(), 7, "one row per note, so the window can count what a choice imports");
+    assert_eq!(preview.rows.iter().filter(|row| row.suspended).count(), 1, "only one note is suspended all through");
+}
+
+#[test]
+fn choosing_tags_imports_only_the_notes_with_them() {
+    let mut app = app();
+    app.anki_preview(TAGGED, "Everything.apkg").unwrap();
+    app.anki_apply(AnkiChoice { tags: vec!["maths".into()], ..Default::default() }, at(TODAY)).unwrap();
+    assert_eq!(fronts(&app, "Everything"), vec!["2 + 2", "Angles in a triangle", "Integral of 1/x", "What is a group?"], "a parent tag brings its children");
+
+    let mut app = self::app();
+    app.anki_preview(TAGGED, "Everything.apkg").unwrap();
+    app.anki_apply(AnkiChoice { tags: vec!["Maths::Geometry".into(), "thai".into()], ..Default::default() }, at(TODAY)).unwrap();
+    assert_eq!(fronts(&app, "Everything"), vec!["Angles in a triangle", "Integral of 1/x", "จำ"], "the fully suspended thai note is left out by default");
+}
+
+#[test]
+fn suspended_cards_are_left_out_unless_kept_and_kept_ones_stay_paused() {
+    let mut app = app();
+    app.anki_preview(TAGGED, "Everything.apkg").unwrap();
+    app.anki_apply(AnkiChoice::default(), at(TODAY)).unwrap();
+    assert!(!fronts(&app, "Everything").contains(&"นอน".to_string()));
+    let topic = app.topics().unwrap().into_iter().find(|row| row.name == "Everything").unwrap().id;
+    let archived = app.topic_cards(topic, TODAY).unwrap().cards.iter().filter(|card| card.archived).count();
+    assert_eq!(archived, 1, "a note only partly suspended comes in, with that card paused");
+
+    let mut kept = self::app();
+    kept.anki_preview(TAGGED, "Everything.apkg").unwrap();
+    kept.anki_apply(AnkiChoice { keep_suspended: true, ..Default::default() }, at(TODAY)).unwrap();
+    assert!(fronts(&kept, "Everything").contains(&"นอน".to_string()));
+    let topic = kept.topics().unwrap().into_iter().find(|row| row.name == "Everything").unwrap().id;
+    let archived = kept.topic_cards(topic, TODAY).unwrap().cards.iter().filter(|card| card.archived).count();
+    assert_eq!(archived, 2, "kept suspended cards stay paused, like in Anki");
 }

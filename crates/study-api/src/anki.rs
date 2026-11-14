@@ -7,7 +7,7 @@
 //! a `Package`, shown as an `AnkiPreview`, then turned into the same records a `.studyapp`
 //! import uses, so it gets the same backup, "already here" check and undo.
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::io::Read;
 
 use rusqlite::{Connection, OpenFlags};
@@ -62,6 +62,8 @@ struct RawCard {
     reps: i64,
     lapses: i64,
     data: String,
+    /// Anki's queue: -1 is suspended.
+    queue: i64,
 }
 
 /// A read package, kept between the preview and the import.
@@ -229,9 +231,9 @@ fn read_database(bytes: &[u8]) -> ApiResult<Package> {
         let (id, note) = row.map_err(failed)?;
         notes.insert(id, note);
     }
-    let mut statement = connection.prepare("SELECT nid, did, ord, type, due, ivl, factor, reps, lapses, data FROM cards ORDER BY nid, ord").map_err(failed)?;
+    let mut statement = connection.prepare("SELECT nid, did, ord, type, due, ivl, factor, reps, lapses, data, queue FROM cards ORDER BY nid, ord").map_err(failed)?;
     let cards = statement
-        .query_map([], |row| Ok(RawCard { note: row.get(0)?, deck: row.get(1)?, ord: row.get(2)?, kind: row.get(3)?, due: row.get(4)?, interval: row.get(5)?, factor: row.get(6)?, reps: row.get(7)?, lapses: row.get(8)?, data: row.get::<_, Option<String>>(9)?.unwrap_or_default() }))
+        .query_map([], |row| Ok(RawCard { note: row.get(0)?, deck: row.get(1)?, ord: row.get(2)?, kind: row.get(3)?, due: row.get(4)?, interval: row.get(5)?, factor: row.get(6)?, reps: row.get(7)?, lapses: row.get(8)?, data: row.get::<_, Option<String>>(9)?.unwrap_or_default(), queue: row.get(10)? }))
         .map_err(failed)?
         .collect::<rusqlite::Result<Vec<_>>>()
         .map_err(failed)?;
@@ -282,6 +284,27 @@ pub struct TypeRow {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct TagRow {
+    /// As first written in the file. Anki's tags ignore case, and `::` makes a hierarchy.
+    pub name: String,
+    /// Notes with this tag or one under it.
+    pub notes: usize,
+}
+
+/// One note, so the window can count what a choice of decks and tags imports (R188).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct NoteRow {
+    /// Index into `decks`.
+    pub deck: usize,
+    /// Indexes into `tags`, parents included.
+    pub tags: Vec<usize>,
+    /// Every card of it is suspended.
+    pub suspended: bool,
+    /// Here from an earlier import.
+    pub here: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct AnkiPreview {
     pub file_name: String,
     pub notes: usize,
@@ -292,15 +315,42 @@ pub struct AnkiPreview {
     pub has_progress: bool,
     /// Notes that are here from an earlier import, which stay as they are.
     pub already_here: usize,
+    pub tags: Vec<TagRow>,
+    /// Suspended cards.
+    pub suspended: usize,
+    pub rows: Vec<NoteRow>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 pub struct AnkiChoice {
     /// Decks left out get their suggested target.
     #[serde(default)]
     pub decks: Vec<(String, DeckTarget)>,
     #[serde(default)]
     pub keep_progress: bool,
+    /// Only notes with one of these tags (or a tag under one). Empty imports every note.
+    #[serde(default)]
+    pub tags: Vec<String>,
+    /// Bring in notes whose cards are all suspended. Suspended cards always come in archived.
+    #[serde(default)]
+    pub keep_suspended: bool,
+}
+
+/// A tag and every parent of it, lowercased: `Maths::Algebra` is `maths` and `maths::algebra`.
+fn tag_paths(tag: &str) -> Vec<String> {
+    let lower = tag.to_lowercase();
+    let mut paths = Vec::new();
+    let mut end = 0;
+    for part in lower.split("::") {
+        end += part.len();
+        paths.push(lower[..end].to_string());
+        end += 2;
+    }
+    paths
+}
+
+fn note_has_tag(note: &RawNote, wanted: &HashSet<String>) -> bool {
+    wanted.is_empty() || note.tags.iter().any(|tag| tag_paths(tag).iter().any(|path| wanted.contains(path)))
 }
 
 /// How a note type maps onto the app's: (what it becomes, whether it needs a look).
@@ -334,6 +384,14 @@ impl Package {
         decks
     }
 
+    fn cards_of(&self) -> HashMap<i64, Vec<&RawCard>> {
+        let mut map: HashMap<i64, Vec<&RawCard>> = HashMap::new();
+        for card in &self.cards {
+            map.entry(card.note).or_default().push(card);
+        }
+        map
+    }
+
     fn uid_of(note: &RawNote) -> String {
         // A deck exported by this app keeps the note's own ID as its Anki ID.
         if note.guid.len() == 36 && note.guid.chars().filter(|letter| *letter == '-').count() == 4 { note.guid.clone() } else { format!("anki-{}", note.guid) }
@@ -363,9 +421,36 @@ impl App {
         let mut images = HashSet::new();
         let mut sounds = 0;
         let mut already_here = 0;
+        // Tag paths, lowercased, to (name as first written, notes).
+        let mut per_tag: BTreeMap<String, (String, usize)> = BTreeMap::new();
+        let mut notes_meta: Vec<(String, Vec<String>, bool, bool)> = Vec::new();
+        let cards_of = package.cards_of();
         for (id, note) in &package.notes {
             let deck = deck_of.get(id).and_then(|deck| package.decks.get(deck)).cloned().unwrap_or_else(|| "Default".into());
-            *per_deck.entry(deck).or_default() += 1;
+            *per_deck.entry(deck.clone()).or_default() += 1;
+            let mut paths: BTreeSet<String> = BTreeSet::new();
+            for tag in &note.tags {
+                // Named under its parent as the parent was first written.
+                let leaves: Vec<&str> = tag.split("::").collect();
+                let mut parent: Option<String> = None;
+                for (depth, path) in tag_paths(tag).into_iter().enumerate() {
+                    let name = per_tag
+                        .entry(path.clone())
+                        .or_insert_with(|| (parent.as_ref().map_or_else(|| leaves[depth].to_string(), |parent| format!("{parent}::{}", leaves[depth])), 0))
+                        .0
+                        .clone();
+                    parent = Some(name);
+                    paths.insert(path);
+                }
+            }
+            for path in &paths {
+                if let Some(entry) = per_tag.get_mut(path) {
+                    entry.1 += 1;
+                }
+            }
+            let cards = cards_of.get(id).map(Vec::as_slice).unwrap_or(&[]);
+            let suspended = !cards.is_empty() && cards.iter().all(|card| card.queue == -1);
+            notes_meta.push((deck, paths.into_iter().collect(), suspended, here.contains_key(&Package::uid_of(note))));
             let kind = package.types.get(&note.kind).cloned().unwrap_or(NoteType { name: "Note".into(), cloze: false, fields: note.fields.len(), templates: 1 });
             let (becomes, check) = mapping(&kind);
             per_type.entry(kind.name).or_insert((0, becomes, check)).0 += 1;
@@ -380,6 +465,18 @@ impl App {
         }
         let images = images.iter().filter(|name| package.media.get(*name).is_some_and(|bytes| !bytes.is_empty())).count();
         let has_progress = package.cards.iter().any(|card| card.kind == 2 && card.interval > 0) || package.cards.iter().any(|card| card.reps > 0);
+        let deck_names: Vec<String> = per_deck.keys().cloned().collect();
+        let tag_index: HashMap<&String, usize> = per_tag.keys().enumerate().map(|(index, path)| (path, index)).collect();
+        let rows = notes_meta
+            .iter()
+            .map(|(deck, paths, suspended, here)| NoteRow {
+                deck: deck_names.iter().position(|name| name == deck).unwrap_or(0),
+                tags: paths.iter().filter_map(|path| tag_index.get(path).copied()).collect(),
+                suspended: *suspended,
+                here: *here,
+            })
+            .collect();
+        let suspended = package.cards.iter().filter(|card| card.queue == -1).count();
         let preview = AnkiPreview {
             file_name: file_name.to_string(),
             notes: package.notes.len(),
@@ -389,6 +486,9 @@ impl App {
             sounds,
             has_progress,
             already_here,
+            tags: per_tag.into_values().map(|(name, notes)| TagRow { name, notes }).collect(),
+            suspended,
+            rows,
         };
         self.pending_anki = Some((file_name.to_string(), package));
         Ok(preview)
@@ -447,13 +547,18 @@ impl App {
             Ok(uid)
         };
 
-        let cards_of: HashMap<i64, Vec<&RawCard>> = package.cards.iter().fold(HashMap::new(), |mut map, card| {
-            map.entry(card.note).or_insert_with(Vec::new).push(card);
-            map
-        });
+        let cards_of = package.cards_of();
+        let wanted: HashSet<String> = choice.tags.iter().map(|tag| tag.trim().to_lowercase()).filter(|tag| !tag.is_empty()).collect();
         let total = package.notes.len();
         for (done, (id, raw)) in package.notes.iter().enumerate() {
             self.step("Notes", done, total)?;
+            if !note_has_tag(raw, &wanted) {
+                continue;
+            }
+            let anki_cards = cards_of.get(id).cloned().unwrap_or_default();
+            if !choice.keep_suspended && !anki_cards.is_empty() && anki_cards.iter().all(|card| card.queue == -1) {
+                continue;
+            }
             let deck = deck_of.get(id).and_then(|deck| package.decks.get(deck)).cloned().unwrap_or_else(|| "Default".into());
             let Some(topic) = topic_for(&deck, &mut snapshot)? else { continue };
             let kind = package.types.get(&raw.kind).cloned().unwrap_or(NoteType { name: "Note".into(), cloze: false, fields: raw.fields.len(), templates: 1 });
@@ -494,13 +599,13 @@ impl App {
             let Ok(faces) = note.faces() else { continue };
             let note_uid = Package::uid_of(raw);
             let changed = stamp(raw.modified * 1000);
-            let anki_cards = cards_of.get(id).cloned().unwrap_or_default();
             let cards = faces
                 .into_iter()
                 .enumerate()
                 .map(|(index, face)| {
                     let schedule = if choice.keep_progress { anki_cards.get(index).and_then(|card| schedule_of(card, package.start_day, clock.day)) } else { None };
-                    portable::Card { uid: format!("{note_uid}:{}", face.key), changed: changed.clone(), key: face.key, front: face.front, back: face.back, archived: false, schedule }
+                    let archived = anki_cards.get(index).is_some_and(|card| card.queue == -1);
+                    portable::Card { uid: format!("{note_uid}:{}", face.key), changed: changed.clone(), key: face.key, front: face.front, back: face.back, archived, schedule }
                 })
                 .collect();
             let mut value = serde_json::to_value(&note).map_err(|error| ApiError::new(error.to_string()))?;

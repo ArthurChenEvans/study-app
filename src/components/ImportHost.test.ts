@@ -28,6 +28,9 @@ const anki: AnkiPreview = {
     { name: "Misc", notes: 48, target: { kind: "NewTopic", name: "Misc", module: null } },
   ],
   types: [{ name: "Basic", notes: 104, becomes: "Basic", check: false }, { name: "Image Occlusion", notes: 12, becomes: "Basic", check: true }],
+  tags: [], suspended: 0,
+  // 60 DNS, 52 TLS and 48 Misc notes, 8 of the DNS ones here already
+  rows: [...Array(60).fill(0).map((_, index) => ({ deck: 0, tags: [], suspended: false, here: index < 8 })), ...Array(52).fill({ deck: 1, tags: [], suspended: false, here: false }), ...Array(48).fill({ deck: 2, tags: [], suspended: false, here: false })],
 };
 const csv: ItemsPreview = {
   file_name: "cpu-questions.csv", format: "csv", ready: 38, already_here: 0,
@@ -64,10 +67,65 @@ describe("an Anki deck", () => {
     await u.click(within(dialog).getByRole("button", { name: "Import 104 notes" }));
     expect(mocked.ankiApply).toHaveBeenCalledWith({
       decks: [["Networks::DNS", { kind: "NewTopic", name: "DNS", module: "Networks" }], ["Networks::TLS", { kind: "Topic", topic: 7 }], ["Misc", { kind: "Skip" }]],
-      keep_progress: true,
+      keep_progress: true, tags: [], keep_suspended: false,
     });
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ text: "Imported 2 topics and 190 cards", action: expect.objectContaining({ label: "Undo" }) }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+});
+
+// import-export.feature: One deck filtered by tags, and suspended cards (R188)
+describe("an Anki deck kept in one deck with tags", () => {
+  const tagged: AnkiPreview = {
+    file_name: "Everything.apkg", notes: 5, images: 0, sounds: 0, has_progress: false, already_here: 0,
+    decks: [{ name: "Everything", notes: 5, target: { kind: "NewTopic", name: "Everything", module: null } }],
+    types: [{ name: "Basic", notes: 5, becomes: "Basic", check: false }],
+    tags: [{ name: "Maths", notes: 3 }, { name: "Maths::Algebra", notes: 1 }, { name: "thai", notes: 2 }],
+    suspended: 2,
+    rows: [
+      { deck: 0, tags: [0], suspended: false, here: false },
+      { deck: 0, tags: [0, 1], suspended: false, here: false },
+      { deck: 0, tags: [0, 2], suspended: false, here: false },
+      { deck: 0, tags: [2], suspended: true, here: false },
+      { deck: 0, tags: [], suspended: false, here: false },
+    ],
+  };
+
+  it("imports only the chosen tags, and leaves out suspended cards unless kept", async () => {
+    const u = userEvent.setup();
+    mocked.ankiPreview.mockResolvedValue(tagged);
+    mocked.ankiApply.mockResolvedValue(done);
+    render(ImportHost);
+    await startImport(new File(["zip"], "Everything.apkg"));
+    const dialog = await screen.findByRole("dialog", { name: "Import Everything.apkg" });
+    expect(within(dialog).getByRole("button", { name: "Import 4 notes" })).toBeInTheDocument();
+    expect(dialog).toHaveTextContent("2 cards are suspended in Anki.");
+    expect(within(dialog).getByRole("radio", { name: "Leave them out" })).toBeChecked();
+
+    await u.click(within(dialog).getByRole("radio", { name: "Only notes with these tags" }));
+    expect(within(dialog).getByRole("button", { name: "Import 0 notes" })).toBeDisabled();
+    await u.click(within(dialog).getByRole("checkbox", { name: "thai, 2 notes" }));
+    expect(within(dialog).getByRole("button", { name: "Import 1 note" })).toBeInTheDocument();
+    await u.click(within(dialog).getByRole("radio", { name: "Keep them, paused" }));
+    await u.click(within(dialog).getByRole("checkbox", { name: "Maths::Algebra, 1 note" }));
+    await u.click(within(dialog).getByRole("button", { name: "Import 3 notes" }));
+    expect(mocked.ankiApply).toHaveBeenCalledWith({
+      decks: [["Everything", { kind: "NewTopic", name: "Everything", module: null }]],
+      keep_progress: false, tags: ["thai", "Maths::Algebra"], keep_suspended: true,
+    });
+  });
+
+  it("finds a tag by typing when there are lots", async () => {
+    const u = userEvent.setup();
+    const many = Array.from({ length: 12 }, (_, index) => ({ name: `tag${index}`, notes: 1 }));
+    mocked.ankiPreview.mockResolvedValue({ ...tagged, tags: many, rows: [], suspended: 0 });
+    render(ImportHost);
+    await startImport(new File(["zip"], "Everything.apkg"));
+    const dialog = await screen.findByRole("dialog", { name: "Import Everything.apkg" });
+    await u.click(within(dialog).getByRole("radio", { name: "Only notes with these tags" }));
+    await u.type(within(dialog).getByRole("searchbox", { name: "Find a tag" }), "tag1");
+    expect(within(dialog).getAllByRole("checkbox").map((box) => box.getAttribute("aria-label"))).toEqual(["tag1, 1 note", "tag10, 1 note", "tag11, 1 note"]);
+    expect(dialog).not.toHaveTextContent("suspended");
   });
 });
 

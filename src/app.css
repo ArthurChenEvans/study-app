@@ -146,10 +146,13 @@
   :root { --dur-fast: 150ms; --dur-base: 200ms; --ease-out: cubic-bezier(0.05, 0.7, 0.1, 1); }
   @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
   @keyframes pop { from { transform: scale(.8); } to { transform: none; } }
-  .rise { animation: rise var(--dur-base) var(--ease-out) both; }
-  .pop { animation: pop var(--dur-base) var(--ease-out) both; }
-  /* R186: the one entrance every screen shares */
-  .screen-enter { animation: rise var(--dur-base) var(--ease-out) both; }
+  /* backwards, not both: a filled transform would trap position: fixed children (dialog backdrops) */
+  .rise { animation: rise var(--dur-base) var(--ease-out) backwards; }
+  .pop { animation: pop var(--dur-base) var(--ease-out) backwards; }
+  /* R186: the one entrance every screen shares. It starts mostly visible so a screen change
+     slides in instead of blinking the whole window dark. */
+  @keyframes enter { from { opacity: .6; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .screen-enter { animation: enter var(--dur-base) var(--ease-out) backwards; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
 
   /* Type scale: keep DaisyUI's small sizes on the scale (12px minimum) and weights to 400 and 600 */
@@ -283,7 +286,7 @@ details.table-view { max-width: 100%; overflow-x: auto; }
 /* Row actions: shown on the row you're on (hover or keyboard focus), never all at once */
 .row-actions { opacity: 0; transition: opacity var(--dur-fast) ease-out; }
 :is(tr, li, .row):hover .row-actions, :is(tr, li, .row):focus-within .row-actions, .row-actions:has([aria-expanded="true"]) { opacity: 1; }
-.row-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; min-width: 13rem; padding: 6px; display: flex; flex-direction: column; border: 2px solid var(--color-base-300); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-float); animation: rise var(--dur-fast) var(--ease-out) both; }
+.row-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 30; min-width: 13rem; padding: 6px; display: flex; flex-direction: column; border: 2px solid var(--color-base-300); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow-float); animation: rise var(--dur-fast) var(--ease-out) backwards; }
 .row-menu [role="menuitem"] { height: 36px; padding: 0 10px; border-radius: 9px; text-align: left; font-size: 14px; font-weight: 700; white-space: nowrap; }
 .row-menu [role="menuitem"]:hover, .row-menu [role="menuitem"]:focus-visible { background: var(--color-base-300); outline: none; }
 /* Quiz answers: the whole row answers, by fill, icon and word, never colour alone */

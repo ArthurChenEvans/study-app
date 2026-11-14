@@ -363,3 +363,4 @@ Decided with the design: keywords are checked in any order, every answer is righ
 | ID | Requirement |
 |---|---|
 | R187 | Each release publishes an .rpm, a .deb, a Windows .exe and a macOS .dmg (one universal app for Apple silicon and Intel), and latest.json lists each, so installed copies update themselves whichever they came from. The Mac app isn't notarised, so the first open goes through Open Anyway |
+| R188 | Importing from Anki can take only the notes with chosen tags (a tag brings the tags under it, and case doesn't matter, as in Anki), for decks kept as one deck filtered by tags. Suspended cards are left out by default or kept paused (archived). A note with only some cards suspended comes in with those cards paused |
