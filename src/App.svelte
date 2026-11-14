@@ -213,7 +213,7 @@
     <!-- R186: every screen comes in the same way, once, when you go to it -->
     {#key route.screen}<div class="screen-enter">
     {#if route.screen === "quizzes"}
-      <Quizzes onCards={(topic) => go({ screen: "topic-cards", topic, note: null })} onSearch={(text) => go({ screen: "search", text })} onEdit={(topic) => go({ screen: "editor", topic })} onQuiz={(topic) => go({ screen: "setup-for", topics: [topic] })} onQuizTopics={(topics) => go({ screen: "setup-for", topics })} />
+      <Quizzes onCards={(topic) => go({ screen: "topic-cards", topic, note: null })} onSearch={(text) => go({ screen: "search", text })} onEdit={(topic) => go({ screen: "editor", topic })} onQuiz={(topic) => go({ screen: "setup-for", topics: [topic] })} onQuizTopics={(topics) => go({ screen: "setup-for", topics })} onChanged={refreshDue} />
     {:else if route.screen === "topics"}
       <Topics onEdit={(topic) => go({ screen: "editor", topic })} onCards={(topic) => go({ screen: "topic-cards", topic, note: null })} onRecall={() => go({ screen: "recall" })} />
     {:else if route.screen === "transfer"}

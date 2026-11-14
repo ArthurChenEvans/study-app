@@ -371,3 +371,4 @@ Decided with the design: keywords are checked in any order, every answer is righ
 | R193 | Confetti on every celebration uses the theme's own colours, or a rainbow that's the same in every theme. The choice is in Celebrations and stays on this computer |
 | R194 | The question editor has a way back to Quizzes, and a toast after each save (with the topic's new question count) or a failed one |
 | R195 | A file dropped on the reader beside the question editor opens there, in the browser and the desktop app, instead of starting an import |
+| R196 | A deleted quiz leaves the Quizzes list at once and the sidebar counts catch up. A topic with no questions isn't listed as a quiz: it sits on a "No questions yet" line with a button to add some |

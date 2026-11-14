@@ -21,7 +21,8 @@
   import { dueLabel } from "../lib/dates";
   import { matchesFilter, saveColumns, savedColumns, sortBy } from "../lib/lists";
 
-  let { onEdit = () => {}, onQuiz = () => {}, onQuizTopics = () => {}, onCards = () => {}, onSearch = () => {} }: {
+  let { onEdit = () => {}, onQuiz = () => {}, onQuizTopics = () => {}, onCards = () => {}, onSearch = () => {}, onChanged = () => {} }: {
+    onChanged?: () => void;
     onEdit?: (topic: Id) => void; onQuiz?: (topic: Id) => void; onQuizTopics?: (topics: Id[]) => void; onCards?: (topic: Id) => void; onSearch?: (text: string) => void;
   } = $props();
 
@@ -54,7 +55,10 @@
     const quiz = quizOf(topic.id);
     return status === "all" || (status === "due" ? !!quiz?.due_today : status === "tight" ? !!quiz?.tightened_for : !quiz);
   };
-  const filtered = $derived(topics.filter((topic) => inStatus(topic) && matchesFilter(filter, topic.name, moduleName(topic.module), topic.tags.join(" "))));
+  // R196: a topic with no questions isn't a quiz yet, so it waits on its own line below.
+  const withQuestions = $derived(topics.filter((topic) => topic.question_count + topic.short_count > 0));
+  const emptyTopics = $derived(topics.filter((topic) => topic.question_count + topic.short_count === 0));
+  const filtered = $derived(withQuestions.filter((topic) => inStatus(topic) && matchesFilter(filter, topic.name, moduleName(topic.module), topic.tags.join(" "))));
   const railItems = $derived<RailItem[]>([
     { key: "all", label: "All modules", count: filtered.length },
     ...modules.map((m) => ({ key: `m${m.id}`, label: m.name, count: filtered.filter((t) => t.module === m.id).length })),
@@ -236,6 +240,7 @@
         for (const [id] of await api.questionsIn(topic.id)) await api.deleteQuestion(id);
         hiddenQuizzes = without(hiddenQuizzes, topic.id);
         await load();
+        onChanged();
       },
     });
   }
@@ -332,6 +337,14 @@
           </div>
         {/if}
       </section>
+      {#if emptyTopics.length}
+        <section class="mt-4 flex flex-wrap items-center gap-2 text-sm" aria-labelledby="empty-topics-h">
+          <h2 id="empty-topics-h" class="font-bold text-muted">No questions yet</h2>
+          {#each emptyTopics as topic (topic.id)}
+            <button class="btn btn-ghost btn-sm" aria-label="Add questions to {topic.name}" onclick={() => onEdit(topic.id)}><Plus class="size-4" />{topic.name}</button>
+          {/each}
+        </section>
+      {/if}
       <aside class="itemcard" aria-label="Picked topic" data-empty={!picked}>
         {#if picked}
           <button type="button" class="itemcard-close btn btn-quiet btn-sm btn-square" aria-label="Close" onclick={() => (selected = null)}><X class="size-4" /></button>
