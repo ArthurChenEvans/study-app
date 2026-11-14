@@ -214,7 +214,7 @@ pre.shiki { padding: 12px 16px; border-radius: var(--radius-box); font-size: 14p
 .chip-due { --chip: var(--color-accent); --chip-ink: var(--accent-ink); }
 .chip-right { --chip: var(--chart-right); --chip-ink: var(--right-ink); }
 .chip-wrong { --chip: var(--chart-wrong); --chip-ink: var(--wrong-ink); }
-.chip-info { --chip: var(--color-info); --chip-ink: var(--color-info); }
+.chip-info { --chip: var(--color-info); --chip-ink: var(--info-ink, var(--color-info)); }
 .chip-primary { --chip: var(--primary-ink); --chip-ink: var(--primary-ink); }
 .chip-guessed { background: var(--guessed-tint); color: var(--guessed-ink); }
 /* Square icon well, tinted in its colour (stat tiles, list leaders) */
@@ -430,7 +430,7 @@ details.table-view summary { cursor: pointer; font-size: 12px; color: var(--mute
 .cal-day .num { font-size: 13px; font-variant-numeric: tabular-nums; font-weight: 800; }
 .cal-chip { font-size: 11px; padding: 3px 6px; letter-spacing: .03em; }
 .cal-cards { --chip: var(--primary-ink); --chip-ink: var(--primary-ink); }
-.cal-quizzes, .cal-drills { --chip: var(--color-info); --chip-ink: var(--color-info); }
+.cal-quizzes, .cal-drills { --chip: var(--color-info); --chip-ink: var(--info-ink, var(--color-info)); }
 .cal-checklists { --chip: var(--color-accent); --chip-ink: var(--accent-ink); }
 .cal-row { display: flex; align-items: center; gap: 4px; font-size: 14px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .cal-row b { color: var(--color-base-content); font-weight: 800; }
