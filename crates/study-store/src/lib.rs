@@ -125,6 +125,14 @@ impl Store {
     }
 
     /// This computer's ID, which ends every change stamp made here (R110).
+    /// A record's ID that means the same on any computer, from its row number here.
+    pub fn uid_of(&self, table: &str, id: i64) -> Result<Option<String>> {
+        if !crate::ids::STAMPED.contains(&table) {
+            return Err(StoreError::Invalid("not a table with IDs"));
+        }
+        Ok(self.connection.query_row(&format!("SELECT uid FROM {table} WHERE id = ?1"), [id], |row| row.get(0)).optional()?.flatten())
+    }
+
     pub fn device_id(&self) -> String {
         self.clock.lock().map(|clock| clock.device().to_string()).unwrap_or_default()
     }

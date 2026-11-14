@@ -4,11 +4,15 @@
 //! Security rule: a `QuizView` never says which options are correct. Correct answers
 //! only leave the backend in study-mode feedback after answering, and in results.
 
+pub mod anki;
+pub mod anki_export;
 pub mod backup;
 pub mod calendar;
 pub mod cards;
 pub mod convert;
 pub mod dates;
+pub mod formats;
+pub mod markup;
 pub mod practice;
 pub mod recall;
 pub mod seed;
@@ -252,6 +256,7 @@ pub struct App {
     card_session: Option<cards::CardSession>,
     backups: Option<backup::Backups>,
     pending_import: Option<transfer::PendingImport>,
+    pending_anki: Option<anki::Package>,
     sync: sync::Sync,
 }
 
@@ -303,6 +308,7 @@ impl App {
             card_session: None,
             backups: None,
             pending_import: None,
+            pending_anki: None,
             sync: sync::Sync::default(),
         }
     }
@@ -317,6 +323,7 @@ impl App {
             card_session: None,
             backups: None,
             pending_import: None,
+            pending_anki: None,
             sync: sync::Sync::default(),
         }
     }
@@ -928,6 +935,8 @@ mod practice_tests;
 mod ids_tests;
 #[cfg(test)]
 mod transfer_tests;
+#[cfg(test)]
+mod anki_tests;
 #[cfg(test)]
 mod sync_tests;
 #[cfg(test)]

@@ -116,7 +116,7 @@ fn exercise(app: &mut App, today: i64) -> Option<String> {
         let _ = app.start_review(None, today);
         let _ = app.grade_card(study_core::cards::Rating::Good, 3, today);
         app.leave_review();
-        let _ = app.export(&ExportRequest { topics: None, history: true }, today);
+        let _ = app.export(&ExportRequest { topics: None, history: true, ..Default::default() }, today);
     }));
     outcome.err().map(|payload| payload.downcast_ref::<String>().cloned().or_else(|| payload.downcast_ref::<&str>().map(|text| text.to_string())).unwrap_or_default())
 }
@@ -316,9 +316,9 @@ fn quitting_or_restoring_leaves_no_quiz_to_resume() {
 fn a_running_quiz_stays_on_this_computer() {
     let mut app = App::with_seed(Store::in_memory().unwrap(), 1);
     let topic = topic_with_questions(&mut app, 2);
-    let before = app.export(&ExportRequest { topics: None, history: true }, TODAY).unwrap().1;
+    let before = app.export(&ExportRequest { topics: None, history: true, ..Default::default() }, TODAY).unwrap().1;
     quiz_on(&mut app, topic);
-    let (_, snapshot) = unpack(&app.export(&ExportRequest { topics: None, history: true }, TODAY).unwrap().1).unwrap();
+    let (_, snapshot) = unpack(&app.export(&ExportRequest { topics: None, history: true, ..Default::default() }, TODAY).unwrap().1).unwrap();
     assert_eq!(serde_json::to_value(&snapshot).unwrap(), serde_json::to_value(&unpack(&before).unwrap().1).unwrap(), "an export is the same with or without a quiz running");
 }
 
@@ -406,7 +406,7 @@ fn broken_screens(app: &mut App) -> Vec<String> {
         broken.push(format!("PANIC: {}", panic.chars().take(140).collect::<String>()));
     }
     let all = study_store::search::SearchQuery { text: String::new(), tab: study_store::search::Tab::All, module: None, tag: None, sort: study_store::search::SortBy::Question, descending: false };
-    for (what, result) in [("topics", app.topics().map(|_| ())), ("history", app.history().map(|_| ())), ("cards", app.cards_home(TODAY).map(|_| ())), ("recall", app.recall_list(TODAY).map(|_| ())), ("overview", app.overview(TODAY).map(|_| ())), ("projects", app.projects(TODAY).map(|_| ())), ("calendar", app.calendar_day(TODAY, TODAY).map(|_| ())), ("search", app.search(all).map(|_| ())), ("export", app.export(&ExportRequest { topics: None, history: true }, TODAY).map(|_| ()))] {
+    for (what, result) in [("topics", app.topics().map(|_| ())), ("history", app.history().map(|_| ())), ("cards", app.cards_home(TODAY).map(|_| ())), ("recall", app.recall_list(TODAY).map(|_| ())), ("overview", app.overview(TODAY).map(|_| ())), ("projects", app.projects(TODAY).map(|_| ())), ("calendar", app.calendar_day(TODAY, TODAY).map(|_| ())), ("search", app.search(all).map(|_| ())), ("export", app.export(&ExportRequest { topics: None, history: true, ..Default::default() }, TODAY).map(|_| ()))] {
         if let Err(error) = result {
             broken.push(format!("{what}: {}", error.message.chars().take(110).collect::<String>()));
         }
@@ -421,7 +421,7 @@ fn broken_screens(app: &mut App) -> Vec<String> {
 #[test]
 fn a_damaged_import_is_refused_whole_or_leaves_every_screen_working() {
     let rounds: usize = std::env::var("ROUNDS").ok().and_then(|n| n.parse().ok()).unwrap_or(80);
-    let (_, file) = seeded(1).export(&ExportRequest { topics: None, history: true }, TODAY).unwrap();
+    let (_, file) = seeded(1).export(&ExportRequest { topics: None, history: true, ..Default::default() }, TODAY).unwrap();
     let (manifest, snapshot) = unpack(&file).unwrap();
     let clean = serde_json::to_value(&snapshot).unwrap();
     let mut rng = Rng(0xA5A5_1234_5678_9ABC);

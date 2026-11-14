@@ -13,6 +13,10 @@ zip = { version = "9", default-features = false, features = ["deflate"] }
 study-core = { path = "../study-core" }
 study-store = { path = "../study-store" }
 thiserror = "2.0.21"
+zstd = "0.13"
+rusqlite = { version = "0.41.1", features = ["bundled", "collation"] }
+tempfile = "3.27.0"
+pulldown-cmark = { version = "0.13", default-features = false, features = ["html"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

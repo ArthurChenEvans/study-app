@@ -25,11 +25,44 @@ pub const MAX_FILE: usize = 200 * 1024 * 1024;
 pub const MAX_UNPACKED: u64 = if cfg!(test) { 64 * 1024 * 1024 } else { 1024 * 1024 * 1024 };
 const MAX_ENTRIES: usize = 200_000;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ExportRequest {
     /// `None` exports everything. Otherwise these topics, to share.
     pub topics: Option<Vec<TopicId>>,
     pub history: bool,
+    /// The kind of file (R173 to R176). A `.studyapp` unless asked otherwise.
+    #[serde(default)]
+    pub format: ExportFormat,
+    /// Anki only: quiz questions as cards too.
+    #[serde(default)]
+    pub quizzes_as_cards: bool,
+}
+
+/// The kinds of file the app exports (import-export.feature).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ExportFormat {
+    #[default]
+    StudyApp,
+    Anki,
+    QuestionsCsv,
+    CardsCsv,
+    Json,
+    Markdown,
+    Gift,
+    Aiken,
+}
+
+impl ExportFormat {
+    pub fn extension(self) -> &'static str {
+        match self {
+            ExportFormat::StudyApp => "studyapp",
+            ExportFormat::Anki => "apkg",
+            ExportFormat::QuestionsCsv | ExportFormat::CardsCsv => "csv",
+            ExportFormat::Json => "json",
+            ExportFormat::Markdown => "md",
+            ExportFormat::Gift | ExportFormat::Aiken => "txt",
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -403,7 +436,7 @@ fn file_name(app: &App, request: &ExportRequest, today: i64) -> ApiResult<String
         }
     };
     let safe: String = name.chars().map(|letter| if letter.is_alphanumeric() || " -_,()'".contains(letter) { letter } else { '-' }).collect();
-    Ok(format!("{}.studyapp", safe.trim()))
+    Ok(format!("{}.{}", safe.trim(), request.format.extension()))
 }
 
 impl App {
@@ -422,9 +455,18 @@ impl App {
         Ok(ExportSummary { name: file_name(self, request, today)?, counts: counts(&snapshot) })
     }
 
-    /// The `.studyapp` file, and its name (R112, R113).
+    /// The exported file, and its name (R112, R113, R173 to R176).
     pub fn export(&self, request: &ExportRequest, today: i64) -> ApiResult<(String, Vec<u8>)> {
         let snapshot = self.store.snapshot(&self.scope(request)?)?;
+        let name = file_name(self, request, today)?;
+        match request.format {
+            ExportFormat::StudyApp => {}
+            ExportFormat::Anki => {
+                let options = crate::anki_export::AnkiOptions { quizzes_as_cards: request.quizzes_as_cards, keep_progress: request.history };
+                return Ok((name, crate::anki_export::build(&snapshot, options, today)?));
+            }
+            other => return Ok((name, crate::formats::export(&snapshot, other)?)),
+        }
         let manifest = Manifest {
             format: FORMAT.into(),
             version: VERSION,
@@ -435,7 +477,7 @@ impl App {
             history: request.history,
             counts: counts(&snapshot),
         };
-        Ok((file_name(self, request, today)?, pack(&snapshot, &manifest)?))
+        Ok((name, pack(&snapshot, &manifest)?))
     }
 
     /// Reads a file and says what importing it would do, changing nothing yet (R114, R115).
@@ -507,12 +549,18 @@ impl App {
             })
             .map(|clash| clash.uid.clone())
             .collect();
+        self.apply_snapshot(pending.snapshot, theirs, clock)
+    }
+
+    /// Adds the records of any import (a `.studyapp`, an Anki deck, a spreadsheet): a backup
+    /// first, then everything at once, so it can be undone (R116, R117, R172).
+    pub(crate) fn apply_snapshot(&mut self, snapshot: Snapshot, theirs: std::collections::HashSet<String>, clock: Clock) -> ApiResult<ImportResult> {
         let backup = match self.backups.as_ref() {
             Some(_) => Some(self.make_backup(clock, Reason::BeforeImport)?),
             None => None,
         };
         let plan = Plan { theirs, today: clock.day, history_edits: false };
-        let added = self.kept_only_if_readable(clock.day, "that file has something in it this version of the app can't read, so nothing was imported", |_| true, |app| Ok(app.store.apply(&pending.snapshot, &plan)?))?;
+        let added = self.kept_only_if_readable(clock.day, "that file has something in it this version of the app can't read, so nothing was imported", |_| true, |app| Ok(app.store.apply(&snapshot, &plan)?))?;
         self.forget_running_quiz()?;
         self.card_session = None;
         Ok(ImportResult { added: added.counts.into_iter().map(|(what, count)| Count { what, count }).collect(), replaced: added.replaced, backup })
