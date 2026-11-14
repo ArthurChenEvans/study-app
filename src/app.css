@@ -715,3 +715,33 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
 .drop-zone { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 190px; padding: 20px; border: 2px dashed var(--field-border); border-radius: 16px; text-align: center; cursor: pointer; }
 .drop-zone:focus-within { outline: 2px solid var(--color-base-content); outline-offset: 2px; }
 .drop-zone.drop-over { border-style: solid; background: var(--color-base-200); }
+/* R197: the contents beside a source, laid over it on a narrow screen */
+.reader-body { position: relative; display: flex; min-height: 0; flex: 1; }
+.contents-panel { width: 15rem; flex-shrink: 0; overflow-y: auto; padding: 0.75rem 0.5rem; border-right: 1px solid var(--color-base-300); background: var(--color-base-200); }
+@media (max-width: 767px) {
+  .contents-panel { position: absolute; inset: 0 auto 0 0; z-index: 5; width: min(18rem, 85%); box-shadow: var(--shadow-float); }
+}
+/* R198: the Start menu */
+.start-wrap { position: relative; }
+.start-count { margin-left: 0.25rem; border-radius: 999px; padding: 0 0.5rem; font-size: 0.8rem; letter-spacing: 0; background: var(--color-base-100); color: var(--primary-ink); }
+.start-scrim { position: fixed; inset: 0; z-index: 40; background: transparent; cursor: default; }
+.start-menu { position: absolute; z-index: 41; width: 18rem; padding: 0.4rem; display: flex; flex-direction: column; gap: 2px; border: 2px solid var(--color-base-300); border-radius: 1rem; background: var(--color-base-200); box-shadow: var(--shadow-float); }
+.start-at-side .start-menu { left: 0; top: calc(100% + 0.4rem); }
+.start-item { display: flex; align-items: center; gap: 0.6rem; min-height: 2.75rem; padding: 0 0.75rem; border-radius: 0.6rem; font-weight: 800; }
+.start-item:hover, .start-item:focus-visible { background: var(--color-base-300); outline: none; }
+.start-fab { position: fixed; right: 1.5rem; bottom: 1.5rem; z-index: 30; height: 3.5rem; padding: 0 1.4rem; border-radius: 1.1rem; box-shadow: var(--shadow-float); background: var(--color-primary); color: var(--color-primary-content); letter-spacing: 0.06em; font-weight: 900; }
+.start-at-fab .start-menu { position: fixed; right: 1.5rem; bottom: 5.5rem; }
+.start-at-dock .start-menu { position: fixed; left: 1rem; right: 1rem; bottom: 5.5rem; width: auto; }
+.dock-start-disc { display: grid; place-items: center; width: 2.25rem; height: 1.75rem; border-radius: 999px; background: var(--color-primary); color: var(--color-primary-content); box-shadow: var(--shadow-panel); }
+/* R199: right-click and long-press menus */
+.ctx-scrim { position: fixed; inset: 0; z-index: 60; background: transparent; cursor: default; }
+.ctx-menu { position: fixed !important; z-index: 61; right: auto !important; min-width: 14rem; }
+.ctx-title { display: none; }
+@media (max-width: 767px) {
+  .ctx-scrim { background: rgb(8 4 2 / 0.55); }
+  .ctx-menu { left: 0 !important; right: 0 !important; top: auto !important; bottom: 0; border-radius: 1.4rem 1.4rem 0 0; padding: 0.75rem 1rem 1.75rem; }
+  .ctx-menu [role=menuitem] { min-height: 3rem; font-size: 1rem; }
+  .ctx-title { display: block; margin: 0 0.25rem 0.4rem; font-weight: 900; font-size: 1.1rem; }
+}
+/* R201: the web address box */
+.link-pop { margin-top: 0.75rem; padding: 0.75rem; border: 2px solid var(--color-base-300); border-radius: 0.9rem; background: var(--color-base-200); }

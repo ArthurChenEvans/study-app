@@ -1,5 +1,5 @@
 // The source preview beside the editor (R11, R12). Files live only in memory, in open tabs.
-export type Kind = "pdf" | "slides" | "epub" | "markdown" | "text";
+export type Kind = "pdf" | "slides" | "epub" | "markdown" | "text" | "web";
 export interface Tab { id: number; name: string; kind: Kind }
 
 const kinds: Record<string, Kind> = {

@@ -120,6 +120,30 @@ describe("Quizzes screen", () => {
     expect(mocked.deleteTopic).not.toHaveBeenCalled();
   });
 
+  // R196: a deleted quiz leaves the list at once, the sidebar counts catch up, and a topic with
+  // no questions sits on its own line instead of looking like an empty quiz
+  it("takes a deleted quiz off the list straight away", async () => {
+    given([{ id: 1, name: "CPU", module: 1, tags: [], question_count: 2, short_count: 0 }, { id: 2, name: "Misc", module: null, tags: [], question_count: 0, short_count: 0 }]);
+    mocked.questionsIn.mockResolvedValue([[11, "a"], [12, "b"]]);
+    const onChanged = vi.fn();
+    const onEdit = vi.fn();
+    const user = userEvent.setup();
+    render(Topics, { onChanged, onEdit });
+    const table = await screen.findByRole("table", { name: "Quizzes" });
+    expect(within(table).queryByRole("button", { name: "Misc" })).not.toBeInTheDocument();
+    const empty = screen.getByRole("region", { name: "No questions yet" });
+    await user.click(within(empty).getByRole("button", { name: "Add questions to Misc" }));
+    expect(onEdit).toHaveBeenCalledWith(2);
+    await user.click(within(table).getByRole("button", { name: "CPU" }));
+    await user.click(within(screen.getByRole("complementary", { name: "Picked topic" })).getByRole("button", { name: "Delete quiz" }));
+    await user.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete quiz" }));
+    expect(within(table).queryByRole("button", { name: "CPU" })).not.toBeInTheDocument();
+    given([{ id: 1, name: "CPU", module: 1, tags: [], question_count: 0, short_count: 0 }, { id: 2, name: "Misc", module: null, tags: [], question_count: 0, short_count: 0 }]);
+    await flushPendingDeletes();
+    expect(onChanged).toHaveBeenCalled();
+    expect(within(screen.getByRole("region", { name: "No questions yet" })).getByRole("button", { name: "Add questions to CPU" })).toBeInTheDocument();
+  });
+
   it("renames a quiz from its card", async () => {
     given([{ id: 1, name: "CPU", module: 1, tags: [], question_count: 2, short_count: 0 }]);
     const user = userEvent.setup();

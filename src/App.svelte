@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount, tick } from "svelte";
   import Sidebar, { type NavMode } from "./components/Sidebar.svelte";
+  import type { StartKind } from "./components/StartMenu.svelte";
+  import ContextMenuHost from "./components/ContextMenuHost.svelte";
   import Topics from "./screens/Topics.svelte";
   import Quizzes from "./screens/Quizzes.svelte";
   import Transfer from "./screens/Transfer.svelte";
@@ -163,6 +165,25 @@
     const topic = home.per_topic[0]?.topic ?? topics[0]?.id;
     go(topic === undefined ? { screen: "topics" } : { screen: "topic-cards", topic, note: "new" });
   }
+  // R198: the Start menu goes straight into each kind of session.
+  async function start(kind: StartKind) {
+    if (kind === "cards") return startCards(null);
+    if (kind === "pick") return go({ screen: "setup" });
+    try {
+      if (kind === "quizzes") {
+        const rows = await api.topicQuizzes();
+        const topics = rows.filter((row) => row.due_today).map((row) => row.topic);
+        return go(topics.length ? { screen: "setup-for", topics } : { screen: "setup" });
+      }
+      if (kind === "drills") {
+        const drills = await api.drillsDue();
+        return drills.length ? startDrills(drills.map((drill) => drill.id)) : go({ screen: "projects" });
+      }
+      return go({ screen: "recall" });
+    } catch {
+      go({ screen: kind === "recall" ? "recall" : kind === "drills" ? "projects" : "setup" });
+    }
+  }
   const startRecall = (id: Id) => go({ screen: "recall-session", id, run: ++runs });
   const startDrills = (ids: Id[]) => go({ screen: "drills", ids, back: route, run: ++runs });
 
@@ -207,13 +228,13 @@
 <svelte:window onhashchange={() => (route = { screen: screenFromHash(location.hash) })} onkeydown={shortcut} onbeforeunload={() => { flushPendingDeletes(); }} />
 
 <div class="flex min-h-screen">
-  {#if !["quiz", "recall-session", "card-review", "session-review", "drills"].includes(route.screen)}<Sidebar current={navScreen} {due} {backup} {sync} {mode} onNavigate={(screen) => go({ screen })} />{/if}
+  {#if !["quiz", "recall-session", "card-review", "session-review", "drills"].includes(route.screen)}<Sidebar current={navScreen} {due} onStart={start} {backup} {sync} {mode} onNavigate={(screen) => go({ screen })} />{/if}
   <main class="min-w-0 flex-1" class:pb-24={mode === "dock"}>
     {#key dataVersion}
     <!-- R186: every screen comes in the same way, once, when you go to it -->
     {#key route.screen}<div class="screen-enter">
     {#if route.screen === "quizzes"}
-      <Quizzes onCards={(topic) => go({ screen: "topic-cards", topic, note: null })} onSearch={(text) => go({ screen: "search", text })} onEdit={(topic) => go({ screen: "editor", topic })} onQuiz={(topic) => go({ screen: "setup-for", topics: [topic] })} onQuizTopics={(topics) => go({ screen: "setup-for", topics })} />
+      <Quizzes onCards={(topic) => go({ screen: "topic-cards", topic, note: null })} onSearch={(text) => go({ screen: "search", text })} onEdit={(topic) => go({ screen: "editor", topic })} onQuiz={(topic) => go({ screen: "setup-for", topics: [topic] })} onQuizTopics={(topics) => go({ screen: "setup-for", topics })} onChanged={refreshDue} />
     {:else if route.screen === "topics"}
       <Topics onEdit={(topic) => go({ screen: "editor", topic })} onCards={(topic) => go({ screen: "topic-cards", topic, note: null })} onRecall={() => go({ screen: "recall" })} />
     {:else if route.screen === "transfer"}
@@ -274,6 +295,7 @@
 <Pops />
 <ImportHost />
 <Toasts />
+<ContextMenuHost />
 
 {#if installingOnClose}
   <div class="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="closing-h">

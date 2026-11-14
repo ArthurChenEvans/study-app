@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { rowMenu } from "../lib/contextMenu.svelte";
   import { stackTable } from "../lib/stack";
   // free-recall.feature (R52, R58, R60): checklists due today first, then the rest by date.
   import { Brain, CalendarCog, CircleCheck, Clock, Play, Plus } from "@lucide/svelte";
@@ -115,7 +116,7 @@
       <div class="flex flex-col gap-3">
         {#each due as row, index (row.id)}
           <!-- The due checklist is a raised hero tile, with its step pips and last score -->
-          <article class="due-tile flex items-center gap-6 px-6 py-5" aria-label={row.subject_name}>
+          <article class="due-tile flex items-center gap-6 px-6 py-5" aria-label={row.subject_name} use:rowMenu={() => ({ label: row.subject_name, items: [...(row.points ? [{ label: "Start recall", onSelect: () => onStart(row.id) }] : []), { label: "Open checklist", onSelect: () => onOpen(row.id) }, { label: "Delete checklist…", danger: true, onSelect: () => (deleting = row) }] })}>
             <div class="min-w-0 flex-[1_1_16rem]">
               <p><span class="chip">{row.module ? "Module" : "Topic"} · {row.points} {row.points === 1 ? "point" : "points"}</span></p>
               <h3 class="mt-1.5 text-[26px] font-black leading-tight"><button class="text-left hover:underline" onclick={() => onOpen(row.id)}>{row.subject_name}</button></h3>
@@ -154,7 +155,7 @@
           <thead><tr class="text-muted"><th>Checklist</th><th>Points</th><th>Step</th><th>Last check</th><th>Next</th><th><span class="sr-only">Actions</span></th></tr></thead>
           <tbody>
             {#each later as row (row.id)}
-              <tr class="hover:bg-base-100">
+              <tr class="hover:bg-base-100" use:rowMenu={() => ({ label: row.subject_name, items: [...(row.points ? [{ label: "Start recall", onSelect: () => onStart(row.id) }] : []), { label: "Open checklist", onSelect: () => onOpen(row.id) }, { label: "Delete checklist…", danger: true, onSelect: () => (deleting = row) }] })}>
                 <td><button class="py-0.5 text-left font-semibold hover:underline" onclick={() => onOpen(row.id)}>{row.subject_name}</button><div class="text-xs text-muted">{row.module ? "Module" : "Topic"}{row.subject_exists ? "" : " (deleted)"}</div></td>
                 <td class="tabular-nums">{row.points}</td>
                 <td><div class="flex items-center gap-3"><div class="w-28"><Ladder compact steps={schedule.steps} position={row.position} step={row.step} next={row.next_step} /></div><span class="text-sm">{row.step ?? "Not started"}</span></div></td>

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { locationTarget, markdownHeadings } from "./toc";
+import { locationTarget, markdownHeadings, pageHeading, pageHeadings } from "./toc";
 import { fileFor, forget, remember } from "./sourceFiles.svelte";
 
 // sources.feature: A table of contents (R179)
@@ -39,5 +39,25 @@ describe("which file goes with a source", () => {
     remember(5, "Lecture 3.pdf");
     expect(fileFor(5)).toBe("Lecture 3.pdf");
     expect(JSON.parse(localStorage.getItem("source-files") ?? "{}")).toEqual({ 5: "Lecture 3.pdf" });
+  });
+});
+
+// R197: a PDF with no outline gets contents from each page's heading, its largest text
+describe("page headings", () => {
+  const item = (str: string, height: number) => ({ str, height });
+  it("takes the page's biggest text when it stands out", () => {
+    expect(pageHeading([item("Lecture 5", 12), item("Virtual memory", 28), item("and", 12), item("paging", 28), item("body text", 12), item("more body", 12)])).toBe("Virtual memory paging");
+    expect(pageHeading([item("all the same size", 12), item("still the same", 12)])).toBeNull();
+    expect(pageHeading([])).toBeNull();
+  });
+
+  it("drops a heading that repeats on every page, like a running title", () => {
+    const pages = [
+      [item("Course header", 20), item("Intro", 30), item("body", 11)],
+      [item("Course header", 20), item("Paging", 30), item("body", 11)],
+      [item("Course header", 20), item("Paging", 30), item("body", 11)],
+      [item("Course header", 20), item("body only here", 11), item("x", 11)],
+    ];
+    expect(pageHeadings(pages)).toEqual([{ title: "Intro", depth: 1, at: 1 }, { title: "Paging", depth: 1, at: 2 }]);
   });
 });

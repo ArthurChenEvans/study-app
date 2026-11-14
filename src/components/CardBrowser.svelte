@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { rowMenu } from "../lib/contextMenu.svelte";
   // R191: Browse all. Every card in every topic, narrowed by the search box and a filter panel
   // that folds away. A card due today keeps its answer hidden, so browsing never spoils a review.
   import { EyeOff, FolderInput, Pause, Play, Search, SlidersHorizontal, Trash2, X } from "@lucide/svelte";
@@ -7,6 +8,19 @@
   import { deleteWithUndo, toast } from "../lib/celebrations.svelte";
   import { dueLabel } from "../lib/dates";
 
+  // R199: one card's menu, or the ticked cards' when it's one of them.
+  function menuFor(row: { id: Id; topic: Id; note: Id; front: string; paused?: boolean }) {
+    return () => {
+      const many = ticked.includes(row.id) && ticked.length > 1;
+      const only = (run: () => void) => () => { if (!many) ticked = [row.id]; run(); };
+      return { label: many ? `${ticked.length} ticked` : row.front, items: [
+        ...(many ? [] : [{ label: "Edit card", onSelect: () => onEdit(row.topic, row.note) }]),
+        { label: "Move to topic…", onSelect: only(() => { moveTo = ""; moving = true; }) },
+        { label: "Pause or unpause", onSelect: only(() => void pause()) },
+        { label: many ? `Delete ${ticked.length} cards` : "Delete card", danger: true, onSelect: only(() => void remove()) },
+      ] };
+    };
+  }
   let { today, modules, onEdit }: { today: number; modules: ModuleRow[]; onEdit: (topic: Id, note: Id) => void } = $props();
 
   let rows = $state<BrowseRow[] | null>(null);
@@ -201,7 +215,7 @@
             </tr></thead>
             <tbody>
               {#each shown.slice(0, limit) as row (row.id)}
-                <tr aria-label={row.front}>
+                <tr aria-label={row.front} use:rowMenu={menuFor(row)}>
                   <td><input type="checkbox" class="checkbox size-6" aria-label="Tick {row.front}" checked={ticked.includes(row.id)} onchange={() => (ticked = flip(ticked, row.id))} /></td>
                   <td class="max-w-0"><button type="button" class="block min-h-6 w-full truncate text-left font-extrabold" title={row.front} onclick={() => onEdit(row.topic, row.note)}>{row.front}</button><span class="block text-xs text-muted">{row.kind}</span></td>
                   <td class="max-w-0 max-tab:hidden">{#if row.back === null}<span class="inline-flex items-center gap-1.5 text-sm italic text-muted"><EyeOff class="size-3.5" aria-hidden="true" />Hidden until you review it</span>{:else}<span class="block truncate text-sm text-muted" title={row.back}>{row.back}</span>{/if}</td>

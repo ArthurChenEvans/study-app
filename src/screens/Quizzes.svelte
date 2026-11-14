@@ -7,7 +7,7 @@
   // an item card for the picked topic, and ticks for acting on several at once.
   import { X, CalendarCog, FolderInput, FolderPlus, GraduationCap, Library, Pencil, PencilLine, Play, Plus, Search, SquareStack, Tag, Trash2 } from "@lucide/svelte";
   import { tick as settle } from "svelte";
-  import RowMenu from "../components/RowMenu.svelte";
+  import { rowMenu } from "../lib/contextMenu.svelte";
   import RenameDialog from "../components/RenameDialog.svelte";
   import Highlight from "../components/Highlight.svelte";
   import Rail, { type RailItem } from "../components/list/Rail.svelte";
@@ -21,7 +21,8 @@
   import { dueLabel } from "../lib/dates";
   import { matchesFilter, saveColumns, savedColumns, sortBy } from "../lib/lists";
 
-  let { onEdit = () => {}, onQuiz = () => {}, onQuizTopics = () => {}, onCards = () => {}, onSearch = () => {} }: {
+  let { onEdit = () => {}, onQuiz = () => {}, onQuizTopics = () => {}, onCards = () => {}, onSearch = () => {}, onChanged = () => {} }: {
+    onChanged?: () => void;
     onEdit?: (topic: Id) => void; onQuiz?: (topic: Id) => void; onQuizTopics?: (topics: Id[]) => void; onCards?: (topic: Id) => void; onSearch?: (text: string) => void;
   } = $props();
 
@@ -54,7 +55,10 @@
     const quiz = quizOf(topic.id);
     return status === "all" || (status === "due" ? !!quiz?.due_today : status === "tight" ? !!quiz?.tightened_for : !quiz);
   };
-  const filtered = $derived(topics.filter((topic) => inStatus(topic) && matchesFilter(filter, topic.name, moduleName(topic.module), topic.tags.join(" "))));
+  // R196: a topic with no questions isn't a quiz yet, so it waits on its own line below.
+  const withQuestions = $derived(topics.filter((topic) => topic.question_count + topic.short_count > 0));
+  const emptyTopics = $derived(topics.filter((topic) => topic.question_count + topic.short_count === 0));
+  const filtered = $derived(withQuestions.filter((topic) => inStatus(topic) && matchesFilter(filter, topic.name, moduleName(topic.module), topic.tags.join(" "))));
   const railItems = $derived<RailItem[]>([
     { key: "all", label: "All modules", count: filtered.length },
     ...modules.map((m) => ({ key: `m${m.id}`, label: m.name, count: filtered.filter((t) => t.module === m.id).length })),
@@ -79,6 +83,23 @@
     new: topics.filter((t) => !quizOf(t.id)).length,
   });
 
+  // R199: the row's right-click menu, or the ticked rows' when it's one of them.
+  function menuFor(topic: TopicRow) {
+    return () => ticked.includes(topic.id) && ticked.length > 1
+      ? { label: `${ticked.length} ticked`, items: [
+          { label: `Quiz ${ticked.length} topics`, onSelect: () => onQuizTopics(ticked) },
+          { label: "Move to module…", onSelect: () => openMove(ticked) },
+          { label: "Tag…", onSelect: () => { bulkTag = ""; bulkTagging = true; } },
+        ] }
+      : { label: topic.name, items: [
+          ...(topic.question_count ? [{ label: "Start quiz", onSelect: () => onQuiz(topic.id) }] : []),
+          { label: "Edit questions", onSelect: () => onEdit(topic.id) },
+          { label: "Cards", onSelect: () => onCards(topic.id) },
+          { label: "Rename…", onSelect: () => (renaming = { kind: "topic", id: topic.id, name: topic.name }) },
+          { label: "Move to module…", onSelect: () => openMove([topic.id]) },
+          ...(topic.question_count + topic.short_count ? [{ label: "Delete quiz…", danger: true, onSelect: () => (deleting = topic) }] : []),
+        ] };
+  }
   function toggle(id: Id) {
     ticked = ticked.includes(id) ? ticked.filter((t) => t !== id) : [...ticked, id];
   }
@@ -236,6 +257,7 @@
         for (const [id] of await api.questionsIn(topic.id)) await api.deleteQuestion(id);
         hiddenQuizzes = without(hiddenQuizzes, topic.id);
         await load();
+        onChanged();
       },
     });
   }
@@ -294,7 +316,7 @@
               <tbody>
                 {#each shown as topic (topic.id)}
                   {@const quiz = quizOf(topic.id)}
-                  <tr aria-selected={selected === topic.id} onclick={() => (selected = topic.id)} ondblclick={() => onEdit(topic.id)}>
+                  <tr aria-selected={selected === topic.id} use:rowMenu={menuFor(topic)} onclick={() => (selected = topic.id)} ondblclick={() => onEdit(topic.id)}>
                     <td><input type="checkbox" class="checkbox" aria-label="Tick {topic.name}" checked={ticked.includes(topic.id)} onclick={(event) => event.stopPropagation()} onchange={() => toggle(topic.id)} /></td>
                     <td class="w-full min-w-40 max-w-0">
                       <button type="button" class="block min-h-6 w-full truncate text-left text-[15px] font-extrabold" data-topic={topic.id} title={topic.name} onkeydown={(event) => rowKeys(event, topic)}><Highlight text={topic.name} term={filter} /></button>
@@ -332,6 +354,14 @@
           </div>
         {/if}
       </section>
+      {#if emptyTopics.length}
+        <section class="mt-4 flex flex-wrap items-center gap-2 text-sm" aria-labelledby="empty-topics-h">
+          <h2 id="empty-topics-h" class="font-bold text-muted">No questions yet</h2>
+          {#each emptyTopics as topic (topic.id)}
+            <button class="btn btn-ghost btn-sm" aria-label="Add questions to {topic.name}" onclick={() => onEdit(topic.id)}><Plus class="size-4" />{topic.name}</button>
+          {/each}
+        </section>
+      {/if}
       <aside class="itemcard" aria-label="Picked topic" data-empty={!picked}>
         {#if picked}
           <button type="button" class="itemcard-close btn btn-quiet btn-sm btn-square" aria-label="Close" onclick={() => (selected = null)}><X class="size-4" /></button>

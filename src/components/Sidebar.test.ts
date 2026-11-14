@@ -67,10 +67,30 @@ describe("Sidebar", () => {
     expect(screen.getByRole("link", { name: /Search/ })).toHaveTextContent("/");
   });
 
-  // R189: starting a quiz is "Start a quiz", so it doesn't clash with making a new one on Quizzes
-  it("marks Start a quiz as the current page on the setup screen", () => {
-    render(Sidebar, { current: "setup", onNavigate: vi.fn() });
-    expect(screen.getByRole("link", { name: "Start a quiz" })).toHaveAttribute("aria-current", "page");
+  // R198: one Start button holding everything due, each with a letter
+  it("opens a Start menu of what's due, with letter shortcuts", async () => {
+    const onStart = vi.fn();
+    render(Sidebar, { current: "overview", onNavigate: vi.fn(), onStart, due: { calendar: 40, cards: 35, recall: 1, quizzes: 3, projects: 0 } });
+    const button = screen.getByRole("button", { name: "Start, 40 due" });
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(button);
+    const menu = screen.getByRole("menu", { name: "Start" });
+    expect(within(menu).getAllByRole("menuitem").map((entry) => entry.textContent?.replace(/\s+/g, " ").trim())).toEqual(["Review cards 35 C", "Free recall 1 R", "Quiz the due topics 3 Q", "Pick topics to quiz… P"]);
+    await userEvent.keyboard("q");
+    expect(onStart).toHaveBeenCalledWith("quizzes");
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
+  it("opens Start with S from anywhere but a text box", async () => {
+    const onStart = vi.fn();
+    render(Sidebar, { current: "overview", onNavigate: vi.fn(), onStart, due: { cards: 2 } });
+    await userEvent.keyboard("s");
+    expect(screen.getByRole("menu", { name: "Start" })).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    await userEvent.keyboard("s");
+    await userEvent.click(screen.getByRole("menuitem", { name: /Review cards/ }));
+    expect(onStart).toHaveBeenCalledWith("cards");
   });
 
   // backup.feature (R108)
@@ -158,19 +178,24 @@ describe("Sidebar", () => {
     await userEvent.click(within(sheet).getByRole("link", { name: "Bibliography" }));
     expect(onNavigate).toHaveBeenCalledWith("bibliography");
     expect(screen.queryByRole("dialog", { name: "More" })).not.toBeInTheDocument();
+    // R198: a floating Start button sits at the bottom right on a tablet
+    expect(screen.getByRole("button", { name: "Start, 13 due" })).toHaveClass("start-fab");
   });
 
-  // navigation.feature (R160): a phone gets five tabs with More in the middle
-  it("becomes a dock of five on a phone, More in the middle", async () => {
+  // navigation.feature (R160, R198): a phone gets five tabs with Start in the middle
+  it("becomes a dock of five on a phone, Start in the middle", async () => {
     const onNavigate = vi.fn();
     render(Sidebar, { current: "cards", onNavigate, mode: "dock", due: { calendar: 16, cards: 13, recall: 1 } });
     const dock = screen.getByRole("navigation", { name: "Main" });
     const items = [...dock.querySelectorAll("a, button")].map((item) => item.textContent?.replace(/\d+/g, "").trim());
-    expect(items).toEqual(["Today", "Quizzes", "More", "Cards", "Free Recall"]);
+    expect(items).toEqual(["Today", "Quizzes", "Start", "Cards", "More"]);
+    await userEvent.click(within(dock).getByRole("button", { name: "Start, 16 due" }));
+    expect(screen.getByRole("menu", { name: "Start" })).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
     expect(within(dock).getByRole("link", { name: /Cards/ })).toHaveAttribute("aria-current", "page");
     await userEvent.click(within(dock).getByRole("button", { name: "More" }));
     const sheet = screen.getByRole("dialog", { name: "More" });
-    expect(within(sheet).getAllByRole("link").map((link) => link.textContent?.replace(/\d+/g, "").trim())).toEqual(["Calendar", "Practice Log", "Topics & Modules", "Import & Export", "Bibliography", "History", "Search", "Start a quiz", "Your data", "Settings"]);
+    expect(within(sheet).getAllByRole("link").map((link) => link.textContent?.replace(/\d+/g, "").trim())).toEqual(["Calendar", "Free Recall", "Practice Log", "Topics & Modules", "Import & Export", "Bibliography", "History", "Search", "Your data", "Settings"]);
     expect(within(sheet).getByLabelText("16 due today")).toBeInTheDocument();
     await userEvent.click(within(sheet).getByRole("link", { name: /Import & Export/ }));
     expect(onNavigate).toHaveBeenCalledWith("transfer");

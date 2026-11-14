@@ -4,7 +4,14 @@
 // In the browser version an http(s) link opens in a new tab. In the desktop app nothing
 // opens (a new window there would still be the app's own), and the address shows on
 // hover so it can be read.
-import { inDesktopApp } from "./transport";
+import { inDesktopApp, invoke } from "./transport";
+
+/** R201: a web address opened in the person's own browser, from either version of the app. */
+export function openInBrowser(href: string): void {
+  if (!/^https?:\/\//i.test(href)) return;
+  if (inDesktopApp()) void invoke("open_in_browser", { url: href }).catch(() => {});
+  else window.open(href, "_blank", "noopener,noreferrer");
+}
 
 export function safeLinks(node: HTMLElement) {
   const onClick = (event: MouseEvent) => {

@@ -175,6 +175,39 @@ describe("Question editor", () => {
     expect(mocked.saveQuestion).toHaveBeenCalledWith(expect.objectContaining({ citations: [{ source: 5, location: "p. 88" }] }));
   });
 
+  // R202: "Fact came from" fills itself in from what you're reading
+  it("fills in the source and page you're reading", async () => {
+    const u = user();
+    const { reading } = await import("../lib/sourceFiles.svelte");
+    Object.assign(reading, { source: 5, location: "p. 3" });
+    mocked.saveQuestion.mockResolvedValue(11);
+    render(Editor, { topic: 1 });
+    await screen.findByText("What does the ALU do?");
+    const citation = await screen.findByRole("group", { name: "Citation 1" });
+    expect(screen.getByText("Fact came from")).toBeInTheDocument();
+    expect(within(citation).getByLabelText("Source")).toHaveValue("5");
+    expect(within(citation).getByLabelText("Page, slide or line")).toHaveValue("p. 3");
+    expect(screen.getByText(/Filled in from what you're reading/)).toBeInTheDocument();
+    reading.location = "p. 4";
+    await vi.waitFor(() => expect(within(citation).getByLabelText("Page, slide or line")).toHaveValue("p. 4"));
+    await u.click(screen.getByRole("button", { name: "Save question" }));
+    expect(mocked.saveQuestion).toHaveBeenCalledWith(expect.objectContaining({ citations: [{ source: 5, location: "p. 4" }] }));
+    Object.assign(reading, { source: null, location: "" });
+  });
+
+  it("leaves the source alone once you remove it", async () => {
+    const u = user();
+    const { reading } = await import("../lib/sourceFiles.svelte");
+    Object.assign(reading, { source: 5, location: "p. 3" });
+    render(Editor, { topic: 1 });
+    await screen.findByRole("group", { name: "Citation 1" });
+    await u.click(screen.getByRole("button", { name: "Remove citation 1" }));
+    reading.location = "p. 9";
+    await new Promise((done) => setTimeout(done, 10));
+    expect(screen.queryByRole("group", { name: "Citation 1" })).not.toBeInTheDocument();
+    Object.assign(reading, { source: null, location: "" });
+  });
+
   // sources.feature: Showing where a question cites (R181)
   it("shows the cited page in the preview", async () => {
     const u = user();

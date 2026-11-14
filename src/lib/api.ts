@@ -400,6 +400,7 @@ export const api = {
   syncResume: () => invoke<SyncResult>("sync_resume"),
   syncToCheck: () => invoke<ToCheck[]>("sync_to_check"),
   syncSettle: (n: number, useOther: boolean) => invoke<ToCheck[]>("sync_settle", { n, other: useOther }),
+  fetchPage: (url: string) => invoke<{ url: string; html: string }>("fetch_page", { url }),
   slidesToPdf: async (file: File) => {
     const pdf = await invoke<ArrayBuffer | number[]>("slides_to_pdf", { name: file.name, data: await toBase64(file) });
     return new Uint8Array(pdf);

@@ -1,6 +1,11 @@
 <script lang="ts">
+  import { rowMenu } from "../lib/contextMenu.svelte";
   // sources.feature (R13, R44 to R46)
-  import { X, BookOpen, Plus } from "@lucide/svelte";
+  import { X, BookOpen, Plus, FileUp } from "@lucide/svelte";
+  import SourceCheck from "../components/SourceCheck.svelte";
+  import { detailsFromEpub, detailsFromOffice, detailsFromPdfInfo, detailsFromWeb, titleFromName, type FoundDetails } from "../lib/fileDetails";
+  import { readEpub } from "../lib/epub";
+  import { readWebPage } from "../lib/webPage";
   import RowMenu from "../components/RowMenu.svelte";
   import { api, errorMessage, type SourceFields, type SourceRow, type TopicRow } from "../lib/api";
   import { deleteWithUndo, toast } from "../lib/celebrations.svelte";
@@ -70,6 +75,51 @@
 
   const topicName = (id: number) => topics.find((topic) => topic.id === id)?.name ?? "Deleted topic";
 
+  // R202: a source from a file or a web page, filled in from its details, checked before it's added.
+  let fromFile = $state<FoundDetails | null>(null);
+  let picker = $state<HTMLInputElement>();
+  let linkOpen = $state(false);
+  let link = $state("");
+  let fromError = $state("");
+  async function detailsOf(file: File): Promise<FoundDetails> {
+    const data = await file.arrayBuffer();
+    if (/\.pdf$/i.test(file.name)) {
+      const pdfjs = await import("pdfjs-dist");
+      const doc = await pdfjs.getDocument({ data: new Uint8Array(data) }).promise;
+      const meta = await doc.getMetadata().catch(() => ({ info: {} }));
+      void doc.cleanup();
+      return detailsFromPdfInfo((meta.info ?? {}) as Record<string, unknown>, file.name);
+    }
+    if (/\.(docx|pptx|xlsx|odt|odp)$/i.test(file.name)) return detailsFromOffice(data, file.name);
+    if (/\.epub$/i.test(file.name)) return detailsFromEpub(await readEpub(data), file.name);
+    return { fields: { authors: "", year: null, title: titleFromName(file.name), edition: null, description: null, publisher: null, url: null }, fromFile: [], from: file.name };
+  }
+  async function pickedFile(event: Event) {
+    const file = (event.currentTarget as HTMLInputElement).files?.[0];
+    (event.currentTarget as HTMLInputElement).value = "";
+    if (!file) return;
+    fromError = "";
+    try { fromFile = await detailsOf(file); } catch (failure) { fromError = `Couldn't read ${file.name}: ${errorMessage(failure)}`; }
+  }
+  async function fromLink(event: SubmitEvent) {
+    event.preventDefault();
+    fromError = "";
+    try {
+      const page = await api.fetchPage(link);
+      fromFile = detailsFromWeb(readWebPage(page.html, page.url).details);
+      linkOpen = false;
+      link = "";
+    } catch (failure) { fromError = `Couldn't open that page: ${errorMessage(failure)}`; }
+  }
+  async function addChecked(fields: SourceFields) {
+    fromFile = null;
+    try {
+      await api.addSource(fields);
+      toast({ text: "Source added", sub: fields.title });
+      await load();
+    } catch (failure) { fromError = errorMessage(failure); }
+  }
+
   async function load() {
     const [allSources, allTopics] = await Promise.all([api.sources(), api.topics()]);
     sources = allSources.filter((row) => !hiddenSources.has(row.id));
@@ -112,8 +162,21 @@
 
 <div class="mx-auto max-w-6xl px-12 pb-24">
   <PageHeader title="Bibliography" subtitle={sources.length ? `${sources.length} sources, formatted in APA` : ""}>
+    <button class="btn btn-ghost" onclick={() => picker?.click()}><FileUp class="size-4" />From a file</button>
+    <button class="btn btn-ghost" aria-expanded={linkOpen} onclick={() => (linkOpen = !linkOpen)}>From a link</button>
     {#if sources.length}<button class="btn btn-primary" onclick={open}><Plus class="size-4" />Add source</button>{/if}
   </PageHeader>
+  <input bind:this={picker} type="file" class="hidden" aria-label="Add a source from a file" accept=".pdf,.docx,.pptx,.odt,.odp,.epub,.md,.txt" onchange={pickedFile} />
+  {#if linkOpen}
+    <form class="link-pop mb-4 flex max-w-xl gap-2" onsubmit={fromLink}>
+      <input class="input input-sm flex-1" aria-label="Source web address" placeholder="https://…" bind:value={link} />
+      <button type="submit" class="btn btn-primary btn-sm">Fill in</button>
+    </form>
+  {/if}
+  {#if fromError}<p role="alert" class="mb-4 text-sm text-error">{fromError}</p>{/if}
+  {#if fromFile}
+    <SourceCheck found={fromFile} keepLabel="Add source" discardLabel="Cancel" onSave={addChecked} onDiscard={() => (fromFile = null)} onClose={() => (fromFile = null)} />
+  {/if}
 
   {#if loaded && sources.length === 0}
     <div class="panel max-w-lg p-10">
@@ -137,7 +200,7 @@
               </tr></thead>
               <tbody>
                 {#each shown as source (source.id)}
-                  <tr aria-selected={picked === source.id} onclick={() => (picked = source.id)}>
+                  <tr aria-selected={picked === source.id} onclick={() => (picked = source.id)} use:rowMenu={() => ({ label: source.fields.title || source.fields.authors || "Source", items: [{ label: "Edit source", onSelect: () => edit(source) }, { label: "Delete source…", danger: true, onSelect: () => (deleting = source) }] })}>
                     <td class="max-w-56"><button type="button" class="block min-h-6 w-full truncate text-left font-extrabold" onclick={() => (picked = source.id)}><Highlight text={source.fields.authors || "No author"} term={filter} /></button></td>
                     <td class="whitespace-nowrap tabular-nums" data-label="Year">{source.fields.year ?? "n.d."}</td>
                     <td class="max-w-0 w-full truncate italic" data-label="Title"><Highlight text={source.fields.title} term={filter} /></td>

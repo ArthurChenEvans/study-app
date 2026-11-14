@@ -8,7 +8,7 @@ vi.mock("../lib/api", async (original) => {
     ...actual,
     api: {
       strugglesToReview: vi.fn(), recallList: vi.fn(), topics: vi.fn(), issues: vi.fn(), today: vi.fn(), project: vi.fn(),
-      knownDrill: vi.fn(), reviewStruggle: vi.fn(), drill: vi.fn(), rateDrill: vi.fn(), moveDrill: vi.fn(),
+      knownDrill: vi.fn(), reviewStruggle: vi.fn(), saveNote: vi.fn(), drill: vi.fn(), rateDrill: vi.fn(), moveDrill: vi.fn(),
     },
   };
 });
@@ -35,6 +35,40 @@ beforeEach(() => {
 });
 
 describe("Session review", () => {
+  // R200: write the card there and then, front, topic and tags filled in from the struggle
+  it("writes a card now, prefilled from the struggle", async () => {
+    const u = userEvent.setup();
+    mocked.topics.mockResolvedValue([{ id: 7, name: "Python", module: null, tags: ["coding::python"], question_count: 0, short_count: 0 } as never]);
+    mocked.saveNote.mockResolvedValue(30);
+    mocked.strugglesToReview.mockResolvedValue([struggle(1, { kind: "Recall", what: "Forgot how to slice from the end", topic: 7, topic_name: "Python" })]);
+    render(SessionReview, { project: 1 });
+    await screen.findByText("Forgot how to slice from the end");
+    await u.click(screen.getByRole("radio", { name: /Write a card now/ }));
+    expect(screen.getByLabelText("Front")).toHaveValue("Forgot how to slice from the end");
+    expect(screen.getByLabelText("Card topic")).toHaveValue("7");
+    expect(screen.getByLabelText("Tags")).toHaveValue("coding::python");
+    await u.click(screen.getByRole("button", { name: /Save card and finish/ }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Write the back of the card");
+    await u.type(screen.getByLabelText("Back"), "items[[-3:]");
+    await u.click(screen.getByRole("button", { name: /Save card and finish/ }));
+    expect(mocked.reviewStruggle).toHaveBeenCalledWith(1, "Card");
+    expect(mocked.saveNote).toHaveBeenCalledWith(null, { note: { topic: 7, kind: "Basic", front: "Forgot how to slice from the end", back: "items[-3:]", cues: [], text: "", extra: "", tags: ["coding::python"] }, suggestion: "struggle:1" });
+  });
+
+  it("says where a suggested card went, with a way to open it", async () => {
+    const u = userEvent.setup();
+    const onSuggestions = vi.fn();
+    mocked.strugglesToReview.mockResolvedValue([struggle(1, { kind: "Recall" }), struggle(2)]);
+    render(SessionReview, { project: 1, onSuggestions });
+    await u.click(await screen.findByRole("button", { name: /Next struggle/ }));
+    const { live } = await import("../lib/celebrations.svelte");
+    const toast = live.toasts.at(-1)!;
+    expect(toast.text).toBe("Card suggestion saved");
+    expect(toast.sub).toBe("It's waiting in Cards, Suggestions");
+    toast.action!.run();
+    expect(onSuggestions).toHaveBeenCalled();
+  });
+
   // projects.feature: A recall miss becomes a card suggestion, A known issue offers its drill again
   it("steps through each struggle with the right default, and offers a known drill again", async () => {
     const u = userEvent.setup();
@@ -188,11 +222,11 @@ describe("Drills", () => {
     mocked.strugglesToReview.mockResolvedValue([struggle(1, { kind: "Unsure" })]);
     render(SessionReview, { project: 1 });
     await screen.findByText("Struggle 1", { selector: "section p" });
-    await u.keyboard("2");
-    expect(screen.getByRole("radio", { name: /Add to a recall checklist/ })).toBeChecked();
     await u.keyboard("3");
-    await u.type(screen.getByLabelText("Issue"), "4");
+    expect(screen.getByRole("radio", { name: /Add to a recall checklist/ })).toBeChecked();
+    await u.keyboard("4");
+    await u.type(screen.getByLabelText("Issue"), "5");
     expect(screen.getByRole("radio", { name: /Schedule a drill/ })).toBeChecked();
-    expect(screen.getByLabelText("Issue")).toHaveValue("4");
+    expect(screen.getByLabelText("Issue")).toHaveValue("5");
   });
 });
