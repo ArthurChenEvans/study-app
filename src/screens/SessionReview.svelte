@@ -1,12 +1,13 @@
 <script lang="ts">
   // projects.feature (R90 to R92, R95): review a session's struggles one at a time.
-  import { CalendarDays, CircleCheck, Clock, Dumbbell, ListChecks, Minus, Plus, Repeat, SquareStack } from "@lucide/svelte";
+  import { CalendarDays, CircleCheck, Clock, Dumbbell, ListChecks, Minus, PencilLine, Plus, Repeat, SquareStack } from "@lucide/svelte";
+  import { toast } from "../lib/celebrations.svelte";
   import { api, errorMessage, type DrillView, type Id, type IssueView, type RecallRow, type ReviewChoice, type StruggleView, type TopicRow } from "../lib/api";
   import { dayFromIso, dueLabel, fullLabel, isoOf, onDay, pastOn } from "../lib/dates";
 
   let { project, onDone = () => {}, onSuggestions = () => {}, onCalendar = () => {} }: { project: Id; onDone?: () => void; onSuggestions?: () => void; onCalendar?: () => void } = $props();
 
-  type Action = "card" | "checklist" | "drill" | "nothing";
+  type Action = "write" | "card" | "checklist" | "drill" | "nothing";
   let queue = $state<StruggleView[] | null>(null);
   let index = $state(0);
   let checklists = $state<RecallRow[]>([]);
@@ -28,6 +29,11 @@
   let when = $state<"tomorrow" | "other">("tomorrow");
   let otherDay = $state("");
   let error = $state("");
+  // R200: a card written there and then
+  let front = $state("");
+  let back = $state("");
+  let cardTopic = $state("");
+  let cardTags = $state("");
 
   const current = $derived(queue?.[index] ?? null);
   const kindLabel = { Recall: "Couldn't recall it", Apply: "Couldn't apply it", Unsure: "Not sure yet" } as const;
@@ -55,6 +61,13 @@
     topic = struggle.topic?.toString() ?? "";
     when = "tomorrow";
     otherDay = isoOf(today + 2);
+    front = struggle.what;
+    back = "";
+    cardTopic = struggle.topic?.toString() ?? topics[0]?.id.toString() ?? "";
+    fillTags();
+  }
+  function fillTags() {
+    cardTags = (topics.find((row) => String(row.id) === cardTopic)?.tags ?? []).join(" ");
   }
 
   let lookup = 0;
@@ -68,7 +81,7 @@
   const seenBefore = $derived(issues.find((row) => row.name.toLowerCase().replace(/\s+/g, " ") === issue.trim().toLowerCase().replace(/\s+/g, " ")));
 
   function choice(day: number): ReviewChoice | null {
-    if (action === "card") return "Card";
+    if (action === "card" || action === "write") return "Card";
     if (action === "nothing") return "Nothing";
     if (action === "checklist") return checklist ? { Checklist: { checklist: Number(checklist) } } : null;
     if (action === "drill") {
@@ -88,11 +101,27 @@
       asking = true;
       return;
     }
+    if (action === "write") {
+      if (!front.trim()) return (error = "Write the front of the card");
+      if (!back.trim()) return (error = "Write the back of the card");
+      if (!cardTopic) return (error = "Pick a topic for the card");
+    }
     const day = when === "tomorrow" ? today + 1 : dayFromIso(otherDay);
     const picked = choice(day);
     if (!picked) return (error = action === "checklist" ? "Pick a checklist" : "Choose what should happen with it");
     try {
-      done = [...done, await api.reviewStruggle(current.id, picked)];
+      const id = current.id;
+      if (action === "write") {
+        const tags = cardTags.split(/[\s,]+/).filter(Boolean);
+        done = [...done, await api.reviewStruggle(id, picked)];
+        // The suggestion key marks the struggle's card as written, so it doesn't wait in Suggestions too.
+        await api.saveNote(null, { note: { topic: Number(cardTopic), kind: "Basic", front: front.trim(), back: back.trim(), cues: [], text: "", extra: "", tags }, suggestion: `struggle:${id}` });
+        written += 1;
+        toast({ text: "Card saved", sub: `In ${topics.find((row) => String(row.id) === cardTopic)?.name ?? "your cards"}` });
+      } else {
+        done = [...done, await api.reviewStruggle(id, picked)];
+        if (action === "card") toast({ text: "Card suggestion saved", sub: "It's waiting in Cards, Suggestions", action: { label: "Open", run: onSuggestions } });
+      }
       issues = await api.issues();
       index += 1;
       prepare();
@@ -103,7 +132,8 @@
   }
 
   const choices = [
-    ["card", SquareStack, "Suggest a card", "Waits in Suggestions for you to accept"],
+    ["write", PencilLine, "Write a card now", "Straight into your cards, in the topic you pick"],
+    ["card", SquareStack, "Suggest a card for later", "Waits in Cards, Suggestions"],
     ["checklist", ListChecks, "Add to a recall checklist", "It becomes a point to recall"],
     ["drill", Dumbbell, "Schedule a drill", "For something you couldn't apply"],
     ["nothing", Minus, "Nothing", "Just keep it logged"],
@@ -115,9 +145,9 @@
       next();
       return;
     }
-    // 1 to 4 pick a choice, unless you're typing.
+    // 1 to 5 pick a choice, unless you're typing.
     const typing = (event.target as HTMLElement | null)?.closest("input, textarea, select");
-    if (!typing && !asking && current && /^[1-4]$/.test(event.key) && !event.ctrlKey && !event.metaKey && !event.altKey) {
+    if (!typing && !asking && current && /^[1-5]$/.test(event.key) && !event.ctrlKey && !event.metaKey && !event.altKey) {
       event.preventDefault();
       action = choices[Number(event.key) - 1][0];
       error = "";
@@ -125,7 +155,8 @@
   }
 
   const drills = $derived(done.filter((s) => s.outcome !== null && typeof s.outcome === "object" && "Drill" in s.outcome));
-  const cards = $derived(done.filter((s) => s.outcome === "Card").length);
+  let written = $state(0);
+  const cards = $derived(done.filter((s) => s.outcome === "Card").length - written);
   const points = $derived(done.filter((s) => s.outcome !== null && typeof s.outcome === "object" && "Checklist" in s.outcome).length);
 
   load();
@@ -161,6 +192,16 @@
             {/each}
           </div>
         </fieldset>
+
+        {#if action === "write"}
+          <div class="grid gap-4 sm:grid-cols-2">
+            <label class="block"><span class="block text-sm font-semibold">Front</span><textarea class="textarea mt-1 w-full" rows="2" bind:value={front}></textarea></label>
+            <label class="block"><span class="block text-sm font-semibold">Back</span><textarea class="textarea mt-1 w-full" rows="2" placeholder="The answer…" bind:value={back}></textarea></label>
+            <label class="block"><span class="block text-sm font-semibold">Card topic</span>
+              <select class="select mt-1 w-full" bind:value={cardTopic} onchange={fillTags}>{#each topics as row (row.id)}<option value={String(row.id)}>{row.name}</option>{/each}</select></label>
+            <label class="block"><span class="block text-sm font-semibold">Tags</span><input class="input mt-1 w-full" placeholder="e.g. coding::python" bind:value={cardTags} /></label>
+          </div>
+        {/if}
 
         {#if action === "checklist"}
           <label class="block"><span class="block text-sm font-semibold">Checklist</span>
@@ -204,7 +245,7 @@
         <p class="text-sm text-muted">Each one is saved as you go.</p>
         <span class="flex-1"></span>
         <button type="button" class="btn btn-ghost" onclick={onDone}><Clock class="size-4" />Finish later</button>
-        <button type="submit" class="btn btn-primary" disabled={!action}>{action === "drill" ? "Schedule the drill" : index + 1 === queue.length ? "Finish review" : "Next struggle"} <kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">Enter</kbd></button>
+        <button type="submit" class="btn btn-primary" disabled={!action}>{action === "drill" ? "Schedule the drill" : action === "write" ? (index + 1 === queue.length ? "Save card and finish" : "Save card and next") : index + 1 === queue.length ? "Finish review" : "Next struggle"} <kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">Enter</kbd></button>
       </div></div>
     </form>
 
