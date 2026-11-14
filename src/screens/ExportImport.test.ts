@@ -144,8 +144,7 @@ describe("Import", () => {
     const u = userEvent.setup();
     mocked.importPreview.mockResolvedValue(preview());
     mocked.importApply.mockResolvedValue({ added: [{ what: "topics", count: 1 }, { what: "questions", count: 18 }, { what: "cards", count: 12 }], replaced: 1, backup: { name: "study 2026-11-04 14-20 before-import.sqlite", day: TODAY, minute: 860, reason: "BeforeImport", bytes: 6_000_000 } });
-    const onChanged = vi.fn();
-    render(Transfer, { onRestored: onChanged });
+    render(Transfer);
     render(ImportHost);
     const file = new File(["zip"], "Networks.studyapp", { type: "application/zip" });
     await u.upload(await screen.findByLabelText("Import a file"), file);
