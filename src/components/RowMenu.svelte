@@ -16,9 +16,15 @@
   const safe = $derived(items.filter((item) => !item.danger));
   const danger = $derived(items.filter((item) => item.danger));
 
+  // The menu lines up with the button's right edge, unless that would run off the left of
+  // the window (a button near the left on a phone): then it lines up with the left edge.
+  let fromLeft = $state(false);
+
   async function show() {
+    fromLeft = false;
     open = true;
     await tick();
+    if (menu && menu.getBoundingClientRect().left < 8) fromLeft = true;
     menu?.querySelector<HTMLButtonElement>("[role=menuitem]")?.focus();
   }
 
@@ -65,7 +71,7 @@
     onclick={() => (open ? close() : show())}><Ellipsis class="size-4" />{text}</button
   >
   {#if open}
-    <div bind:this={menu} role="menu" aria-label={label} tabindex="-1" class="row-menu" onkeydown={keys}>
+    <div bind:this={menu} role="menu" aria-label={label} tabindex="-1" class="row-menu" class:row-menu-left={fromLeft} onkeydown={keys}>
       {#each safe as item (item.label)}
         <button type="button" role="menuitem" tabindex="-1" onclick={() => choose(item)}>{item.label}</button>
       {/each}

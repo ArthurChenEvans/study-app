@@ -702,3 +702,4 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
 .colour-option-card { display: flex; gap: 3px; padding: 6px; border-radius: 0.5rem; border: 2px solid; }
 .colour-option-bar { height: 8px; border-radius: 4px; }
 .colour-option-button { display: block; padding: 0.3rem; border-radius: 0.5rem; border: 2px solid; text-align: center; font-size: 0.8rem; font-weight: 800; }
+.row-menu-left { right: auto; left: 0; }
