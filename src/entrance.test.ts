@@ -1,10 +1,11 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import css from "./app.css?raw";
 
 // R186: the screen entrance must not leave a transform behind once it ends. A filled transform
 // animation makes the screen the containing block for position: fixed, so dialog backdrops
 // only covered the screen's height instead of the whole window.
 describe("screen entrance", () => {
+  const css = readFileSync("src/app.css", "utf8");
   const rule = css.match(/\.screen-enter\s*\{([^}]*)\}/)?.[1] ?? "";
 
   it("only applies while it runs", () => {
