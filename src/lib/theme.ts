@@ -1,4 +1,6 @@
 // appearance.feature (R34): dark by default, choice remembered on this device.
+import { applyColours, initialColours } from "./colours";
+
 export const DARK = "studyapp-dark";
 export const LIGHT = "studyapp";
 export type Theme = typeof DARK | typeof LIGHT;
@@ -13,8 +15,15 @@ export function initialTheme(): Theme {
   }
 }
 
+/** The chosen colour theme, in the current mode and palette (R183). */
+export function refreshColours(): void {
+  const root = document.documentElement;
+  applyColours(initialColours(), root.dataset.theme !== LIGHT, root.dataset.palette === "cb");
+}
+
 export function applyTheme(theme: Theme): void {
   document.documentElement.dataset.theme = theme;
+  refreshColours();
   try {
     localStorage.setItem(KEY, theme);
   } catch {
@@ -38,6 +47,7 @@ export function initialPalette(): Palette {
 export function applyPalette(palette: Palette): void {
   if (palette === "colour-blind") document.documentElement.dataset.palette = "cb";
   else delete document.documentElement.dataset.palette;
+  refreshColours();
   try {
     localStorage.setItem(PALETTE_KEY, palette);
   } catch {

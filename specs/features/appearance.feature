@@ -25,3 +25,13 @@ Feature: Light and dark theme
     Then right answers are blue and wrong ones orange, everywhere
     And every answer still shows an icon and a word, and guessed is still hatched
     And the choice is remembered next time
+
+  Scenario: Colour themes
+    Given I haven't picked colours
+    Then the app is in Coffee
+    When I open Settings
+    Then I see Mono, Coffee, Honey, Brick, Rose, Lavender, Ocean, Miku and Sage, each shown in its own colours
+    When I pick Sage
+    Then the whole app turns sage straight away
+    And it stays sage after a restart
+    And switching to light or dark, or to colour-blind safe colours, keeps Sage

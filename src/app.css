@@ -267,14 +267,14 @@ label.input input:focus, label.input input:focus-visible { outline: none !import
 .toggle-sm { --size: 1.5rem; }
 /* A table that's wider than its panel scrolls inside it. */
 details.table-view { max-width: 100%; overflow-x: auto; }
-.open-q { border: 1px dashed var(--color-info); color: var(--color-info); background: var(--surface); }
+.open-q { border: 1px dashed var(--color-info); color: var(--info-ink, var(--color-info)); background: var(--surface); }
 
 /* Navigation */
 .nav-link { color: var(--muted); border: 2px solid transparent; border-radius: 12px; font-weight: 800; font-size: 13.5px; letter-spacing: .07em; text-transform: uppercase; transition: background-color 150ms ease-out, color 150ms ease-out; }
 .nav-link:hover { background: var(--color-base-300); color: var(--color-base-content); }
 .nav-link[aria-current="page"] { background: color-mix(in oklch, var(--primary-ink) 14%, var(--surface)); border-color: var(--primary-ink); color: var(--color-base-content); }
 .nav-icon-orange { color: var(--primary-ink); }
-.nav-icon-blue { color: var(--color-info); }
+.nav-icon-blue { color: var(--info-ink, var(--color-info)); }
 .due-pill { min-width: 22px; padding: 0 6px; border-radius: 11px; background: var(--color-accent); color: var(--color-accent-content); font-size: 12px; font-weight: 800; line-height: 22px; text-align: center; letter-spacing: 0; font-variant-numeric: tabular-nums; }
 .logo-mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 11px; background: var(--color-primary); color: var(--color-primary-content); box-shadow: 0 3px 0 color-mix(in oklch, var(--color-primary) 70%, #000); }
 .nav-current { border-color: var(--primary-ink) !important; background: color-mix(in oklch, var(--primary-ink) 14%, var(--surface)); }
@@ -534,7 +534,7 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
 .chip.whitespace-normal { white-space: normal; }
 .option:has(input:focus-visible) { outline: 3px solid var(--primary-ink); outline-offset: 2px; }
 .note-box { border-radius: 14px; border: 2px solid var(--color-base-300); background: var(--color-base-200); font-weight: 700; }
-.btn.text-error { color: var(--color-error); }
+.btn.text-error, .text-error { color: var(--error-ink, var(--color-error)); }
 /* A date on the calendar (R134): outlined, at the top of its day. Exams carry a cap. */
 .date-chip { display: flex; align-items: center; gap: 5px; max-width: 100%; padding: 3px 7px; border: 2px solid var(--primary-ink); border-radius: 8px; font-size: 12px; font-weight: 800; line-height: 1.2; color: var(--primary-ink); background: var(--surface); }
 .date-chip.exam { background: color-mix(in oklch, var(--color-primary) 30%, var(--surface)); color: var(--color-base-content); }
@@ -692,3 +692,12 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
   border: 3px dashed var(--primary-ink); background: var(--color-base-100); overflow-wrap: anywhere; }
 .drop-icon { display: inline-grid; place-items: center; width: 72px; height: 72px; border-radius: 20px;
   background: color-mix(in oklch, var(--primary-ink) 18%, var(--surface)); color: var(--primary-ink); }
+
+/* Colour themes (R183, R184): each option previews itself, and a button close to its ground gets an outline */
+.btn-primary { border-color: var(--primary-edge, var(--color-primary)); }
+.colour-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: 0.75rem; }
+.colour-option { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.75rem; border-radius: 1rem; border: 3px solid; text-align: left; min-height: 44px; }
+.colour-option:focus-visible { outline: 3px solid var(--color-base-content); outline-offset: 2px; }
+.colour-option-card { display: flex; gap: 3px; padding: 6px; border-radius: 0.5rem; border: 2px solid; }
+.colour-option-bar { height: 8px; border-radius: 4px; }
+.colour-option-button { display: block; padding: 0.3rem; border-radius: 0.5rem; border: 2px solid; text-align: center; font-size: 0.8rem; font-weight: 800; }

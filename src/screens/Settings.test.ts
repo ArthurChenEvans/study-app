@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/svelte";
+import { render, screen, within } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../lib/api", async (original) => {
@@ -8,6 +8,7 @@ vi.mock("../lib/api", async (original) => {
 
 import { api } from "../lib/api";
 import { updates } from "../lib/updates.svelte";
+import { buildColours } from "../lib/colours";
 import Settings from "./Settings.svelte";
 
 const mocked = vi.mocked(api);
@@ -29,6 +30,22 @@ describe("Settings", () => {
     await userEvent.click(screen.getByRole("radio", { name: "Light" }));
     expect(document.documentElement.dataset.theme).toBe("studyapp");
     expect(screen.getByRole("radio", { name: "Light" })).toHaveAttribute("aria-checked", "true");
+  });
+
+  // appearance.feature: Colour themes (R183, R184)
+  it("picks a colour theme, previewing each one in the current mode", async () => {
+    const u = userEvent.setup();
+    render(Settings, { onNavigate: vi.fn() });
+    const group = screen.getByRole("radiogroup", { name: "Colours" });
+    const options = within(group).getAllByRole("radio");
+    expect(options.map((option) => option.getAttribute("aria-label"))).toEqual(["Mono", "Coffee", "Honey", "Brick", "Rose", "Lavender", "Ocean", "Miku", "Sage"]);
+    expect(within(group).getByRole("radio", { name: "Coffee" })).toHaveAttribute("aria-checked", "true");
+    await u.click(within(group).getByRole("radio", { name: "Sage" }));
+    expect(within(group).getByRole("radio", { name: "Sage" })).toHaveAttribute("aria-checked", "true");
+    expect(document.documentElement.style.getPropertyValue("--color-primary")).toBe(buildColours("sage", true, false)["--color-primary"]);
+    expect(localStorage.getItem("studyapp-colours")).toBe("sage");
+    await u.click(screen.getByRole("radio", { name: "Light" }));
+    expect(document.documentElement.style.getPropertyValue("--color-primary")).toBe(buildColours("sage", false, false)["--color-primary"]);
   });
 
   // appearance.feature: Colour-blind safe colours (R129)
