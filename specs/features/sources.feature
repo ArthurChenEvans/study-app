@@ -55,3 +55,29 @@ Feature: Read sources and cite them
     And questions in "CPU" and "GPU" that cite "Patterson 2020"
     When I look at "Patterson 2020" in the bibliography
     Then I see that "CPU" and "GPU" use it
+
+  Scenario: A table of contents
+    Given a PDF with bookmarks is open in the preview
+    When I open the contents and pick "Chapter 4"
+    Then the preview shows the page Chapter 4 starts on
+    And Markdown files list their headings, EPUBs their contents, and slides their titles
+
+  Scenario: Going straight to a page
+    Given a 400 page PDF is open
+    When I press Ctrl+G and type 300
+    Then page 300 shows without waiting for the pages before it
+
+  Scenario: Showing where a question cites
+    Given a question cites Kirk (2022) at p. 88
+    And Kirk.pdf is open in the preview
+    When I press the citation's show button for the first time
+    Then it asks which open file is Kirk (2022)
+    When I pick Kirk.pdf
+    Then page 88 shows
+    And next time it shows page 88 straight away
+
+  Scenario: The cited file isn't open
+    Given Kirk.pdf is remembered for Kirk (2022) but isn't open
+    When I press the citation's show button
+    Then it says "Open Kirk.pdf to see page 88 of Kirk (2022)."
+    And opening it shows page 88

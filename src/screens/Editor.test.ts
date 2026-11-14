@@ -143,6 +143,21 @@ describe("Question editor", () => {
     expect(mocked.saveQuestion).toHaveBeenCalledWith(expect.objectContaining({ citations: [{ source: 5, location: "p. 88" }] }));
   });
 
+  // sources.feature: Showing where a question cites (R181)
+  it("shows the cited page in the preview", async () => {
+    const u = user();
+    render(Editor, { topic: 1 });
+    await screen.findByText("What does the ALU do?");
+    await u.click(screen.getByRole("button", { name: "Cite a source" }));
+    const citation = screen.getByRole("group", { name: "Citation 1" });
+    expect(within(citation).queryByRole("button", { name: /Show/ })).not.toBeInTheDocument();
+    await u.selectOptions(within(citation).getByLabelText("Source"), "Kirk. (2022). *Parallel*.");
+    await u.type(within(citation).getByLabelText("Page, slide or line"), "p. 88");
+    await u.click(within(citation).getByRole("button", { name: "Show page 88 in the preview" }));
+    const preview = screen.getByRole("region", { name: "Source preview" });
+    expect(within(preview).getByRole("status")).toHaveTextContent("Open the file for Kirk (2022) to see page 88.");
+  });
+
   // R49
   it("switching to single keeps the first tick and says so", async () => {
     const u = user();

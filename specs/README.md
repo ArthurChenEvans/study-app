@@ -334,3 +334,12 @@ Decided with the design: keywords are checked in any order, every answer is righ
 | R176 | Every import shows what it will add before anything changes, and backs up first |
 | R177 | After an import a toast offers Undo, and Your data shows the last import with Undo. Undo puts everything back to the backup made just before. The last import is kept beside the backups, never in the data, so it never travels with an export or sync |
 | R178 | A file can be imported from the Import button, by dropping it anywhere on the window (except a card or question field, which takes images), or by opening a `.studyapp` with the app. A big import shows its progress and can be stopped, which adds nothing. A file it can't read says why and offers another |
+
+## Finding your place in a source (approved 13 Nov 2026)
+
+| ID | Requirement |
+|---|---|
+| R179 | The source preview has a table of contents: a PDF's bookmarks, an EPUB's own contents (or its chapter titles), each slide's title, or a Markdown file's headings. The entry for where you're reading is marked, and picking one goes there |
+| R180 | A box goes straight to a page, slide or line, and Ctrl+G jumps to it. PDF pages are drawn only as they come near the screen, so going to page 300 doesn't wait for the pages before it |
+| R181 | A citation with a page, slide or line has a button that shows that spot in the preview |
+| R182 | The first time, it asks which open file is that source and remembers the file's name on this computer. The file itself is never stored. When that file isn't open, it says which file to open, and opening it shows the spot |

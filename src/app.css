@@ -680,3 +680,15 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
 .week-day.past { background: transparent; }
 .week-day[aria-current="date"] { border-color: var(--primary-ink); box-shadow: 0 3px 0 var(--primary-ink); }
 .week-date { display: grid; justify-items: center; gap: 2px; width: 48px; flex-shrink: 0; }
+
+/* Import (R178): a file it can't read, reading a file, and dropping one on the window */
+.well-wrong { --well: var(--color-error); --well-ink: var(--color-error); }
+.toast-reading { position: fixed; z-index: 60; bottom: 1.25rem; left: 50%; transform: translateX(-50%); max-width: calc(100vw - 2rem);
+  padding: 0.6rem 1rem; border-radius: 12px; border: 2px solid var(--color-base-300); background: var(--color-base-100); font-size: 15px; font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-shadow: 0 6px 20px rgb(0 0 0 / 0.12); }
+.drop-overlay { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 1rem; pointer-events: none;
+  background: color-mix(in oklch, var(--color-base-100) 82%, transparent); backdrop-filter: blur(2px); }
+.drop-card { width: min(30rem, 100%); padding: 2.5rem 1.5rem; text-align: center; border-radius: 24px;
+  border: 3px dashed var(--primary-ink); background: var(--color-base-100); overflow-wrap: anywhere; }
+.drop-icon { display: inline-grid; place-items: center; width: 72px; height: 72px; border-radius: 20px;
+  background: color-mix(in oklch, var(--primary-ink) 18%, var(--surface)); color: var(--primary-ink); }

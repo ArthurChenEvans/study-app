@@ -216,6 +216,12 @@ STATES = {
     "settings": [("dialog", "//button[contains(normalize-space(), 'Celebrations')]")],
     "overview": [("table", "//details[contains(@class,'table-view')]/summary")],
     "history": [("table", "//details[contains(@class,'table-view')]/summary")],
+    "data": [("export", "//button[contains(normalize-space(), 'Export')]"),
+             ("export-anki", "EXPORT_ANKI"),
+             ("import-anki", "UPLOAD:crates/study-api/tests/fixtures/anki/networks-modern.apkg"),
+             ("import-csv", "UPLOAD:e2e/fixtures/cpu-questions.csv"),
+             ("import-problems", "CSV_PROBLEMS"),
+             ("import-unreadable", "UPLOAD:e2e/fixtures/lecture-notes.zip")],
     "cards": [("table", "//details[contains(@class,'table-view')]/summary"), ("dialog", "//button[contains(normalize-space(), 'Settings') or contains(normalize-space(), 'Card settings')]")],
 }
 
@@ -227,6 +233,21 @@ def run_state(driver, screen: str, state: str, action: str) -> bool:
         return click(driver, "//dialog[@open]//button[@type='submit']")
     if action == "TODAY_CELL":
         return click(driver, "//*[@role='grid']//button[@aria-current='date'] | //ol[contains(@aria-label, 'Week of')]//button[@aria-current='date']")
+    if action.startswith("UPLOAD:"):
+        picker = driver.find_element(By.CSS_SELECTOR, "input[aria-label='Import a file']")
+        picker.send_keys(str(root / action[7:]))
+        settle(driver, 1.5)
+        return bool(driver.find_elements(By.CSS_SELECTOR, "dialog[open]"))
+    if action == "EXPORT_ANKI":
+        if not click(driver, "//button[contains(normalize-space(), 'Export')]"):
+            return False
+        driver.execute_script("const s = document.querySelector('dialog[open] select[aria-label=\"Kind of file\"]'); s.value = 'Anki'; s.dispatchEvent(new Event('change', { bubbles: true }));")
+        settle(driver, 0.6)
+        return True
+    if action == "CSV_PROBLEMS":
+        if not run_state(driver, screen, state, "UPLOAD:e2e/fixtures/cpu-questions.csv"):
+            return False
+        return click(driver, "//dialog[@open]//button[normalize-space()='See which']")
     return click(driver, action)
 
 

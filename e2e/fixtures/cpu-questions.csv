@@ -1,0 +1,4 @@
+question,a,b,c,answer,why,notes
+Which design keeps instructions and data on separate buses?,Von Neumann,Harvard,RISC,B,Separate buses for each,lecture 3
+Which cache level is fastest?,L1,L2,L3,E,,lecture 4
+What does the ALU do?,Arithmetic and logic,Fetches instructions,Stores data,A,It does the sums,lecture 1

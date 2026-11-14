@@ -4,7 +4,8 @@
 import JSZip from "jszip";
 import { sanitiseForeign } from "./sanitise";
 
-export interface Epub { title: string; chapters: { title: string; html: string }[] }
+export interface TocEntry { title: string; depth: number; at: number; anchor: string | null }
+export interface Epub { title: string; chapters: { title: string; html: string }[]; toc: TocEntry[] }
 
 const NOT_EPUB = "This doesn't look like an EPUB book.";
 
@@ -94,14 +95,17 @@ export async function readEpub(data: ArrayBuffer): Promise<Epub> {
 
   const opf = xml(opfText);
   const title = byLocalName(opf, "title")[0]?.textContent?.trim() ?? "Untitled book";
-  const manifest = new Map(byLocalName(opf, "item").map((item) => [item.getAttribute("id"), { href: item.getAttribute("href") ?? "", type: item.getAttribute("media-type") ?? "" }]));
-  const spine = byLocalName(opf, "itemref").map((ref) => manifest.get(ref.getAttribute("idref"))).filter((item) => item && item.type.includes("html"));
+  const manifest = new Map(byLocalName(opf, "item").map((item) => [item.getAttribute("id"), { href: item.getAttribute("href") ?? "", type: item.getAttribute("media-type") ?? "", properties: item.getAttribute("properties") ?? "" }]));
+  const navItem = [...manifest.values()].find((item) => item.properties.split(/\s+/).includes("nav"));
+  const ncxItem = manifest.get(byLocalName(opf, "spine")[0]?.getAttribute("toc") ?? "");
+  const spine = byLocalName(opf, "itemref").map((ref) => manifest.get(ref.getAttribute("idref"))).filter((item) => item && item.type.includes("html") && item !== navItem);
   if (spine.length > EPUB_LIMITS.chapters) throw new Error(TOO_MANY);
 
   // A picture used on many pages is unpacked once, but every use is counted: each one
   // becomes its own copy in the page.
   const pictures = new Map<string, string>();
   const chapters = [];
+  const paths: string[] = [];
   for (const item of spine) {
     const path = resolve(opfPath, item!.href);
     const source = await text(path);
@@ -130,7 +134,46 @@ export async function readEpub(data: ArrayBuffer): Promise<Epub> {
     const heading = body.querySelector("h1, h2, h3")?.textContent?.trim();
     const pageTitle = page.getElementsByTagName("title")[0]?.textContent?.trim();
     chapters.push({ title: heading || pageTitle || `Chapter ${chapters.length + 1}`, html: sanitiseForeign(body.innerHTML) });
+    paths.push(path);
   }
   if (chapters.length === 0) throw new Error(NOT_EPUB);
-  return { title, chapters };
+
+  // The book's own contents: the EPUB 3 nav page, or the EPUB 2 NCX. Entries pointing
+  // outside the reading order are left out.
+  const toc: TocEntry[] = [];
+  const add = (base: string, href: string, label: string, depth: number) => {
+    const at = paths.indexOf(resolve(base, href));
+    const anchor = href.includes("#") ? decodeURIComponent(href.split("#")[1]) || null : null;
+    if (at >= 0 && label.trim() && toc.length < 2000) toc.push({ title: label.trim().replace(/\s+/g, " "), depth, at, anchor });
+  };
+  if (navItem) {
+    const navPath = resolve(opfPath, navItem.href);
+    const navText = await text(navPath);
+    const navDoc = navText ? new DOMParser().parseFromString(navText, "application/xhtml+xml") : null;
+    const tocNav = navDoc ? byLocalName(navDoc, "nav").find((nav) => (nav.getAttributeNS("http://www.idpf.org/2007/ops", "type") ?? nav.getAttribute("epub:type") ?? "").split(/\s+/).includes("toc")) : undefined;
+    const walk = (list: Element, depth: number) => {
+      for (const item of Array.from(list.children).filter((child) => child.localName === "li")) {
+        const link = Array.from(item.children).find((child) => child.localName === "a");
+        if (link) add(navPath, link.getAttribute("href") ?? "", link.textContent ?? "", depth);
+        const inner = Array.from(item.children).find((child) => child.localName === "ol");
+        if (inner && depth < 4) walk(inner, depth + 1);
+      }
+    };
+    const top = tocNav ? Array.from(tocNav.children).find((child) => child.localName === "ol") : undefined;
+    if (top) walk(top, 1);
+  } else if (ncxItem) {
+    const ncxPath = resolve(opfPath, ncxItem.href);
+    const ncxText = await text(ncxPath);
+    const walk = (parent: Element, depth: number) => {
+      for (const point of Array.from(parent.children).filter((child) => child.localName === "navPoint")) {
+        const label = byLocalName(point, "text")[0]?.textContent ?? "";
+        add(ncxPath, byLocalName(point, "content")[0]?.getAttribute("src") ?? "", label, depth);
+        if (depth < 4) walk(point, depth + 1);
+      }
+    };
+    const map = ncxText ? byLocalName(xml(ncxText), "navMap")[0] : undefined;
+    if (map) walk(map, 1);
+  }
+  if (toc.length === 0) chapters.forEach((chapter, at) => toc.push({ title: chapter.title, depth: 1, at, anchor: null }));
+  return { title, chapters, toc };
 }
