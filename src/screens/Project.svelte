@@ -244,7 +244,7 @@
 </div>
 
 {#if renaming && view}
-  <RenameDialog title="Rename log" value={view.row.name} extra={{ label: "Kind", value: view.row.kind, placeholder: "e.g. Coding::Rust or Past paper::Maths" }} onSave={rename} onClose={() => (renaming = false)} />
+  <RenameDialog title="Rename log" value={view.row.name} extra={{ label: "Kind", value: view.row.kind, placeholder: "e.g. Coding::Rust" }} onSave={rename} onClose={() => (renaming = false)} />
 {/if}
 
 {#if editingStruggle}

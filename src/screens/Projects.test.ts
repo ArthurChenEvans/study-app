@@ -73,7 +73,7 @@ describe("Projects", () => {
     await u.click(await screen.findByRole("button", { name: /New log/ }));
     const dialog = screen.getByRole("dialog", { name: "New practice log" });
     const kind = within(dialog).getByRole("textbox", { name: /^Kind/ });
-    expect(kind).toHaveAttribute("placeholder", "Type any kind, e.g. Coding::Rust or Past paper::Maths");
+    expect(kind).toHaveAttribute("placeholder", "e.g. Coding::Rust");
     expect(kind).toHaveAccessibleDescription(/Put :: between levels to nest it, like Coding::Rust/);
     await u.type(within(dialog).getByLabelText("Name"), "Mug");
     await u.click(within(dialog).getByRole("button", { name: "Coding" }));

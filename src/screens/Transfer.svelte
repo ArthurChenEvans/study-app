@@ -114,7 +114,7 @@
     </section>
   {/if}
 
-  <p class="mt-5 text-sm text-muted">Backups and sync stay in <button class="link font-bold" onclick={onBackups}>Your data</button>.</p>
+  <p class="mt-5 flex flex-wrap items-center gap-2 text-sm text-muted">Backups and sync stay in <button class="btn btn-ghost btn-sm" onclick={onBackups}>Your data</button></p>
 </div>
 
 {#if exporting}<ExportDialog onClose={() => (exporting = false)} onDone={exported} />{/if}

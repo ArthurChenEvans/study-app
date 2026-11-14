@@ -245,7 +245,7 @@
             <button type="button" class="kind-chip" aria-pressed={kind.trim() === option} onclick={() => (kind = kind.trim() === option ? "" : option)}>{option}</button>
           {/each}
         </div>
-        <input id="project-kind" class="input mt-3 w-full font-mono" bind:value={kind} placeholder="Type any kind, e.g. Coding::Rust or Past paper::Maths" aria-describedby="project-kind-help" />
+        <input id="project-kind" class="input mt-3 w-full font-mono" bind:value={kind} placeholder="e.g. Coding::Rust" aria-describedby="project-kind-help" />
         <p id="project-kind-help" class="mt-1.5 text-xs text-muted">Tap one above or type your own. Put :: between levels to nest it, like Coding::Rust. Then you can filter by all Coding logs or just Rust ones.</p>
       </div>
       {#if error}<p role="alert" class="mt-4 text-sm text-error">{error}</p>{/if}
