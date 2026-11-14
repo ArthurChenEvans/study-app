@@ -7,7 +7,7 @@
   // an item card for the picked topic, and ticks for acting on several at once.
   import { X, CalendarCog, FolderInput, FolderPlus, GraduationCap, Library, Pencil, PencilLine, Play, Plus, Search, SquareStack, Tag, Trash2 } from "@lucide/svelte";
   import { tick as settle } from "svelte";
-  import RowMenu from "../components/RowMenu.svelte";
+  import { rowMenu } from "../lib/contextMenu.svelte";
   import RenameDialog from "../components/RenameDialog.svelte";
   import Highlight from "../components/Highlight.svelte";
   import Rail, { type RailItem } from "../components/list/Rail.svelte";
@@ -83,6 +83,23 @@
     new: topics.filter((t) => !quizOf(t.id)).length,
   });
 
+  // R199: the row's right-click menu, or the ticked rows' when it's one of them.
+  function menuFor(topic: TopicRow) {
+    return () => ticked.includes(topic.id) && ticked.length > 1
+      ? { label: `${ticked.length} ticked`, items: [
+          { label: `Quiz ${ticked.length} topics`, onSelect: () => onQuizTopics(ticked) },
+          { label: "Move to module…", onSelect: () => openMove(ticked) },
+          { label: "Tag…", onSelect: () => { bulkTag = ""; bulkTagging = true; } },
+        ] }
+      : { label: topic.name, items: [
+          ...(topic.question_count ? [{ label: "Start quiz", onSelect: () => onQuiz(topic.id) }] : []),
+          { label: "Edit questions", onSelect: () => onEdit(topic.id) },
+          { label: "Cards", onSelect: () => onCards(topic.id) },
+          { label: "Rename…", onSelect: () => (renaming = { kind: "topic", id: topic.id, name: topic.name }) },
+          { label: "Move to module…", onSelect: () => openMove([topic.id]) },
+          ...(topic.question_count + topic.short_count ? [{ label: "Delete quiz…", danger: true, onSelect: () => (deleting = topic) }] : []),
+        ] };
+  }
   function toggle(id: Id) {
     ticked = ticked.includes(id) ? ticked.filter((t) => t !== id) : [...ticked, id];
   }
@@ -299,7 +316,7 @@
               <tbody>
                 {#each shown as topic (topic.id)}
                   {@const quiz = quizOf(topic.id)}
-                  <tr aria-selected={selected === topic.id} onclick={() => (selected = topic.id)} ondblclick={() => onEdit(topic.id)}>
+                  <tr aria-selected={selected === topic.id} use:rowMenu={menuFor(topic)} onclick={() => (selected = topic.id)} ondblclick={() => onEdit(topic.id)}>
                     <td><input type="checkbox" class="checkbox" aria-label="Tick {topic.name}" checked={ticked.includes(topic.id)} onclick={(event) => event.stopPropagation()} onchange={() => toggle(topic.id)} /></td>
                     <td class="w-full min-w-40 max-w-0">
                       <button type="button" class="block min-h-6 w-full truncate text-left text-[15px] font-extrabold" data-topic={topic.id} title={topic.name} onkeydown={(event) => rowKeys(event, topic)}><Highlight text={topic.name} term={filter} /></button>

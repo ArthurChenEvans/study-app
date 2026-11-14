@@ -11,6 +11,7 @@
 
 <ul>
   {#each rows as name (name)}
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
     <li tabindex="0" use:rowMenu={menuFor(name)}>
       <input type="checkbox" aria-label="Tick {name}" onchange={(event) => (ticked = event.currentTarget.checked ? [...ticked, name] : ticked.filter((t) => t !== name))} />{name}
     </li>

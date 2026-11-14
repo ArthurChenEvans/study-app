@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { rowMenu } from "../lib/contextMenu.svelte";
   import { stackTable } from "../lib/stack";
   // history.feature (R26, R27, R29). Resuming an incomplete attempt is open (Q13).
   import { CirclePause, History as HistoryIcon, Play, RotateCcw } from "@lucide/svelte";
@@ -96,7 +97,7 @@
         <tbody>
           {#each group.rows as row (row.id)}
             <!-- The whole row opens the results: one button, stretched over the row. -->
-            <tr class="link-row hover:bg-base-100" aria-label="Quiz {row.id}">
+            <tr class="link-row hover:bg-base-100" aria-label="Quiz {row.id}" use:rowMenu={() => ({ label: `Quiz from ${dayLabel(row.day, today)}`, items: [{ label: "View results", onSelect: () => onView(row.id) }] })}>
               <td class="font-extrabold tabular-nums"><button class="row-link" onclick={() => onView(row.id)}><span class="sr-only">View results from</span>{" "}{dayLabel(row.day, today)}</button></td>
               <td>{names(row.topics)}</td>
               <td><SegBar tally={row.summary.overall} height={14} /></td>

@@ -2,6 +2,7 @@
   import { onMount, tick } from "svelte";
   import Sidebar, { type NavMode } from "./components/Sidebar.svelte";
   import type { StartKind } from "./components/StartMenu.svelte";
+  import ContextMenuHost from "./components/ContextMenuHost.svelte";
   import Topics from "./screens/Topics.svelte";
   import Quizzes from "./screens/Quizzes.svelte";
   import Transfer from "./screens/Transfer.svelte";
@@ -294,6 +295,7 @@
 <Pops />
 <ImportHost />
 <Toasts />
+<ContextMenuHost />
 
 {#if installingOnClose}
   <div class="modal modal-open" role="dialog" aria-modal="true" aria-labelledby="closing-h">

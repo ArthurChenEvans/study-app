@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { rowMenu } from "../lib/contextMenu.svelte";
   // sources.feature (R13, R44 to R46)
   import { X, BookOpen, Plus } from "@lucide/svelte";
   import RowMenu from "../components/RowMenu.svelte";
@@ -137,7 +138,7 @@
               </tr></thead>
               <tbody>
                 {#each shown as source (source.id)}
-                  <tr aria-selected={picked === source.id} onclick={() => (picked = source.id)}>
+                  <tr aria-selected={picked === source.id} onclick={() => (picked = source.id)} use:rowMenu={() => ({ label: source.fields.title || source.fields.authors || "Source", items: [{ label: "Edit source", onSelect: () => edit(source) }, { label: "Delete source…", danger: true, onSelect: () => (deleting = source) }] })}>
                     <td class="max-w-56"><button type="button" class="block min-h-6 w-full truncate text-left font-extrabold" onclick={() => (picked = source.id)}><Highlight text={source.fields.authors || "No author"} term={filter} /></button></td>
                     <td class="whitespace-nowrap tabular-nums" data-label="Year">{source.fields.year ?? "n.d."}</td>
                     <td class="max-w-0 w-full truncate italic" data-label="Title"><Highlight text={source.fields.title} term={filter} /></td>

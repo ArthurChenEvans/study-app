@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { rowMenu } from "../lib/contextMenu.svelte";
   import { stackTable } from "../lib/stack";
   // projects.feature (R87, R94): projects, and the issues every project shares.
   import { Box, Clock, Code, Dumbbell, FileUp, Hammer, Play, Plus } from "@lucide/svelte";
@@ -177,7 +178,7 @@
             {#each shownProjects as project (project.id)}
               {@const KindIcon = kindIcon(project.kind)}
               <!-- The whole row opens the project: one button, stretched over the row. -->
-              <tr class="link-row hover:bg-base-100">
+              <tr class="link-row hover:bg-base-100" use:rowMenu={() => ({ label: project.name, items: [{ label: "Open log", onSelect: () => onOpen(project.id) }] })}>
                 <td><span class="flex items-center gap-3"><span class="well" aria-hidden="true" style="--well: var(--color-info); --well-ink: var(--color-info)"><KindIcon class="size-5" /></span><span><button class="row-link py-1 text-[15.5px] font-extrabold" onclick={() => onOpen(project.id)}>{project.name}</button>{#if project.kind}<span class="block text-[13px] text-muted">{project.kind}</span>{/if}</span></span></td>
                 <td class="text-sm">{project.session ? "Session running" : project.last_day === null ? "Not yet" : dayLabel(project.last_day, today)}</td>
                 <td class="tabular-nums">{project.struggles}</td>
@@ -208,7 +209,7 @@
             <thead><tr class="text-muted"><th>Issue</th><th aria-sort="descending">Seen</th><th>Last seen</th><th>Drill</th><th><span class="sr-only">Actions</span></th></tr></thead>
             <tbody>
               {#each shownIssues as issue (issue.id)}
-                <tr class="hover:bg-base-100">
+                <tr class="hover:bg-base-100" use:rowMenu={() => ({ label: issue.name, items: issueMenu(issue) })}>
                   <td><span class="font-semibold">{issue.name}</span>{#if issue.drill}<div class="text-xs text-muted">{issue.drill.task}</div>{/if}</td>
                   <td class="text-sm"><b class="font-semibold tabular-nums">{issue.seen} {issue.seen === 1 ? "time" : "times"}</b> <span class="text-muted">in {issue.projects.length === 1 ? issue.projects[0] : `${issue.projects.length} logs`}</span></td>
                   <td class="text-sm">{issue.last_seen === null ? "Never" : dayLabel(issue.last_seen, today)}</td>
