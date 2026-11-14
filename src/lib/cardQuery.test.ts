@@ -48,6 +48,8 @@ describe("card search", () => {
   it("sorts by due date, newest, hardest or topic", () => {
     const cards = [card({ id: 1, due: TODAY + 3, lapses: 1, topic_name: "B" }), card({ id: 2, due: TODAY, lapses: 4, topic_name: "A" }), card({ id: 3, due: TODAY + 9, topic_name: "A", front: "Aa" })];
     expect(sortCards(cards, "due").map((row) => row.id)).toEqual([2, 1, 3]);
+    // New cards come after the ones already in review, however early they were made.
+    expect(sortCards([...cards, card({ id: 9, is_new: true, due: TODAY - 30 })], "due").map((row) => row.id)).toEqual([2, 1, 3, 9]);
     expect(sortCards(cards, "newest").map((row) => row.id)).toEqual([3, 2, 1]);
     expect(sortCards(cards, "hardest").map((row) => row.id)).toEqual([2, 1, 3]);
     expect(sortCards(cards, "topic").map((row) => row.id)).toEqual([3, 2, 1]);

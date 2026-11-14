@@ -49,7 +49,8 @@ export function filterCards(rows: BrowseRow[], query: CardQuery, panel: CardPane
 export function sortCards(rows: BrowseRow[], by: CardSort): BrowseRow[] {
   const sorted = [...rows];
   const byTopic = (a: BrowseRow, b: BrowseRow) => a.topic_name.localeCompare(b.topic_name) || a.front.localeCompare(b.front);
-  if (by === "due") sorted.sort((a, b) => a.due - b.due || byTopic(a, b));
+  // New cards wait behind the ones already in review, however early they were made.
+  if (by === "due") sorted.sort((a, b) => Number(a.is_new) - Number(b.is_new) || a.due - b.due || byTopic(a, b));
   else if (by === "newest") sorted.sort((a, b) => b.id - a.id);
   else if (by === "hardest") sorted.sort((a, b) => b.lapses - a.lapses || a.due - b.due);
   else sorted.sort(byTopic);

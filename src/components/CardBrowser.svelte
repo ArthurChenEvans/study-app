@@ -36,6 +36,13 @@
   }
 
   const query = $derived(parseQuery(text));
+  // A big collection shows 100 at a time, so the list stays quick. A new search starts again.
+  const PAGE = 100;
+  let limit = $state(PAGE);
+  $effect(() => {
+    void [text, sort, pickedTopics.length, status.length, kinds.length, tags.length];
+    limit = PAGE;
+  });
   const shown = $derived(rows ? sortCards(filterCards(rows, query, { topics: pickedTopics, status, kinds, tags }, today), sort) : []);
   const panelCount = $derived(pickedTopics.length + status.length + kinds.length + tags.length);
   const allTags = $derived([...new Set((rows ?? []).flatMap((row) => row.tags))].sort());
@@ -57,7 +64,7 @@
     ...tags.map((tag) => ({ label: `#${tag}`, clear: () => (tags = tags.filter((t) => t !== tag)) })),
   ]);
   const whenDue = (row: BrowseRow) => (row.archived ? "Paused" : row.is_new ? "New" : row.due <= today ? "Today" : dueLabel(row.due, today));
-  const allTicked = $derived(shown.length > 0 && shown.every((row) => ticked.includes(row.id)));
+  const allTicked = $derived(shown.length > 0 && shown.slice(0, limit).every((row) => ticked.includes(row.id)));
 
   // ---------- Acting on ticked cards ----------
   const tickedRows = $derived((rows ?? []).filter((row) => ticked.includes(row.id)));
@@ -132,7 +139,7 @@
           <h2 id="card-filters-h" class="text-[16px] font-black">Filters</h2>
           {#if panelCount}<button class="link text-sm font-bold" onclick={() => { pickedTopics = []; status = []; kinds = []; tags = []; }}>Clear all</button>{/if}
         </div>
-        <fieldset class="flex flex-col gap-1.5">
+        <fieldset class="flex max-h-80 flex-col gap-1.5 overflow-y-auto pr-1">
           <legend class="eyebrow mb-1.5">Topics</legend>
           {#each tree as group (group.name)}
             <span class="mt-1 text-[13px] font-black text-muted">{group.name}</span>
@@ -189,11 +196,11 @@
         <div class="panel pane">
           <table class="rows table-fixed" aria-label="All cards">
             <thead><tr>
-              <th class="w-12"><span><input type="checkbox" class="checkbox" aria-label="Tick all {shown.length} shown" checked={allTicked} onchange={() => (ticked = allTicked ? [] : shown.map((row) => row.id))} /></span></th>
+              <th class="w-12"><span><input type="checkbox" class="checkbox" aria-label="Tick all {Math.min(limit, shown.length)} shown" checked={allTicked} onchange={() => (ticked = allTicked ? [] : shown.slice(0, limit).map((row) => row.id))} /></span></th>
               <th><span>Front</span></th><th class="max-tab:hidden"><span>Answer</span></th><th class="w-44"><span>Topic</span></th><th class="w-28"><span>Due</span></th>
             </tr></thead>
             <tbody>
-              {#each shown as row (row.id)}
+              {#each shown.slice(0, limit) as row (row.id)}
                 <tr aria-label={row.front}>
                   <td><input type="checkbox" class="checkbox" aria-label="Tick {row.front}" checked={ticked.includes(row.id)} onchange={() => (ticked = flip(ticked, row.id))} /></td>
                   <td class="max-w-0"><button type="button" class="block w-full truncate text-left font-extrabold" title={row.front} onclick={() => onEdit(row.topic, row.note)}>{row.front}</button><span class="block text-xs text-muted">{row.kind}</span></td>
@@ -205,6 +212,10 @@
             </tbody>
           </table>
         </div>
+        {#if shown.length > limit}
+          {@const left = shown.length - limit}
+          <button class="btn btn-outline self-center" onclick={() => (limit += PAGE)}>Show {Math.min(PAGE, left)} more ({left} left)</button>
+        {/if}
       {:else if rows}
         <div class="panel p-8">
           <p class="font-extrabold">{rows.length ? "No cards match" : "No cards yet"}</p>

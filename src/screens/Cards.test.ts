@@ -120,6 +120,21 @@ describe("Cards home", () => {
     expect(await screen.findByRole("button", { name: /^Filters/ })).toHaveAttribute("aria-expanded", "false");
   });
 
+  // R191: a big collection shows 100 at a time, so the list stays quick
+  it("shows a long list 100 cards at a time", async () => {
+    const u = userEvent.setup();
+    mocked.browseCards.mockResolvedValue(Array.from({ length: 250 }, (_, n) => row({ id: n + 1, note: n + 1, front: `Card ${n + 1}` })));
+    render(Cards, props());
+    await u.click(await screen.findByRole("tab", { name: "Browse all" }));
+    const table = await screen.findByRole("table", { name: "All cards" });
+    expect(within(table).getAllByRole("row")).toHaveLength(101);
+    await u.click(screen.getByRole("button", { name: "Show 100 more (150 left)" }));
+    expect(within(table).getAllByRole("row")).toHaveLength(201);
+    await u.click(screen.getByRole("button", { name: "Show 50 more (50 left)" }));
+    expect(within(table).getAllByRole("row")).toHaveLength(251);
+    expect(screen.queryByRole("button", { name: /^Show \d+ more/ })).not.toBeInTheDocument();
+  });
+
   it("pauses, moves and deletes ticked cards", async () => {
     const u = userEvent.setup();
     mocked.browseCards.mockResolvedValue([row({ id: 1, note: 10, front: "TLB" }), row({ id: 2, note: 10, front: "TLB reversed" }), row({ id: 3, note: 11, front: "Cache" })]);
