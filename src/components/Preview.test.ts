@@ -9,6 +9,8 @@ vi.mock("../lib/api", async (original) => {
 
 import { api } from "../lib/api";
 import { fileFor, forget, remember, showCitation } from "../lib/sourceFiles.svelte";
+import { readerDrop } from "../lib/readerDrop.svelte";
+import { fireEvent } from "@testing-library/svelte";
 import Preview from "./Preview.svelte";
 
 const mocked = vi.mocked(api);
@@ -33,6 +35,19 @@ describe("Source preview", () => {
     render(Preview);
     expect(screen.getByText("Read alongside as you write")).toBeInTheDocument();
     expect(screen.getByLabelText("Open file")).toHaveAttribute("accept", ".pdf,.pptx,.ppt,.odp,.epub,.md,.markdown,.txt");
+  });
+
+  // R195: a file dropped on the reader opens there instead of starting an import
+  it("opens a file dropped on it, in the browser and from the desktop app's drop", async () => {
+    render(Preview);
+    const reader = document.querySelector("[data-reader-drop]")!;
+    expect(reader).not.toBeNull();
+    const dataTransfer = { files: [file("notes.md", "# Dropped")], types: ["Files"] };
+    await fireEvent.drop(reader, { dataTransfer });
+    expect(await screen.findByRole("tab", { name: /notes\.md/ })).toBeInTheDocument();
+    readerDrop.files = [file("more.txt")];
+    expect(await screen.findByRole("tab", { name: /more\.txt/ })).toBeInTheDocument();
+    expect(readerDrop.files).toEqual([]);
   });
 
   // sources.feature: Markdown and txt show line numbers

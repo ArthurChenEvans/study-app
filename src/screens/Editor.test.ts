@@ -11,6 +11,7 @@ vi.mock("../lib/api", async (original) => {
 });
 
 import { api } from "../lib/api";
+import { live } from "../lib/celebrations.svelte";
 import Editor from "./Editor.svelte";
 
 const mocked = vi.mocked(api);
@@ -66,6 +67,21 @@ describe("Question editor", () => {
       short: null,
     });
     expect(screen.getByLabelText("Question")).toHaveValue("");
+    // R194: a toast says how it went, with the topic's new count
+    expect(live.toasts.at(-1)).toMatchObject({ text: "Question saved", sub: "CPU now has 2 questions" });
+  });
+
+  // R194: a way back to Quizzes, and a toast when a save fails too
+  it("goes back to Quizzes, and says so in a toast when a save fails", async () => {
+    const u = user();
+    const onBack = vi.fn();
+    mocked.saveQuestion.mockRejectedValue({ message: "write the question" });
+    render(Editor, { topic: 1, onBack });
+    await screen.findByText("What does the ALU do?");
+    await u.click(screen.getByRole("button", { name: "Save question" }));
+    expect(live.toasts.at(-1)).toMatchObject({ text: "Couldn't save the question", sub: "write the question", error: true });
+    await u.click(screen.getByRole("button", { name: "Back to Quizzes" }));
+    expect(onBack).toHaveBeenCalled();
   });
 
   it("shows the reason a save was refused", async () => {

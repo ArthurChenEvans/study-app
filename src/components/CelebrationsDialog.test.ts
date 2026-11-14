@@ -71,6 +71,17 @@ describe("CelebrationsDialog", () => {
     expect(mocked.setCelebrations).not.toHaveBeenCalled();
   });
 
+  // R193: confetti in the theme's colours, or a rainbow, kept on this computer
+  it("picks the confetti colours", async () => {
+    const u = userEvent.setup();
+    render(CelebrationsDialog, { onClose: vi.fn() });
+    const colours = screen.getByRole("radiogroup", { name: "Confetti colours" });
+    expect(within(colours).getByRole("radio", { name: "My theme's" })).toHaveAttribute("aria-checked", "true");
+    await u.click(within(colours).getByRole("radio", { name: "Rainbow" }));
+    expect(device.confetti).toBe("rainbow");
+    expect(JSON.parse(localStorage.getItem("studyapp-celebrations-device") ?? "{}").confetti).toBe("rainbow");
+  });
+
   it("previews a moment even when it's turned off", async () => {
     const u = userEvent.setup();
     live.prefs.moments.reviews = "off";

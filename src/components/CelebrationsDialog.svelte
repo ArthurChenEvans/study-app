@@ -135,6 +135,8 @@
           <input type="range" class="range range-sm w-48" min="0" max="1" step="0.05" value={device.volume} oninput={(event) => changeDevice({ volume: Number(event.currentTarget.value) })} />
         </label>
         {@render toggle("Sound for big moments only", device.bigSoundOnly, () => changeDevice({ bigSoundOnly: !device.bigSoundOnly }))}
+        <!-- R193 -->
+        {@render seg("Confetti colours", [{ value: "theme", label: "My theme's" }, { value: "rainbow", label: "Rainbow" }], device.confetti, (value) => changeDevice({ confetti: value as "theme" | "rainbow" }))}
         <p class="text-sm text-muted">The Sound switch in the sidebar turns every sound on or off.</p>
       </div>
     </section>

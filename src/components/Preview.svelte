@@ -12,6 +12,7 @@
   import { locationTarget, markdownHeadings } from "../lib/toc";
   import PdfView from "./PdfView.svelte";
   import Contents from "./PreviewContents.svelte";
+  import { readerDrop } from "../lib/readerDrop.svelte";
 
   type Content =
     | { state: "loading" }
@@ -130,8 +131,26 @@
   }
 
   function onFiles(event: Event) {
+    openFiles(Array.from((event.currentTarget as HTMLInputElement).files ?? []));
+    input.value = "";
+  }
+
+  // R195: a file dropped on the reader opens here. The browser hands it over directly, and the
+  // desktop app's window drop leaves it in readerDrop.
+  function dropped(event: DragEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    openFiles(Array.from(event.dataTransfer?.files ?? []));
+  }
+  $effect(() => {
+    if (!readerDrop.files.length) return;
+    const files = readerDrop.files;
+    readerDrop.files = [];
+    openFiles(files);
+  });
+
+  function openFiles(files: File[]) {
     refused = "";
-    const files = Array.from((event.currentTarget as HTMLInputElement).files ?? []);
     for (const file of files) {
       const kind = kindOf(file.name);
       if (!kind) {
@@ -150,7 +169,6 @@
         }
       });
     }
-    input.value = "";
   }
 
   function close(id: number) {
@@ -184,6 +202,7 @@
 
 <input bind:this={input} type="file" class="hidden" accept={ACCEPT} multiple aria-label="Open file" onchange={onFiles} />
 
+<div class="contents h-full" data-reader-drop role="region" aria-label="Reader" ondragover={(event) => event.preventDefault()} ondrop={dropped}>
 {#if tabs.length === 0}
   <div class="grid h-full place-items-center p-12">
     <div class="drop max-w-sm p-8 text-center">
@@ -269,3 +288,4 @@
     {/if}
   </div>
 {/if}
+</div>
