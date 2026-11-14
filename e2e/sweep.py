@@ -234,8 +234,14 @@ def run_state(driver, screen: str, state: str, action: str) -> bool:
     if action == "TODAY_CELL":
         return click(driver, "//*[@role='grid']//button[@aria-current='date'] | //ol[contains(@aria-label, 'Week of')]//button[@aria-current='date']")
     if action.startswith("UPLOAD:"):
-        picker = driver.find_element(By.CSS_SELECTOR, "input[aria-label='Import a file']")
-        picker.send_keys(str(root / action[7:]))
+        # WebKitWebDriver can't upload files, so the page is handed one built from its bytes.
+        import base64
+        path = root / action[7:]
+        driver.execute_script(
+            "const [name, data] = arguments; const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));"
+            "const input = document.querySelector(\"input[aria-label='Import a file']\"); const list = new DataTransfer();"
+            "list.items.add(new File([bytes], name)); input.files = list.files; input.dispatchEvent(new Event('change', { bubbles: true }));",
+            path.name, base64.b64encode(path.read_bytes()).decode())
         settle(driver, 1.5)
         return bool(driver.find_elements(By.CSS_SELECTOR, "dialog[open]"))
     if action == "EXPORT_ANKI":
