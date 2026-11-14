@@ -22,4 +22,18 @@ describe("App shortcuts", () => {
     const input = await screen.findByRole("searchbox", { name: "Search" });
     expect(input).toHaveFocus();
   });
+
+  // R186: every screen comes in the same way, and nothing inside it adds a second entrance
+  it("brings every screen in with the same entrance", async () => {
+    const u = userEvent.setup();
+    const { container } = render(App);
+    const entrance = () => container.querySelector("main > .screen-enter");
+    await screen.findByRole("heading", { level: 1 });
+    expect(entrance()).not.toBeNull();
+    const first = entrance();
+    await u.click(screen.getAllByRole("link", { name: /^Topics/ })[0]);
+    await screen.findByRole("heading", { level: 1, name: "Topics" });
+    expect(entrance()).not.toBe(first);
+    expect(container.querySelectorAll("main .rise").length).toBe(0);
+  });
 });

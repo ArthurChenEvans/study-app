@@ -80,6 +80,8 @@ pub enum PracticeError {
     NoTask,
     #[error("give the project a name")]
     NoProjectName,
+    #[error("there's already an issue called {0}")]
+    IssueTaken(String),
     #[error("start a session before logging a struggle")]
     NoSession,
     #[error("a session is already running on this project")]

@@ -6,7 +6,8 @@
 
   export type MenuItem = { label: string; onSelect: () => void; danger?: boolean };
 
-  let { label, items, small = false }: { label: string; items: MenuItem[]; small?: boolean } = $props();
+  // `text` shows a visible word beside the dots, for menus that would otherwise be easy to miss.
+  let { label, items, small = false, text = "" }: { label: string; items: MenuItem[]; small?: boolean; text?: string } = $props();
 
   let open = $state(false);
   let button = $state<HTMLButtonElement>();
@@ -57,11 +58,11 @@
   <button
     bind:this={button}
     type="button"
-    class="btn btn-ghost btn-square {small ? 'btn-sm' : ''}"
+    class="btn btn-ghost {text ? 'btn-outline' : 'btn-square'} {small ? 'btn-sm' : ''}"
     aria-label={label}
     aria-haspopup="menu"
     aria-expanded={open}
-    onclick={() => (open ? close() : show())}><Ellipsis class="size-4" /></button
+    onclick={() => (open ? close() : show())}><Ellipsis class="size-4" />{text}</button
   >
   {#if open}
     <div bind:this={menu} role="menu" aria-label={label} tabindex="-1" class="row-menu" onkeydown={keys}>

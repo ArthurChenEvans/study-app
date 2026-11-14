@@ -350,3 +350,10 @@ Decided with the design: keywords are checked in any order, every answer is righ
 |---|---|
 | R183 | Nine colour themes, built in OKLCH: Mono, Coffee, Honey, Brick, Rose, Lavender, Ocean, Miku and Sage, each in light and dark. Coffee is the default. In every theme, mode and palette, text passes 4.5:1 (and APCA Lc 60 for body text, Lc 45 for muted and bold labels), fills pass 3:1, and colour-blind safe right and wrong stay apart under protanopia, deuteranopia and tritanopia |
 | R184 | Settings picks the colour theme. Each option previews itself in the current mode and palette, picking one applies it straight away, and the choice is remembered on this computer |
+
+## Editing and deleting everything you make (approved 14 Nov 2026)
+
+| ID | Requirement |
+|---|---|
+| R185 | Everything you make can be renamed or edited and deleted where it lives. Modules (from a labelled Module menu on Topics) and topics can be renamed, and a recall checklist on one takes the new name. Quiz questions can be deleted from the editor, and past quiz results keep their own copy. Recall checklists can be deleted from the Recall list. Projects can be renamed (name and kind) and deleted. Struggles can be edited and deleted. Issues can be renamed (not to a name another issue has) and deleted, with their drills. Drills can be edited (task and hints) and deleted. Every delete asks first and says what goes with it |
+| R186 | Every screen comes in with the same entrance, once, when you go to it. Nothing inside a screen adds a second entrance of its own |

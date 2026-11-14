@@ -204,6 +204,24 @@ impl Store {
         Ok(())
     }
 
+    pub fn rename_module(&mut self, module: ModuleId, name: &str) -> Result<()> {
+        if self.connection.execute("UPDATE modules SET name = ?2 WHERE id = ?1 AND name IS NOT ?2", params![module.0, name.trim()])? == 0
+            && !self.connection.query_row("SELECT EXISTS (SELECT 1 FROM modules WHERE id = ?1)", [module.0], |row| row.get::<_, bool>(0))?
+        {
+            return Err(StoreError::NotFound("module"));
+        }
+        Ok(())
+    }
+
+    pub fn rename_topic(&mut self, topic: TopicId, name: &str) -> Result<()> {
+        if self.connection.execute("UPDATE topics SET name = ?2 WHERE id = ?1 AND name IS NOT ?2", params![topic.0, name.trim()])? == 0
+            && !self.connection.query_row("SELECT EXISTS (SELECT 1 FROM topics WHERE id = ?1)", [topic.0], |row| row.get::<_, bool>(0))?
+        {
+            return Err(StoreError::NotFound("topic"));
+        }
+        Ok(())
+    }
+
     pub fn create_topic(&mut self, name: &str, module: Option<ModuleId>) -> Result<TopicId> {
         self.connection.execute(
             "INSERT INTO topics (name, module_id) VALUES (?1, ?2)",

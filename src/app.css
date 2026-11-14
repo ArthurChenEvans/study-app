@@ -148,7 +148,8 @@
   @keyframes pop { from { transform: scale(.8); } to { transform: none; } }
   .rise { animation: rise var(--dur-base) var(--ease-out) both; }
   .pop { animation: pop var(--dur-base) var(--ease-out) both; }
-  .rise-2 { animation-delay: 60ms; } .rise-3 { animation-delay: 120ms; } .rise-4 { animation-delay: 180ms; }
+  /* R186: the one entrance every screen shares */
+  .screen-enter { animation: rise var(--dur-base) var(--ease-out) both; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
 
   /* Type scale: keep DaisyUI's small sizes on the scale (12px minimum) and weights to 400 and 600 */

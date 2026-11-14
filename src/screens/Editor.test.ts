@@ -129,6 +129,22 @@ describe("Question editor", () => {
     expect(mocked.updateQuestion).toHaveBeenCalledWith(10, expect.objectContaining({ text: "What is the ALU's job?", tags: ["alu"] }));
   });
 
+  // R185: a question can be deleted, after asking, and the list updates
+  it("deletes the question being edited after asking", async () => {
+    const u = user();
+    mocked.question.mockResolvedValue({ topic: 1, text: "What does the ALU do?", multiple: false, options: [{ text: "A", correct: true }, { text: "B", correct: false }, { text: "C", correct: false }], explanation: "", tags: [], citations: [], short: null });
+    render(Editor, { topic: 1 });
+    await u.click(await screen.findByRole("button", { name: "What does the ALU do?" }));
+    await u.click(screen.getByRole("button", { name: "Delete question" }));
+    const dialog = screen.getByRole("dialog", { name: "Delete this question?" });
+    expect(dialog).toHaveTextContent("Past quiz results keep their answers.");
+    mocked.questionsIn.mockResolvedValue([]);
+    await u.click(within(dialog).getByRole("button", { name: "Delete question" }));
+    expect(mocked.deleteQuestion).toHaveBeenCalledWith(10);
+    expect(screen.getByRole("heading", { name: "New question" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "What does the ALU do?" })).toBeNull();
+  });
+
   // sources.feature: Cite sources on a question
   it("cites a source with a page", async () => {
     const u = user();

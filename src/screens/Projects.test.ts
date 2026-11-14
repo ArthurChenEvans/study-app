@@ -9,6 +9,8 @@ vi.mock("../lib/api", async (original) => {
     api: {
       projects: vi.fn(), issues: vi.fn(), today: vi.fn(), createProject: vi.fn(),
       project: vi.fn(), topics: vi.fn(), startProjectSession: vi.fn(), endProjectSession: vi.fn(), logStruggle: vi.fn(),
+      updateProject: vi.fn(), deleteProject: vi.fn(), deleteStruggle: vi.fn(),
+      updateStruggle: vi.fn(), renameIssue: vi.fn(), deleteIssue: vi.fn(), updateDrill: vi.fn(), deleteDrill: vi.fn(),
     },
   };
 });
@@ -90,6 +92,44 @@ describe("Projects", () => {
     mocked.issues.mockResolvedValue([]);
     render(Projects, {});
     expect(await screen.findByRole("heading", { name: "Log what trips you up while you work" })).toBeInTheDocument();
+  });
+
+  // R185: issues and drills can be edited and deleted from the issues list
+  it("edits and deletes an issue's drill, renames and deletes the issue", async () => {
+    const u = userEvent.setup();
+    mocked.projects.mockResolvedValue([row()]);
+    mocked.issues.mockResolvedValue([{ id: 1, name: "Off-by-one in loops", seen: 4, projects: ["Study app"], last_seen: TODAY - 1, drill }]);
+    render(Projects, { onDrills: vi.fn() });
+    await u.click(await screen.findByRole("tab", { name: /Issues/ }));
+    const menu = () => screen.getByRole("button", { name: "Off-by-one in loops actions" });
+
+    await u.click(menu());
+    await u.click(screen.getByRole("menuitem", { name: "Edit drill…" }));
+    let dialog = screen.getByRole("dialog", { name: "Edit drill" });
+    expect(within(dialog).getByRole("textbox", { name: "Task" })).toHaveValue("Loop over a slice");
+    await u.type(within(dialog).getByRole("textbox", { name: "Hints" }), "0..len");
+    await u.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(mocked.updateDrill).toHaveBeenCalledWith(5, "Loop over a slice", "0..len");
+
+    await u.click(menu());
+    await u.click(screen.getByRole("menuitem", { name: "Rename issue…" }));
+    dialog = screen.getByRole("dialog", { name: "Rename issue" });
+    await u.clear(within(dialog).getByRole("textbox", { name: "Name" }));
+    await u.type(within(dialog).getByRole("textbox", { name: "Name" }), "Off by one");
+    await u.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(mocked.renameIssue).toHaveBeenCalledWith(1, "Off by one");
+
+    await u.click(menu());
+    await u.click(screen.getByRole("menuitem", { name: "Delete drill…" }));
+    await u.click(within(screen.getByRole("dialog", { name: "Delete this drill?" })).getByRole("button", { name: "Delete drill" }));
+    expect(mocked.deleteDrill).toHaveBeenCalledWith(5);
+
+    await u.click(menu());
+    await u.click(screen.getByRole("menuitem", { name: "Delete issue…" }));
+    dialog = screen.getByRole("dialog", { name: "Delete the issue Off-by-one in loops?" });
+    expect(dialog).toHaveTextContent("Struggles that named it keep going, without an issue.");
+    await u.click(within(dialog).getByRole("button", { name: "Delete issue" }));
+    expect(mocked.deleteIssue).toHaveBeenCalledWith(1);
   });
 
   // projects.feature (R94)
@@ -179,5 +219,44 @@ describe("A project", () => {
     await u.click(screen.getByRole("radio", { name: "All" }));
     await u.type(screen.getByRole("searchbox", { name: "Search struggles" }), "slice");
     expect(screen.getAllByRole("listitem")).toHaveLength(1);
+  });
+
+  // R185: a project can be renamed and deleted, and a struggle deleted
+  it("renames a project, deletes a struggle, then deletes the project", async () => {
+    const u = userEvent.setup();
+    const onBack = vi.fn();
+    mocked.project.mockResolvedValue(view({}, [struggle()]));
+    render(Project, { id: 1, onBack });
+    await u.click(await screen.findByRole("button", { name: "Project actions" }));
+    await u.click(screen.getByRole("menuitem", { name: "Rename project…" }));
+    const rename = screen.getByRole("dialog", { name: "Rename project" });
+    expect(within(rename).getByRole("textbox", { name: "Name" })).toHaveValue("Study app");
+    expect(within(rename).getByRole("textbox", { name: "Kind" })).toHaveValue("Coding");
+    await u.clear(within(rename).getByRole("textbox", { name: "Name" }));
+    await u.type(within(rename).getByRole("textbox", { name: "Name" }), "Shudhana");
+    await u.click(within(rename).getByRole("button", { name: "Save" }));
+    expect(mocked.updateProject).toHaveBeenCalledWith(1, "Shudhana", "Coding");
+
+    await u.click(screen.getByRole("button", { name: "Struggle actions: Lifetime error returning a reference" }));
+    await u.click(screen.getByRole("menuitem", { name: "Edit struggle…" }));
+    const edit = screen.getByRole("dialog", { name: "Edit struggle" });
+    expect(within(edit).getByRole("textbox", { name: "Why it wasn't obvious" })).toHaveValue("didn't see the borrow");
+    await u.type(within(edit).getByRole("textbox", { name: "What tripped you up" }), " again");
+    await u.click(within(edit).getByRole("button", { name: "Save" }));
+    expect(mocked.updateStruggle).toHaveBeenCalledWith(1, "Lifetime error returning a reference again", "didn't see the borrow");
+
+    await u.click(screen.getByRole("button", { name: "Struggle actions: Lifetime error returning a reference" }));
+    await u.click(screen.getByRole("menuitem", { name: "Delete struggle…" }));
+    mocked.project.mockResolvedValue(view({ struggles: 0 }, []));
+    await u.click(within(screen.getByRole("dialog", { name: "Delete this struggle?" })).getByRole("button", { name: "Delete struggle" }));
+    expect(mocked.deleteStruggle).toHaveBeenCalledWith(1);
+
+    await u.click(screen.getByRole("button", { name: "Project actions" }));
+    await u.click(screen.getByRole("menuitem", { name: "Delete project…" }));
+    const dialog = screen.getByRole("dialog", { name: /Delete .+\?/ });
+    expect(dialog).toHaveTextContent("Its sessions and struggles go too.");
+    await u.click(within(dialog).getByRole("button", { name: "Delete project" }));
+    expect(mocked.deleteProject).toHaveBeenCalledWith(1);
+    expect(onBack).toHaveBeenCalled();
   });
 });

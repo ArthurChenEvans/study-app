@@ -171,7 +171,7 @@ fn shapes(scratch: &str) -> BTreeMap<String, Vec<Value>> {
     put(&["answer.picked", "finish_check.recalled"], &numbers_list);
     put(&["set_topic_tags.tags"], &vec![json!(["a", "b"]), json!([])]);
     put(&["archive_card.archived", "sync_now.auto", "sync_settle.other"], &flag);
-    put(&["create_module.name", "create_topic.name", "create_project.name", "create_project.kind", "answer_text.typed", "try_short_answer.typed", "finish_check.dump", "rate_drill.note", "known_drill.issue", "dismiss_suggestion.key", "sync_rename.name", "restore_preview.name", "restore_backup.name", "import_preview.name"], &text);
+    put(&["create_module.name", "rename_module.name", "rename_topic.name", "update_project.name", "update_project.kind", "update_struggle.what", "update_struggle.why", "rename_issue.name", "update_drill.task", "update_drill.hints", "create_topic.name", "create_project.name", "create_project.kind", "answer_text.typed", "try_short_answer.typed", "finish_check.dump", "rate_drill.note", "known_drill.issue", "dismiss_suggestion.key", "sync_rename.name", "restore_preview.name", "restore_backup.name", "import_preview.name"], &text);
     shapes
 }
 

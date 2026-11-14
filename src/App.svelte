@@ -208,6 +208,8 @@
   {#if !["quiz", "recall-session", "card-review", "session-review", "drills"].includes(route.screen)}<Sidebar current={navScreen} {due} {backup} {sync} {mode} onNavigate={(screen) => go({ screen })} />{/if}
   <main class="min-w-0 flex-1" class:pb-24={mode === "dock"}>
     {#key dataVersion}
+    <!-- R186: every screen comes in the same way, once, when you go to it -->
+    {#key route.screen}<div class="screen-enter">
     {#if route.screen === "topics"}
       <Topics onCards={(topic) => go({ screen: "topic-cards", topic, note: null })} onSearch={(text) => go({ screen: "search", text })} onEdit={(topic) => go({ screen: "editor", topic })} onQuiz={(topic) => go({ screen: "setup-for", topics: [topic] })} onQuizTopics={(topics) => go({ screen: "setup-for", topics })} />
     {:else if route.screen === "editor"}
@@ -257,6 +259,7 @@
     {:else}
       <Overview onNavigate={(screen) => go({ screen })} onQuizTopics={(topics) => go({ screen: "setup-for", topics })} />
     {/if}
+    </div>{/key}
     {/key}
   </main>
 </div>

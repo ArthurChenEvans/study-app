@@ -29,7 +29,7 @@ use study_store::dates::DateId;
 use study_api::transfer::{ExportFile, ExportRequest, ExportSummary, ImportChoice, ImportPreview, ImportResult};
 use study_api::practice::{DrillView, IssueView, ProjectRow, ProjectView, QuizQueue, ReviewChoice, StruggleInput, StruggleView, TopicQuizView};
 use study_core::practice::DrillRating;
-use study_store::practice::{DrillId, ProjectId, SessionId, StruggleId};
+use study_store::practice::{DrillId, IssueId, ProjectId, SessionId, StruggleId};
 use study_store::recall::{ChecklistId, Point, Subject};
 use study_store::search::{Hit, SearchQuery};
 use study_store::{AttemptId, HistoryRow, ModuleId, ModuleRow, SourceRow, Store, TopicRow};
@@ -192,6 +192,18 @@ fn update_source(state: AppState, id: SourceId, fields: SourceFields) -> ApiResu
 #[tauri::command]
 fn delete_source(state: AppState, id: SourceId) -> ApiResult<usize> {
     with(state, |app| app.delete_source(id))
+}
+#[tauri::command]
+fn rename_module(state: AppState, module: ModuleId, name: String) -> ApiResult<()> {
+    with(state, |app| app.rename_module(module, &name))
+}
+#[tauri::command]
+fn rename_topic(state: AppState, topic: TopicId, name: String) -> ApiResult<()> {
+    with(state, |app| app.rename_topic(topic, &name))
+}
+#[tauri::command]
+fn update_project(state: AppState, id: ProjectId, name: String, kind: String) -> ApiResult<()> {
+    with(state, |app| app.update_project(id, &name, &kind))
 }
 #[tauri::command]
 fn delete_module(state: AppState, module: ModuleId) -> ApiResult<()> {
@@ -452,6 +464,26 @@ fn log_struggle(state: AppState, project: ProjectId, input: StruggleInput) -> Ap
 #[tauri::command]
 fn delete_struggle(state: AppState, id: StruggleId) -> ApiResult<()> {
     with(state, |app| app.delete_struggle(id))
+}
+#[tauri::command]
+fn update_struggle(state: AppState, id: StruggleId, what: String, why: String) -> ApiResult<()> {
+    with(state, |app| app.update_struggle(id, &what, &why))
+}
+#[tauri::command]
+fn rename_issue(state: AppState, id: IssueId, name: String) -> ApiResult<()> {
+    with(state, |app| app.rename_issue(id, &name))
+}
+#[tauri::command]
+fn delete_issue(state: AppState, id: IssueId) -> ApiResult<()> {
+    with(state, |app| app.delete_issue(id))
+}
+#[tauri::command]
+fn update_drill(state: AppState, id: DrillId, task: String, hints: String) -> ApiResult<()> {
+    with(state, |app| app.update_drill(id, &task, &hints))
+}
+#[tauri::command]
+fn delete_drill(state: AppState, id: DrillId) -> ApiResult<()> {
+    with(state, |app| app.delete_drill(id))
 }
 #[tauri::command]
 fn struggles_to_review(state: AppState, project: ProjectId) -> ApiResult<Vec<StruggleView>> {
@@ -849,6 +881,11 @@ pub fn run() {
             end_project_session,
             log_struggle,
             delete_struggle,
+            rename_issue,
+            update_struggle,
+            delete_issue,
+            update_drill,
+            delete_drill,
             struggles_to_review,
             review_struggle,
             issues,
@@ -911,6 +948,9 @@ pub fn run() {
             modules,
             create_module,
             delete_module,
+            rename_module,
+            rename_topic,
+            update_project,
             update_source,
             delete_source,
             topics,

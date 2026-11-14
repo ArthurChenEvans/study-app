@@ -373,6 +373,16 @@ impl App {
             .create_module(required(name, "give the module a name")?)?)
     }
 
+    /// R185
+    pub fn rename_module(&mut self, module: ModuleId, name: &str) -> ApiResult<()> {
+        Ok(self.store.rename_module(module, required(name, "give the module a name")?)?)
+    }
+
+    /// R185
+    pub fn rename_topic(&mut self, topic: TopicId, name: &str) -> ApiResult<()> {
+        Ok(self.store.rename_topic(topic, required(name, "give the topic a name")?)?)
+    }
+
     pub fn delete_module(&mut self, module: ModuleId) -> ApiResult<()> {
         Ok(self.store.delete_module(module)?)
     }
@@ -485,8 +495,12 @@ impl App {
     // ---------- Quiz ----------
 
     pub fn start_quiz(&mut self, setup: QuizSetupInput) -> ApiResult<QuizView> {
+        // A topic named twice is still one topic (and a list of thousands mustn't stall).
+        let mut topics = setup.topics;
+        let mut seen = std::collections::HashSet::new();
+        topics.retain(|topic| seen.insert(*topic));
         let settings = QuizSettings {
-            topics: setup.topics,
+            topics,
             amount: setup.count.map_or(Amount::All, Amount::Count),
             pick: if setup.even { Pick::Even } else { Pick::Random },
             question_order: if setup.shuffle_questions {

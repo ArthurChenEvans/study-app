@@ -143,7 +143,7 @@
           </button>
         </div>
         {#if showSettings}
-        <div id="quiz-settings" class="panel rise mt-3 divide-y">
+        <div id="quiz-settings" class="panel mt-3 divide-y">
           {#if anyShort}
             {#snippet typesControl()}<Seg label="Question types" bind:value={types} options={[{ value: "Both", label: "Both" }, { value: "Mcq", label: "MCQ" }, { value: "Short", label: "Short answer" }]} />{/snippet}
             {@render row("Question types", "Mixed together in the order below.", typesControl)}

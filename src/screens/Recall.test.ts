@@ -8,7 +8,7 @@ vi.mock("../lib/api", async (original) => {
     ...actual,
     api: {
       recallList: vi.fn(), recallSchedule: vi.fn(), today: vi.fn(), modules: vi.fn(), topics: vi.fn(),
-      createChecklist: vi.fn(), setRecallSchedule: vi.fn(), resetRecallSchedule: vi.fn(),
+      createChecklist: vi.fn(), setRecallSchedule: vi.fn(), resetRecallSchedule: vi.fn(), deleteChecklist: vi.fn(),
     },
   };
 });
@@ -62,6 +62,22 @@ describe("Recall list", () => {
     expect(names[1]).toContain("GPU");
     await userEvent.click(within(card).getByRole("button", { name: "Start recall" }));
     expect(onStart).toHaveBeenCalledWith(1);
+  });
+
+  // R185: a checklist can be deleted from the list, after asking
+  it("deletes a checklist from the list after asking", async () => {
+    const u = userEvent.setup();
+    mocked.recallList.mockResolvedValue([row({ id: 1, subject_name: "CPU" }), row({ id: 2, subject_name: "Memory", due: TODAY + 9, due_today: false })]);
+    render(Recall, { onOpen: vi.fn(), onStart: vi.fn() });
+    await u.click(await screen.findByRole("button", { name: "Memory actions" }));
+    await u.click(screen.getByRole("menuitem", { name: "Delete checklist…" }));
+    const dialog = screen.getByRole("dialog", { name: "Delete the Memory checklist?" });
+    expect(dialog).toHaveTextContent("Its points and past checks go too.");
+    mocked.recallList.mockResolvedValue([row({ id: 1, subject_name: "CPU" })]);
+    await u.click(within(dialog).getByRole("button", { name: "Delete checklist" }));
+    expect(mocked.deleteChecklist).toHaveBeenCalledWith(2);
+    expect(await screen.findByRole("button", { name: "CPU actions" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Memory actions" })).toBeNull();
   });
 
   it("says when nothing is due", async () => {

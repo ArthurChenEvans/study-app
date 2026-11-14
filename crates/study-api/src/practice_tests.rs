@@ -317,3 +317,67 @@ fn topic_quizzes_are_capped_a_day_most_overdue_first() {
     assert_eq!((queue.today.len(), queue.waiting.len(), queue.clears_by), (2, 6, Some(TODAY + 3)));
     assert!(app.set_quizzes_a_day(0).is_err());
 }
+
+// R185: a project's name and kind can be changed
+#[test]
+fn projects_can_be_renamed() {
+    let mut app = app();
+    let project = app.create_project("Shell", "Rust", 0).unwrap();
+    app.update_project(project, " Tiny shell ", " C ").unwrap();
+    let row = app.projects(0).unwrap().into_iter().next().unwrap();
+    assert_eq!((row.name.as_str(), row.kind.as_str()), ("Tiny shell", "C"));
+    assert!(app.update_project(project, "  ", "C").is_err());
+    assert!(app.update_project(study_store::practice::ProjectId(999), "X", "").is_err());
+}
+
+// R185: a drill's task and hints can be edited and the drill deleted, an issue renamed and
+// deleted, and the projects that pointed at them still open
+#[test]
+fn drills_and_issues_can_be_edited_and_deleted() {
+    let mut app = app();
+    let project = app.create_project("Study app", "Coding", TODAY).unwrap();
+    app.start_session(project, at(TODAY, 0)).unwrap();
+    let logged = app.log_struggle(project, struggle("Loop ran one too many times", StruggleKind::Apply), at(TODAY, 5)).unwrap();
+    let choice = ReviewChoice::NewDrill { issue: "Off-by-one in loops".into(), task: "Loop over a slice".into(), hints: "0..len".into(), topic: None, day: TODAY + 1 };
+    let Some(OutcomeView::Drill { id: drill, .. }) = app.review_struggle(logged.id, choice, TODAY).unwrap().outcome else { panic!("expected a drill") };
+
+    app.update_drill(drill, " Loop over a slice backwards ", " (0..len).rev() ").unwrap();
+    let edited = app.drill_view(drill).unwrap();
+    assert_eq!((edited.task.as_str(), edited.hints.as_str()), ("Loop over a slice backwards", "(0..len).rev()"));
+    assert!(app.update_drill(drill, "  ", "").is_err());
+
+    let issue = app.issues().unwrap()[0].id;
+    let other = app.log_struggle(project, struggle("Another", StruggleKind::Apply), at(TODAY, 9)).unwrap();
+    app.review_struggle(other.id, ReviewChoice::NewDrill { issue: "Borrowing".into(), task: "t".into(), hints: String::new(), topic: None, day: TODAY + 1 }, TODAY).unwrap();
+    app.rename_issue(issue, "Off by one").unwrap();
+    assert!(app.issues().unwrap().iter().any(|i| i.name == "Off by one"));
+    assert_eq!(app.rename_issue(issue, "  borrowing ").unwrap_err().message, "there's already an issue called Borrowing");
+    assert!(app.rename_issue(issue, " ").is_err());
+
+    app.delete_drill(drill).unwrap();
+    assert!(app.drill_view(drill).is_err());
+    assert!(app.issues().unwrap().iter().find(|i| i.id == issue).unwrap().drill.is_none());
+    app.project_view(project, TODAY).unwrap();
+
+    let borrowing = app.issues().unwrap().into_iter().find(|i| i.name == "Borrowing").unwrap();
+    let its_drill = borrowing.drill.unwrap().id;
+    app.delete_issue(borrowing.id).unwrap();
+    assert!(app.drill_view(its_drill).is_err(), "an issue's drills go with it");
+    app.delete_issue(issue).unwrap();
+    assert!(app.issues().unwrap().iter().all(|i| i.id != issue));
+    assert_eq!(app.project_view(project, TODAY).unwrap().struggles.iter().find(|s| s.id == logged.id).unwrap().issue, None);
+}
+
+// R185: a logged struggle's words can be fixed
+#[test]
+fn struggles_can_be_edited() {
+    let mut app = app();
+    let project = app.create_project("Study app", "Coding", TODAY).unwrap();
+    app.start_session(project, at(TODAY, 0)).unwrap();
+    let logged = app.log_struggle(project, struggle("Lifetme error", StruggleKind::Apply), at(TODAY, 5)).unwrap();
+    app.update_struggle(logged.id, " Lifetime error ", " didn't see the borrow ").unwrap();
+    let view = app.project_view(project, TODAY).unwrap();
+    let edited = view.struggles.iter().find(|s| s.id == logged.id).unwrap();
+    assert_eq!((edited.what.as_str(), edited.why.as_str()), ("Lifetime error", "didn't see the borrow"));
+    assert!(app.update_struggle(logged.id, " ", "").is_err());
+}
