@@ -85,7 +85,8 @@ impl Phone {
         let args: Value = serde_json::from_str(args).unwrap_or(json!({}));
         let now = clock();
         match dispatch::dispatch_at(&mut self.app, command, &args, now.day, now) {
-            Ok(dispatch::Reply::Json(value)) => serde_wasm_bindgen::to_value(&value).map_err(failure),
+            // Plain objects, as the app gets from the desktop (not JavaScript Maps).
+            Ok(dispatch::Reply::Json(value)) => serde::Serialize::serialize(&value, &serde_wasm_bindgen::Serializer::json_compatible()).map_err(failure),
             Ok(dispatch::Reply::Bytes(bytes)) => Ok(js_sys::Uint8Array::from(bytes.as_slice()).into()),
             Err(error) => Err(failure(error.message)),
         }
