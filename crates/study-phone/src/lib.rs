@@ -3,6 +3,8 @@
 //! the account.
 
 use wasm_bindgen::prelude::*;
+// Linked for its browser host functions.
+use sqlite_wasm_rs as _;
 
 #[wasm_bindgen]
 pub fn smoke() -> Result<String, JsValue> {

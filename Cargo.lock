@@ -4234,7 +4234,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "36bd8e29bf08189a005b2df1df99823aa0861cabe9044e5f31ed54ca292ee618"
 dependencies = [
  "cc",
+ "js-sys",
  "rsqlite-vfs",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -4363,6 +4365,7 @@ dependencies = [
  "getrandom 0.3.4",
  "getrandom 0.4.3",
  "serde_json",
+ "sqlite-wasm-rs",
  "study-core",
  "study-store",
  "wasm-bindgen",
