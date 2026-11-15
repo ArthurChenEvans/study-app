@@ -36,6 +36,10 @@ jobs:
         run: wasm-pack test --headless --chrome crates/study-phone
       - name: Build the phone site
         run: BASE=/${{ github.event.repository.name }}/ ./scripts/phone-build.sh
+      - name: Open it in WebKit at iPhone size
+        run: |
+          pnpm exec playwright install --with-deps webkit
+          node e2e/phone-smoke.mjs dist-phone /${{ github.event.repository.name }}/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist-phone
