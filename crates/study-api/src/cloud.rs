@@ -28,6 +28,9 @@ pub const PUBLISHABLE_KEY: &str = "sb_publishable_iRXgaLMfgves2nxgbtjBSw__BJuTYl
 const BATCH: usize = 500;
 const LINES_PER_SYNC: usize = 100_000;
 
+/// The account's tables don't exist: the setup SQL hasn't been run in Supabase.
+pub const NOT_SET_UP: &str = "the account's database isn't set up yet, so nothing synced. Run supabase/migrations in the Supabase SQL Editor (see the README)";
+
 pub const IMAGES_OFF: &str = "Images can't be added right now, there isn't room to store them yet";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -179,6 +182,9 @@ fn message_of(body: &str, fallback: &str) -> String {
     let parsed: Value = serde_json::from_str(body).unwrap_or(Value::Null);
     let said = ["msg", "message", "error_description", "error"].iter().find_map(|key| parsed.get(*key).and_then(Value::as_str)).unwrap_or("");
     let lower = said.to_lowercase();
+    if lower.contains("schema cache") || parsed.get("code").and_then(Value::as_str) == Some("PGRST205") {
+        return NOT_SET_UP.into();
+    }
     if lower.contains("expired") || lower.contains("invalid") && (lower.contains("otp") || lower.contains("token")) {
         return "that code didn't work or has run out. Ask for a new one".into();
     }
@@ -854,6 +860,19 @@ mod tests {
         let status = app.cloud_status(much_later).unwrap();
         assert!(!status.signed_in);
         assert_eq!(status.problem.as_deref(), Some("you've been signed out. Sign in again to keep syncing"));
+    }
+
+    #[test]
+    fn says_plainly_when_the_database_was_never_set_up() {
+        let fake = Fake::default();
+        let mut app = signed_in(&fake);
+        app.create_topic("DNS", None).unwrap();
+        fake.reply("GET", "/rest/v1/devices", 404, json!({ "code": "PGRST205", "message": "Could not find the table 'public.devices' in the schema cache" }));
+        let said = app.sync_now(false, CLOCK).unwrap_err().message;
+        assert_eq!(said, NOT_SET_UP);
+        // A sync on its own (every 30 seconds) doesn't shout, but the account shows it.
+        app.sync_now(true, CLOCK).unwrap();
+        assert_eq!(app.cloud_status(CLOCK).unwrap().problem.as_deref(), Some(NOT_SET_UP));
     }
 
     #[test]
