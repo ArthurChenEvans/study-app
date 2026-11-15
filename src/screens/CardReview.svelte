@@ -168,7 +168,7 @@
       {:else}
         <div class="flex justify-center"><button class="btn btn-primary btn-lg min-w-80" onclick={() => (shown = true)}>Show answer <kbd class="kbd kbd-xs">Space</kbd></button></div>
       {/if}
-      <p class="mt-3 text-center text-[13px] text-muted">{shown ? "Space picks Good. Again shows the card again later in this session." : "Say it in your head first, then check."}</p>
+      <p class="mt-3 text-center text-[13px] text-muted">{shown ? "Again shows the card again later in this session." : "Say it in your head first, then check."}{#if shown}<span class="keys-hint"> Space picks Good.</span>{/if}</p>
     </div>
   </div>
   </div>

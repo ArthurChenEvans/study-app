@@ -151,8 +151,8 @@
   .pop { animation: pop var(--dur-base) var(--ease-out) backwards; }
   /* R186: the one entrance every screen shares. It starts mostly visible so a screen change
      slides in instead of blinking the whole window dark. */
-  @keyframes enter { from { opacity: .6; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-  .screen-enter { animation: enter var(--dur-base) var(--ease-out) backwards; }
+  /* No fade or slide between screens: WebKitGTK (the Linux desktop app's webview) flickers
+     on and off while a whole page animates, and switching feels quicker without it. */
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
 
   /* Type scale: keep DaisyUI's small sizes on the scale (12px minimum) and weights to 400 and 600 */
@@ -614,6 +614,8 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
   :has(> .rail) { flex-direction: column; }
   .rail { position: static; width: auto; max-width: 100%; align-self: stretch; display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
   .rail > * { flex-shrink: 0; }
+  /* R213: a fade at the edge says the module row scrolls sideways. */
+  .rail { mask-image: linear-gradient(to right, #000 85%, transparent); }
   .rail button { width: auto; white-space: nowrap; border: 2px solid var(--color-base-300); border-radius: 999px; padding: 4px 12px; min-height: 36px; }
   .rail .eyebrow, .rail > div { display: none; }
   .itemcard { position: fixed; z-index: 40; top: auto; left: 84px; right: 0; bottom: 0; width: auto; max-height: 60vh; overflow-y: auto; padding: 8px; background: color-mix(in oklab, var(--color-base-100) 92%, transparent); animation: sheet-up .2s cubic-bezier(.22,1,.36,1) both; }
@@ -732,7 +734,10 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
 .start-fab { position: fixed; right: 1.5rem; bottom: 1.5rem; z-index: 30; height: 3.5rem; padding: 0 1.4rem; border-radius: 1.1rem; box-shadow: var(--shadow-float); background: var(--color-primary); color: var(--color-primary-content); letter-spacing: 0.06em; font-weight: 900; }
 .start-at-fab .start-menu { position: fixed; right: 1.5rem; bottom: 5.5rem; }
 .start-at-dock .start-menu { position: fixed; left: 1rem; right: 1rem; bottom: 5.5rem; width: auto; }
-.dock-start-disc { display: grid; place-items: center; width: 2.25rem; height: 1.75rem; border-radius: 999px; background: var(--color-primary); color: var(--color-primary-content); box-shadow: var(--shadow-panel); }
+/* Start fills its fifth of the dock like the other tabs, and its disc is the same size as their icons. */
+.start-at-dock { display: grid; }
+.start-at-dock > .dock-tab { width: 100%; font: inherit; font-size: 11.5px; font-weight: 800; cursor: pointer; }
+.dock-start-disc { display: grid; place-items: center; width: 56px; height: 30px; border-radius: 15px; background: var(--color-primary); color: var(--color-primary-content); box-shadow: var(--shadow-panel); }
 /* R199: right-click and long-press menus */
 .ctx-scrim { position: fixed; inset: 0; z-index: 60; background: transparent; cursor: default; }
 .ctx-menu { position: fixed !important; z-index: 61; right: auto !important; min-width: 14rem; }
@@ -764,3 +769,15 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
 .reading math[display="block"] { display: block; margin: 0.75em 0; overflow-x: auto; }
 .reading dl dt { font-weight: 800; }
 .reading dl dd { margin-left: 1.25em; }
+
+/* R213: phone layout fixes. The due card stacks its button under the title, and a row of
+   text with a button beside it lets the button drop below instead of squeezing the text. */
+@media (max-width: 767px) {
+  .hero { flex-direction: column; align-items: stretch; }
+  .hero-button { align-self: flex-start; }
+  .text-beside { min-width: min(14rem, 100%); }
+}
+/* Key badges and "press 1 to 4" hints are for keyboards, so a touch screen doesn't show them. */
+@media (pointer: coarse) {
+  kbd, .keys-hint { display: none !important; }
+}

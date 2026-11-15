@@ -341,8 +341,15 @@ impl App {
                     })?;
                     received += merged.changes;
                 }
-                // The account's trouble is shown with the account, and doesn't stop the folder.
-                Err(error) => self.cloud_problem(Some(error.message)),
+                // The account's trouble is shown with the account, and doesn't stop the folder. A
+                // sync you asked for says so straight away, rather than claiming it synced.
+                Err(error) => {
+                    self.cloud_problem(Some(error.message.clone()));
+                    if !auto {
+                        self.sync.save()?;
+                        return Err(error);
+                    }
+                }
             }
         }
         self.sync.config.last_synced = Some(clock.unix);

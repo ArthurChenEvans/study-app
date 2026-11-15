@@ -204,9 +204,12 @@
         <button type="button" role="radio" aria-checked={view === "month"} onclick={() => choose("month")}>Month</button>
         <button type="button" role="radio" aria-checked={view === "week"} onclick={() => choose("week")}>Week</button>
       </div>
-      <button class="btn btn-ghost btn-sm btn-square" aria-label={view === "week" ? "Previous week" : "Previous month"} onclick={() => shift(-1)}><ChevronLeft class="size-4" /></button>
-      <span class="min-w-44 text-center text-[19px] font-extrabold" aria-live="polite">{view === "week" ? (weekFrom ? weekLabel(weekFrom) : "") : year ? monthLabel(year, month) : ""}</span>
-      <button class="btn btn-ghost btn-sm btn-square" aria-label={view === "week" ? "Next week" : "Next month"} onclick={() => shift(1)}><ChevronRight class="size-4" /></button>
+      <!-- The arrows and the date they move stay together on one line (R213). -->
+      <span class="inline-flex items-center gap-1 whitespace-nowrap">
+        <button class="btn btn-ghost btn-sm btn-square" aria-label={view === "week" ? "Previous week" : "Previous month"} onclick={() => shift(-1)}><ChevronLeft class="size-4" /></button>
+        <span class="text-center text-[19px] font-extrabold sm:min-w-44" aria-live="polite">{view === "week" ? (weekFrom ? weekLabel(weekFrom) : "") : year ? monthLabel(year, month) : ""}</span>
+        <button class="btn btn-ghost btn-sm btn-square" aria-label={view === "week" ? "Next week" : "Next month"} onclick={() => shift(1)}><ChevronRight class="size-4" /></button>
+      </span>
       <button class="btn btn-outline btn-sm ml-2" onclick={() => { const now = dateOf(today); [year, month] = [now.year, now.month]; weekFrom = weekStart(today); loadMonth(); }}>Today</button>
       <button class="btn btn-primary btn-sm ml-2" onclick={() => openDialog("new")}><Plus class="size-4" />Add a date</button>
     </PageHeader>

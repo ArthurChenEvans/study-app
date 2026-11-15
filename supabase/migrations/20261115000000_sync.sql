@@ -82,36 +82,21 @@ create policy "admins change settings" on public.app_settings for update to auth
 create policy "see if you're an admin" on public.admins for select to authenticated
   using (user_id = (select auth.uid()));
 
--- Two-step sign-in: once someone has turned it on, their data needs the second step too.
-create policy "two-step when it's on" on public.devices as restrictive for all to authenticated
-  using (array[(select auth.jwt() ->> 'aal')] <@ (
-    select case when count(id) > 0 then array['aal2'] else array['aal1', 'aal2'] end
-    from auth.mfa_factors where user_id = (select auth.uid()) and status = 'verified'));
-create policy "two-step when it's on" on public.changes as restrictive for all to authenticated
-  using (array[(select auth.jwt() ->> 'aal')] <@ (
-    select case when count(id) > 0 then array['aal2'] else array['aal1', 'aal2'] end
-    from auth.mfa_factors where user_id = (select auth.uid()) and status = 'verified'));
+-- Two-step sign-in is asked for by the app. The database doesn't check it: Supabase doesn't
+-- let even the admin role read auth.mfa_factors in newer projects.
 
--- Deleting your own account (GDPR): the account, and through it every row above. Asks for the
--- second step when two-step sign-in is on.
+-- Deleting your own account (GDPR): the account, and through it every row above.
 create or replace function public.delete_my_account()
 returns void
 language plpgsql
 security definer
 set search_path = ''
 as $$
-declare
-  me uuid := auth.uid();
-  needs_two_step boolean;
 begin
-  if me is null then
+  if auth.uid() is null then
     raise exception 'not signed in';
   end if;
-  select exists (select 1 from auth.mfa_factors where user_id = me and status = 'verified') into needs_two_step;
-  if needs_two_step and coalesce(auth.jwt() ->> 'aal', '') <> 'aal2' then
-    raise exception 'two-step sign-in needed';
-  end if;
-  delete from auth.users where id = me;
+  delete from auth.users where id = auth.uid();
 end;
 $$;
 

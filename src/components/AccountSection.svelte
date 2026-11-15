@@ -168,7 +168,7 @@
     {#if status.problem}<p class="mt-2 text-sm font-bold">{status.problem}</p>{/if}
     {#if step === "idle"}
       <div class="mt-2 flex flex-wrap items-center gap-3">
-        <p class="flex-1 text-sm text-muted">Sign in to sync your quizzes, cards and free recall across computers. Everything still works offline.</p>
+        <p class="text-beside flex-1 text-sm text-muted">Sign in to sync your quizzes, cards and free recall across computers. Everything still works offline.</p>
         <button class="btn btn-primary" onclick={() => { step = "email"; error = ""; void tick().then(() => document.getElementById("account-email")?.focus()); }}><Mail class="size-4" />Sign in to sync</button>
       </div>
     {:else if step === "email"}
@@ -208,9 +208,9 @@
     <div class="mt-5 border-t-2 border-base-300 pt-4">
       <h3 class="font-extrabold">Two-step sign-in</h3>
       {#if status.two_step}
-        <div class="mt-1 flex flex-wrap items-center gap-3"><p class="flex-1 text-sm"><ShieldCheck class="mr-1 inline size-4" />Two-step sign-in is on. Signing in asks for your authenticator code too.</p><button class="btn btn-ghost btn-sm" disabled={busy} onclick={twoStepOff}>Turn off</button></div>
+        <div class="mt-1 flex flex-wrap items-center gap-3"><p class="text-beside flex-1 text-sm"><ShieldCheck class="mr-1 inline size-4" />Two-step sign-in is on. Signing in asks for your authenticator code too.</p><button class="btn btn-ghost btn-sm" disabled={busy} onclick={twoStepOff}>Turn off</button></div>
       {:else}
-        <div class="mt-1 flex flex-wrap items-center gap-3"><p class="flex-1 text-sm text-muted">Off. Turn it on and signing in also asks for a code from an authenticator app (Aegis, Google Authenticator, 1Password).</p><button class="btn btn-ghost btn-sm" aria-label="Turn on two-step sign-in" disabled={busy} onclick={startTwoStep}><KeyRound class="size-4" />Turn on</button></div>
+        <div class="mt-1 flex flex-wrap items-center gap-3"><p class="text-beside flex-1 text-sm text-muted">Off. Turn it on and signing in also asks for a code from an authenticator app (Aegis, Google Authenticator, 1Password).</p><button class="btn btn-ghost btn-sm" aria-label="Turn on two-step sign-in" disabled={busy} onclick={startTwoStep}><KeyRound class="size-4" />Turn on</button></div>
       {/if}
     </div>
 
@@ -226,8 +226,8 @@
 
     <div class="mt-5 border-t-2 border-base-300 pt-4">
       <h3 class="font-extrabold">Your data</h3>
-      <div class="mt-1 flex flex-wrap items-center gap-3"><p class="flex-1 text-sm text-muted">Download everything: quizzes, cards, reviews, checklists and logs, in one file.</p><button class="btn btn-ghost btn-sm" onclick={() => (exporting = true)}>Download</button></div>
-      <div class="mt-3 flex flex-wrap items-center gap-3"><p class="flex-1 text-sm text-muted">Delete your account and everything synced to it, for good. This computer's copy stays.</p><button class="btn btn-ghost btn-sm text-error" onclick={() => (deleting = true)}><Trash2 class="size-4" />Delete account…</button></div>
+      <div class="mt-1 flex flex-wrap items-center gap-3"><p class="text-beside flex-1 text-sm text-muted">Download everything: quizzes, cards, reviews, checklists and logs, in one file.</p><button class="btn btn-ghost btn-sm" onclick={() => (exporting = true)}>Download</button></div>
+      <div class="mt-3 flex flex-wrap items-center gap-3"><p class="text-beside flex-1 text-sm text-muted">Delete your account and everything synced to it, for good. This computer's copy stays.</p><button class="btn btn-ghost btn-sm text-error" onclick={() => (deleting = true)}><Trash2 class="size-4" />Delete account…</button></div>
     </div>
 
     {#if status.admin}

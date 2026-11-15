@@ -176,7 +176,7 @@
 <div class="mx-auto max-w-6xl px-12 pb-24">
   <button class="mt-8 inline-flex items-center gap-1 py-1 text-xs font-extrabold uppercase tracking-wider text-muted hover:underline" onclick={onBack}><ArrowLeft class="size-4" />Practice Log</button>
   {#if view}
-    <div class="flex items-end justify-between gap-6 pb-6 pt-4">
+    <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 pb-6 pt-4">
       <div><p class="text-sm text-muted">{view.row.kind ? `${view.row.kind} · ` : ""}started {pastOn(view.row.created, today).replace(/^on /, "")} · {view.row.struggles} {view.row.struggles === 1 ? "struggle" : "struggles"}</p><h1 class="mt-1 text-3xl font-semibold">{view.row.name}</h1></div>
       <div class="flex items-center gap-3">
         {#if session}
@@ -213,11 +213,11 @@
       </form>
     {/if}
 
-    <div class="mb-3 mt-8 flex items-center justify-between gap-4">
+    <div class="mb-3 mt-8 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
       <h2 class="text-lg font-semibold">Struggles</h2>
       {#if view.struggles.length}
-        <div class="flex items-center gap-3">
-          <input type="search" class="input input-sm w-56" aria-label="Search struggles" placeholder="Search…" bind:value={search} />
+        <div class="flex flex-wrap items-center gap-3">
+          <input type="search" class="input input-sm w-full sm:w-56" aria-label="Search struggles" placeholder="Search…" bind:value={search} />
           <div class="seg" role="radiogroup" aria-label="Show"><button type="button" role="radio" aria-checked={!onlyToReview} onclick={() => (onlyToReview = false)}>All</button><button type="button" role="radio" aria-checked={onlyToReview} onclick={() => (onlyToReview = true)}>To review{#if toReviewCount}<span class="ml-1.5 tabular-nums text-muted">{toReviewCount}</span>{/if}</button></div>
         </div>
       {/if}
@@ -231,10 +231,10 @@
       <p class="eyebrow mb-2 mt-6">{group.day === today ? `Today · ${fullLabel(group.day, today)}` : fullLabel(group.day, today)}</p>
       <ul class="panel divide-y" aria-label="Struggles on {fullLabel(group.day, today)}">
         {#each group.struggles as struggle (struggle.id)}
-          <li class="flex items-start gap-6 px-6 py-4">
-            <div class="flex-1"><p class="text-[16px] font-extrabold">{struggle.what}</p>{#if struggle.why}<p class="mt-1 text-sm text-muted">Why it wasn't obvious: {struggle.why}</p>{/if}
+          <li class="flex flex-wrap items-start gap-x-6 gap-y-2 px-4 py-4 sm:flex-nowrap sm:px-6">
+            <div class="min-w-0 flex-1 basis-56"><p class="text-[16px] font-extrabold">{struggle.what}</p>{#if struggle.why}<p class="mt-1 text-sm text-muted">Why it wasn't obvious: {struggle.why}</p>{/if}
               <div class="mt-2 flex flex-wrap items-center gap-2"><span class="chip">{kindLabel[struggle.kind]}</span>{#if struggle.topic_name}<span class="chip chip-primary">{struggle.topic_name}</span>{/if}<span class="text-xs font-extrabold tabular-nums text-muted">{time(struggle.minute)}</span></div></div>
-            <span class="max-w-72 text-right text-sm">{@render outcomeOf(struggle)}</span>
+            <span class="max-w-72 text-sm sm:text-right">{@render outcomeOf(struggle)}</span>
             <RowMenu small label="Struggle actions: {struggle.what}" items={[{ label: "Edit struggle…", onSelect: () => (editingStruggle = struggle) }, { label: "Delete struggle…", danger: true, onSelect: () => (deletingStruggle = struggle) }]} />
           </li>
         {/each}

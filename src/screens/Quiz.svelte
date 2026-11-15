@@ -251,7 +251,7 @@
           </button>
         {/each}
       </div>
-      {#if !feedback}<p class="mt-3 text-[13px] text-muted">Press <kbd class="kbd kbd-xs">1</kbd> to <kbd class="kbd kbd-xs">{current.options.length}</kbd> to answer, <kbd class="kbd kbd-xs">F</kbd> to flag a guess.</p>{/if}
+      {#if !feedback}<p class="keys-hint mt-3 text-[13px] text-muted">Press <kbd class="kbd kbd-xs">1</kbd> to <kbd class="kbd kbd-xs">{current.options.length}</kbd> to answer, <kbd class="kbd kbd-xs">F</kbd> to flag a guess.</p>{/if}
       {/if}
       </div>{/key}
       {#if error}<p role="alert" class="mt-6 text-sm text-error">{error}</p>{/if}
@@ -312,7 +312,7 @@
           aria-pressed={current.flagged}
           onclick={toggleFlag}><Flag class="size-4" />{current.flagged ? "Flagged as guessed" : "I guessed"} {#if current.short}<kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">G</kbd>{:else}<kbd class="kbd kbd-xs">F</kbd>{/if}</button>
         {#if current.exam}<span class="text-sm text-muted">No going back in exam mode{current.short ? ". You can overrule the marking on the results page." : ""}</span>{/if}
-        <button class="btn btn-primary ml-auto min-w-48" onclick={submit} disabled={(current.short ? !typed.trim() : picked.length === 0) || busy}>Submit <kbd class="kbd kbd-xs">Enter</kbd></button>
+        <button class="btn btn-primary ml-auto sm:min-w-48" onclick={submit} disabled={(current.short ? !typed.trim() : picked.length === 0) || busy}>Submit <kbd class="kbd kbd-xs">Enter</kbd></button>
       </div>
     </div>
   {/if}
