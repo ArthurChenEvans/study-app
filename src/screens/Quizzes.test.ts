@@ -73,7 +73,7 @@ describe("Quizzes screen", () => {
     expect(await screen.findByText("No quizzes yet")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Make your first quiz" })).toHaveClass("btn-primary");
     // One primary button per view: the header's button steps back while the first steps show.
-    expect(screen.getByRole("button", { name: /^New quiz/ })).not.toHaveClass("btn-primary");
+    expect(screen.getByRole("button", { name: /^Make a quiz/ })).not.toHaveClass("btn-primary");
   });
 
   // R189: a new quiz makes its topic and goes straight to writing the questions
@@ -83,8 +83,8 @@ describe("Quizzes screen", () => {
     const onEdit = vi.fn();
     const user = userEvent.setup();
     render(Topics, { onEdit });
-    await user.click(await screen.findByRole("button", { name: /^New quiz/ }));
-    const dialog = screen.getByRole("dialog", { name: "New quiz" });
+    await user.click(await screen.findByRole("button", { name: /^Make a quiz/ }));
+    const dialog = screen.getByRole("dialog", { name: "Make a quiz" });
     await user.type(within(dialog).getByLabelText("Name"), "  GPU  ");
     await user.selectOptions(within(dialog).getByLabelText("Module"), "Computer Architecture");
     await user.click(within(dialog).getByRole("button", { name: "Create and add questions" }));
@@ -167,7 +167,9 @@ describe("Quizzes screen", () => {
     const onEdit = vi.fn();
     const onQuiz = vi.fn();
     render(Topics, { onEdit, onQuiz });
-    expect(await screen.findByText("Pick a quiz to see it here")).toBeInTheDocument();
+    // R214: no empty card taking up the side while nothing is picked
+    await screen.findByRole("button", { name: "CPU" });
+    expect(screen.queryByRole("complementary", { name: "Picked topic" })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Delete/ })).toBeNull();
     await u.click(screen.getByRole("button", { name: "CPU" }));
     const card = screen.getByRole("complementary", { name: "Picked topic" });
@@ -296,22 +298,22 @@ describe("Quizzes screen", () => {
     ]);
     render(Topics, { onQuizTopics });
     const row = (name: string) => screen.getByRole("button", { name }).closest("tr")!;
-    await screen.findByText("Fortnight");
-    expect(row("CPU")).toHaveTextContent(/Week\s*Due today/);
+    await screen.findByText("Every 2 weeks");
+    expect(row("CPU")).toHaveTextContent(/Every week\s*Due today/);
     expect(row("OSI model")).toHaveTextContent("Due today", { normalizeWhitespace: true });
     expect(row("Memory")).toHaveTextContent("Mon 9 Nov");
     // dates.feature: Tightened next quizzes are labelled
-    expect(row("Memory")).toHaveTextContent("Tightened for Networks exam");
-    expect(row("CPU")).not.toHaveTextContent("Tightened");
+    expect(row("Memory")).toHaveTextContent("Exam soon: Networks exam");
+    expect(row("CPU")).not.toHaveTextContent("Exam soon");
     expect(row("TCP/IP")).toHaveTextContent("Quiz it to start");
     expect(screen.getByText(/2 are due today/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /New quiz/ })).not.toHaveClass("btn-primary");
+    expect(screen.getByRole("button", { name: /Make a quiz/ })).not.toHaveClass("btn-primary");
     await u.click(screen.getByRole("button", { name: /Quiz the 2 due topics/ }));
     expect(onQuizTopics).toHaveBeenCalledWith([1, 2]);
     // lists.feature: Only what's due
-    await u.click(screen.getByRole("radio", { name: "Due 2" }));
+    await u.click(screen.getByRole("radio", { name: "Due today 2" }));
     expect(screen.getAllByRole("row")).toHaveLength(3);
-    await u.click(screen.getByRole("radio", { name: "Tightened 1" }));
+    await u.click(screen.getByRole("radio", { name: "Exam soon 1" }));
     expect(row("Memory")).toBeInTheDocument();
   });
 
@@ -322,7 +324,7 @@ describe("Quizzes screen", () => {
     mocked.quizSchedule.mockResolvedValue(schedule);
     render(Topics, {});
     expect(screen.queryByRole("button", { name: /Quiz the/ })).toBeNull();
-    await u.click(await screen.findByRole("button", { name: /Quiz schedule/ }));
+    await u.click(await screen.findByRole("button", { name: /^Schedule/ }));
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByRole("heading", { name: "Quiz schedule" })).toBeInTheDocument();
     const pass = within(dialog).getByLabelText("Pass mark");

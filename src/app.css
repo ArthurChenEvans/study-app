@@ -819,3 +819,6 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
 .right-label .checkbox-correct { width: 22px; height: 22px; border-radius: 7px; }
 .save-bar { position: sticky; bottom: 0; z-index: 5; display: flex; align-items: center; gap: 12px; margin: 0 -2.5rem; padding: 16px 2.5rem; border-top: 2px solid var(--color-base-300); background: var(--color-base-100); }
 @media (max-width: 1023px) { .save-bar { margin: 0 -1.25rem; padding: 14px 1.25rem; } }
+
+/* R214: a list's side card only takes up room once something is picked. */
+.itemcard[data-empty="true"] { display: none; }
