@@ -5,7 +5,7 @@
   import SourceCheck from "../components/SourceCheck.svelte";
   import { detailsFromEpub, detailsFromOffice, detailsFromPdfInfo, detailsFromWeb, titleFromName, type FoundDetails } from "../lib/fileDetails";
   import { readEpub } from "../lib/epub";
-  import { readWebPage } from "../lib/webPage";
+  import { articleAddress, pageAddress, readWebPage } from "../lib/webPage";
   import RowMenu from "../components/RowMenu.svelte";
   import { api, errorMessage, type SourceFields, type SourceRow, type TopicRow } from "../lib/api";
   import { deleteWithUndo, toast } from "../lib/celebrations.svelte";
@@ -105,8 +105,8 @@
     event.preventDefault();
     fromError = "";
     try {
-      const page = await api.fetchPage(link);
-      fromFile = detailsFromWeb(readWebPage(page.html, page.url).details);
+      const page = await api.fetchPage(pageAddress(link));
+      fromFile = detailsFromWeb(readWebPage(page.html, articleAddress(link, page.url)).details);
       linkOpen = false;
       link = "";
     } catch (failure) { fromError = `Couldn't open that page: ${errorMessage(failure)}`; }

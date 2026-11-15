@@ -3,7 +3,7 @@
   // R179 to R182: a table of contents, going straight to a page or line (Ctrl+G), and showing
   // where a question cites, remembering which file is which source by its name only.
   import { ExternalLink, FileText, FileUp, Globe, Link, Plus, Presentation, BookOpen, X } from "@lucide/svelte";
-  import { readWebPage, type WebPage } from "../lib/webPage";
+  import { articleAddress, pageAddress, readWebPage, type WebPage } from "../lib/webPage";
   import { tick } from "svelte";
   import { api, errorMessage } from "../lib/api";
   import { closeTab, kindOf, numberLines, openTab, type Tab } from "../lib/preview";
@@ -191,8 +191,8 @@
     contents[id] = { state: "loading" };
     ({ tabs, active } = openTab(tabs, { id, name: typed, kind: "web" }));
     try {
-      const fetched = await api.fetchPage(typed);
-      const page = readWebPage(fetched.html, fetched.url);
+      const fetched = await api.fetchPage(pageAddress(typed));
+      const page = readWebPage(fetched.html, articleAddress(typed, fetched.url));
       contents[id] = { state: "web", page };
       void autoSource(id, detailsFromWeb(page.details));
       tabs = tabs.map((tab) => (tab.id === id ? { ...tab, name: page.title || fetched.url } : tab));
@@ -404,7 +404,7 @@
                   <Contents label="Contents of {page.title}" items={page.headings} onPick={(at) => void goToHeading(at)} />
                 {/if}
                 <div class="min-h-0 flex-1 overflow-auto p-4 sm:p-8" data-web-page>
-                  <article class="rich mx-auto max-w-prose rounded-lg bg-surface p-5 sm:p-8" aria-label={page.title} use:safeLinks>{@html page.html}</article>
+                  <article class="rich reading mx-auto max-w-prose rounded-lg bg-surface p-5 sm:p-8" aria-label={page.title} use:safeLinks>{@html page.html}</article>
                 </div>
               </div>
             </div>
@@ -420,7 +420,7 @@
                 <Contents label="Contents of {current.name}" items={epub.toc} current={chapterAt} onPick={(at) => { const entry = epub.toc.find((item) => item.at === at); void goToChapter(at, entry?.anchor ?? null); }} />
               {/if}
               <div class="min-h-0 flex-1 overflow-auto p-4 sm:p-8">
-                <article class="rich mx-auto max-w-prose rounded-lg bg-surface p-5 sm:p-8" aria-label={epub.title}>
+                <article class="rich reading mx-auto max-w-prose rounded-lg bg-surface p-5 sm:p-8" aria-label={epub.title}>
                   <p class="eyebrow">{epub.title}</p>
                   {#each epub.chapters as chapter, index (index)}
                     <section class="epub-chapter" data-chapter={index} aria-label={chapter.title} use:safeLinks>{@html chapter.html}</section>
