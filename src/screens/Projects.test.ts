@@ -233,6 +233,8 @@ describe("A project", () => {
     const monday = screen.getByRole("list", { name: "Struggles on Mon 2 Nov" });
     expect(monday).toHaveTextContent("Card suggested");
     expect(monday).toHaveTextContent("Issue: Off-by-one in loops · drill today");
+    // R214: what became of a struggle is a line under it, not a squeezed badge
+    expect(within(monday).getByText(/Issue: Off-by-one/).closest(".chip")).toBeNull();
     expect(screen.getByRole("button", { name: /Review 1 struggle/ })).toBeInTheDocument();
     await u.click(screen.getByRole("radio", { name: /To review/ }));
     expect(screen.queryByRole("list", { name: "Struggles on Mon 2 Nov" })).toBeNull();

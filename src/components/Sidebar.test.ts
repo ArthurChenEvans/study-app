@@ -182,6 +182,12 @@ describe("Sidebar", () => {
     expect(screen.getByRole("button", { name: "Start, 13 due" })).toHaveClass("start-fab");
   });
 
+  // R214: on a screen with a form the floating Start button would cover it, so it goes
+  it("leaves the floating Start button out on a form screen", () => {
+    render(Sidebar, { current: "quizzes", onNavigate: vi.fn(), mode: "rail", due: { cards: 13 }, startHidden: true });
+    expect(screen.queryByRole("button", { name: /^Start/ })).not.toBeInTheDocument();
+  });
+
   // navigation.feature (R160, R198): a phone gets five tabs with Start in the middle
   it("becomes a dock of five on a phone, Start in the middle", async () => {
     const onNavigate = vi.fn();

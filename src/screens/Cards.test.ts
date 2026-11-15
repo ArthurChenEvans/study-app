@@ -89,6 +89,24 @@ describe("Cards home", () => {
     expect(handlers.onEditNote).toHaveBeenCalledWith(1, 10);
   });
 
+  // R214: the list shows a card's words, never its markup, and the search syntax waits behind a link
+  it("shows fronts and answers as plain text, with search tips folded away", async () => {
+    const u = userEvent.setup();
+    mocked.browseCards.mockResolvedValue([
+      row({ id: 1, front: 'Top to bottom: <span class="cloze">application</span>, presentation', back: "i &lt;= n", kind: "Cloze" }),
+    ]);
+    render(Cards, props());
+    await u.click(await screen.findByRole("tab", { name: "Browse all" }));
+    const table = await screen.findByRole("table", { name: "All cards" });
+    const first = within(table).getByRole("row", { name: "Top to bottom: application, presentation" });
+    expect(first).not.toHaveTextContent("<span");
+    expect(first).toHaveTextContent("i <= n");
+    const tips = screen.getByText("Search tips");
+    expect(screen.getByText(/to leave a word out/)).not.toBeVisible();
+    await u.click(tips);
+    expect(screen.getByText(/to leave a word out/)).toBeVisible();
+  });
+
   it("narrows with the search box and the filter panel, which folds away and remembers it", async () => {
     const u = userEvent.setup();
     localStorage.clear();

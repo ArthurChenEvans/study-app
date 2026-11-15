@@ -434,7 +434,8 @@ details.table-view summary { cursor: pointer; font-size: 12px; color: var(--mute
 .cal-day[aria-current="date"] { border-color: var(--primary-ink); box-shadow: 0 3px 0 var(--primary-ink); }
 .cal-today { font-size: 13px; font-weight: 800; color: var(--primary-ink); }
 .cal-day .num { font-size: 13px; font-variant-numeric: tabular-nums; font-weight: 800; }
-.cal-chip { font-size: 11px; padding: 3px 6px; letter-spacing: .03em; }
+/* R214: day labels in sentence case at a size you can read. */
+.cal-chip { font-size: 13px; padding: 3px 8px; letter-spacing: 0; text-transform: none; }
 .cal-cards { --chip: var(--primary-ink); --chip-ink: var(--primary-ink); }
 .cal-quizzes, .cal-drills { --chip: var(--color-info); --chip-ink: var(--info-ink, var(--color-info)); }
 .cal-checklists { --chip: var(--color-accent); --chip-ink: var(--accent-ink); }
@@ -634,8 +635,8 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
    them cut off cleanly. Phones show a coloured dot for each kind of work, and the words are
    in each day's button label and in the day view you open by tapping it. */
 @media (max-width: 1099px) {
-  .cal-day .cal-chip, .cal-day .date-chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .cal-chip { font-size: 10px; padding: 2px 5px; }
+  .cal-day .cal-chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cal-chip { font-size: 12px; padding: 2px 6px; }
   .cal-day { min-height: 88px; padding: 5px 6px; }
 }
 @media (max-width: 599px) {
@@ -711,7 +712,8 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
 .colour-option:focus-visible { outline: 3px solid var(--color-base-content); outline-offset: 2px; }
 .colour-option-card { display: flex; gap: 3px; padding: 6px; border-radius: 0.5rem; border: 2px solid; }
 .colour-option-bar { height: 8px; border-radius: 4px; }
-.colour-option-button { display: block; padding: 0.3rem; border-radius: 0.5rem; border: 2px solid; text-align: center; font-size: 0.8rem; font-weight: 800; }
+/* R214: a swatch rather than a Start button, so the previews don't look pressable. */
+.colour-option-swatch { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 10px; border: 2px solid; font-size: 16px; font-weight: 900; }
 .row-menu-left { right: auto; left: 0; }
 /* R189: the Import & Export drop zone */
 .drop-zone { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 190px; padding: 20px; border: 2px dashed var(--field-border); border-radius: 16px; text-align: center; cursor: pointer; }
@@ -780,4 +782,58 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
 /* Key badges and "press 1 to 4" hints are for keyboards, so a touch screen doesn't show them. */
 @media (pointer: coarse) {
   kbd, .keys-hint { display: none !important; }
+}
+
+/* R214: label and value lists (Your data's backup details) stack on phones, with room
+   between each name, its value and its button. */
+@media (max-width: 639px) {
+  .details-list > dt:not(:first-child) { margin-top: 16px; }
+  .details-list > dd:has(> .btn) { justify-self: start; }
+}
+
+/* R214: History on a phone, one tidy row per quiz: date and score on top, the result bar the
+   full width under them, then the topics. The whole row opens the results. */
+@media (max-width: 599px) {
+  main table.history-table tbody tr { grid-template-columns: minmax(0, 1fr) auto; row-gap: 8px; }
+  main table.history-table tbody td { grid-column: 1 / -1; }
+  main table.history-table tbody td:nth-child(1) { grid-column: 1; grid-row: 1; font-size: 16px; }
+  main table.history-table tbody td:nth-child(4) { grid-column: 2; grid-row: 1; font-size: 16px; color: var(--color-base-content); }
+  main table.history-table tbody td:nth-child(3) { grid-row: 2; }
+  main table.history-table tbody td:nth-child(2) { grid-row: 3; }
+  main table.history-table tbody td:nth-child(5):not(:has(.chip)) { display: none; }
+  main table.history-table tbody td[data-label]::before { content: none; }
+  main table.history-table .seg-bar { width: 100%; }
+  main table.history-table .view-label { display: none; }
+}
+
+/* R214: on phones a search result's topic and tags go under the question, not beside it. */
+@media (max-width: 599px) {
+  .search-result { flex-direction: column; gap: 0; }
+  .search-result > button { width: 100%; padding-bottom: 4px; }
+  .search-result > .search-meta { padding: 0 24px 12px; max-width: none; justify-content: flex-start; }
+}
+
+/* R214: question editor. Each answer starts with a "Right" marker you can read, and Save
+   sits in a bar along the bottom of the form so it never scrolls away. */
+.option-grid { grid-template-columns: auto minmax(0, 1fr) 32px; }
+.right-label { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px 0 8px; border: 2px solid var(--color-base-300); border-radius: 12px; font-size: 14px; font-weight: 800; color: var(--muted); cursor: pointer; }
+.right-label.is-right { border-color: var(--chart-right); color: var(--color-base-content); }
+.right-label .checkbox-correct { width: 22px; height: 22px; border-radius: 7px; }
+.save-bar { position: sticky; bottom: 0; z-index: 5; display: flex; align-items: center; gap: 12px; margin: 0 -2.5rem; padding: 16px 2.5rem; border-top: 2px solid var(--color-base-300); background: var(--color-base-100); }
+@media (max-width: 1023px) { .save-bar { margin: 0 -1.25rem; padding: 14px 1.25rem; } }
+
+/* R214: a list's side card only takes up room once something is picked. */
+.itemcard[data-empty="true"] { display: none; }
+
+/* R214: practice logs as cards from tablet width down to phone width, where the table would
+   squeeze log names a word per line. */
+@media (min-width: 600px) and (max-width: 1099px) {
+  main table.log-table, main table.log-table tbody { display: block; width: 100%; }
+  main table.log-table thead { display: none; }
+  main table.log-table tbody { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  main table.log-table tbody tr { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 16px 18px; border-bottom: 2px solid var(--color-base-300); }
+  main table.log-table tbody tr:nth-child(odd) { border-right: 2px solid var(--color-base-300); }
+  main table.log-table tbody td { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 0; border: 0; font-size: 14px; }
+  main table.log-table tbody td:first-child { margin-bottom: 6px; }
+  main table.log-table tbody td[data-label]::before { content: attr(data-label); font-weight: 800; color: var(--color-base-content); }
 }

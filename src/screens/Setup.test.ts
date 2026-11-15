@@ -136,13 +136,16 @@ describe("Quiz setup", () => {
     const u = userEvent.setup();
     render(Setup, { onStarted: vi.fn() });
     await screen.findByRole("checkbox", { name: /CPU/ });
-    expect(screen.getByRole("list", { name: "Current settings" })).toHaveTextContent("Study mode");
+    // R214: the page is "Take a quiz", and the settings read as a sentence, not as chips that look like buttons
+    expect(screen.getByRole("heading", { level: 1, name: "Take a quiz" })).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Current settings" })).toBeNull();
+    expect(screen.getByRole("note", { name: "Current settings" })).toHaveTextContent("Study mode: you see the answer after each one.");
     expect(screen.queryByRole("radio", { name: "Exam" })).toBeNull();
     const toggle = screen.getByRole("button", { name: "Change settings" });
     expect(toggle).toHaveAttribute("aria-expanded", "false");
     await u.click(toggle);
     await u.click(screen.getByRole("radio", { name: "Exam" }));
-    expect(screen.getByRole("list", { name: "Current settings" })).toHaveTextContent("Exam mode");
+    expect(screen.getByRole("note", { name: "Current settings" })).toHaveTextContent("Exam mode: answers come at the end.");
   });
 
   it("says why it can't start yet, and keeps the button reachable", async () => {

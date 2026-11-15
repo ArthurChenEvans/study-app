@@ -52,15 +52,18 @@
 
   const isDue = (topic: TopicRow) => quizzes.some((quiz) => quiz.topic === topic.id && quiz.due_today) && countOf(topic) > 0;
   const dueIds = $derived(topics.filter(isDue).map((topic) => topic.id));
-  const summary = $derived([
-    ...(anyShort ? [types === "Both" ? "Both types" : types === "Mcq" ? "MCQ only" : "Short answer only"] : []),
-    exam ? "Exam mode" : "Study mode",
-    setNumber ? `${count} questions` : "All questions",
-    even ? "Even pick" : "Random pick",
-    shuffleQuestions ? "Shuffled" : "Keep order",
-    useTotal ? `${totalMinutes} min total` : usePerQuestion ? `${perQuestionSeconds} sec each` : "No timer",
-    easy ? "Easy" : "Hard",
-  ]);
+  // R214: the settings as one sentence, so they don't look like buttons.
+  const summary = $derived(
+    `${exam ? "Exam mode: answers come at the end." : "Study mode: you see the answer after each one."} ` +
+      [
+        setNumber ? `${count} questions` : "All questions",
+        ...(anyShort ? [types === "Both" ? "both types" : types === "Mcq" ? "multiple choice only" : "short answer only"] : []),
+        even ? "an even pick from each topic" : "picked at random",
+        shuffleQuestions ? "shuffled" : "in order",
+        useTotal ? `${totalMinutes} minutes in all` : usePerQuestion ? `${perQuestionSeconds} seconds each` : "no timer",
+        easy ? "with how many to pick shown" : "",
+      ].filter(Boolean).join(", ") + ".",
+  );
 
   function pickDue() {
     chosen = [...new Set([...chosen, ...dueIds])];
@@ -117,7 +120,7 @@
 {/snippet}
 
 <div class="mx-auto max-w-[96rem] px-12 pb-24">
-  <PageHeader title="New quiz" subtitle="Pick what to practise and how" />
+  <PageHeader title="Take a quiz" subtitle="Pick topics, then start" />
   <div class="grid grid-cols-1 items-start gap-8 wide:grid-cols-[minmax(0,1fr)_320px]">
     <div class="space-y-8">
       <section>
@@ -135,9 +138,7 @@
       <section>
         <h2 class="eyebrow mb-3">Settings</h2>
         <div class="panel flex flex-wrap items-center gap-2 px-6 py-4">
-          <ul class="flex flex-1 flex-wrap gap-2" aria-label="Current settings">
-            {#each summary as item (item)}<li class="word">{item}</li>{/each}
-          </ul>
+          <p class="min-w-[min(16rem,100%)] flex-1 text-[15px] leading-relaxed" role="note" aria-label="Current settings">{summary}</p>
           <button class="btn btn-ghost btn-sm" aria-expanded={showSettings} aria-controls="quiz-settings" onclick={() => (showSettings = !showSettings)}>
             {showSettings ? "Hide settings" : "Change settings"}<ChevronDown class="size-4 transition-transform {showSettings ? 'rotate-180' : ''}" />
           </button>

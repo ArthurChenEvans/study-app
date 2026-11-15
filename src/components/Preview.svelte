@@ -30,7 +30,12 @@
   const ACCEPT = ".pdf,.pptx,.ppt,.odp,.epub,.md,.markdown,.txt";
   const MAX_BYTES = 200 * 1024 * 1024;
 
+  // R214: the editor folds the reader away while nothing is open, so it needs to know.
+  let { hasTabs = $bindable(false) }: { hasTabs?: boolean } = $props();
   let tabs = $state<Tab[]>([]);
+  $effect(() => {
+    hasTabs = tabs.length > 0;
+  });
   let active = $state<number | null>(null);
   let contents = $state<Record<number, Content>>({});
   let refused = $state("");

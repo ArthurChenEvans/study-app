@@ -145,7 +145,7 @@
       {:else}
         <!-- svelte-ignore a11y_autofocus -->
         <textarea class="textarea mt-6 min-h-[22rem] w-full text-base leading-relaxed" aria-label="Your recall" placeholder="Start anywhere and keep going. Order and wording don't matter…" bind:value={dump} autofocus></textarea>
-        <p class="mt-2 flex justify-between text-xs tabular-nums text-muted"><span>Saved with this check, so you can look back at it in History</span><span>{words} {words === 1 ? "word" : "words"}</span></p>
+        <p class="mt-2 flex flex-wrap-reverse justify-between gap-x-4 gap-y-1 text-sm tabular-nums text-muted"><span class="min-w-[min(18rem,100%)] flex-1">Saved with this check, so you can look back at it in History</span><span class="whitespace-nowrap">{words} {words === 1 ? "word" : "words"}</span></p>
       {/if}
       <div class="mt-8 flex justify-end">
         <button class="btn btn-primary" onclick={toCheck}>{outside ? "I'm done, show the checklist" : "Done, check it"} <kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">Enter</kbd></button>
