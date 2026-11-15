@@ -5,8 +5,12 @@ import { invoke as tauriInvoke } from "@tauri-apps/api/core";
 
 export const inDesktopApp = () => typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
+/** R211: the phone version, a browser build where the study core runs in a worker. */
+export const inPhone = () => import.meta.env.VITE_PHONE === "1";
+
 export async function invoke<T>(command: string, args: Record<string, unknown> = {}): Promise<T> {
   if (inDesktopApp()) return tauriInvoke<T>(command, args);
+  if (inPhone()) return (await import("../phone/client")).phoneInvoke<T>(command, args);
   let response: Response;
   try {
     response = await fetch(`/api/${command}`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(args) });

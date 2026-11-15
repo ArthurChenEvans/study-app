@@ -18,6 +18,7 @@ tempfile = "3.27.0"
 pulldown-cmark = { version = "0.13", default-features = false, features = ["html"] }
 csv = "1"
 base64 = "0.22"
+web-time = "1"
 
 # Desktop only: fetching pages and records, and Anki's compressed collections. The phone
 # version (in a browser) does neither.

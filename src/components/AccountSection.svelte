@@ -7,7 +7,12 @@
   import { toast } from "../lib/celebrations.svelte";
   import ExportDialog from "./ExportDialog.svelte";
 
+  // The phone version waits on this to know when you're signed in (R211).
+  let { onChange = () => {} }: { onChange?: (status: CloudStatus) => void } = $props();
   let status = $state<CloudStatus | null>(null);
+  $effect(() => {
+    if (status) onChange(status);
+  });
   let busy = $state(false);
   let error = $state("");
 

@@ -10,6 +10,7 @@
   import { ArrowDownUp, BookOpen, Brain, CalendarDays, ChevronDown, ChevronRight, Database, FolderTree, ListChecks, Ellipsis, FolderX, GitCompare, Hammer, History, LayoutDashboard, Layers, Library, Play, RefreshCw, RefreshCwOff, Search, Settings2, ShieldAlert, ShieldCheck, SquareStack, X } from "@lucide/svelte";
   import type { Screen } from "../lib/router";
   import StartMenu, { type StartKind } from "./StartMenu.svelte";
+  import { inPhone } from "../lib/transport";
 
 
   let { current, onNavigate, onStart = () => onNavigate("setup"), due = {}, backup = null, sync = null, mode = "full" }: {
@@ -35,17 +36,21 @@
     { name: "Study", items: [item("quizzes", "Quizzes", ListChecks, "orange"), item("cards", "Cards", SquareStack, "blue"), item("recall", "Free Recall", Brain, "orange"), item("projects", "Practice Log", Hammer, "blue")] },
     { name: "Manage", items: [item("topics", "Topics & Modules", FolderTree, "orange"), item("transfer", "Import & Export", ArrowDownUp, "blue"), item("bibliography", "Bibliography", BookOpen, "orange"), item("history", "History", History, "blue")] },
   ];
+  // R211: the phone version leaves out importing and exporting, and backups (Your data).
+  const PHONE_HIDDEN: Screen[] = inPhone() ? ["transfer", "data"] : [];
+  for (const group of GROUPS) group.items = group.items.filter((entry) => !PHONE_HIDDEN.includes(entry.screen));
   const ALL = GROUPS.flatMap((group) => group.items);
   const find = (screen: Screen) => ALL.find((entry) => entry.screen === screen)!;
+  const shown = (entry: Item | undefined): entry is Item => !!entry && !PHONE_HIDDEN.includes(entry.screen);
   const SEARCH = item("search", "Search", Search, "plain");
   const DATA = item("data", "Your data", Database, "plain");
   const SETTINGS = item("settings", "Settings", Settings2, "plain");
 
   const RAIL = ["overview", "calendar", "quizzes", "cards", "recall", "projects"].map((screen) => find(screen as Screen));
-  const RAIL_MORE = [find("topics"), find("transfer"), find("bibliography"), find("history"), DATA];
+  const RAIL_MORE = [find("topics"), find("transfer"), find("bibliography"), find("history"), DATA].filter(shown);
   const DOCK_LEFT = [find("overview"), find("quizzes")];
   const DOCK_RIGHT = [find("cards")];
-  const DOCK_MORE = [find("calendar"), find("recall"), find("projects"), find("topics"), find("transfer"), find("bibliography"), find("history"), SEARCH, DATA, SETTINGS];
+  const DOCK_MORE = [find("calendar"), find("recall"), find("projects"), find("topics"), find("transfer"), find("bibliography"), find("history"), SEARCH, DATA, SETTINGS].filter(shown);
   // R198: Start goes straight to the session; anything due is in its menu.
   const startDue = $derived({ calendar: due.calendar, cards: due.cards, recall: due.recall, quizzes: due.quizzes, projects: due.projects });
 

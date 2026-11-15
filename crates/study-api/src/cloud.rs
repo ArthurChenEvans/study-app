@@ -268,7 +268,7 @@ impl Cloud {
         let (Some(access_token), Some(refresh_token)) = (text("access_token"), text("refresh_token")) else {
             return Err(ApiError::new("Supabase didn't sign this computer in"));
         };
-        let expires_at = parsed.get("expires_at").and_then(Value::as_i64).unwrap_or_else(|| std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |since| since.as_secs() as i64) + parsed.get("expires_in").and_then(Value::as_i64).unwrap_or(3600));
+        let expires_at = parsed.get("expires_at").and_then(Value::as_i64).unwrap_or_else(|| web_time::SystemTime::now().duration_since(web_time::UNIX_EPOCH).map_or(0, |since| since.as_secs() as i64) + parsed.get("expires_in").and_then(Value::as_i64).unwrap_or(3600));
         let user = parsed.get("user").cloned().unwrap_or(Value::Null);
         let user_id = user.get("id").and_then(Value::as_str).map(str::to_string).or_else(|| self.session.as_ref().map(|session| session.user_id.clone())).unwrap_or_default();
         let email = user.get("email").and_then(Value::as_str).map(str::to_string).unwrap_or_else(|| email.to_string());
