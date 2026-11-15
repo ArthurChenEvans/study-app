@@ -4,6 +4,7 @@
 
 use wasm_bindgen::prelude::*;
 // Linked for its browser host functions.
+#[cfg(target_arch = "wasm32")]
 use sqlite_wasm_rs as _;
 
 #[wasm_bindgen]
