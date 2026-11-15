@@ -464,7 +464,7 @@ impl App {
         self.cloud.admin = false;
         self.cloud.last_synced = None;
         self.cloud.save()?;
-        Ok(self.cloud_status(clock)?)
+        self.cloud_status(clock)
     }
 
     /// Lets everyone add images, or stops them (admin only, R210).
@@ -610,10 +610,13 @@ mod tests {
     use super::*;
     use std::sync::{Arc, Mutex};
 
-    /// Answers each request with the first matching (method, path start) reply, and keeps a log.
+    /// (method, path start, status, body)
+    type Reply = (&'static str, String, u16, String);
+
+    /// Answers each request with the latest matching reply, and keeps a log.
     #[derive(Clone, Default)]
     struct Fake {
-        replies: Arc<Mutex<Vec<(&'static str, String, u16, String)>>>,
+        replies: Arc<Mutex<Vec<Reply>>>,
         log: Arc<Mutex<Vec<Request>>>,
     }
 
