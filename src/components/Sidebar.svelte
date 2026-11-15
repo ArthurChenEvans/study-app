@@ -13,7 +13,7 @@
   import { inPhone } from "../lib/transport";
 
 
-  let { current, onNavigate, onStart = () => onNavigate("setup"), due = {}, backup = null, sync = null, mode = "full" }: {
+  let { current, onNavigate, onStart = () => onNavigate("setup"), due = {}, backup = null, sync = null, mode = "full", startHidden = false }: {
     current: Screen;
     onNavigate: (screen: Screen) => void;
     onStart?: (kind: StartKind) => void;
@@ -21,6 +21,8 @@
     backup?: { safe: boolean; short: string } | null;
     sync?: { ok: boolean; short: string; icon?: string } | null;
     mode?: NavMode;
+    /** R214: screens with a form leave out the floating Start button, which would cover it. */
+    startHidden?: boolean;
   } = $props();
   // One line: the backup when it needs attention, otherwise sync once it's on (R108, R128).
   const showSync = $derived(sync !== null && (backup === null || backup.safe));
@@ -169,7 +171,7 @@
       <a href="#settings" class="rail-item" aria-label="Settings" title="Settings" aria-current={current === "settings" ? "page" : undefined} onclick={(event) => go(event, "settings")}><Settings2 class="size-5" strokeWidth={2.4} /><span aria-hidden="true">Settings</span></a>
     </div>
   </nav>
-  <StartMenu variant="fab" due={startDue} {onStart} />
+  {#if !startHidden}<StartMenu variant="fab" due={startDue} {onStart} />{/if}
   {@render sheet()}
 {:else}
   <nav class="sticky top-0 flex h-screen w-60 shrink-0 flex-col gap-1 overflow-y-auto border-r-2 border-base-300 bg-base-200 p-3" aria-label="Main">

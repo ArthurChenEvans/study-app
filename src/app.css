@@ -810,3 +810,12 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
   .search-result > button { width: 100%; padding-bottom: 4px; }
   .search-result > .search-meta { padding: 0 24px 12px; max-width: none; justify-content: flex-start; }
 }
+
+/* R214: question editor. Each answer starts with a "Right" marker you can read, and Save
+   sits in a bar along the bottom of the form so it never scrolls away. */
+.option-grid { grid-template-columns: auto minmax(0, 1fr) 32px; }
+.right-label { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px 0 8px; border: 2px solid var(--color-base-300); border-radius: 12px; font-size: 14px; font-weight: 800; color: var(--muted); cursor: pointer; }
+.right-label.is-right { border-color: var(--chart-right); color: var(--color-base-content); }
+.right-label .checkbox-correct { width: 22px; height: 22px; border-radius: 7px; }
+.save-bar { position: sticky; bottom: 0; z-index: 5; display: flex; align-items: center; gap: 12px; margin: 0 -2.5rem; padding: 16px 2.5rem; border-top: 2px solid var(--color-base-300); background: var(--color-base-100); }
+@media (max-width: 1023px) { .save-bar { margin: 0 -1.25rem; padding: 14px 1.25rem; } }
