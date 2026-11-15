@@ -20,6 +20,7 @@ pub mod seed;
 pub mod seed_large;
 pub mod sync;
 pub mod transfer;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod web;
 
 use rand::SeedableRng;
@@ -331,6 +332,11 @@ impl App {
 }
 
 impl App {
+    /// R211: the whole database as bytes, for the phone to keep in the browser.
+    pub fn database_bytes(&mut self) -> ApiResult<Vec<u8>> {
+        Ok(self.store.to_bytes()?)
+    }
+
     pub fn new(store: Store) -> Self {
         let active = running_quiz(&store);
         Self {

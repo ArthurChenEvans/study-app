@@ -2,6 +2,9 @@
   // questions.feature, sources.feature, short-answer.feature (R4 to R10, R14, R48, R49, R78 to R82)
   import { ArrowLeft, BookOpen, Check, CircleCheck, CircleX, Eye, ImagePlus, Plus, Trash2, X } from "@lucide/svelte";
   import Preview from "../components/Preview.svelte";
+  import { inPhone } from "../lib/transport";
+  // R211: the phone has no reader, so the editor takes the whole screen.
+  const phone = inPhone();
   import { reading, showCitation } from "../lib/sourceFiles.svelte";
   import { locationTarget } from "../lib/toc";
   import Rich from "../components/Rich.svelte";
@@ -220,11 +223,13 @@
 />
 
 <div class="flex h-screen">
+  {#if !phone}
   <section class="flex w-1/2 min-w-0 flex-col border-r border-base-300 bg-base-200" aria-label="Source preview">
     <Preview />
   </section>
+  {/if}
 
-  <section class="w-1/2 overflow-auto" aria-label="Question editor">
+  <section class="{phone ? 'w-full' : 'w-1/2'} overflow-auto" aria-label="Question editor">
     <div class="flex items-end justify-between px-10 pb-6 pt-10">
       <div>
         <button type="button" class="btn btn-ghost btn-sm -ml-3 mb-2" aria-label="Back to Quizzes" onclick={onBack}><ArrowLeft class="size-4" />Quizzes</button>

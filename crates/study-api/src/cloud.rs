@@ -48,9 +48,20 @@ pub trait Http: Send {
     fn send(&self, request: &Request) -> Result<Response, String>;
 }
 
-/// The real network.
+/// The real network, on the desktop. The phone version brings its own (see study-phone).
+#[cfg(not(target_arch = "wasm32"))]
 pub struct Network;
 
+/// No network: for a build that hasn't been given one.
+pub struct Offline;
+
+impl Http for Offline {
+    fn send(&self, _request: &Request) -> Result<Response, String> {
+        Err("there's no connection to Supabase here".into())
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 impl Http for Network {
     fn send(&self, request: &Request) -> Result<Response, String> {
         let agent: ureq::Agent = ureq::Agent::config_builder()
@@ -115,7 +126,11 @@ pub struct Cloud {
 
 impl Default for Cloud {
     fn default() -> Self {
-        Self { url: PROJECT_URL.into(), key: PUBLISHABLE_KEY.into(), http: Box::new(Network), home: None, session: None, images_allowed: false, admin: false, problem: None, last_synced: None, names: BTreeMap::new() }
+        #[cfg(not(target_arch = "wasm32"))]
+        let http: Box<dyn Http> = Box::new(Network);
+        #[cfg(target_arch = "wasm32")]
+        let http: Box<dyn Http> = Box::new(Offline);
+        Self { url: PROJECT_URL.into(), key: PUBLISHABLE_KEY.into(), http, home: None, session: None, images_allowed: false, admin: false, problem: None, last_synced: None, names: BTreeMap::new() }
     }
 }
 
@@ -203,11 +218,11 @@ impl Cloud {
 
     fn save(&self) -> ApiResult<()> {
         let Some(path) = self.path() else { return Ok(()) };
-        let saved = json!({ "session": self.session, "last_synced": self.last_synced, "names": self.names });
+        let saved = self.saved_text();
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).map_err(|error| ApiError::new(format!("couldn't save the sign-in: {error}")))?;
         }
-        std::fs::write(&path, saved.to_string()).map_err(|error| ApiError::new(format!("couldn't save the sign-in: {error}")))?;
+        std::fs::write(&path, saved).map_err(|error| ApiError::new(format!("couldn't save the sign-in: {error}")))?;
         // The refresh token is as good as being signed in, so only this user can read it.
         #[cfg(unix)]
         {
@@ -215,6 +230,18 @@ impl Cloud {
             let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
         }
         Ok(())
+    }
+
+    /// The sign-in as text, for a build without files (the phone keeps it in the browser).
+    pub fn saved_text(&self) -> String {
+        json!({ "session": self.session, "last_synced": self.last_synced, "names": self.names }).to_string()
+    }
+
+    pub fn load_text(&mut self, text: &str) {
+        let saved: Value = serde_json::from_str(text).unwrap_or(Value::Null);
+        self.session = serde_json::from_value(saved.get("session").cloned().unwrap_or(Value::Null)).ok();
+        self.last_synced = saved.get("last_synced").and_then(Value::as_i64);
+        self.names = serde_json::from_value(saved.get("names").cloned().unwrap_or(Value::Null)).unwrap_or_default();
     }
 
     fn load(&mut self) {
@@ -241,7 +268,7 @@ impl Cloud {
         let (Some(access_token), Some(refresh_token)) = (text("access_token"), text("refresh_token")) else {
             return Err(ApiError::new("Supabase didn't sign this computer in"));
         };
-        let expires_at = parsed.get("expires_at").and_then(Value::as_i64).unwrap_or_else(|| std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |since| since.as_secs() as i64) + parsed.get("expires_in").and_then(Value::as_i64).unwrap_or(3600));
+        let expires_at = parsed.get("expires_at").and_then(Value::as_i64).unwrap_or_else(|| web_time::SystemTime::now().duration_since(web_time::UNIX_EPOCH).map_or(0, |since| since.as_secs() as i64) + parsed.get("expires_in").and_then(Value::as_i64).unwrap_or(3600));
         let user = parsed.get("user").cloned().unwrap_or(Value::Null);
         let user_id = user.get("id").and_then(Value::as_str).map(str::to_string).or_else(|| self.session.as_ref().map(|session| session.user_id.clone())).unwrap_or_default();
         let email = user.get("email").and_then(Value::as_str).map(str::to_string).unwrap_or_else(|| email.to_string());
@@ -331,6 +358,16 @@ impl App {
         self.cloud.images_allowed()
     }
 
+    /// The phone keeps the sign-in in the browser: it reads it out after each command...
+    pub fn cloud_saved_text(&self) -> String {
+        self.cloud.saved_text()
+    }
+
+    /// ...and hands it back when the app opens.
+    pub fn cloud_load_text(&mut self, text: &str) {
+        self.cloud.load_text(text);
+    }
+
     /// Emails a 6-digit sign-in code. A new email makes an account (open sign-up).
     pub fn cloud_request_code(&mut self, email: &str) -> ApiResult<()> {
         let email = email.trim();
@@ -346,9 +383,10 @@ impl App {
 
     /// Signs this computer in with the emailed code.
     pub fn cloud_verify_code(&mut self, email: &str, code: &str, clock: Clock) -> ApiResult<CloudStatus> {
+        // Supabase sends 6 to 10 digits, depending on the project's "Email OTP Length".
         let code: String = code.chars().filter(char::is_ascii_digit).collect();
-        if code.len() != 6 {
-            return Err(ApiError::new("type the 6-digit code from the email"));
+        if !(6..=10).contains(&code.len()) {
+            return Err(ApiError::new("type the whole code from the email"));
         }
         let response = self.cloud.auth("POST", "verify", Some(json!({ "type": "email", "email": email.trim(), "token": code })), None)?;
         if response.status != 200 {
@@ -451,8 +489,7 @@ impl App {
         if response.status >= 300 {
             return Err(ApiError::new(message_of(&response.body, "couldn't sign the other computers out")));
         }
-        let me = self.store.device_id();
-        let _ = self.cloud.rest("DELETE", &format!("devices?device=neq.{me}"), None, None, clock.unix);
+        // The other computers' rows stay: a computer signing in later reads their changes through them.
         self.cloud_status(clock)
     }
 
@@ -682,6 +719,10 @@ mod tests {
         let mut app = signed_in(&fake);
         let verify = &fake.sent("POST", "/auth/v1/verify")[0];
         assert_eq!(serde_json::from_str::<Value>(verify.body.as_ref().unwrap()).unwrap(), json!({ "type": "email", "email": "chen@example.com", "token": "123456" }));
+        // Supabase's codes are 6 to 10 digits long, depending on the project's setting.
+        app.cloud_verify_code("chen@example.com", " 1234 5678 ", CLOCK).unwrap();
+        let verify = fake.sent("POST", "/auth/v1/verify").pop().unwrap();
+        assert_eq!(serde_json::from_str::<Value>(verify.body.as_ref().unwrap()).unwrap()["token"], json!("12345678"));
         let status = app.cloud_status(CLOCK).unwrap();
         assert!(status.signed_in && !status.two_step && !status.needs_two_step && !status.images_allowed);
         assert_eq!(status.email.as_deref(), Some("chen@example.com"));
@@ -693,7 +734,8 @@ mod tests {
         let fake = Fake::default();
         fake.reply("POST", "/auth/v1/verify", 403, json!({ "msg": "Token has expired or is invalid" }));
         let mut app = app_with(&fake);
-        assert!(app.cloud_verify_code("chen@example.com", "12345", CLOCK).unwrap_err().message.contains("6-digit"));
+        assert!(app.cloud_verify_code("chen@example.com", "12345", CLOCK).unwrap_err().message.contains("code from the email"));
+        assert!(app.cloud_verify_code("chen@example.com", "12345678901", CLOCK).is_err());
         assert_eq!(app.cloud_verify_code("chen@example.com", "123 456", CLOCK).unwrap_err().message, "that code didn't work or has run out. Ask for a new one");
         fake.reply("POST", "/auth/v1/otp", 429, json!({ "msg": "For security purposes, you can only request this after 42 seconds." }));
         assert_eq!(app.cloud_request_code("chen@example.com").unwrap_err().message, "too many codes asked for. Wait a minute and try again");

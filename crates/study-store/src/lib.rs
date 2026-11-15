@@ -108,6 +108,18 @@ impl Store {
         Self::from_connection(Connection::open_in_memory()?)
     }
 
+    /// R211: the whole database as bytes, for the phone to keep in the browser between visits.
+    pub fn to_bytes(&mut self) -> Result<Vec<u8>> {
+        Ok(self.connection.serialize(rusqlite::MAIN_DB)?.to_vec())
+    }
+
+    /// A database kept by [`Store::to_bytes`], opened in memory. It's upgraded like any other.
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
+        let mut connection = Connection::open_in_memory()?;
+        connection.deserialize_read_exact(rusqlite::MAIN_DB, bytes, bytes.len(), false)?;
+        Self::from_connection(connection)
+    }
+
     fn from_connection(connection: Connection) -> Result<Self> {
         // The ID and stamp functions come first: migration 8 and every trigger use them.
         let clock = ids::register(&connection)?;

@@ -80,7 +80,10 @@ pub struct Package {
 
 fn unzstd(bytes: Vec<u8>) -> ApiResult<Vec<u8>> {
     if bytes.starts_with(&ZSTD_MAGIC) {
-        zstd::stream::decode_all(bytes.as_slice()).map_err(|_| not_anki())
+        #[cfg(not(target_arch = "wasm32"))]
+        return zstd::stream::decode_all(bytes.as_slice()).map_err(|_| not_anki());
+        #[cfg(target_arch = "wasm32")]
+        return Err(ApiError::new("open this Anki file in the desktop app"));
     } else {
         Ok(bytes)
     }

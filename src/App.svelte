@@ -3,6 +3,8 @@
   import Sidebar, { type NavMode } from "./components/Sidebar.svelte";
   import type { StartKind } from "./components/StartMenu.svelte";
   import ContextMenuHost from "./components/ContextMenuHost.svelte";
+  import AccountSection from "./components/AccountSection.svelte";
+  import { inPhone } from "./lib/transport";
   import Topics from "./screens/Topics.svelte";
   import Quizzes from "./screens/Quizzes.svelte";
   import Transfer from "./screens/Transfer.svelte";
@@ -129,6 +131,23 @@
   }
   syncTick();
   const timer = setInterval(() => syncTick(), 30_000);
+
+  // R211: the phone version only works signed in, since the account is where its data lives.
+  const phone = inPhone();
+  let signInFirst = $state(phone);
+  if (phone) {
+    Promise.resolve(api.cloudStatus()).then((status) => (signInFirst = !status?.signed_in || status.needs_two_step)).catch(() => {});
+  }
+  function signedIn(status: { signed_in: boolean; needs_two_step: boolean }) {
+    if (!signInFirst || !status.signed_in || status.needs_two_step) return;
+    signInFirst = false;
+    void syncTick(false).then(() => dataVersion++);
+  }
+  // Put away (switched from, locked): sync and keep what's here before the browser can drop it.
+  function putAway() {
+    if (!phone || document.visibilityState !== "hidden") return;
+    void Promise.resolve(api.syncNow(true)).catch(() => {}).finally(() => void import("./phone/client").then(({ phoneKeep }) => phoneKeep()).catch(() => {}));
+  }
   $effect(() => () => clearInterval(timer));
 
   async function refreshDue() {
@@ -228,6 +247,15 @@
 
 <svelte:window onhashchange={() => (route = { screen: screenFromHash(location.hash) })} onkeydown={shortcut} onbeforeunload={() => { flushPendingDeletes(); }} />
 
+<svelte:document onvisibilitychange={putAway} />
+
+{#if signInFirst}
+  <div class="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-4 px-4 py-10">
+    <h1 class="text-3xl font-black">Shudhana</h1>
+    <p class="text-muted">Sign in to study on your phone. Your quizzes, cards, free recall and practice logs come from your account.</p>
+    <AccountSection onChange={signedIn} />
+  </div>
+{:else}
 <div class="flex min-h-screen">
   {#if !["quiz", "recall-session", "card-review", "session-review", "drills"].includes(route.screen)}<Sidebar current={navScreen} {due} onStart={start} {backup} {sync} {mode} onNavigate={(screen) => go({ screen })} />{/if}
   <main class="min-w-0 flex-1" class:pb-24={mode === "dock"}>
@@ -291,10 +319,11 @@
     {/key}
   </main>
 </div>
+{/if}
 
 <Celebration />
 <Pops />
-<ImportHost />
+{#if !phone}<ImportHost />{/if}
 <Toasts />
 <ContextMenuHost />
 

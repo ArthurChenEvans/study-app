@@ -4,3 +4,7 @@ node_modules
 src-tauri/gen
 e2e/failure.png
 *.sqlite
+
+# Phone version build output
+dist-phone/
+crates/study-phone/pkg/

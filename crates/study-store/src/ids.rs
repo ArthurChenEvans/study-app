@@ -11,7 +11,8 @@
 //! - `device_id()` is this computer's ID, kept in `this_device`.
 
 use std::sync::{Arc, Mutex};
-use std::time::{SystemTime, UNIX_EPOCH};
+// web-time is std::time on the desktop, and the browser's clock in the phone version.
+use web_time::{SystemTime, UNIX_EPOCH};
 
 use rand::Rng;
 use rusqlite::functions::FunctionFlags;

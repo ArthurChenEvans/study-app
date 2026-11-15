@@ -7,7 +7,12 @@
   import { toast } from "../lib/celebrations.svelte";
   import ExportDialog from "./ExportDialog.svelte";
 
+  // The phone version waits on this to know when you're signed in (R211).
+  let { onChange = () => {} }: { onChange?: (status: CloudStatus) => void } = $props();
   let status = $state<CloudStatus | null>(null);
+  $effect(() => {
+    if (status) onChange(status);
+  });
   let busy = $state(false);
   let error = $state("");
 
@@ -149,12 +154,10 @@
   const when = (unix: number | null) => (unix === null ? "Not yet" : new Date(unix * 1000).toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" }));
 </script>
 
-{#snippet otpField(id: string, label: string, value: string, onInput: (text: string) => void)}
+{#snippet otpField(id: string, label: string, value: string, onInput: (text: string) => void, longest = 6)}
+  <!-- A plain box (R206): Supabase's email codes are 6 to 10 digits, and spaces from a paste are dropped. -->
   <label class="block" for={id}><span class="block text-sm font-bold">{label}</span></label>
-  <div class="otp mt-1">
-    <input {id} type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="6" required aria-label={label} {value} oninput={(event) => onInput(event.currentTarget.value.replace(/\D/g, "").slice(0, 6))} />
-    <span></span><span></span><span></span><span></span><span></span><span></span>
-  </div>
+  <input {id} type="text" inputmode="numeric" autocomplete="one-time-code" maxlength={longest + 4} required class="input mt-1 w-full max-w-60 font-mono text-xl tracking-[0.3em] tabular-nums" aria-label={label} {value} oninput={(event) => { const digits = event.currentTarget.value.replace(/\D/g, "").slice(0, longest); event.currentTarget.value = digits; onInput(digits); }} />
 {/snippet}
 
 <section class="panel p-5" aria-labelledby="account-h">
@@ -172,15 +175,15 @@
       <form class="mt-3 max-w-md space-y-3" onsubmit={sendCode}>
         <label class="block"><span class="block text-sm font-bold">Email</span>
           <input id="account-email" type="email" autocomplete="email" class="input mt-1 w-full" bind:value={email} required /></label>
-        <p class="text-sm text-muted">No password. We email you a 6-digit code. A new email makes a new account.</p>
+        <p class="text-sm text-muted">No password. We email you a code. A new email makes a new account.</p>
         <div class="flex gap-2"><button type="submit" class="btn btn-primary" disabled={busy}>Email me a code</button><button type="button" class="btn btn-ghost" onclick={() => (step = "idle")}>Cancel</button></div>
       </form>
     {:else}
       <form class="mt-3 max-w-md space-y-3" onsubmit={verify}>
-        <p class="text-sm">We sent a 6-digit code to <span class="font-extrabold">{email}</span>. It works for 10 minutes. <button type="button" class="link" onclick={() => (step = "email")}>Wrong email?</button></p>
-        {@render otpField("email-code", "Code from the email", code, (text) => (code = text))}
+        <p class="text-sm">We sent a code to <span class="font-extrabold">{email}</span>. It works for 10 minutes. <button type="button" class="link" onclick={() => (step = "email")}>Wrong email?</button></p>
+        {@render otpField("email-code", "Code from the email", code, (text) => (code = text), 10)}
         <div class="flex flex-wrap items-center gap-2">
-          <button type="submit" class="btn btn-primary" disabled={busy || code.length !== 6}>Sign in</button>
+          <button type="submit" class="btn btn-primary" disabled={busy || code.length < 6}>Sign in</button>
           {#if wait > 0}<span class="text-sm text-muted tabular-nums">No email? Check spam, or ask again in {wait}s</span>{:else}<button type="button" class="btn btn-ghost btn-sm" disabled={busy} onclick={() => sendCode()}>Send a new code</button>{/if}
         </div>
       </form>

@@ -560,3 +560,17 @@ fn celebration_choices_round_trip_and_are_checked() {
     store.reset_celebrations().unwrap();
     assert_eq!(store.celebrations().unwrap(), None);
 }
+
+// R211: the phone keeps its database in the browser as bytes
+#[test]
+fn a_database_round_trips_through_bytes() {
+    let mut store = Store::in_memory().unwrap();
+    store.create_topic("DNS", None).unwrap();
+    let device = store.device_id();
+    let bytes = store.to_bytes().unwrap();
+    let mut again = Store::from_bytes(&bytes).unwrap();
+    assert_eq!(again.topics().unwrap().iter().map(|topic| topic.name.clone()).collect::<Vec<_>>(), vec!["DNS".to_string()]);
+    assert_eq!(again.device_id(), device, "the same computer, so its lines carry on");
+    again.create_topic("TLS", None).unwrap();
+    assert!(Store::from_bytes(b"not a database").is_err());
+}

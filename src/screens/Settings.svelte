@@ -5,6 +5,9 @@
   import PageHeader from "../components/PageHeader.svelte";
   import CelebrationsDialog from "../components/CelebrationsDialog.svelte";
   import AccountSection from "../components/AccountSection.svelte";
+  import { inPhone } from "../lib/transport";
+  // R211: the phone has no updates to install or backups to keep: the account holds everything.
+  const phone = inPhone();
   import { DARK, LIGHT, applyPalette, applyTheme, initialPalette, type Theme } from "../lib/theme";
   import { COLOURS, applyColours, buildColours, initialColours, type ColoursId } from "../lib/colours";
   import { isSoundOn, setSoundOn } from "../lib/sound";
@@ -86,6 +89,7 @@
     </button>
   </section>
 
+  {#if !phone}
   <section class="panel mt-5 p-5" aria-labelledby="updates-h">
     <h2 id="updates-h" class="eyebrow">Updates</h2>
     <p class="mt-3 font-bold">Shudhana {updates.current || "(desktop app only)"}</p>
@@ -113,6 +117,9 @@
     {#if updates.status === "failed" && updates.error}<p role="alert" class="mt-3 flex items-start gap-2 text-sm font-bold"><TriangleAlert class="mt-0.5 size-4 shrink-0" />{updates.error}</p>{/if}
   </section>
 
+  {/if}
+
+  {#if !phone}
   <section class="panel mt-5 p-5" aria-labelledby="data-h">
     <h2 id="data-h" class="eyebrow">Your study data</h2>
     <a href="#data" class="settings-row mt-2" onclick={(event) => { event.preventDefault(); onNavigate("data"); }}>
@@ -121,6 +128,7 @@
       <ChevronRight class="size-5 text-muted" />
     </a>
   </section>
+  {/if}
 </div>
 
 {#if celebrations}<CelebrationsDialog onClose={() => (celebrations = false)} />{/if}
