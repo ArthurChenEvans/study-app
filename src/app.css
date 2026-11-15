@@ -781,3 +781,32 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
 @media (pointer: coarse) {
   kbd, .keys-hint { display: none !important; }
 }
+
+/* R214: label and value lists (Your data's backup details) stack on phones, with room
+   between each name, its value and its button. */
+@media (max-width: 639px) {
+  .details-list > dt:not(:first-child) { margin-top: 16px; }
+  .details-list > dd:has(> .btn) { justify-self: start; }
+}
+
+/* R214: History on a phone, one tidy row per quiz: date and score on top, the result bar the
+   full width under them, then the topics. The whole row opens the results. */
+@media (max-width: 599px) {
+  main table.history-table tbody tr { grid-template-columns: minmax(0, 1fr) auto; row-gap: 8px; }
+  main table.history-table tbody td { grid-column: 1 / -1; }
+  main table.history-table tbody td:nth-child(1) { grid-column: 1; grid-row: 1; font-size: 16px; }
+  main table.history-table tbody td:nth-child(4) { grid-column: 2; grid-row: 1; font-size: 16px; color: var(--color-base-content); }
+  main table.history-table tbody td:nth-child(3) { grid-row: 2; }
+  main table.history-table tbody td:nth-child(2) { grid-row: 3; }
+  main table.history-table tbody td:nth-child(5):not(:has(.chip)) { display: none; }
+  main table.history-table tbody td[data-label]::before { content: none; }
+  main table.history-table .seg-bar { width: 100%; }
+  main table.history-table .view-label { display: none; }
+}
+
+/* R214: on phones a search result's topic and tags go under the question, not beside it. */
+@media (max-width: 599px) {
+  .search-result { flex-direction: column; gap: 0; }
+  .search-result > button { width: 100%; padding-bottom: 4px; }
+  .search-result > .search-meta { padding: 0 24px 12px; max-width: none; justify-content: flex-start; }
+}

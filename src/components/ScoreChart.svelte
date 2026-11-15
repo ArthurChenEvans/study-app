@@ -83,7 +83,7 @@
       {/if}
     </svg>
     {#if selected !== null}
-      <div class="chart-tip show" style="position: absolute; left: {Math.min(x(selected) + 12, width - 240)}px; top: {Math.max(0, y(points[selected].percent) - 56)}px">{describe(points[selected])}</div>
+      <div class="chart-tip show" style="position: absolute; left: {Math.max(0, Math.min(x(selected) + 12, width - 240))}px; top: {Math.max(0, y(points[selected].percent) - 56)}px">{describe(points[selected])}</div>
     {/if}
   {/if}
   <p role="status" class="sr-only">{selected !== null ? describe(points[selected]) : ""}</p>

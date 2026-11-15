@@ -180,7 +180,7 @@
       {#if error}<p role="alert" class="text-sm text-error">{error}</p>{/if}
 
       <section class="panel p-6" aria-labelledby="backups-h">
-        <div class="flex items-start justify-between gap-4">
+        <div class="flex flex-col items-start justify-between gap-4 sm:flex-row">
           <div>
             <h2 id="backups-h" class="text-lg font-semibold">Backups</h2>
             <p class="mt-1 text-sm text-muted">A full copy of everything, made while the app is open. Your study isn't interrupted.</p>
@@ -209,7 +209,7 @@
           </div>
         {/if}
 
-        <dl class="mt-5 grid grid-cols-[9rem_minmax(0,1fr)_auto] items-center gap-x-4 gap-y-3 text-sm">
+        <dl class="details-list mt-5 grid grid-cols-1 items-center gap-x-4 gap-y-1 text-sm sm:grid-cols-[9rem_minmax(0,1fr)_auto] sm:gap-y-3">
           <dt class="text-muted">Kept</dt>
           <dd>{keptLabel(status.settings)}</dd>
           <dd><button class="btn btn-ghost btn-sm" onclick={openKeeping} aria-label="Change how many are kept">Change</button></dd>

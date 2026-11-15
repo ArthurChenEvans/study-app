@@ -86,13 +86,13 @@
     <div class="mt-8 mb-3"><FilterBox bind:value={filter} shown={listed.length} total={rows.length} placeholder="Filter by topic…" /></div>
     {#each months as group, index (group.key)}
       <section class="panel mb-3 overflow-hidden" aria-label={group.label}>
-        <button type="button" class="flex w-full items-center gap-3 px-5 py-3 text-left" aria-expanded={isOpen(group.key, index)} onclick={() => (opened = { ...opened, [group.key]: !isOpen(group.key, index) })}>
+        <button type="button" class="flex w-full flex-wrap items-center gap-x-3 gap-y-0 px-5 py-3 text-left" aria-expanded={isOpen(group.key, index)} onclick={() => (opened = { ...opened, [group.key]: !isOpen(group.key, index) })}>
           <ChevronRight class="size-4 transition-transform {isOpen(group.key, index) ? 'rotate-90' : ''}" aria-hidden="true" />
           <span class="font-black">{group.label}</span>
-          <span class="text-sm text-muted">{group.rows.length} {group.rows.length === 1 ? "quiz" : "quizzes"} · average {average(group.rows)}%</span>
+          <span class="min-w-0 text-sm text-muted">{group.rows.length} {group.rows.length === 1 ? "quiz" : "quizzes"} · average {average(group.rows)}%</span>
         </button>
         {#if isOpen(group.key, index)}
-      <table class="table border-t-2 border-base-300" use:stackTable>
+      <table class="table history-table border-t-2 border-base-300" use:stackTable>
         <thead><tr class="text-muted"><th>Date</th><th>Topics</th><th class="w-56">Result</th><th class="text-right">Score</th><th><span class="sr-only">Status</span></th></tr></thead>
         <tbody>
           {#each group.rows as row (row.id)}
@@ -106,7 +106,7 @@
                 <span class="flex items-center justify-end gap-3">
                 {#if row.retry_of !== null}<span class="chip"><RotateCcw class="size-3" />Retry</span>
                 {:else if row.status === "Incomplete"}<span class="chip"><CirclePause class="size-3" />Incomplete</span>{/if}
-                <span class="whitespace-nowrap text-[13px] font-extrabold uppercase tracking-[.06em] text-primary-ink" aria-hidden="true">View results</span>
+                <span class="view-label whitespace-nowrap text-[13px] font-extrabold uppercase tracking-[.06em] text-primary-ink" aria-hidden="true">View results</span>
                 </span>
               </td>
             </tr>
