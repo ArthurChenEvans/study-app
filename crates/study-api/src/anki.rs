@@ -505,6 +505,7 @@ impl App {
     }
 
     fn anki_snapshot(&self, package: &Package, choice: &AnkiChoice, clock: Clock) -> ApiResult<Snapshot> {
+        let images_ok = self.images_allowed();
         let chosen: HashMap<&str, &DeckTarget> = choice.decks.iter().map(|(name, target)| (name.as_str(), target)).collect();
         let deck_of = package.deck_of();
         let device = "anki";
@@ -569,6 +570,10 @@ impl App {
                 html_to_markdown(
                     html,
                     &mut |name, alt| {
+                        // R210: images aren't brought in while the admin has them switched off.
+                        if !images_ok {
+                            return None;
+                        }
                         let bytes = package.media.get(name).filter(|bytes| !bytes.is_empty())?;
                         let format = study_core::image::check_image(bytes).ok()?;
                         let uid = image_uids

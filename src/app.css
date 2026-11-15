@@ -726,7 +726,7 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
 .start-count { margin-left: 0.25rem; border-radius: 999px; padding: 0 0.5rem; font-size: 0.8rem; letter-spacing: 0; background: var(--color-base-100); color: var(--primary-ink); }
 .start-scrim { position: fixed; inset: 0; z-index: 40; background: transparent; cursor: default; }
 .start-menu { position: absolute; z-index: 41; width: 18rem; padding: 0.4rem; display: flex; flex-direction: column; gap: 2px; border: 2px solid var(--color-base-300); border-radius: 1rem; background: var(--color-base-200); box-shadow: var(--shadow-float); }
-.start-at-side .start-menu { left: 0; top: calc(100% + 0.4rem); }
+.start-at-side .start-menu { position: fixed; }
 .start-item { display: flex; align-items: center; gap: 0.6rem; min-height: 2.75rem; padding: 0 0.75rem; border-radius: 0.6rem; font-weight: 800; }
 .start-item:hover, .start-item:focus-visible { background: var(--color-base-300); outline: none; }
 .start-fab { position: fixed; right: 1.5rem; bottom: 1.5rem; z-index: 30; height: 3.5rem; padding: 0 1.4rem; border-radius: 1.1rem; box-shadow: var(--shadow-float); background: var(--color-primary); color: var(--color-primary-content); letter-spacing: 0.06em; font-weight: 900; }
@@ -745,3 +745,22 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
 }
 /* R201: the web address box */
 .link-pop { margin-top: 0.75rem; padding: 0.75rem; border: 2px solid var(--color-base-300); border-radius: 0.9rem; background: var(--color-base-200); }
+/* R204: reading a book or a web page. Headings, lists, tables, quotes and maths styled like a
+   book page, since pages and chapters arrive as plain HTML with nothing of their own. */
+.reading { font-size: 1.0625rem; line-height: 1.7; font-weight: 500; }
+.reading h1, .reading h2, .reading h3, .reading h4 { font-weight: 900; line-height: 1.25; margin-top: 1.6em; }
+.reading h1 { font-size: 1.75rem; }
+.reading h2 { font-size: 1.4rem; padding-bottom: 0.25em; border-bottom: 2px solid var(--color-base-300); }
+.reading h3 { font-size: 1.15rem; }
+.reading h4 { font-size: 1rem; }
+.reading section > * + *, .reading div > * + * { margin-top: 0.75em; }
+.reading a { color: var(--primary-ink); text-decoration: underline; text-underline-offset: 2px; }
+.reading blockquote { padding-left: 1em; border-left: 3px solid var(--color-base-300); color: var(--color-muted, inherit); }
+.reading table { display: block; max-width: 100%; overflow-x: auto; border-collapse: collapse; font-size: 0.9375rem; }
+.reading th, .reading td { padding: 0.35em 0.6em; border: 1px solid var(--color-base-300); vertical-align: top; text-align: left; }
+.reading figure { margin: 1em 0; }
+.reading figcaption, .reading caption { font-size: 0.875rem; color: var(--color-muted, inherit); margin-top: 0.4em; }
+.reading math { font-size: 1.05em; }
+.reading math[display="block"] { display: block; margin: 0.75em 0; overflow-x: auto; }
+.reading dl dt { font-weight: 800; }
+.reading dl dd { margin-left: 1.25em; }

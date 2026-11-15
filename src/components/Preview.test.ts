@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../lib/api", async (original) => {
   const actual = await original<typeof import("../lib/api")>();
-  return { ...actual, api: { slidesToPdf: vi.fn(), fetchPage: vi.fn(), sources: vi.fn(), addSource: vi.fn(), updateSource: vi.fn(), deleteSource: vi.fn() } };
+  return { ...actual, api: { slidesToPdf: vi.fn(), fetchPage: vi.fn(), fetchRecord: vi.fn(), sources: vi.fn(), addSource: vi.fn(), updateSource: vi.fn(), deleteSource: vi.fn() } };
 });
 
 import { api } from "../lib/api";

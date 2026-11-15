@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { locationTarget, markdownHeadings, pageHeading, pageHeadings } from "./toc";
+import { headingTitle, locationTarget, markdownHeadings, pageHeading, pageHeadings } from "./toc";
 import { fileFor, forget, remember } from "./sourceFiles.svelte";
 
 // sources.feature: A table of contents (R179)
@@ -59,5 +59,19 @@ describe("page headings", () => {
       [item("Course header", 20), item("body only here", 11), item("x", 11)],
     ];
     expect(pageHeadings(pages)).toEqual([{ title: "Intro", depth: 1, at: 1 }, { title: "Paging", depth: 1, at: 2 }]);
+  });
+});
+
+// R203: contents list headings, not leftovers like "..." or a lone page number
+describe("headingTitle", () => {
+  it("keeps real headings and tidies their edges", () => {
+    expect(headingTitle("1 Boolean Logic")).toBe("1 Boolean Logic");
+    expect(headingTitle(". . . RAMn")).toBe("RAMn");
+    expect(headingTitle("  8.1   Background ")).toBe("8.1 Background");
+    expect(headingTitle("CPU")).toBe("CPU");
+  });
+
+  it("drops entries with no words in them", () => {
+    for (const junk of ["...", "…", ". . . . . .", "… … … …", "12", "–", "  ", "ii", "A"]) expect(headingTitle(junk)).toBeNull();
   });
 });

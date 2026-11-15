@@ -3,6 +3,7 @@
 // the database straight away and the field gets ![name](image:12) at the cursor.
 import { api, errorMessage } from "./api";
 import { imageMarkdown } from "./images";
+import { toast } from "./celebrations.svelte";
 
 export const IMAGE_TYPES = ["image/png", "image/jpeg", "image/gif", "image/webp"];
 
@@ -39,7 +40,13 @@ export function imageInput(fallback: () => RichField | null | undefined) {
         field.dispatchEvent(new Event("input", { bubbles: true }));
         state.note = `Image added to ${fieldName(field)}`;
       } catch (failure) {
-        state.error = errorMessage(failure);
+        const message = errorMessage(failure);
+        // R210: switched off by the admin. Said once, as a toast, since nothing else went wrong.
+        if (/^images can't be added right now/i.test(message)) {
+          toast({ text: "Images can't be added right now", sub: "There isn't room to store them yet. The rest of what you wrote is still here.", icon: "alert" });
+          return;
+        }
+        state.error = message;
       }
     }
   }

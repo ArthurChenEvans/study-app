@@ -19,7 +19,7 @@
   let error = $state("");
   let toc = $state<{ title: string; depth: number; at: number }[]>([]);
   import { contentsPanel, toggleContents } from "../lib/contentsPanel.svelte";
-  import { pageHeadings } from "../lib/toc";
+  import { headingTitle, pageHeadings } from "../lib/toc";
   let tocNote = $state("");
   let destroyed = false;
   let loading: { destroy: () => Promise<void> } | null = null;
@@ -62,7 +62,8 @@
           const destination = typeof item.dest === "string" ? await document.getDestination(item.dest) : item.dest;
           const reference = destination?.[0];
           const index = typeof reference === "number" ? reference : reference ? await document.getPageIndex(reference) : null;
-          if (index !== null && item.title.trim()) rows.push({ title: item.title.trim(), depth, at: index + 1 });
+          const title = headingTitle(item.title);
+          if (index !== null && title) rows.push({ title, depth, at: index + 1 });
         } catch {
           // A bookmark to nowhere is left out.
         }

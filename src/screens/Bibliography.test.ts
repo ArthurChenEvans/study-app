@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../lib/api", async (original) => {
   const actual = await original<typeof import("../lib/api")>();
-  return { ...actual, api: { sources: vi.fn(), topics: vi.fn(), addSource: vi.fn(), updateSource: vi.fn(), deleteSource: vi.fn() } };
+  return { ...actual, api: { sources: vi.fn(), topics: vi.fn(), addSource: vi.fn(), updateSource: vi.fn(), deleteSource: vi.fn(), fetchRecord: vi.fn(), fetchPage: vi.fn() } };
 });
 
 import { api, type SourceRow } from "../lib/api";
@@ -131,5 +131,36 @@ describe("Bibliography", () => {
     await flushPendingDeletes();
     expect(mocked.deleteSource).toHaveBeenCalledWith(1);
     expect(await screen.findByText("No sources yet")).toBeInTheDocument();
+  });
+
+  // R205: a link with a DOI in it is filled in from the DOI, even when the journal's page refuses
+  it("fills in a source from the DOI in a link", async () => {
+    const u = userEvent.setup();
+    mocked.sources.mockResolvedValue([]);
+    mocked.topics.mockResolvedValue([]);
+    mocked.addSource.mockResolvedValue(9);
+    mocked.fetchRecord.mockResolvedValue({ title: "Retrieval practice and transfer", "container-title": "The Journal of Experimental Education", author: [{ family: "Smith", given: "Megan A." }], issued: { "date-parts": [[2024]] }, DOI: "10.1080/00220973.2024.2392684" });
+    render(Bibliography);
+    await u.click(await screen.findByRole("button", { name: /From a link, DOI or ISBN/ }));
+    await u.type(screen.getByRole("textbox", { name: "Link, DOI or ISBN" }), "https://www.tandfonline.com/doi/full/10.1080/00220973.2024.2392684{Enter}");
+    expect(mocked.fetchRecord).toHaveBeenCalledWith("doi", "10.1080/00220973.2024.2392684");
+    expect(mocked.fetchPage).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("dialog", { name: "Check this source" });
+    expect(within(dialog).getByLabelText(/^Authors/)).toHaveValue("Smith, M. A.");
+    expect(within(dialog).getByLabelText(/^Title/)).toHaveValue("Retrieval practice and transfer");
+    await u.click(within(dialog).getByRole("button", { name: "Add source" }));
+    expect(mocked.addSource).toHaveBeenCalledWith(expect.objectContaining({ url: "https://doi.org/10.1080/00220973.2024.2392684", year: "2024" }));
+  });
+
+  it("fills in a book from its ISBN", async () => {
+    const u = userEvent.setup();
+    mocked.sources.mockResolvedValue([]);
+    mocked.topics.mockResolvedValue([]);
+    mocked.fetchRecord.mockResolvedValue({ items: [{ volumeInfo: { title: "Expert C Programming", authors: ["Peter van der Linden"], publisher: "Prentice Hall", publishedDate: "1994" } }] });
+    render(Bibliography);
+    await u.click(await screen.findByRole("button", { name: /From a link, DOI or ISBN/ }));
+    await u.type(screen.getByRole("textbox", { name: "Link, DOI or ISBN" }), "0-13-177429-8{Enter}");
+    expect(mocked.fetchRecord).toHaveBeenCalledWith("isbn", "0131774298");
+    expect(within(await screen.findByRole("dialog", { name: "Check this source" })).getByLabelText(/^Publisher/)).toHaveValue("Prentice Hall");
   });
 });

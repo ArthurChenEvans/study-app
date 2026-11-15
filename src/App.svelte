@@ -104,7 +104,7 @@
       backup = null;
     }
   }
-  // R121, R128: sync when the app starts and every 30 seconds while it's open. The backend
+  // R121, R128, R207: sync when the app starts and every 30 seconds while it's open. The backend
   // waits while a quiz or review is in progress. Screens that only show things reload when
   // changes come in, and screens being edited are left alone.
   let sync = $state<{ ok: boolean; short: string; icon: string } | null>(null);
@@ -114,7 +114,8 @@
   async function syncTick(auto = true) {
     try {
       let status = await api.syncStatus();
-      if (status?.on && !status.paused) {
+      // R207: the backend syncs a folder, an account or both, and returns quietly with neither.
+      {
         const result = await api.syncNow(auto);
         status = result.status;
         if (result.received && RELOADS.includes(route.screen)) dataVersion++;

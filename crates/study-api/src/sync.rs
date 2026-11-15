@@ -205,7 +205,7 @@ impl App {
         if device == self.store.device_id() || device.is_empty() {
             return self.sync_name();
         }
-        self.sync.config.names.get(device).cloned().unwrap_or_else(|| format!("Computer {device}"))
+        self.sync.config.names.get(device).cloned().or_else(|| self.cloud_name_of(device)).unwrap_or_else(|| format!("Computer {device}"))
     }
 
     /// This computer's change lines, from the outbox into its change file (R119).
@@ -307,7 +307,10 @@ impl App {
     /// waits, and "Sync now" says to finish first, since a merge could change what's asked.
     pub fn sync_now(&mut self, auto: bool, clock: Clock) -> ApiResult<SyncResult> {
         let quiet = |app: &Self, deferred: bool| -> ApiResult<SyncResult> { Ok(SyncResult { sent: 0, received: 0, deferred, status: app.sync_status(clock)? }) };
-        if !self.sync.config.on || self.sync.config.paused.is_some() {
+        let folder_on = self.sync.config.on && self.sync.config.paused.is_none();
+        // R207: an account syncs too, alongside a folder or on its own.
+        let cloud_on = self.cloud.signed_in();
+        if !folder_on && !cloud_on {
             return quiet(self, false);
         }
         if self.active.is_some() || self.card_session.is_some() {
@@ -316,18 +319,50 @@ impl App {
             }
             return quiet(self, true);
         }
-        let Some(folder) = self.sync.folder() else { return quiet(self, false) };
+        let (mut sent, mut received) = (0, 0);
+        if folder_on && let Some(folder) = self.sync.folder() {
+            let (folder_sent, folder_received) = self.sync_folder(&folder, clock)?;
+            sent += folder_sent;
+            received += folder_received;
+        }
+        if cloud_on {
+            self.store.sync_collect()?;
+            let name = self.sync_name();
+            match self.cloud_exchange(&name, clock) {
+                Ok((cloud_sent, incoming)) => {
+                    sent += cloud_sent;
+                    let merged = self.kept_only_if_readable(clock.day, "a change from another computer can't be read by this version of the app, so nothing was taken in. Your data here is as it was", |merged: &study_store::sync::Merged| merged.changes > 0, |app| {
+                        let merged = app.store.sync_merge(&incoming, &[], clock.day)?;
+                        if !merged.replay.is_empty() {
+                            app.store.sync_replay(&merged.replay)?;
+                        }
+                        app.store.sync_collect()?;
+                        Ok(merged)
+                    })?;
+                    received += merged.changes;
+                }
+                // The account's trouble is shown with the account, and doesn't stop the folder.
+                Err(error) => self.cloud_problem(Some(error.message)),
+            }
+        }
+        self.sync.config.last_synced = Some(clock.unix);
+        self.sync.save()?;
+        Ok(SyncResult { sent, received, deferred: false, status: self.sync_status(clock)? })
+    }
+
+    /// Sync through the folder (R119 to R128): (lines sent, changes taken in).
+    fn sync_folder(&mut self, folder: &Path, clock: Clock) -> ApiResult<(usize, usize)> {
         let here = folder.is_dir();
-        if here && let Some(device) = read_device(&folder, &self.store.device_id()) {
+        if here && let Some(device) = read_device(folder, &self.store.device_id()) {
             self.store.sync_seq_floor(device.seq)?;
         }
         self.store.sync_collect()?;
         if !here {
             self.sync.problem = Some(format!("Can't find the sync folder at {}. Changes here are kept and go out once it's back.", folder.display()));
-            return quiet(self, false);
+            return Ok((0, 0));
         }
-        let mut sent = self.push(&folder, clock)?;
-        let read = self.read_folder(&folder)?;
+        let mut sent = self.push(folder, clock)?;
+        let read = self.read_folder(folder)?;
         // Another computer's lines are only kept if everything can still be read afterwards.
         let merged = self.kept_only_if_readable(clock.day, "a change from another computer can't be read by this version of the app, so nothing was taken in. Your data here is as it was", |merged: &study_store::sync::Merged| merged.changes > 0, |app| {
             let merged = app.store.sync_merge(&read.lines, &read.cursors, clock.day)?;
@@ -338,7 +373,7 @@ impl App {
             app.store.sync_collect()?;
             Ok(merged)
         })?;
-        sent += self.push(&folder, clock)?;
+        sent += self.push(folder, clock)?;
         let mut problems = vec![];
         for device in &read.newer {
             problems.push(format!("{} has a newer version of the app, so its changes are skipped. Update this one to sync with it.", self.name_of(device)));
@@ -347,9 +382,7 @@ impl App {
             problems.push(format!("{count} {} from {} couldn't be read and {} skipped.", if *count == 1 { "change" } else { "changes" }, self.name_of(device), if *count == 1 { "was" } else { "were" }));
         }
         self.sync.problem = (!problems.is_empty()).then(|| problems.join(" "));
-        self.sync.config.last_synced = Some(clock.unix);
-        self.sync.save()?;
-        Ok(SyncResult { sent, received: merged.changes, deferred: false, status: self.sync_status(clock)? })
+        Ok((sent, merged.changes))
     }
 
     pub fn sync_status(&self, clock: Clock) -> ApiResult<SyncStatus> {

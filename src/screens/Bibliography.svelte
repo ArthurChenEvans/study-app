@@ -5,7 +5,8 @@
   import SourceCheck from "../components/SourceCheck.svelte";
   import { detailsFromEpub, detailsFromOffice, detailsFromPdfInfo, detailsFromWeb, titleFromName, type FoundDetails } from "../lib/fileDetails";
   import { readEpub } from "../lib/epub";
-  import { readWebPage } from "../lib/webPage";
+  import { articleAddress, pageAddress, readWebPage } from "../lib/webPage";
+  import { booksToFields, cslToFields, findDoi, findIsbn } from "../lib/lookup";
   import RowMenu from "../components/RowMenu.svelte";
   import { api, errorMessage, type SourceFields, type SourceRow, type TopicRow } from "../lib/api";
   import { deleteWithUndo, toast } from "../lib/celebrations.svelte";
@@ -105,11 +106,25 @@
     event.preventDefault();
     fromError = "";
     try {
-      const page = await api.fetchPage(link);
-      fromFile = detailsFromWeb(readWebPage(page.html, page.url).details);
+      // R205: a DOI or ISBN is looked up in its registry, which beats reading the page.
+      const typed = link.trim();
+      const doi = findDoi(typed);
+      const isbn = doi ? null : findIsbn(typed);
+      if (doi) fromFile = cslToFields((await api.fetchRecord("doi", doi)) as Parameters<typeof cslToFields>[0], doi);
+      else if (isbn) {
+        const found = booksToFields((await api.fetchRecord("isbn", isbn)) as Parameters<typeof booksToFields>[0], isbn);
+        if (!found) throw { message: "no book was found for that ISBN" };
+        fromFile = found;
+      } else {
+        const page = await api.fetchPage(pageAddress(typed));
+        const read = readWebPage(page.html, articleAddress(typed, page.url));
+        // A paper's page usually names its DOI, and the DOI's record is the better one.
+        const named = findDoi(new DOMParser().parseFromString(page.html, "text/html").querySelector('meta[name="citation_doi"], meta[name="dc.identifier"]')?.getAttribute("content") ?? "");
+        fromFile = named ? cslToFields((await api.fetchRecord("doi", named)) as Parameters<typeof cslToFields>[0], named) : detailsFromWeb(read.details);
+      }
       linkOpen = false;
       link = "";
-    } catch (failure) { fromError = `Couldn't open that page: ${errorMessage(failure)}`; }
+    } catch (failure) { fromError = `Couldn't fill that in: ${errorMessage(failure)}`; }
   }
   async function addChecked(fields: SourceFields) {
     fromFile = null;
@@ -163,13 +178,13 @@
 <div class="mx-auto max-w-6xl px-12 pb-24">
   <PageHeader title="Bibliography" subtitle={sources.length ? `${sources.length} sources, formatted in APA` : ""}>
     <button class="btn btn-ghost" onclick={() => picker?.click()}><FileUp class="size-4" />From a file</button>
-    <button class="btn btn-ghost" aria-expanded={linkOpen} onclick={() => (linkOpen = !linkOpen)}>From a link</button>
+    <button class="btn btn-ghost" aria-expanded={linkOpen} onclick={() => (linkOpen = !linkOpen)}>From a link, DOI or ISBN</button>
     {#if sources.length}<button class="btn btn-primary" onclick={open}><Plus class="size-4" />Add source</button>{/if}
   </PageHeader>
   <input bind:this={picker} type="file" class="hidden" aria-label="Add a source from a file" accept=".pdf,.docx,.pptx,.odt,.odp,.epub,.md,.txt" onchange={pickedFile} />
   {#if linkOpen}
     <form class="link-pop mb-4 flex max-w-xl gap-2" onsubmit={fromLink}>
-      <input class="input input-sm flex-1" aria-label="Source web address" placeholder="https://…" bind:value={link} />
+      <input class="input input-sm flex-1" aria-label="Link, DOI or ISBN" placeholder="A link, 10.1080/… or 978-…" bind:value={link} />
       <button type="submit" class="btn btn-primary btn-sm">Fill in</button>
     </form>
   {/if}

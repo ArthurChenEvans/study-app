@@ -153,6 +153,18 @@ pub fn dispatch_at(app: &mut App, command: &str, args: &Value, today: i64, clock
         "take_opened_file" => json::<Option<String>>(Ok(None)),
         // Sync (R119 to R128)
         "sync_status" => json(app.sync_status(clock)),
+        "cloud_status" => json(app.cloud_status(clock)),
+        "cloud_request_code" => json(app.cloud_request_code(&arg::<String>(a, "email")?).and_then(|()| app.cloud_status(clock))),
+        "cloud_verify_code" => json(app.cloud_verify_code(&arg::<String>(a, "email")?, &arg::<String>(a, "code")?, clock)),
+        "cloud_verify_two_step" => json(app.cloud_verify_two_step(&arg::<String>(a, "code")?, clock)),
+        "cloud_two_step_start" => json(app.cloud_two_step_start(clock)),
+        "cloud_two_step_confirm" => json(app.cloud_two_step_confirm(&arg::<String>(a, "factor")?, &arg::<String>(a, "code")?, clock)),
+        "cloud_two_step_off" => json(app.cloud_two_step_off(clock)),
+        "cloud_sign_out" => json(app.cloud_sign_out(clock)),
+        "cloud_sign_out_others" => json(app.cloud_sign_out_others(clock)),
+        "cloud_delete_account" => json(app.cloud_delete_account(clock)),
+        "cloud_set_images" => json(app.cloud_set_images(arg(a, "allowed")?, clock)),
+        "images_allowed" => json::<bool>(Ok(app.images_allowed())),
         "sync_now" => json(app.sync_now(arg(a, "auto")?, clock)),
         "sync_setup" => json(app.sync_setup(arg(a, "setup")?, clock)),
         "sync_rename" => json(app.sync_rename(&arg::<String>(a, "name")?).and_then(|()| app.sync_status(clock))),
@@ -194,6 +206,7 @@ pub fn dispatch_at(app: &mut App, command: &str, args: &Value, today: i64, clock
         "paste_image" => json::<Vec<i64>>(Ok(vec![])), // no system clipboard in the browser build
         "add_image_files" => json::<Vec<i64>>(Ok(vec![])), // the browser can't read files by path
         // Normally answered before the app is locked (see lib.rs), so a slow site holds nothing up.
+        "fetch_record" => json(study_api::web::fetch_record(&arg::<String>(args, "kind")?, &arg::<String>(args, "id")?).map_err(ApiError::new)),
         "fetch_page" => json(study_api::web::fetch_page(&arg::<String>(args, "url")?).map_err(ApiError::new)),
         "app_version" => json::<&str>(Ok(env!("CARGO_PKG_VERSION"))),
         "update_set_auto" => json::<()>(Ok(())),

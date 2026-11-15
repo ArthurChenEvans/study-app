@@ -26,7 +26,14 @@
     { kind: "drills", label: "Drills", count: due.projects ?? 0, key: "D" },
   ] as { kind: StartKind; label: string; count: number; key: string }[]).filter((entry) => entry.count > 0).concat([{ kind: "pick", label: "Pick topics to quiz…", count: 0, key: "P" }]));
 
+  // The sidebar scrolls, which would clip a menu inside it, so the menu is placed on the
+  // window itself, under the button.
+  let place = $state("");
   async function show() {
+    if (variant === "side" && button) {
+      const box = button.getBoundingClientRect();
+      place = `left: ${box.left}px; top: ${box.bottom + 6}px`;
+    }
     open = true;
     await tick();
     menu?.querySelector<HTMLElement>("[role=menuitem]")?.focus();
@@ -77,7 +84,7 @@
   {/if}
   {#if open}
     <button type="button" class="start-scrim" aria-label="Close Start" tabindex="-1" onclick={() => close()}></button>
-    <div bind:this={menu} class="start-menu" role="menu" aria-label="Start">
+    <div bind:this={menu} class="start-menu" role="menu" aria-label="Start" style={variant === "side" ? place : undefined}>
       {#each entries as entry (entry.kind)}
         <button type="button" role="menuitem" class="start-item" onclick={() => choose(entry.kind)}>
           <span class="flex-1 text-left">{entry.label}</span>

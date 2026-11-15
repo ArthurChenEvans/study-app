@@ -29,6 +29,9 @@ export interface Marking { right: boolean; detail: MarkingDetail }
 export interface ShortFeedback { typed: string; marking: Marking; shown_answer: string; also_accepted: string[]; overruled: boolean }
 export type QuestionTypes = "Both" | "Mcq" | "Short";
 
+export interface CloudDevice { id: string; name: string; this_one: boolean; last_seen: number | null }
+export interface CloudStatus { signed_in: boolean; email: string | null; two_step: boolean; needs_two_step: boolean; images_allowed: boolean; admin: boolean; devices: CloudDevice[]; last_synced: number | null; problem: string | null }
+export interface TwoStepSetup { factor: string; qr: string; secret: string }
 export interface SourceFields {
   authors: string;
   year: string | null;
@@ -400,6 +403,19 @@ export const api = {
   syncResume: () => invoke<SyncResult>("sync_resume"),
   syncToCheck: () => invoke<ToCheck[]>("sync_to_check"),
   syncSettle: (n: number, useOther: boolean) => invoke<ToCheck[]>("sync_settle", { n, other: useOther }),
+  cloudStatus: () => invoke<CloudStatus>("cloud_status"),
+  cloudRequestCode: (email: string) => invoke<CloudStatus>("cloud_request_code", { email }),
+  cloudVerifyCode: (email: string, code: string) => invoke<CloudStatus>("cloud_verify_code", { email, code }),
+  cloudVerifyTwoStep: (code: string) => invoke<CloudStatus>("cloud_verify_two_step", { code }),
+  cloudTwoStepStart: () => invoke<TwoStepSetup>("cloud_two_step_start"),
+  cloudTwoStepConfirm: (factor: string, code: string) => invoke<CloudStatus>("cloud_two_step_confirm", { factor, code }),
+  cloudTwoStepOff: () => invoke<CloudStatus>("cloud_two_step_off"),
+  cloudSignOut: () => invoke<CloudStatus>("cloud_sign_out"),
+  cloudSignOutOthers: () => invoke<CloudStatus>("cloud_sign_out_others"),
+  cloudDeleteAccount: () => invoke<CloudStatus>("cloud_delete_account"),
+  cloudSetImages: (allowed: boolean) => invoke<CloudStatus>("cloud_set_images", { allowed }),
+  imagesAllowed: () => invoke<boolean>("images_allowed"),
+  fetchRecord: (kind: "doi" | "isbn", id: string) => invoke<unknown>("fetch_record", { kind, id }),
   fetchPage: (url: string) => invoke<{ url: string; html: string }>("fetch_page", { url }),
   slidesToPdf: async (file: File) => {
     const pdf = await invoke<ArrayBuffer | number[]>("slides_to_pdf", { name: file.name, data: await toBase64(file) });
