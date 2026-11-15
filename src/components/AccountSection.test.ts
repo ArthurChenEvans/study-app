@@ -36,14 +36,16 @@ describe("Account", () => {
     await u.type(screen.getByLabelText("Email"), "chen@example.com");
     await u.click(screen.getByRole("button", { name: "Email me a code" }));
     expect(mocked.cloudRequestCode).toHaveBeenCalledWith("chen@example.com");
-    expect(await screen.findByText(/We sent a 6-digit code to/)).toHaveTextContent("chen@example.com");
+    expect(await screen.findByText(/We sent a code to/)).toHaveTextContent("chen@example.com");
     const code = screen.getByLabelText("Code from the email");
     expect(code).toHaveAttribute("autocomplete", "one-time-code");
     expect(code).toHaveAttribute("inputmode", "numeric");
-    expect(code.closest(".otp")).not.toBeNull();
-    await u.type(code, "482913");
+    // A plain box: Supabase's codes can be 8 digits, and a pasted code with spaces still works.
+    expect(code.closest(".otp")).toBeNull();
+    await u.type(code, "4829 1307");
+    expect(code).toHaveValue("48291307");
     await u.click(screen.getByRole("button", { name: "Sign in" }));
-    expect(mocked.cloudVerifyCode).toHaveBeenCalledWith("chen@example.com", "482913");
+    expect(mocked.cloudVerifyCode).toHaveBeenCalledWith("chen@example.com", "48291307");
     expect(await screen.findByText("chen@example.com")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sync now" })).toBeInTheDocument();
   });

@@ -383,9 +383,10 @@ impl App {
 
     /// Signs this computer in with the emailed code.
     pub fn cloud_verify_code(&mut self, email: &str, code: &str, clock: Clock) -> ApiResult<CloudStatus> {
+        // Supabase sends 6 to 10 digits, depending on the project's "Email OTP Length".
         let code: String = code.chars().filter(char::is_ascii_digit).collect();
-        if code.len() != 6 {
-            return Err(ApiError::new("type the 6-digit code from the email"));
+        if !(6..=10).contains(&code.len()) {
+            return Err(ApiError::new("type the whole code from the email"));
         }
         let response = self.cloud.auth("POST", "verify", Some(json!({ "type": "email", "email": email.trim(), "token": code })), None)?;
         if response.status != 200 {
@@ -718,6 +719,10 @@ mod tests {
         let mut app = signed_in(&fake);
         let verify = &fake.sent("POST", "/auth/v1/verify")[0];
         assert_eq!(serde_json::from_str::<Value>(verify.body.as_ref().unwrap()).unwrap(), json!({ "type": "email", "email": "chen@example.com", "token": "123456" }));
+        // Supabase's codes are 6 to 10 digits long, depending on the project's setting.
+        app.cloud_verify_code("chen@example.com", " 1234 5678 ", CLOCK).unwrap();
+        let verify = fake.sent("POST", "/auth/v1/verify").pop().unwrap();
+        assert_eq!(serde_json::from_str::<Value>(verify.body.as_ref().unwrap()).unwrap()["token"], json!("12345678"));
         let status = app.cloud_status(CLOCK).unwrap();
         assert!(status.signed_in && !status.two_step && !status.needs_two_step && !status.images_allowed);
         assert_eq!(status.email.as_deref(), Some("chen@example.com"));
@@ -729,7 +734,8 @@ mod tests {
         let fake = Fake::default();
         fake.reply("POST", "/auth/v1/verify", 403, json!({ "msg": "Token has expired or is invalid" }));
         let mut app = app_with(&fake);
-        assert!(app.cloud_verify_code("chen@example.com", "12345", CLOCK).unwrap_err().message.contains("6-digit"));
+        assert!(app.cloud_verify_code("chen@example.com", "12345", CLOCK).unwrap_err().message.contains("code from the email"));
+        assert!(app.cloud_verify_code("chen@example.com", "12345678901", CLOCK).is_err());
         assert_eq!(app.cloud_verify_code("chen@example.com", "123 456", CLOCK).unwrap_err().message, "that code didn't work or has run out. Ask for a new one");
         fake.reply("POST", "/auth/v1/otp", 429, json!({ "msg": "For security purposes, you can only request this after 42 seconds." }));
         assert_eq!(app.cloud_request_code("chen@example.com").unwrap_err().message, "too many codes asked for. Wait a minute and try again");
