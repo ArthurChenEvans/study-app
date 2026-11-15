@@ -79,6 +79,57 @@ fn open_in_browser(url: String) -> ApiResult<()> {
     tauri_plugin_opener::open_url(&url, None::<&str>).map_err(|error| ApiError { message: format!("couldn't open the browser: {error}") })
 }
 
+// ---------- Accounts (R206 to R210) ----------
+
+#[tauri::command]
+fn cloud_status(state: AppState) -> ApiResult<study_api::cloud::CloudStatus> {
+    with(state, |app| app.cloud_status(clock()))
+}
+#[tauri::command]
+fn cloud_request_code(state: AppState, email: String) -> ApiResult<study_api::cloud::CloudStatus> {
+    with(state, |app| app.cloud_request_code(&email).and_then(|()| app.cloud_status(clock())))
+}
+#[tauri::command]
+fn cloud_verify_code(state: AppState, email: String, code: String) -> ApiResult<study_api::cloud::CloudStatus> {
+    with(state, |app| app.cloud_verify_code(&email, &code, clock()))
+}
+#[tauri::command]
+fn cloud_verify_two_step(state: AppState, code: String) -> ApiResult<study_api::cloud::CloudStatus> {
+    with(state, |app| app.cloud_verify_two_step(&code, clock()))
+}
+#[tauri::command]
+fn cloud_two_step_confirm(state: AppState, factor: String, code: String) -> ApiResult<study_api::cloud::CloudStatus> {
+    with(state, |app| app.cloud_two_step_confirm(&factor, &code, clock()))
+}
+#[tauri::command]
+fn cloud_two_step_off(state: AppState) -> ApiResult<study_api::cloud::CloudStatus> {
+    with(state, |app| app.cloud_two_step_off(clock()))
+}
+#[tauri::command]
+fn cloud_sign_out(state: AppState) -> ApiResult<study_api::cloud::CloudStatus> {
+    with(state, |app| app.cloud_sign_out(clock()))
+}
+#[tauri::command]
+fn cloud_sign_out_others(state: AppState) -> ApiResult<study_api::cloud::CloudStatus> {
+    with(state, |app| app.cloud_sign_out_others(clock()))
+}
+#[tauri::command]
+fn cloud_delete_account(state: AppState) -> ApiResult<study_api::cloud::CloudStatus> {
+    with(state, |app| app.cloud_delete_account(clock()))
+}
+#[tauri::command]
+fn cloud_set_images(state: AppState, allowed: bool) -> ApiResult<study_api::cloud::CloudStatus> {
+    with(state, |app| app.cloud_set_images(allowed, clock()))
+}
+#[tauri::command]
+fn cloud_two_step_start(state: AppState) -> ApiResult<study_api::cloud::TwoStepSetup> {
+    with(state, |app| app.cloud_two_step_start(clock()))
+}
+#[tauri::command]
+fn images_allowed(state: AppState) -> ApiResult<bool> {
+    with(state, |app| Ok(app.images_allowed()))
+}
+
 // ---------- Updates (R165 to R168) ----------
 
 #[tauri::command]
@@ -870,6 +921,7 @@ pub fn run() {
             let mut app = App::new(store);
             app.set_backups(backups);
             app.set_sync_home(&dir);
+            app.set_cloud_home(&dir);
             if let Err(error) = app.daily_backup(clock()) {
                 eprintln!("couldn't make today's backup: {}", error.message);
             }
@@ -881,6 +933,18 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             fetch_page,
+            cloud_status,
+            cloud_request_code,
+            cloud_verify_code,
+            cloud_verify_two_step,
+            cloud_two_step_confirm,
+            cloud_two_step_off,
+            cloud_sign_out,
+            cloud_sign_out_others,
+            cloud_delete_account,
+            cloud_set_images,
+            cloud_two_step_start,
+            images_allowed,
             fetch_record,
             open_in_browser,
             app_version,

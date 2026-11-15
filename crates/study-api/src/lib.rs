@@ -8,6 +8,7 @@ pub mod anki;
 pub mod anki_export;
 pub mod backup;
 pub mod calendar;
+pub mod cloud;
 pub mod cards;
 pub mod convert;
 pub mod dates;
@@ -261,6 +262,7 @@ pub struct App {
     pending_items: Option<formats::PendingItems>,
     progress: Option<Progress>,
     sync: sync::Sync,
+    cloud: cloud::Cloud,
 }
 
 /// Reports how a long import is going ("Notes", done, total), and says whether to stop.
@@ -342,6 +344,7 @@ impl App {
             pending_items: None,
             progress: None,
             sync: sync::Sync::default(),
+            cloud: cloud::Cloud::default(),
         }
     }
 
@@ -359,6 +362,7 @@ impl App {
             pending_items: None,
             progress: None,
             sync: sync::Sync::default(),
+            cloud: cloud::Cloud::default(),
         }
     }
 
@@ -466,6 +470,10 @@ impl App {
 
     /// R7: a pasted or picked image. Returns the id the Markdown points at (image:<id>).
     pub fn add_image(&mut self, bytes: &[u8]) -> ApiResult<ImageId> {
+        // R210: with an account, images are only added while the admin allows it.
+        if !self.images_allowed() {
+            return Err(ApiError::new(cloud::IMAGES_OFF));
+        }
         let format = check_image(bytes)?;
         Ok(self.store.save_image(format, bytes)?)
     }
