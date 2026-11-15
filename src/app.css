@@ -726,7 +726,7 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
 .start-count { margin-left: 0.25rem; border-radius: 999px; padding: 0 0.5rem; font-size: 0.8rem; letter-spacing: 0; background: var(--color-base-100); color: var(--primary-ink); }
 .start-scrim { position: fixed; inset: 0; z-index: 40; background: transparent; cursor: default; }
 .start-menu { position: absolute; z-index: 41; width: 18rem; padding: 0.4rem; display: flex; flex-direction: column; gap: 2px; border: 2px solid var(--color-base-300); border-radius: 1rem; background: var(--color-base-200); box-shadow: var(--shadow-float); }
-.start-at-side .start-menu { left: 0; top: calc(100% + 0.4rem); }
+.start-at-side .start-menu { position: fixed; }
 .start-item { display: flex; align-items: center; gap: 0.6rem; min-height: 2.75rem; padding: 0 0.75rem; border-radius: 0.6rem; font-weight: 800; }
 .start-item:hover, .start-item:focus-visible { background: var(--color-base-300); outline: none; }
 .start-fab { position: fixed; right: 1.5rem; bottom: 1.5rem; z-index: 30; height: 3.5rem; padding: 0 1.4rem; border-radius: 1.1rem; box-shadow: var(--shadow-float); background: var(--color-primary); color: var(--color-primary-content); letter-spacing: 0.06em; font-weight: 900; }

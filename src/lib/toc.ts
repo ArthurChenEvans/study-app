@@ -25,6 +25,15 @@ export function locationTarget(location: string): { page: number } | { line: num
 }
 
 export interface TocItem { title: string; depth: number; at: number }
+
+/** R203: a contents entry's title, tidied, or null when it holds no words (dots, an ellipsis,
+ *  a page number or a lone letter, which some books' bookmarks and page text are full of). */
+export function headingTitle(raw: string): string | null {
+  const title = raw.replace(/\s+/g, " ").replace(/^[\s.·…•\-–—_]+/u, "").replace(/[\s.·…•\-–—_]+$/u, "").trim();
+  const letters = (title.match(/\p{L}/gu) ?? []).length;
+  const ideographs = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(title);
+  return letters >= 3 || (ideographs && letters >= 1) ? title : null;
+}
 interface TextBit { str: string; height: number }
 
 /** R197: a page's heading is its biggest text, when it's clearly bigger than the rest. */
@@ -35,7 +44,7 @@ export function pageHeading(items: TextBit[]): string | null {
   const median = heights[Math.floor((heights.length - 1) / 2)];
   const biggest = heights[heights.length - 1];
   if (biggest < median * 1.25) return null;
-  const title = bits.filter((bit) => bit.height >= biggest * 0.9).map((bit) => bit.str.trim()).join(" ").replace(/\s+/g, " ").trim();
+  const title = headingTitle(bits.filter((bit) => bit.height >= biggest * 0.9).map((bit) => bit.str.trim()).join(" "));
   return title ? (title.length > 80 ? `${title.slice(0, 79)}…` : title) : null;
 }
 
