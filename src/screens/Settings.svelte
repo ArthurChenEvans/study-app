@@ -58,11 +58,13 @@
               <span class="font-extrabold">{option.name}</span>
               {#if colours === option.id}<Check class="size-4" />{/if}
             </span>
-            <span class="colour-option-card" style="background: {option.c['--surface']}; border-color: {option.c['--color-base-300']}" aria-hidden="true">
-              <span class="colour-option-bar" style="background: {option.c['--chart-right']}; flex: 3"></span>
-              <span class="colour-option-bar" style="background: {option.c['--chart-wrong']}; flex: 1"></span>
+            <span class="flex items-center gap-2" aria-hidden="true">
+              <span class="colour-option-swatch" style="background: {option.c['--color-primary']}; color: {option.c['--color-primary-content']}; border-color: {option.c['--primary-edge']}">Aa</span>
+              <span class="colour-option-card flex-1" style="background: {option.c['--surface']}; border-color: {option.c['--color-base-300']}">
+                <span class="colour-option-bar" style="background: {option.c['--chart-right']}; flex: 3"></span>
+                <span class="colour-option-bar" style="background: {option.c['--chart-wrong']}; flex: 1"></span>
+              </span>
             </span>
-            <span class="colour-option-button" style="background: {option.c['--color-primary']}; color: {option.c['--color-primary-content']}; border-color: {option.c['--primary-edge']}" aria-hidden="true">Start</span>
             <span class="text-xs font-semibold" style="color: {option.c['--muted']}">{option.blurb}</span>
           </button>
         {/each}

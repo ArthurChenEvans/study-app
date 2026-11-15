@@ -93,7 +93,7 @@ describe("Overview", () => {
     expect(accuracy).toHaveTextContent("62%");
     expect(accuracy).toHaveTextContent("+2 points");
     expect(screen.getByRole("region", { name: "Questions answered" })).toHaveTextContent("42");
-    expect(screen.getByRole("region", { name: "Right answers that were guesses" })).toHaveTextContent("19%");
+    expect(screen.getByRole("region", { name: "of right answers were guesses" })).toHaveTextContent("19%");
   });
 
   it("shows a drop and a quiet week plainly", async () => {
@@ -131,6 +131,8 @@ describe("Overview", () => {
     mocked.overview.mockResolvedValue({ Progress: progress() });
     render(Overview, { onNavigate: vi.fn() });
     const reasons = await screen.findByRole("list", { name: "Why you got things wrong" });
+    // R214: the reasons sit under the chart, so both columns end together
+    expect(screen.getByRole("complementary").contains(reasons)).toBe(false);
     expect(within(reasons).getAllByRole("listitem").map((item) => item.textContent?.replace(/\s+/g, " ").trim())).toEqual(["Blank 3", "Misremembered 1"]);
   });
   it("switches to one point per week once there are many quizzes", async () => {

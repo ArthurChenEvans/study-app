@@ -173,7 +173,7 @@ describe("Calendar", () => {
     render(Calendar, {});
     const coming = await screen.findByRole("region", { name: "Coming up" });
     expect(coming).toHaveTextContent("Study app write-up Fri 13 Nov, in 10 days");
-    expect(coming).toHaveTextContent("Networks exam Mon 23 Nov, in 20 days Reviews tightened");
+    expect(coming).toHaveTextContent("Networks exam Mon 23 Nov, in 20 days Reviews come round sooner");
     const grid = screen.getByRole("grid", { name: "November 2026" });
     expect(within(grid).getByRole("button", { name: /^Mon 23 Nov, Networks exam$/ })).toHaveTextContent("Networks exam");
     await u.click(within(coming).getByRole("button", { name: /Study app write-up/ }));

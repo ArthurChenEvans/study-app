@@ -206,9 +206,9 @@
       </div>
       <!-- The arrows and the date they move stay together on one line (R213). -->
       <span class="inline-flex items-center gap-1 whitespace-nowrap">
-        <button class="btn btn-ghost btn-sm btn-square" aria-label={view === "week" ? "Previous week" : "Previous month"} onclick={() => shift(-1)}><ChevronLeft class="size-4" /></button>
+        <button class="btn btn-ghost btn-square" aria-label={view === "week" ? "Previous week" : "Previous month"} onclick={() => shift(-1)}><ChevronLeft class="size-4" /></button>
         <span class="text-center text-[19px] font-extrabold sm:min-w-44" aria-live="polite">{view === "week" ? (weekFrom ? weekLabel(weekFrom) : "") : year ? monthLabel(year, month) : ""}</span>
-        <button class="btn btn-ghost btn-sm btn-square" aria-label={view === "week" ? "Next week" : "Next month"} onclick={() => shift(1)}><ChevronRight class="size-4" /></button>
+        <button class="btn btn-ghost btn-square" aria-label={view === "week" ? "Next week" : "Next month"} onclick={() => shift(1)}><ChevronRight class="size-4" /></button>
       </span>
       <button class="btn btn-outline btn-sm ml-2" onclick={() => { const now = dateOf(today); [year, month] = [now.year, now.month]; weekFrom = weekStart(today); loadMonth(); }}>Today</button>
       <button class="btn btn-primary btn-sm ml-2" onclick={() => openDialog("new")}><Plus class="size-4" />Add a date</button>
@@ -220,7 +220,7 @@
           <button class="flex min-h-6 items-center gap-2 py-1 text-sm hover:underline" onclick={() => open(date.day)}>
             {#if isExam(date)}<GraduationCap class="size-4 text-primary-ink" aria-hidden="true" />{:else}<Flag class="size-4 text-primary-ink" aria-hidden="true" />{/if}
             <b class="font-extrabold">{date.name}</b>{" "}<span class="text-muted">{fullLabel(date.day, today)}, {inDays(date.days_left)}</span>
-            {#if date.tighten}{" "}<span class="chip chip-primary">Reviews tightened</span>{/if}
+            {#if date.tighten}{" "}<span class="chip chip-primary">Reviews come round sooner</span>{/if}
           </button>
         {/each}
       </section>
@@ -238,7 +238,7 @@
               onclick={() => open(value)}>
               <span class="week-date" aria-hidden="true"><span class="text-xs font-extrabold uppercase tracking-[.07em] text-muted">{WEEKDAYS[dateOf(value).weekday]}</span><span class="text-[22px] font-black leading-none">{dateOf(value).date}</span>{#if value === today}<span class="cal-today">Today</span>{/if}</span>
               <span class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5" aria-hidden="true">
-                {#each onThisDay as marked (marked.id)}<span class="date-chip {isExam(marked) ? 'exam' : ''}">{#if isExam(marked)}<GraduationCap class="size-3.5 shrink-0" />{:else}<Flag class="size-3.5 shrink-0" />{/if}<span class="truncate">{marked.name}</span></span>{/each}
+                {#each onThisDay as marked (marked.id)}<span class="date-chip {isExam(marked) ? 'exam' : ''}">{#if isExam(marked)}<GraduationCap class="size-3.5 shrink-0" />{:else}<Flag class="size-3.5 shrink-0" />{/if}<span class="line-clamp-2">{marked.name}</span></span>{/each}
                 {#each items as item (item.key)}<span class="chip {value < today ? '' : value === today ? 'chip-due' : `cal-${item.key}`}">{item.count} {item.count === 1 ? item.one : item.many}</span>{/each}
                 {#if !items.length && !onThisDay.length}<span class="text-sm text-muted">Nothing</span>{/if}
               </span>
@@ -268,7 +268,7 @@
                   aria-label="{longDate(value)}{onThisDay.map((d) => `, ${d.name}`).join('')}{items.length ? `: ${items.map((c) => `${c.count} ${c.count === 1 ? c.one : c.many}`).join(", ")}${entry?.when === 'Past' ? ' done' : ' due'}` : ''}"
                   onclick={() => open(value)} onkeydown={(event) => gridKeys(event, value)}>
                   <span class="flex items-center gap-2"><span class="num">{date.date}</span>{#if value === today}<span class="cal-today">Today</span>{/if}</span>
-                  {#each onThisDay as marked (marked.id)}<span class="date-chip {isExam(marked) ? 'exam' : ''}">{#if isExam(marked)}<GraduationCap class="size-3.5 shrink-0" aria-hidden="true" />{:else}<Flag class="size-3.5 shrink-0" aria-hidden="true" />{/if}<span class="truncate">{marked.name}</span></span>{/each}
+                  {#each onThisDay as marked (marked.id)}<span class="date-chip {isExam(marked) ? 'exam' : ''}">{#if isExam(marked)}<GraduationCap class="size-3.5 shrink-0" aria-hidden="true" />{:else}<Flag class="size-3.5 shrink-0" aria-hidden="true" />{/if}<span class="line-clamp-2">{marked.name}</span></span>{/each}
                   {#each shown as item (item.key)}<span class="chip cal-chip {value < today ? '' : value === today ? 'chip-due' : `cal-${item.key}`}">{item.count} {item.count === 1 ? item.one : item.many}</span>{/each}
                   {#if shown.length < items.length}<span class="chip cal-chip">+{items.length - shown.length} more</span>{/if}
                 </button>
@@ -287,7 +287,7 @@
     <div class="flex items-end justify-between gap-6 pb-8 pt-4">
       <div><h1 class="text-3xl font-semibold">{longDate(day.day)}</h1>
         <p class="mt-2 text-muted">{day.when === "Past" ? "What you did" : total ? `${total} ${total === 1 ? "thing" : "things"} due${day.when === "Today" && day.cards.minutes ? ` · about ${day.cards.minutes + day.drills.length * 10} minutes` : ""}` : "Nothing due"}</p></div>
-      <div class="flex gap-2"><button class="btn btn-ghost btn-sm btn-square" aria-label="Previous day" onclick={() => step(-1)}><ChevronLeft class="size-4" /></button><button class="btn btn-ghost btn-sm btn-square" aria-label="Next day" onclick={() => step(1)}><ChevronRight class="size-4" /></button></div>
+      <div class="flex gap-2"><button class="btn btn-ghost btn-square" aria-label="Previous day" onclick={() => step(-1)}><ChevronLeft class="size-4" /></button><button class="btn btn-ghost btn-square" aria-label="Next day" onclick={() => step(1)}><ChevronRight class="size-4" /></button></div>
     </div>
 
     {#if day.when === "Today" && first}

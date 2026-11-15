@@ -40,6 +40,8 @@ describe("Settings", () => {
     const options = within(group).getAllByRole("radio");
     expect(options.map((option) => option.getAttribute("aria-label"))).toEqual(["Mono", "Coffee", "Honey", "Brick", "Rose", "Lavender", "Ocean", "Miku", "Sage"]);
     expect(within(group).getByRole("radio", { name: "Coffee" })).toHaveAttribute("aria-checked", "true");
+    // R214: a preview shows the colour with a swatch, never a fake Start button
+    expect(within(group).queryAllByText("Start")).toHaveLength(0);
     await u.click(within(group).getByRole("radio", { name: "Sage" }));
     expect(within(group).getByRole("radio", { name: "Sage" })).toHaveAttribute("aria-checked", "true");
     expect(document.documentElement.style.getPropertyValue("--color-primary")).toBe(buildColours("sage", true, false)["--color-primary"]);

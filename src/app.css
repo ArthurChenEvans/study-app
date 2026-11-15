@@ -434,7 +434,8 @@ details.table-view summary { cursor: pointer; font-size: 12px; color: var(--mute
 .cal-day[aria-current="date"] { border-color: var(--primary-ink); box-shadow: 0 3px 0 var(--primary-ink); }
 .cal-today { font-size: 13px; font-weight: 800; color: var(--primary-ink); }
 .cal-day .num { font-size: 13px; font-variant-numeric: tabular-nums; font-weight: 800; }
-.cal-chip { font-size: 11px; padding: 3px 6px; letter-spacing: .03em; }
+/* R214: day labels in sentence case at a size you can read. */
+.cal-chip { font-size: 13px; padding: 3px 8px; letter-spacing: 0; text-transform: none; }
 .cal-cards { --chip: var(--primary-ink); --chip-ink: var(--primary-ink); }
 .cal-quizzes, .cal-drills { --chip: var(--color-info); --chip-ink: var(--info-ink, var(--color-info)); }
 .cal-checklists { --chip: var(--color-accent); --chip-ink: var(--accent-ink); }
@@ -634,8 +635,8 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
    them cut off cleanly. Phones show a coloured dot for each kind of work, and the words are
    in each day's button label and in the day view you open by tapping it. */
 @media (max-width: 1099px) {
-  .cal-day .cal-chip, .cal-day .date-chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .cal-chip { font-size: 10px; padding: 2px 5px; }
+  .cal-day .cal-chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cal-chip { font-size: 12px; padding: 2px 6px; }
   .cal-day { min-height: 88px; padding: 5px 6px; }
 }
 @media (max-width: 599px) {
@@ -711,7 +712,8 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
 .colour-option:focus-visible { outline: 3px solid var(--color-base-content); outline-offset: 2px; }
 .colour-option-card { display: flex; gap: 3px; padding: 6px; border-radius: 0.5rem; border: 2px solid; }
 .colour-option-bar { height: 8px; border-radius: 4px; }
-.colour-option-button { display: block; padding: 0.3rem; border-radius: 0.5rem; border: 2px solid; text-align: center; font-size: 0.8rem; font-weight: 800; }
+/* R214: a swatch rather than a Start button, so the previews don't look pressable. */
+.colour-option-swatch { display: grid; place-items: center; flex: none; width: 40px; height: 40px; border-radius: 10px; border: 2px solid; font-size: 16px; font-weight: 900; }
 .row-menu-left { right: auto; left: 0; }
 /* R189: the Import & Export drop zone */
 .drop-zone { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 190px; padding: 20px; border: 2px dashed var(--field-border); border-radius: 16px; text-align: center; cursor: pointer; }
@@ -822,3 +824,16 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
 
 /* R214: a list's side card only takes up room once something is picked. */
 .itemcard[data-empty="true"] { display: none; }
+
+/* R214: practice logs as cards from tablet width down to phone width, where the table would
+   squeeze log names a word per line. */
+@media (min-width: 600px) and (max-width: 1099px) {
+  main table.log-table, main table.log-table tbody { display: block; width: 100%; }
+  main table.log-table thead { display: none; }
+  main table.log-table tbody { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  main table.log-table tbody tr { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 16px 18px; border-bottom: 2px solid var(--color-base-300); }
+  main table.log-table tbody tr:nth-child(odd) { border-right: 2px solid var(--color-base-300); }
+  main table.log-table tbody td { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 0; border: 0; font-size: 14px; }
+  main table.log-table tbody td:first-child { margin-bottom: 6px; }
+  main table.log-table tbody td[data-label]::before { content: attr(data-label); font-weight: 800; color: var(--color-base-content); }
+}
