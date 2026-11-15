@@ -60,6 +60,15 @@ async fn fetch_page(url: String) -> ApiResult<study_api::web::FetchedPage> {
         .map_err(|message| ApiError { message })
 }
 
+/// R205: a DOI's or ISBN's citation record.
+#[tauri::command]
+async fn fetch_record(kind: String, id: String) -> ApiResult<serde_json::Value> {
+    tauri::async_runtime::spawn_blocking(move || study_api::web::fetch_record(&kind, &id))
+        .await
+        .map_err(|_| ApiError { message: "the lookup stopped unexpectedly".into() })?
+        .map_err(|message| ApiError { message })
+}
+
 /// R201: "Open in browser" for a web source. Only web addresses, never files or programs.
 #[tauri::command]
 fn open_in_browser(url: String) -> ApiResult<()> {
@@ -872,6 +881,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             fetch_page,
+            fetch_record,
             open_in_browser,
             app_version,
             update_set_auto,

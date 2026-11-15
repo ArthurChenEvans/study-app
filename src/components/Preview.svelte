@@ -12,6 +12,7 @@
   import { fileFor, reading, remember, showing } from "../lib/sourceFiles.svelte";
   import { apaPreview, detailsFromEpub, detailsFromOffice, detailsFromPdfInfo, detailsFromWeb, sameSource, titleFromName, type FoundDetails } from "../lib/fileDetails";
   import SourceCheck from "./SourceCheck.svelte";
+  import { cslToFields, findDoi } from "../lib/lookup";
   import type { SourceFields } from "../lib/api";
   import { locationTarget, markdownHeadings } from "../lib/toc";
   import PdfView from "./PdfView.svelte";
@@ -194,7 +195,10 @@
       const fetched = await api.fetchPage(pageAddress(typed));
       const page = readWebPage(fetched.html, articleAddress(typed, fetched.url));
       contents[id] = { state: "web", page };
-      void autoSource(id, detailsFromWeb(page.details));
+      // R205: a paper's source comes from its DOI record when it has one.
+      const doi = findDoi(page.details.url) ?? findDoi(new DOMParser().parseFromString(fetched.html, "text/html").querySelector('meta[name="citation_doi"]')?.getAttribute("content") ?? "");
+      const found = doi ? await api.fetchRecord("doi", doi).then((record) => cslToFields(record as Parameters<typeof cslToFields>[0], doi)).catch(() => null) : null;
+      void autoSource(id, found ?? detailsFromWeb(page.details));
       tabs = tabs.map((tab) => (tab.id === id ? { ...tab, name: page.title || fetched.url } : tab));
     } catch (failure) {
       contents[id] = { state: "error", message: `Couldn't open that page: ${errorMessage(failure)}` };

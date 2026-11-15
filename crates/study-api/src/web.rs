@@ -68,8 +68,61 @@ pub fn fetch_page(typed: &str) -> Result<FetchedPage, String> {
     Ok(FetchedPage { url: finished, html: String::from_utf8_lossy(&bytes).into_owned() })
 }
 
+/// R205: the citation record for a DOI or an ISBN, as JSON. Only these two fixed services are
+/// asked, and the identifier is checked first, so this can't be pointed anywhere else.
+pub fn fetch_record(kind: &str, id: &str) -> Result<serde_json::Value, String> {
+    let url = record_address(kind, id)?;
+    let agent: ureq::Agent = ureq::Agent::config_builder()
+        .timeout_global(Some(Duration::from_secs(20)))
+        .user_agent("Shudhana study app (filling in a source)")
+        .build()
+        .into();
+    let response = agent
+        .get(&url)
+        .header("Accept", "application/vnd.citationstyles.csl+json, application/json")
+        .call()
+        .map_err(|error| match error {
+            ureq::Error::StatusCode(404) => format!("no record was found for that {}", if kind == "doi" { "DOI" } else { "ISBN" }),
+            ureq::Error::StatusCode(code) => format!("the lookup service answered with an error ({code})"),
+            ureq::Error::Timeout(_) => "the lookup took too long".to_string(),
+            _ => "the lookup service couldn't be reached. Check you're online".to_string(),
+        })?;
+    let bytes = read_capped(response.into_body().into_reader(), 1024 * 1024)?;
+    serde_json::from_slice(&bytes).map_err(|_| "the lookup service sent back something unreadable".to_string())
+}
+
+fn record_address(kind: &str, id: &str) -> Result<String, String> {
+    let id = id.trim();
+    match kind {
+        "doi" => {
+            let valid = id.starts_with("10.") && id.contains('/') && id.len() < 300 && !id.chars().any(|c| c.is_whitespace() || c.is_control() || c == '?' || c == '#');
+            if !valid {
+                return Err("that isn't a DOI".into());
+            }
+            Ok(format!("https://doi.org/{id}"))
+        }
+        "isbn" => {
+            let valid = (id.len() == 10 || id.len() == 13) && id.chars().enumerate().all(|(index, c)| c.is_ascii_digit() || (c == 'X' && index == 9 && id.len() == 10));
+            if !valid {
+                return Err("that isn't an ISBN".into());
+            }
+            Ok(format!("https://www.googleapis.com/books/v1/volumes?q=isbn:{id}"))
+        }
+        _ => Err("only DOIs and ISBNs can be looked up".into()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn looks_up_only_dois_and_isbns_at_fixed_services() {
+        assert_eq!(super::record_address("doi", "10.1080/00220973.2024.2392684").unwrap(), "https://doi.org/10.1080/00220973.2024.2392684");
+        assert_eq!(super::record_address("isbn", "080442957X").unwrap(), "https://www.googleapis.com/books/v1/volumes?q=isbn:080442957X");
+        for (kind, id) in [("doi", "11.1/x"), ("doi", "10.1/x?u=http://evil"), ("doi", "10.1/a b"), ("isbn", "123"), ("isbn", "97802625398X7"), ("url", "https://x")] {
+            assert!(super::record_address(kind, id).is_err(), "{kind} {id}");
+        }
+    }
+
     use super::*;
 
     #[test]
