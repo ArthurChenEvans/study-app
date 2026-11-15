@@ -4,6 +4,7 @@
   import { Check, ChevronRight, CircleCheck, Database, Download, Eye, Moon, Palette, PartyPopper, RefreshCw, Sun, TriangleAlert, Volume2 } from "@lucide/svelte";
   import PageHeader from "../components/PageHeader.svelte";
   import CelebrationsDialog from "../components/CelebrationsDialog.svelte";
+  import AccountSection from "../components/AccountSection.svelte";
   import { DARK, LIGHT, applyPalette, applyTheme, initialPalette, type Theme } from "../lib/theme";
   import { COLOURS, applyColours, buildColours, initialColours, type ColoursId } from "../lib/colours";
   import { isSoundOn, setSoundOn } from "../lib/sound";
@@ -32,9 +33,11 @@
 </script>
 
 <div class="mx-auto max-w-3xl px-12 pb-24">
-  <PageHeader title="Settings" subtitle="How the app looks and sounds. Your study data is under Your data." />
+  <PageHeader title="Settings" subtitle="Your account, and how the app looks and sounds. Backups are under Your data." />
 
-  <section class="panel p-5" aria-labelledby="look-h">
+  <AccountSection />
+
+  <section class="panel mt-5 p-5" aria-labelledby="look-h">
     <h2 id="look-h" class="eyebrow">Appearance</h2>
     <div class="mt-3 flex flex-wrap items-center gap-3">
       <span class="flex flex-1 items-center gap-3 font-bold"><Moon class="size-5 text-muted" />Theme</span>
