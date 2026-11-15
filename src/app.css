@@ -732,7 +732,10 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
 .start-fab { position: fixed; right: 1.5rem; bottom: 1.5rem; z-index: 30; height: 3.5rem; padding: 0 1.4rem; border-radius: 1.1rem; box-shadow: var(--shadow-float); background: var(--color-primary); color: var(--color-primary-content); letter-spacing: 0.06em; font-weight: 900; }
 .start-at-fab .start-menu { position: fixed; right: 1.5rem; bottom: 5.5rem; }
 .start-at-dock .start-menu { position: fixed; left: 1rem; right: 1rem; bottom: 5.5rem; width: auto; }
-.dock-start-disc { display: grid; place-items: center; width: 2.25rem; height: 1.75rem; border-radius: 999px; background: var(--color-primary); color: var(--color-primary-content); box-shadow: var(--shadow-panel); }
+/* Start fills its fifth of the dock like the other tabs, and its disc is the same size as their icons. */
+.start-at-dock { display: grid; }
+.start-at-dock > .dock-tab { width: 100%; font: inherit; font-size: 11.5px; font-weight: 800; cursor: pointer; }
+.dock-start-disc { display: grid; place-items: center; width: 56px; height: 30px; border-radius: 15px; background: var(--color-primary); color: var(--color-primary-content); box-shadow: var(--shadow-panel); }
 /* R199: right-click and long-press menus */
 .ctx-scrim { position: fixed; inset: 0; z-index: 60; background: transparent; cursor: default; }
 .ctx-menu { position: fixed !important; z-index: 61; right: auto !important; min-width: 14rem; }
