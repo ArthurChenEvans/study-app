@@ -3922,6 +3922,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde-wasm-bindgen"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8302e169f0eddcc139c70f139d19d6467353af16f9fce27e8c30158036a1e16b"
+dependencies = [
+ "js-sys",
+ "serde",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "serde_core"
 version = "1.0.229"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4361,15 +4372,22 @@ dependencies = [
 name = "study-phone"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
+ "chrono",
  "getrandom 0.2.17",
  "getrandom 0.3.4",
  "getrandom 0.4.3",
+ "js-sys",
+ "serde",
+ "serde-wasm-bindgen",
  "serde_json",
  "sqlite-wasm-rs",
+ "study-api",
  "study-core",
  "study-store",
  "wasm-bindgen",
  "wasm-bindgen-test",
+ "web-sys",
 ]
 
 [[package]]

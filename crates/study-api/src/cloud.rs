@@ -48,9 +48,20 @@ pub trait Http: Send {
     fn send(&self, request: &Request) -> Result<Response, String>;
 }
 
-/// The real network.
+/// The real network, on the desktop. The phone version brings its own (see study-phone).
+#[cfg(not(target_arch = "wasm32"))]
 pub struct Network;
 
+/// No network: for a build that hasn't been given one.
+pub struct Offline;
+
+impl Http for Offline {
+    fn send(&self, _request: &Request) -> Result<Response, String> {
+        Err("there's no connection to Supabase here".into())
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 impl Http for Network {
     fn send(&self, request: &Request) -> Result<Response, String> {
         let agent: ureq::Agent = ureq::Agent::config_builder()
@@ -115,7 +126,11 @@ pub struct Cloud {
 
 impl Default for Cloud {
     fn default() -> Self {
-        Self { url: PROJECT_URL.into(), key: PUBLISHABLE_KEY.into(), http: Box::new(Network), home: None, session: None, images_allowed: false, admin: false, problem: None, last_synced: None, names: BTreeMap::new() }
+        #[cfg(not(target_arch = "wasm32"))]
+        let http: Box<dyn Http> = Box::new(Network);
+        #[cfg(target_arch = "wasm32")]
+        let http: Box<dyn Http> = Box::new(Offline);
+        Self { url: PROJECT_URL.into(), key: PUBLISHABLE_KEY.into(), http, home: None, session: None, images_allowed: false, admin: false, problem: None, last_synced: None, names: BTreeMap::new() }
     }
 }
 
@@ -203,11 +218,11 @@ impl Cloud {
 
     fn save(&self) -> ApiResult<()> {
         let Some(path) = self.path() else { return Ok(()) };
-        let saved = json!({ "session": self.session, "last_synced": self.last_synced, "names": self.names });
+        let saved = self.saved_text();
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).map_err(|error| ApiError::new(format!("couldn't save the sign-in: {error}")))?;
         }
-        std::fs::write(&path, saved.to_string()).map_err(|error| ApiError::new(format!("couldn't save the sign-in: {error}")))?;
+        std::fs::write(&path, saved).map_err(|error| ApiError::new(format!("couldn't save the sign-in: {error}")))?;
         // The refresh token is as good as being signed in, so only this user can read it.
         #[cfg(unix)]
         {
@@ -215,6 +230,18 @@ impl Cloud {
             let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
         }
         Ok(())
+    }
+
+    /// The sign-in as text, for a build without files (the phone keeps it in the browser).
+    pub fn saved_text(&self) -> String {
+        json!({ "session": self.session, "last_synced": self.last_synced, "names": self.names }).to_string()
+    }
+
+    pub fn load_text(&mut self, text: &str) {
+        let saved: Value = serde_json::from_str(text).unwrap_or(Value::Null);
+        self.session = serde_json::from_value(saved.get("session").cloned().unwrap_or(Value::Null)).ok();
+        self.last_synced = saved.get("last_synced").and_then(Value::as_i64);
+        self.names = serde_json::from_value(saved.get("names").cloned().unwrap_or(Value::Null)).unwrap_or_default();
     }
 
     fn load(&mut self) {
@@ -329,6 +356,16 @@ impl App {
 
     pub fn images_allowed(&self) -> bool {
         self.cloud.images_allowed()
+    }
+
+    /// The phone keeps the sign-in in the browser: it reads it out after each command...
+    pub fn cloud_saved_text(&self) -> String {
+        self.cloud.saved_text()
+    }
+
+    /// ...and hands it back when the app opens.
+    pub fn cloud_load_text(&mut self, text: &str) {
+        self.cloud.load_text(text);
     }
 
     /// Emails a 6-digit sign-in code. A new email makes an account (open sign-up).
@@ -451,8 +488,7 @@ impl App {
         if response.status >= 300 {
             return Err(ApiError::new(message_of(&response.body, "couldn't sign the other computers out")));
         }
-        let me = self.store.device_id();
-        let _ = self.cloud.rest("DELETE", &format!("devices?device=neq.{me}"), None, None, clock.unix);
+        // The other computers' rows stay: a computer signing in later reads their changes through them.
         self.cloud_status(clock)
     }
 
