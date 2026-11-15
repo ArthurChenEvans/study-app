@@ -1,0 +1,24 @@
+# R211 spike: build the study core for the browser and run it in headless Chrome.
+name: Phone core in the browser
+on:
+  push:
+    branches: [phone-spike]
+  workflow_dispatch:
+jobs:
+  wasm:
+    runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: --cfg getrandom_backend="wasm_js"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: Install wasm-pack
+        run: curl -sSf https://rustwasm.github.io/wasm-pack/installer/init.sh | sh
+      - name: Build the core for the browser
+        run: cargo build -p study-phone --target wasm32-unknown-unknown --release
+      - name: Run it in headless Chrome
+        run: wasm-pack test --headless --chrome crates/study-phone
+      - name: Size of the build
+        run: ls -la target/wasm32-unknown-unknown/release/*.wasm
