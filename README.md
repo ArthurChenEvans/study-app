@@ -190,3 +190,15 @@ Accounts are optional. Signed in, the app syncs through a free Supabase project.
 4. Authentication, Emails: put `{{ .Token }}` in the Magic Link template so it sends a code, not a link. Set up custom SMTP (a Gmail address with an app password works for a small group).
 5. Authentication, Rate Limits: keep emails per hour low (around 30). Authentication, Multi-Factor: turn on TOTP.
 6. To make yourself admin, sign in once, then in the Table Editor add your user's id (from Authentication, Users) to the `admins` table.
+
+
+## Phone version
+
+A browser build for phones (iPhone included), published to GitHub Pages from `main` by
+`.github/workflows/phone.yml`. It needs an account: the study core runs in a worker
+(`crates/study-phone`, compiled to WebAssembly), keeps its database in the browser, and syncs
+with Supabase.
+
+- One-time setup: repository Settings, Pages, Source: **GitHub Actions**.
+- Address: `https://<user>.github.io/study-app/`. On an iPhone, open it in Safari, then Share, Add to Home Screen.
+- Build it yourself with `./scripts/phone-build.sh` (needs the `wasm32-unknown-unknown` target and wasm-pack).
