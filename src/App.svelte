@@ -257,7 +257,7 @@
   </div>
 {:else}
 <div class="flex min-h-screen">
-  {#if !["quiz", "recall-session", "card-review", "session-review", "drills"].includes(route.screen)}<Sidebar current={navScreen} {due} onStart={start} {backup} {sync} {mode} onNavigate={(screen) => go({ screen })} />{/if}
+  {#if !["quiz", "recall-session", "card-review", "session-review", "drills"].includes(route.screen)}<Sidebar current={navScreen} {due} onStart={start} {backup} {sync} {mode} startHidden={["editor", "checklist", "topic-cards"].includes(route.screen)} onNavigate={(screen) => go({ screen })} />{/if}
   <main class="min-w-0 flex-1" class:pb-24={mode === "dock"}>
     {#key dataVersion}
     <!-- R186: every screen comes in the same way, once, when you go to it -->

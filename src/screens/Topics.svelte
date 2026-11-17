@@ -4,6 +4,8 @@
   // topics.feature (R1, R2, R3, R43, R51)
   import { Brain, FolderPlus, ListChecks, PencilLine, Plus, Search, SquareStack, Trash2 } from "@lucide/svelte";
   import RowMenu from "../components/RowMenu.svelte";
+  import { rowMenu } from "../lib/contextMenu.svelte";
+  import { tick } from "svelte";
   import RenameDialog from "../components/RenameDialog.svelte";
   import PageHeader from "../components/PageHeader.svelte";
   import { api, errorMessage, type Id, type ModuleRow, type RecallRow, type TopicRow } from "../lib/api";
@@ -55,9 +57,9 @@
   let moduleInput = $state("");
   let moduleError = $state("");
 
-  function openCreate() {
+  function openCreate(module: Id | null = picked?.module ?? null) {
     newName = "";
-    newModule = picked?.module ? String(picked.module) : "";
+    newModule = module ? String(module) : "";
     createError = "";
     creating = true;
   }
@@ -172,13 +174,31 @@
     });
   }
 
+  // R215: the same actions as the panel and the "…" button, a right-click or long-press away.
+  function topicMenu(topic: TopicRow) {
+    return () => ({ label: topic.name, items: [
+      { label: "Edit questions", onSelect: () => onEdit(topic.id) },
+      { label: "Cards", onSelect: () => onCards(topic.id) },
+      { label: "Rename…", onSelect: () => (renaming = { kind: "topic", id: topic.id, name: topic.name }) },
+      { label: "Move to module…", onSelect: async () => { selected = topic.id; await tick(); document.getElementById("topic-module")?.focus(); } },
+      { label: "Delete…", danger: true, onSelect: () => requestDelete(topic) },
+    ] });
+  }
+  function moduleItems(id: Id, name: string) {
+    return [
+      { label: "New topic in it…", onSelect: () => openCreate(id) },
+      { label: "Rename module…", onSelect: () => (renaming = { kind: "module" as const, id, name }) },
+      { label: "Delete module…", danger: true, onSelect: () => (deletingModule = { id, name, count: topics.filter((t) => t.module === id).length }) },
+    ];
+  }
+
   load();
 </script>
 
 <div class="mx-auto max-w-6xl px-12 pb-24">
   <PageHeader title="Topics & Modules" subtitle="A module groups topics. Every quiz, card and checklist lives in a topic.">
     <button class="btn btn-ghost" onclick={() => { moduleError = ""; moduleInput = ""; creatingModule = true; }}><FolderPlus class="size-4" />New module</button>
-    <button class="btn btn-primary" onclick={openCreate}><Plus class="size-4" />New topic</button>
+    <button class="btn btn-primary" onclick={() => openCreate()}><Plus class="size-4" />New topic</button>
   </PageHeader>
 
   {#if loaded}
@@ -190,17 +210,17 @@
         </label>
         {#each groups as group (group.module?.id ?? "none")}
           <section class="panel p-2" aria-labelledby="module-{group.module?.id ?? 'none'}">
-            <div class="flex items-center gap-2 px-2 py-1">
+            <div class="flex items-center gap-2 px-2 py-1" use:rowMenu={() => (group.module ? { label: group.module.name, items: moduleItems(group.module.id, group.module.name) } : { label: "No module", items: [{ label: "New topic in it…", onSelect: () => openCreate(null) }] })}>
               <h2 id="module-{group.module?.id ?? 'none'}" class="flex-1 text-[15px] font-black">{group.module?.name ?? "No module"}</h2>
               <span class="text-xs text-muted">{plural(group.topics.length, "topic")}</span>
               {#if group.module}
                 {@const id = group.module.id}
                 {@const name = group.module.name}
-                <RowMenu small label="{name} module actions" items={[{ label: "Rename module…", onSelect: () => (renaming = { kind: "module", id, name }) }, { label: "Delete module…", danger: true, onSelect: () => (deletingModule = { id, name, count: topics.filter((t) => t.module === id).length }) }]} />
+                <RowMenu small label="{name} module actions" items={moduleItems(id, name)} />
               {/if}
             </div>
             {#each group.topics as topic (topic.id)}
-              <button type="button" class="nav-link flex min-h-10 w-full items-center gap-2 px-3 text-left" aria-current={selected === topic.id ? "true" : undefined} onclick={() => (selected = topic.id)}>
+              <button type="button" class="nav-link flex min-h-10 w-full items-center gap-2 px-3 text-left" aria-current={selected === topic.id ? "true" : undefined} use:rowMenu={topicMenu(topic)} onclick={() => (selected = topic.id)}>
                 <span class="flex-1 truncate">{topic.name}</span>
                 <span class="text-xs font-bold text-muted" aria-hidden="true">{questionsIn(topic)} q · {cardsIn(topic)} cards</span>
               </button>
@@ -226,7 +246,7 @@
           </div>
           <div class="grid grid-cols-1 gap-4 tab:grid-cols-2">
             <label class="block"><span class="text-sm font-bold">Module</span>
-              <select class="select mt-1 w-full" value={topic.module === null ? "" : String(topic.module)} onchange={(event) => move(topic, event.currentTarget.value)}>
+              <select id="topic-module" class="select mt-1 w-full" value={topic.module === null ? "" : String(topic.module)} onchange={(event) => move(topic, event.currentTarget.value)}>
                 <option value="">No module</option>
                 {#each modules as module (module.id)}<option value={String(module.id)}>{module.name}</option>{/each}
               </select></label>

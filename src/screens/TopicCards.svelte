@@ -174,9 +174,9 @@
 <div class="mx-auto max-w-6xl px-12 pb-24">
   <button class="mt-8 inline-flex items-center gap-1 py-1 text-xs font-extrabold uppercase tracking-wider text-muted hover:underline" onclick={() => (editing ? (editing = null) : onBack())}><ArrowLeft class="size-4" />{editing ? data?.name : "Cards"}</button>
   {#if data}
-    <div class="flex items-end justify-between gap-6 pb-6 pt-4">
+    <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 pb-6 pt-4">
       <div><p class="text-sm text-muted">{data.module ?? "No module"} · {data.cards.length} {data.cards.length === 1 ? "card" : "cards"} · {data.due} due</p><h1 class="mt-1 text-3xl font-semibold">{data.name}</h1></div>
-      <div class="flex items-center gap-2">
+      <div class="flex flex-wrap items-center gap-2">
         {#if !editing}<button class="btn btn-ghost" onclick={() => open(null)}><Plus class="size-4" />New card</button>{/if}
         <button class="btn {editing || !data.due ? 'btn-outline' : 'btn-primary'}" disabled={!data.due} onclick={() => onReview({ Topic: topic })}><Play class="size-4" />{data.due && !editing ? `Review the ${data.due} due` : `Review ${data.name}`}</button>
       </div>

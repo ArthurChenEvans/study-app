@@ -71,7 +71,7 @@
 </script>
 
 <section class="panel p-6" aria-labelledby="sync-h">
-  <div class="flex items-start justify-between gap-4">
+  <div class="flex flex-col items-start justify-between gap-4 sm:flex-row">
     <div>
       <h2 id="sync-h" class="text-lg font-semibold">Sync</h2>
       <p class="mt-1 text-sm text-muted">Keeps your computers (and the browser version) in step through a folder you already keep in sync, like Syncthing. No account, no server, nothing to pay for.</p>

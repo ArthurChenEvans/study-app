@@ -135,7 +135,7 @@
             <span class="well" style="background: var(--guessed-tint); color: var(--guessed-ink)" aria-hidden="true"><Flag class="size-5 fill-current" /></span>
             <div>
               <p class="text-[26px] font-black leading-none">{progress.guessed_share === null ? "None" : `${progress.guessed_share}%`}</p>
-              <p id="tile-guessed" class="mt-1 text-[13px] text-muted" title="Lower means you really know it">Right answers that were guesses</p>
+              <p id="tile-guessed" class="mt-1 text-[13px] text-muted" title="Lower means you really know it">of right answers were guesses</p>
             </div>
           </div>
         </section>
@@ -150,6 +150,24 @@
             <button class="btn btn-link btn-sm text-[13px]" onclick={() => onNavigate("history")}>History <ArrowRight class="size-4" /></button>
           </div>
           <div class="mt-3">{#if byWeek}<ScoreChart points={weekPoints} title="Weekly average score" detailLabel="Quizzes" />{:else}<ScoreChart points={quizPoints} />{/if}</div>
+        </section>
+
+        <!-- R214: under the chart, so both columns end at about the same height. -->
+        <section class="panel p-5">
+          <h2 id="reasons" class="text-[18px]">Why you got things wrong</h2>
+          <p class="text-[13px] text-muted">Reasons on wrong answers, last 30 days</p>
+          {#if progress.reasons.length === 0}
+            <p class="mt-4 text-sm text-muted">No reasons given yet. Add them on the results screen after a quiz.</p>
+          {:else}
+            <ul class="mt-4 space-y-3" aria-labelledby="reasons">
+              {#each progress.reasons as [reason, count] (reason)}
+                <li class="text-sm">
+                  <span class="flex justify-between gap-2"><span class="truncate">{reason}</span>{" "}<span class="tabular-nums">{count}</span></span>
+                  <span class="mt-1 block h-3 overflow-hidden rounded-full bg-base-300"><span class="block h-full rounded-full" style="width: {Math.max((count / maxReason) * 100, 2)}%; background: var(--chart-ink)"></span></span>
+                </li>
+              {/each}
+            </ul>
+          {/if}
         </section>
       </div>
 
@@ -167,7 +185,7 @@
 
         <section class="panel p-5">
           <h2 id="weakest" class="text-[18px]">Topics, weakest first</h2>
-          <div class="flex items-center justify-between gap-2"><p class="text-[13px] text-muted">Latest quiz on each topic</p>
+          <div class="flex flex-wrap items-center justify-between gap-2"><p class="text-[13px] text-muted">Latest quiz on each topic</p>
             {#if modules.length > 1}<select class="select select-sm w-40" aria-label="Weakest topics in" bind:value={weakModule}><option value="all">All modules</option>{#each modules as m (m.id)}<option value={String(m.id)}>{m.name}</option>{/each}</select>{/if}</div>
           <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
             <span class="flex items-center gap-1.5"><span class="swatch" style="background: var(--chart-right)"></span>Right, sure</span>
@@ -186,22 +204,6 @@
           {#if progress.never_quizzed.length}<p class="mt-4 text-[13px] text-muted">Not quizzed yet: {progress.never_quizzed.map(name).join(", ")}</p>{/if}
         </section>
 
-        <section class="panel p-5">
-          <h2 id="reasons" class="text-[18px]">Why you got things wrong</h2>
-          <p class="text-[13px] text-muted">Reasons on wrong answers, last 30 days</p>
-          {#if progress.reasons.length === 0}
-            <p class="mt-4 text-sm text-muted">No reasons given yet. Add them on the results screen after a quiz.</p>
-          {:else}
-            <ul class="mt-4 space-y-3" aria-labelledby="reasons">
-              {#each progress.reasons as [reason, count] (reason)}
-                <li class="text-sm">
-                  <span class="flex justify-between gap-2"><span class="truncate">{reason}</span>{" "}<span class="tabular-nums">{count}</span></span>
-                  <span class="mt-1 block h-3 overflow-hidden rounded-full bg-base-300"><span class="block h-full rounded-full" style="width: {Math.max((count / maxReason) * 100, 2)}%; background: var(--chart-ink)"></span></span>
-                </li>
-              {/each}
-            </ul>
-          {/if}
-        </section>
       </aside>
     </div>
   {/if}

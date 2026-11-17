@@ -27,6 +27,10 @@
     kind: "mcq", checkBy: "Accepted", accepted: [""], typos: true, keywords: [{ word: "", also: "" }], needed: null, model: "",
   });
 
+  // R214: the reader is folded away until you open a file, ask for it, or show a citation.
+  let readerTabs = $state(false);
+  let readerWanted = $state(false);
+  const showReader = $derived(!phone && (readerTabs || readerWanted));
   let topicName = $state("");
   let questions = $state<[Id, string][]>([]);
   let sources = $state<SourceRow[]>([]);
@@ -222,25 +226,31 @@
   }}
 />
 
-<div class="flex h-screen">
+<!-- R216: on a phone the page scrolls, not a box inside it, so iPhone scrolls straight to the top and bottom. -->
+<div class="flex h-screen max-sm:h-auto">
   {#if !phone}
-  <section class="flex w-1/2 min-w-0 flex-col border-r border-base-300 bg-base-200" aria-label="Source preview">
-    <Preview />
+  <section class="flex w-1/2 min-w-0 flex-col border-r border-base-300 bg-base-200" aria-label="Source preview" hidden={!showReader}>
+    <Preview bind:hasTabs={readerTabs} />
   </section>
   {/if}
 
-  <section class="{phone ? 'w-full' : 'w-1/2'} overflow-auto" aria-label="Question editor">
-    <div class="flex items-end justify-between px-10 pb-6 pt-10">
-      <div>
-        <button type="button" class="btn btn-ghost btn-sm -ml-3 mb-2" aria-label="Back to Quizzes" onclick={onBack}><ArrowLeft class="size-4" />Quizzes</button>
-        <p class="text-sm text-muted">{topicName}</p>
-        <h1 class="mt-1 text-2xl font-semibold">{editing === null ? "New question" : "Edit question"}</h1>
+  <section class="{showReader ? 'w-1/2' : 'w-full'} flex flex-col overflow-auto max-sm:overflow-visible" aria-label="Question editor">
+    <div class="flex max-w-[47rem] flex-col gap-4 px-10 pb-8 pt-8 max-tab:px-5">
+      <nav aria-label="Breadcrumb" class="flex flex-wrap items-center gap-3 text-sm text-muted">
+        <button type="button" class="btn btn-ghost btn-sm" aria-label="Back to Quizzes" onclick={onBack}><ArrowLeft class="size-4" />Quizzes</button>
+        <span aria-hidden="true">/</span><span>{topicName}</span>
+      </nav>
+      <div class="flex flex-wrap items-end justify-between gap-4">
+        <h1 class="text-[28px] font-black leading-tight">{editing === null ? "New question" : "Edit question"}</h1>
+        <div class="flex flex-wrap gap-2">
+          {#if editing !== null}<button class="btn btn-ghost btn-sm" onclick={startNew}><Plus class="size-4" />New question</button>{/if}
+          {#if !phone && !readerTabs}<button type="button" class="btn btn-ghost btn-sm" onclick={() => (readerWanted = !showReader)}><BookOpen class="size-4" />{showReader ? "Hide the reader" : "Read a file alongside"}</button>{/if}
+        </div>
       </div>
-      {#if editing !== null}<button class="btn btn-ghost btn-sm" onclick={startNew}><Plus class="size-4" />New question</button>{/if}
     </div>
 
     {#if questions.length}
-      <details class="mx-10 mb-6 max-w-2xl panel">
+      <details class="mx-10 mb-8 max-w-2xl panel max-tab:mx-5">
         <summary class="cursor-pointer px-4 py-3 text-sm font-semibold">{questions.length} questions in {topicName}</summary>
         <ul class="divide-y border-t border-base-300">
           {#each questions as [id, text] (id)}
@@ -250,9 +260,9 @@
       </details>
     {/if}
 
-    <form class="max-w-2xl space-y-8 px-10 pb-16" onsubmit={save} onpaste={images.onPaste} onfocusin={images.onFocus} ondragover={images.onDragOver} ondrop={images.onDrop}>
-      <div class="flex items-center justify-between gap-4">
-        <span class="text-sm font-semibold" id="type-label">Question type</span>
+    <form class="max-w-2xl flex-1 space-y-8 px-10 max-tab:px-5" onsubmit={save} onpaste={images.onPaste} onfocusin={images.onFocus} ondragover={images.onDragOver} ondrop={images.onDrop}>
+      <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <span class="text-sm font-semibold" id="type-label">Type of question</span>
         <div class="seg" role="radiogroup" aria-labelledby="type-label">
           <button type="button" role="radio" aria-checked={draft.kind === "mcq"} onclick={() => (draft.kind = "mcq")}>Multiple choice</button>
           <button type="button" role="radio" aria-checked={draft.kind === "short"} onclick={() => (draft.kind = "short")}>Short answer</button>
@@ -262,8 +272,8 @@
         <label class="text-sm font-semibold" for="question-text">Question</label>
         <textarea id="question-text" class="textarea w-full font-mono text-sm" rows="3" data-rich="true" bind:this={questionField} bind:value={draft.text}></textarea>
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <p class="text-sm text-muted">Markdown, `code`, $LaTeX$ and images. Paste or drop an image into any field, or add one from a file.</p>
-          <button type="button" class="btn btn-ghost btn-sm" title="Adds the image where your cursor was last, in the question, an option or the explanation" onclick={() => picker?.click()}><ImagePlus class="size-4" />Add image</button>
+          <p class="text-sm text-muted">You can add pictures, code and maths. Paste or drop a picture into any box, or add one from a file.</p>
+          <button type="button" class="btn btn-ghost btn-sm" title="Adds the picture where your cursor was last, in the question, an answer or the explanation" onclick={() => picker?.click()}><ImagePlus class="size-4" />Add image</button>
           <input bind:this={picker} type="file" class="hidden" accept={IMAGE_TYPES.join(",")} multiple aria-label="Image file" onchange={onPicked} />
         </div>
         {#if images.note}<p role="status" class="text-sm text-muted">{images.note}</p>{/if}{#if images.error}<p role="alert" class="text-sm text-error">{images.error}</p>{/if}
@@ -272,25 +282,24 @@
 
       {#if draft.kind === "mcq"}
       <fieldset class="space-y-3">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-wrap items-center justify-between gap-3">
           <legend class="text-sm font-semibold">Answers</legend>
-          <div class="seg" role="radiogroup" aria-label="Answer type">
-            <button type="button" role="radio" aria-checked={!draft.multiple} onclick={() => setMultiple(false)}>Single</button>
-            <button type="button" role="radio" aria-checked={draft.multiple} onclick={() => setMultiple(true)}>Multiple</button>
+          <div class="seg" role="radiogroup" aria-label="How many are right">
+            <button type="button" role="radio" aria-checked={!draft.multiple} onclick={() => setMultiple(false)}>One right answer</button>
+            <button type="button" role="radio" aria-checked={draft.multiple} onclick={() => setMultiple(true)}>More than one</button>
           </div>
         </div>
-        <div class="option-grid text-xs text-muted" aria-hidden="true"><span>Answer</span><span class="text-center">Correct</span><span></span></div>
         {#each draft.options as option, index (index)}
           <div class="option-grid">
-            <input class="input w-full {option.correct ? 'is-right' : ''}" aria-label="Option {index + 1}" placeholder="Option {index + 1}" data-rich="true" bind:value={option.text} />
-            <input type="checkbox" class="checkbox checkbox-correct justify-self-center" aria-label="Option {index + 1} is correct" checked={option.correct} onchange={() => toggleCorrect(index)} />
+            <label class="right-label {option.correct ? 'is-right' : ''}"><input type="checkbox" class="checkbox checkbox-correct" aria-label="Option {index + 1} is correct" checked={option.correct} onchange={() => toggleCorrect(index)} /><span aria-hidden="true">Right</span></label>
+            <input class="input w-full {option.correct ? 'is-right' : ''}" aria-label="Option {index + 1}" placeholder="Answer {index + 1}" data-rich="true" bind:value={option.text} />
             <button type="button" class="btn btn-quiet btn-sm btn-square" aria-label="Remove option {index + 1}" disabled={draft.options.length <= MIN} onclick={() => (draft.options = draft.options.filter((_, position) => position !== index))}><X class="size-4" /></button>
           </div>
         {/each}
         <div class="flex items-center gap-3">
-          <button type="button" class="btn btn-ghost btn-sm" disabled={draft.options.length >= MAX} onclick={() => (draft.options = [...draft.options, { text: "", correct: false }])}><Plus class="size-4" />Add option</button>
+          <button type="button" class="btn btn-ghost btn-sm" disabled={draft.options.length >= MAX} onclick={() => (draft.options = [...draft.options, { text: "", correct: false }])}><Plus class="size-4" />Add an answer</button>
           {#if switchNote}<span role="status" class="block text-sm text-muted">{switchNote}</span>{/if}
-          <span class="text-sm text-muted tabular-nums">{draft.options.length} of {MAX} options. {draft.multiple ? "Tick every correct answer." : "Tick the correct answer."}</span>
+          <span class="text-sm text-muted tabular-nums">{draft.options.length} of {MAX}. {draft.multiple ? "Mark every right answer." : "Mark the right answer."}</span>
         </div>
       </fieldset>
       {:else}
@@ -377,7 +386,7 @@
             {#if citation.source && locationTarget(citation.location)}
               {@const source = sources.find((row) => String(row.id) === citation.source)}
               {@const target = locationTarget(citation.location)!}
-              <button type="button" class="btn btn-quiet btn-sm btn-square" aria-label="Show {"line" in target ? `line ${target.line}` : `page ${target.page}`} in the preview" title="Show in the preview" onclick={() => source && showCitation(source.id, shortCite(source), citation.location)}><Eye class="size-4" /></button>
+              <button type="button" class="btn btn-quiet btn-sm btn-square" aria-label="Show {"line" in target ? `line ${target.line}` : `page ${target.page}`} in the preview" title="Show in the preview" onclick={() => { readerWanted = true; if (source) showCitation(source.id, shortCite(source), citation.location); }}><Eye class="size-4" /></button>
             {/if}
             <button type="button" class="btn btn-quiet btn-sm btn-square" aria-label="Remove citation {index + 1}" onclick={() => { citeTouched = true; draft.citations = draft.citations.filter((_, position) => position !== index); }}><X class="size-4" /></button>
           </div>
@@ -395,7 +404,8 @@
 
       {#if error}<p role="alert" class="text-sm text-error">{error}</p>{/if}
       {#if saved && !error}<p role="status" class="text-sm text-muted">{saved}</p>{/if}
-      <div class="flex items-center gap-3 border-t border-base-300 pt-6">
+      <!-- R214: Save stays in view at the bottom while you write. -->
+      <div class="save-bar">
         <button type="submit" class="btn btn-primary">Save question</button>
         {#if editing !== null}<button type="button" class="btn btn-ghost" onclick={startNew}>Cancel</button>{/if}
         {#if editing !== null}<button type="button" class="btn btn-ghost ml-auto text-error" onclick={() => (deletingQuestion = true)}><Trash2 class="size-4" />Delete question</button>{/if}

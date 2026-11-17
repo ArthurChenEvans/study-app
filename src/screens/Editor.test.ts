@@ -98,9 +98,9 @@ describe("Question editor", () => {
     render(Editor, { topic: 1 });
     await screen.findByText("What does the ALU do?");
     expect(screen.getAllByLabelText(/^Option \d$/)).toHaveLength(4);
-    await u.click(screen.getByRole("button", { name: "Add option" }));
+    await u.click(screen.getByRole("button", { name: "Add an answer" }));
     expect(screen.getAllByLabelText(/^Option \d$/)).toHaveLength(5);
-    expect(screen.getByRole("button", { name: "Add option" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Add an answer" })).toBeDisabled();
     await u.click(screen.getByRole("button", { name: "Remove option 5" }));
     await u.click(screen.getByRole("button", { name: "Remove option 4" }));
     expect(screen.getAllByLabelText(/^Option \d$/)).toHaveLength(3);
@@ -111,8 +111,8 @@ describe("Question editor", () => {
   // UI polish: the number of boxes says how many options there are, the placeholder says which
   it("labels each empty option with a placeholder", async () => {
     render(Editor, { topic: 1 });
-    expect(await screen.findByLabelText("Option 1")).toHaveAttribute("placeholder", "Option 1");
-    expect(screen.getByLabelText("Option 4")).toHaveAttribute("placeholder", "Option 4");
+    expect(await screen.findByLabelText("Option 1")).toHaveAttribute("placeholder", "Answer 1");
+    expect(screen.getByLabelText("Option 4")).toHaveAttribute("placeholder", "Answer 4");
   });
 
   it("single answer keeps one tick, multiple answer allows several", async () => {
@@ -122,7 +122,7 @@ describe("Question editor", () => {
     await u.click(screen.getByLabelText("Option 1 is correct"));
     await u.click(screen.getByLabelText("Option 2 is correct"));
     expect(screen.getByLabelText("Option 1 is correct")).not.toBeChecked();
-    await u.click(screen.getByRole("radio", { name: "Multiple" }));
+    await u.click(screen.getByRole("radio", { name: "More than one" }));
     await u.click(screen.getByLabelText("Option 3 is correct"));
     expect(screen.getByLabelText("Option 2 is correct")).toBeChecked();
     expect(screen.getByLabelText("Option 3 is correct")).toBeChecked();
@@ -223,15 +223,37 @@ describe("Question editor", () => {
     expect(within(preview).getByRole("status")).toHaveTextContent("Open the file for Kirk (2022) to see page 88.");
   });
 
+  // R214: the reader stays folded until you open a file, and the form says things plainly
+  it("keeps the reader folded until you ask for it", async () => {
+    const u = user();
+    render(Editor, { topic: 1 });
+    await screen.findByText("What does the ALU do?");
+    expect(screen.queryByRole("region", { name: "Source preview" })).not.toBeInTheDocument();
+    await u.click(screen.getByRole("button", { name: "Read a file alongside" }));
+    expect(screen.getByRole("region", { name: "Source preview" })).toBeInTheDocument();
+    await u.click(screen.getByRole("button", { name: "Hide the reader" }));
+    expect(screen.queryByRole("region", { name: "Source preview" })).not.toBeInTheDocument();
+  });
+
+  it("labels each answer with Right and names the choices in plain words", async () => {
+    render(Editor, { topic: 1 });
+    await screen.findByText("What does the ALU do?");
+    expect(screen.getByRole("radiogroup", { name: "Type of question" })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: "One right answer" })).toBeChecked();
+    expect(screen.getAllByText("Right", { selector: ".right-label span" })).toHaveLength(4);
+    expect(screen.queryByText(/LaTeX/)).not.toBeInTheDocument();
+    expect(screen.getByText(/You can add pictures, code and maths/)).toBeInTheDocument();
+  });
+
   // R49
   it("switching to single keeps the first tick and says so", async () => {
     const u = user();
     render(Editor, { topic: 1 });
     await screen.findByText("What does the ALU do?");
-    await u.click(screen.getByRole("radio", { name: "Multiple" }));
+    await u.click(screen.getByRole("radio", { name: "More than one" }));
     await u.click(screen.getByLabelText("Option 2 is correct"));
     await u.click(screen.getByLabelText("Option 4 is correct"));
-    await u.click(screen.getByRole("radio", { name: "Single" }));
+    await u.click(screen.getByRole("radio", { name: "One right answer" }));
     expect(screen.getByLabelText("Option 2 is correct")).toBeChecked();
     expect(screen.getByLabelText("Option 4 is correct")).not.toBeChecked();
     expect(screen.getByRole("status")).toHaveTextContent("Kept option 2 as the correct answer");

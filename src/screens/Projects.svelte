@@ -172,7 +172,7 @@
         </div>
       {/if}
       <div class="panel overflow-hidden">
-        <table class="table" aria-label="Practice logs" use:stackTable>
+        <table class="table log-table" aria-label="Practice logs" use:stackTable>
           <thead><tr class="text-muted"><th>Log</th><th aria-sort="descending">Last worked on</th><th>Struggles</th><th>To review</th><th>Drills due</th></tr></thead>
           <tbody>
             {#each shownProjects as project (project.id)}

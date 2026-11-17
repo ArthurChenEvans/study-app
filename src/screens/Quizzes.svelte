@@ -19,6 +19,7 @@
   import PageHeader from "../components/PageHeader.svelte";
   import ScheduleDialog from "../components/ScheduleDialog.svelte";
   import { dueLabel } from "../lib/dates";
+  import { repeatsLabel } from "../lib/words";
   import { matchesFilter, saveColumns, savedColumns, sortBy } from "../lib/lists";
 
   let { onEdit = () => {}, onQuiz = () => {}, onQuizTopics = () => {}, onCards = () => {}, onSearch = () => {}, onChanged = () => {} }: {
@@ -58,6 +59,8 @@
   // R196: a topic with no questions isn't a quiz yet, so it waits on its own line below.
   const withQuestions = $derived(topics.filter((topic) => topic.question_count + topic.short_count > 0));
   const emptyTopics = $derived(topics.filter((topic) => topic.question_count + topic.short_count === 0));
+  // R215: when no quiz has questions yet, say that instead of "No topics here".
+  const onlyEmpty = $derived(withQuestions.length === 0 && !filter.trim() && status === "all" && rail === "all");
   const filtered = $derived(withQuestions.filter((topic) => inStatus(topic) && matchesFilter(filter, topic.name, moduleName(topic.module), topic.tags.join(" "))));
   const railItems = $derived<RailItem[]>([
     { key: "all", label: "All modules", count: filtered.length },
@@ -269,14 +272,14 @@
 {#snippet next(quiz: TopicQuizView | undefined, topic: TopicRow)}
   {#if quiz}
     {#if quiz.due_today}<span class="font-extrabold text-[var(--accent-ink)]">Due today</span>{:else if quiz.waiting}<span class="font-bold">Waiting its turn</span>{:else}{dueLabel(quiz.due, today)}{/if}
-    {#if quiz.tightened_for}<span class="ml-1 inline-flex align-middle" title="Tightened for {quiz.tightened_for}"><GraduationCap class="size-3.5" aria-hidden="true" /><span class="sr-only">Tightened for {quiz.tightened_for}</span></span>{/if}
+    {#if quiz.tightened_for}<span class="ml-1 inline-flex align-middle" title="Exam soon: {quiz.tightened_for}"><GraduationCap class="size-3.5" aria-hidden="true" /><span class="sr-only">Exam soon: {quiz.tightened_for}</span></span>{/if}
   {:else}<span class="text-muted">{topic.question_count ? "Quiz it to start" : "No questions yet"}</span>{/if}
 {/snippet}
 
 <div class="mx-auto max-w-[96rem] px-12 pb-24">
   <PageHeader title="Quizzes" subtitle={loaded && topics.length ? `Each topic's questions make a quiz. Tick a few to mix them.${dueTopics.length ? ` ${dueTopics.length} ${dueTopics.length === 1 ? "is" : "are"} due today.` : ""}` : ""}>
-    {#if topics.length}<button class="btn btn-ghost" onclick={async () => { const queue = await api.quizQueue(); daily = { value: queue.daily, coming: queue.next_four_weeks }; editingSchedule = await api.quizSchedule(); }}><CalendarCog class="size-4" />Quiz schedule</button>{/if}
-    <button class="btn {dueTopics.length || (loaded && topics.length === 0) ? 'btn-ghost' : 'btn-primary'}" onclick={openCreate}><Plus class="size-4" />New quiz</button>
+    {#if topics.length}<button class="btn btn-ghost" onclick={async () => { const queue = await api.quizQueue(); daily = { value: queue.daily, coming: queue.next_four_weeks }; editingSchedule = await api.quizSchedule(); }}><CalendarCog class="size-4" />Schedule</button>{/if}
+    <button class="btn {dueTopics.length || (loaded && topics.length === 0) ? 'btn-ghost' : 'btn-primary'}" onclick={openCreate}><Plus class="size-4" />Make a quiz</button>
     {#if dueTopics.length}<button class="btn btn-primary" onclick={() => onQuizTopics(dueTopics)}><Play class="size-4" />Quiz the {dueTopics.length === 1 ? "due topic" : `${dueTopics.length} due topics`}</button>{/if}
   </PageHeader>
 
@@ -289,17 +292,17 @@
     </div>
   {:else if loaded}
     <div class="flex gap-5">
-      <Rail items={railItems} bind:value={rail} onPick={() => (selected = null)} />
+      {#if !onlyEmpty}<Rail items={railItems} bind:value={rail} onPick={() => (selected = null)} />{/if}
       <section class="min-w-0 flex-1" aria-label="Topic list">
-        <div class="mb-3 flex flex-wrap items-center gap-3">
+        <div class="mb-3 flex flex-wrap items-center gap-3" hidden={onlyEmpty}>
           <FilterBox bind:value={filter} shown={shown.length} total={topics.length} placeholder="Filter by name, module or tag…" />
           <div class="seg" role="radiogroup" aria-label="Show">
-            {#each [["all", "All", null], ["due", "Due", counts.due], ["tight", "Tightened", counts.tight], ["new", "Not started", counts.new]] as const as [key, label, count] (key)}
+            {#each [["all", "All", null], ["due", "Due today", counts.due], ["tight", "Exam soon", counts.tight], ["new", "Not started", counts.new]] as const as [key, label, count] (key)}
               <button type="button" role="radio" aria-checked={status === key} onclick={() => { status = key; selected = null; }}>{label}{#if count !== null}{" "}<span class="tabular-nums">{count}</span>{/if}</button>
             {/each}
           </div>
-          <span class="flex-1"></span>
-          <ColumnsMenu options={[{ key: "tags", label: "Tags" }, { key: "questions", label: "Questions" }, { key: "short", label: "Short answers" }, { key: "step", label: "Quiz step" }, { key: "next", label: "Next quiz" }]} bind:value={columns} />
+          <span class="flex-1 max-sm:hidden"></span>
+          <span class="max-sm:hidden"><ColumnsMenu options={[{ key: "tags", label: "Tags" }, { key: "questions", label: "Questions" }, { key: "short", label: "Short answers" }, { key: "step", label: "Repeats" }, { key: "next", label: "Next quiz" }]} bind:value={columns} /></span>
         </div>
         {#if shown.length}
           <div class="panel pane" bind:this={pane}>
@@ -310,7 +313,7 @@
                 {#if columns.tags}<th><span>Tags</span></th>{/if}
                 {#if columns.questions}<SortHeader key="questions" label="Questions" numeric bind:sort />{/if}
                 {#if columns.short}<SortHeader key="short" label="Short" numeric bind:sort />{/if}
-                {#if columns.step}<SortHeader key="step" label="Quiz step" bind:sort />{/if}
+                {#if columns.step}<SortHeader key="step" label="Repeats" bind:sort />{/if}
                 {#if columns.next}<SortHeader key="next" label="Next quiz" bind:sort />{/if}
               </tr></thead>
               <tbody>
@@ -325,15 +328,16 @@
                     {#if columns.tags}<td data-label="Tags"><span class="flex flex-wrap gap-1">{#each topic.tags as tag (tag)}<span class="chip"><Highlight text={tag} term={filter} /></span>{/each}</span></td>{/if}
                     {#if columns.questions}<td class="num" data-label="Questions">{topic.question_count}</td>{/if}
                     {#if columns.short}<td class="num" data-label="Short answers">{topic.short_count}</td>{/if}
-                    {#if columns.step}<td class="whitespace-nowrap" data-label="Quiz step">{#if quiz}<span class="text-[13px]">{quiz.step}</span>{:else}<span class="text-muted">Not started</span>{/if}</td>{/if}
+                    {#if columns.step}<td class="whitespace-nowrap" data-label="Repeats">{#if quiz}<span class="text-[14px]">{repeatsLabel(quiz.step)}</span>{:else}<span class="text-muted">Not started</span>{/if}</td>{/if}
                     {#if columns.next}<td class="whitespace-nowrap" data-label="Next quiz">{@render next(quiz, topic)}</td>{/if}
                   </tr>
                 {/each}
               </tbody>
             </table>
           </div>
-          <p class="mt-2 text-xs text-muted max-tab:hidden"><kbd class="kbd kbd-xs">↑</kbd> <kbd class="kbd kbd-xs">↓</kbd> to move, <kbd class="kbd kbd-xs">Enter</kbd> to edit, <kbd class="kbd kbd-xs">Space</kbd> to tick, <kbd class="kbd kbd-xs">/</kbd> to filter</p>
-        {:else}
+          <p class="mt-3 text-sm text-muted">Click a quiz to see it. Tick a few to quiz them together.</p>
+          <p class="keys-hint mt-1 text-xs text-muted max-tab:hidden"><kbd class="kbd kbd-xs">↑</kbd> <kbd class="kbd kbd-xs">↓</kbd> to move, <kbd class="kbd kbd-xs">Enter</kbd> to edit, <kbd class="kbd kbd-xs">Space</kbd> to tick, <kbd class="kbd kbd-xs">/</kbd> to filter</p>
+        {:else if !onlyEmpty}
           <div class="panel p-8">
             <p class="font-extrabold">{filter.trim() ? `Nothing matches "${filter.trim()}"` : "No topics here"}{railModule ? ` in ${railModule.name}` : ""}</p>
             <p class="mt-1 text-sm text-muted">Filters look at names, modules and tags. To look inside questions, use Search.</p>
@@ -343,6 +347,16 @@
               {#if filter.trim()}<button class="btn btn-ghost btn-sm" onclick={() => onSearch(filter.trim())}><Search class="size-4" />Search questions</button>{/if}
             </div>
           </div>
+        {/if}
+        <!-- R215: quizzes with no questions wait under the list, never beside it. -->
+        {#if emptyTopics.length}
+          <section class="{onlyEmpty ? 'panel p-6' : 'mt-6'} flex flex-wrap items-center gap-2 text-sm" aria-labelledby="empty-topics-h">
+            <h2 id="empty-topics-h" class="{onlyEmpty ? 'w-full text-base text-base-content' : 'text-muted'} font-bold">No questions yet</h2>
+            {#if onlyEmpty}<p class="mb-2 w-full text-muted">None of your quizzes have questions yet. Add some to start quizzing.</p>{/if}
+            {#each emptyTopics as topic (topic.id)}
+              <button class="btn btn-ghost btn-sm" aria-label="Add questions to {topic.name}" onclick={() => onEdit(topic.id)}><Plus class="size-4" />{topic.name}</button>
+            {/each}
+          </section>
         {/if}
         {#if ticked.length}
           <div class="selbar" role="region" aria-label="Ticked topics">
@@ -354,28 +368,21 @@
           </div>
         {/if}
       </section>
-      {#if emptyTopics.length}
-        <section class="mt-4 flex flex-wrap items-center gap-2 text-sm" aria-labelledby="empty-topics-h">
-          <h2 id="empty-topics-h" class="font-bold text-muted">No questions yet</h2>
-          {#each emptyTopics as topic (topic.id)}
-            <button class="btn btn-ghost btn-sm" aria-label="Add questions to {topic.name}" onclick={() => onEdit(topic.id)}><Plus class="size-4" />{topic.name}</button>
-          {/each}
-        </section>
-      {/if}
-      <aside class="itemcard" aria-label="Picked topic" data-empty={!picked}>
-        {#if picked}
+      <!-- R214: the card only takes up room once a quiz is picked. -->
+      {#if picked}
+      {@const quiz = quizOf(picked.id)}
+      <aside class="itemcard" aria-label="Picked topic">
           <button type="button" class="itemcard-close btn btn-quiet btn-sm btn-square" aria-label="Close" onclick={() => (selected = null)}><X class="size-4" /></button>
-          {@const quiz = quizOf(picked.id)}
           <div class="panel p-5">
             <p class="text-xs font-bold text-muted">{moduleName(picked.module) ?? "No module"}</p>
             <h2 class="mt-1 text-lg font-black leading-snug">{picked.name}</h2>
             {#if picked.tags.length}<div class="mt-2 flex flex-wrap gap-1">{#each picked.tags as tag (tag)}<span class="chip">{tag}</span>{/each}</div>{/if}
             <dl class="mt-4 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2.5 text-sm">
               <dt class="text-muted">Questions</dt><dd class="text-right font-extrabold tabular-nums">{picked.question_count}{picked.short_count ? `, ${picked.short_count} short answer` : ""}</dd>
-              <dt class="text-muted">Quiz step</dt><dd class="flex items-center justify-end gap-2 font-extrabold">{#if quiz}{@render pips(quiz)}{quiz.step}{:else}Not started{/if}</dd>
+              <dt class="text-muted">Repeats</dt><dd class="flex flex-wrap items-center justify-end gap-x-2 gap-y-1 font-extrabold">{#if quiz}{@render pips(quiz)}<span class="whitespace-nowrap">{repeatsLabel(quiz.step)}</span>{:else}Not started{/if}</dd>
               <dt class="text-muted">Next quiz</dt><dd class="text-right font-extrabold">{#if quiz}{quiz.due_today ? "Due today" : quiz.waiting ? "Waiting its turn" : dueLabel(quiz.due, today)}{:else}{picked.question_count ? "Quiz it to start" : "No questions yet"}{/if}</dd>
             </dl>
-            {#if quiz?.tightened_for}<p class="note-box mt-3 flex items-start gap-2 p-2 text-xs"><GraduationCap class="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />Tightened for {quiz.tightened_for}{quiz.normal_due !== quiz.due ? `, it would be ${dueLabel(quiz.normal_due, today)}` : ""}</p>{/if}
+            {#if quiz?.tightened_for}<p class="note-box mt-3 flex items-start gap-2 p-2 text-xs"><GraduationCap class="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />Exam soon: {quiz.tightened_for}, so it comes round sooner{quiz.normal_due !== quiz.due ? `, it would be ${dueLabel(quiz.normal_due, today)}` : ""}</p>{/if}
             <div class="mt-5 grid grid-cols-2 gap-2">
               <button class="btn btn-outline btn-sm {quiz?.due_today ? 'text-primary-ink' : ''}" aria-label="Quiz {picked.name}" disabled={!picked.question_count} onclick={() => onQuiz(picked!.id)}><Play class="size-4" />Quiz</button>
               <button class="btn btn-outline btn-sm" aria-label="Edit {picked.name}" onclick={() => onEdit(picked!.id)}><Pencil class="size-4" />Edit</button>
@@ -387,10 +394,8 @@
               {#if picked.question_count + picked.short_count}<button class="btn btn-quiet btn-xs text-error" onclick={() => (deleting = picked)}><Trash2 class="size-3.5" />Delete quiz</button>{/if}
             </div>
           </div>
-        {:else}
-          <div class="panel p-5 text-sm text-muted"><p class="font-extrabold text-base-content">Pick a quiz to see it here</p><p class="mt-2">Click a row, or use the arrow keys. Double-click or press Enter to edit it.</p></div>
-        {/if}
       </aside>
+      {/if}
     </div>
   {/if}
 </div>
@@ -431,7 +436,7 @@
 {#if creating}
   <dialog open class="modal modal-open" aria-labelledby="new-topic-title">
     <form class="modal-box max-w-md" onsubmit={create}>
-      <h3 id="new-topic-title" class="text-lg font-semibold">New quiz</h3>
+      <h3 id="new-topic-title" class="text-lg font-semibold">Make a quiz</h3>
       <p class="mt-2 text-sm text-muted">A quiz is a topic's questions. Next you'll write the questions, with your slides beside you if you like.</p>
       <label class="mt-6 block">
         <span class="text-sm font-semibold">Name</span>

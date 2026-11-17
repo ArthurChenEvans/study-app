@@ -1,6 +1,6 @@
 <script lang="ts">
   // projects.feature (R88 to R90): sessions on a project, logging struggles, and the list.
-  import { ArrowLeft, CircleDot, ListChecks, Play, Plus, Square, Timer } from "@lucide/svelte";
+  import { ArrowLeft, CircleDot, Flag, ListChecks, Play, Plus, Square, Timer } from "@lucide/svelte";
   import { onDestroy, tick } from "svelte";
   import { api, errorMessage, type Id, type ProjectView, type StruggleKind, type StruggleView, type TopicRow } from "../lib/api";
   import { fullLabel, onDay, pastOn } from "../lib/dates";
@@ -158,16 +158,16 @@
   load();
 </script>
 
-<!-- What became of a struggle. Anything still to do stands out: a labelled chip to review,
-     or the drill day in bold. Settled outcomes stay quiet. -->
+<!-- What became of a struggle, as a line under it (R214). Anything still to do stands out in
+     colour with an icon: to review, or a drill due. Settled outcomes stay quiet. -->
 {#snippet outcomeOf(struggle: StruggleView)}
   {@const value = struggle.outcome}
   {#if value === null}
-    <span class="chip chip-due"><CircleDot class="size-3.5" aria-hidden="true" />{outcome(struggle)}</span>
+    <span class="inline-flex items-center gap-1.5 text-sm font-extrabold text-[var(--accent-ink)]"><CircleDot class="size-4" aria-hidden="true" />{outcome(struggle)}</span>
   {:else if typeof value === "object" && "Drill" in value && value.Drill.due !== null && value.Drill.due <= today}
-    <span class="chip chip-info whitespace-normal text-left leading-snug">{struggle.issue ? `Issue: ${struggle.issue} · ` : ""}drill {onDay(value.Drill.due, today)}</span>
+    <span class="inline-flex items-start gap-1.5 text-sm font-extrabold text-[var(--info-ink,var(--color-info))]"><Flag class="mt-0.5 size-4 shrink-0" aria-hidden="true" /><span>{struggle.issue ? `Issue: ${struggle.issue} · ` : ""}drill {onDay(value.Drill.due, today)}</span></span>
   {:else}
-    <span class="chip whitespace-normal text-left leading-snug">{outcome(struggle)}</span>
+    <span class="text-sm text-muted">{outcome(struggle)}</span>
   {/if}
 {/snippet}
 
@@ -178,7 +178,7 @@
   {#if view}
     <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 pb-6 pt-4">
       <div><p class="text-sm text-muted">{view.row.kind ? `${view.row.kind} · ` : ""}started {pastOn(view.row.created, today).replace(/^on /, "")} · {view.row.struggles} {view.row.struggles === 1 ? "struggle" : "struggles"}</p><h1 class="mt-1 text-3xl font-semibold">{view.row.name}</h1></div>
-      <div class="flex items-center gap-3">
+      <div class="flex flex-wrap items-center gap-3">
         {#if session}
           <span class="timer-chip" role="timer" aria-label="Session time"><Timer class="size-4" />{clock(elapsed)}</span>
           <button class="btn btn-outline" onclick={end}><Square class="size-4" />End session{view.row.to_review ? " and review" : ""}</button>
@@ -233,8 +233,7 @@
         {#each group.struggles as struggle (struggle.id)}
           <li class="flex flex-wrap items-start gap-x-6 gap-y-2 px-4 py-4 sm:flex-nowrap sm:px-6">
             <div class="min-w-0 flex-1 basis-56"><p class="text-[16px] font-extrabold">{struggle.what}</p>{#if struggle.why}<p class="mt-1 text-sm text-muted">Why it wasn't obvious: {struggle.why}</p>{/if}
-              <div class="mt-2 flex flex-wrap items-center gap-2"><span class="chip">{kindLabel[struggle.kind]}</span>{#if struggle.topic_name}<span class="chip chip-primary">{struggle.topic_name}</span>{/if}<span class="text-xs font-extrabold tabular-nums text-muted">{time(struggle.minute)}</span></div></div>
-            <span class="max-w-72 text-sm sm:text-right">{@render outcomeOf(struggle)}</span>
+              <div class="mt-2 flex flex-wrap items-center gap-2"><span class="chip">{kindLabel[struggle.kind]}</span>{#if struggle.topic_name}<span class="chip chip-primary">{struggle.topic_name}</span>{/if}<span class="text-xs font-extrabold tabular-nums text-muted">{time(struggle.minute)}</span>{@render outcomeOf(struggle)}</div></div>
             <RowMenu small label="Struggle actions: {struggle.what}" items={[{ label: "Edit struggle…", onSelect: () => (editingStruggle = struggle) }, { label: "Delete struggle…", danger: true, onSelect: () => (deletingStruggle = struggle) }]} />
           </li>
         {/each}

@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/svelte";
+import { fireEvent, render, screen, within } from "@testing-library/svelte";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -16,6 +16,7 @@ vi.mock("../lib/api", async (original) => {
 
 import { api, type CardsHome, type RecallRow, type TopicRow } from "../lib/api";
 import { flushPendingDeletes, live } from "../lib/celebrations.svelte";
+import { closeContextMenu, contextMenu } from "../lib/contextMenu.svelte";
 import Topics from "./Topics.svelte";
 
 const mocked = vi.mocked(api);
@@ -96,6 +97,35 @@ describe("Topics & Modules", () => {
     await u.type(within(dialog).getByLabelText("Name"), "Security");
     await u.click(within(dialog).getByRole("button", { name: "Create module" }));
     expect(mocked.createModule).toHaveBeenCalledWith("Security");
+  });
+
+  // R215: right-click (or long-press) a topic or module for the same actions as everywhere else
+  it("opens a topic's and a module's actions from a right-click", async () => {
+    given([{ id: 3, name: "TLS", module: 1, tags: [], question_count: 2, short_count: 0 }]);
+    const onEdit = vi.fn();
+    const onCards = vi.fn();
+    const u = userEvent.setup();
+    render(Topics, { onEdit, onCards });
+    const pick = (label: string) => contextMenu.items.find((item) => item.label === label)!.onSelect();
+    await fireEvent.contextMenu(await screen.findByRole("button", { name: "TLS" }), { clientX: 40, clientY: 40 });
+    expect(contextMenu.open).toBe(true);
+    expect(contextMenu.label).toBe("TLS");
+    expect(contextMenu.items.map((item) => item.label)).toEqual(["Edit questions", "Cards", "Rename…", "Move to module…", "Delete…"]);
+    pick("Edit questions");
+    expect(onEdit).toHaveBeenCalledWith(3);
+    closeContextMenu(false);
+    await fireEvent.contextMenu(screen.getByRole("button", { name: "TLS" }), { clientX: 40, clientY: 40 });
+    pick("Rename…");
+    expect(await screen.findByRole("dialog", { name: "Rename topic" })).toBeInTheDocument();
+    await u.click(within(screen.getByRole("dialog", { name: "Rename topic" })).getByRole("button", { name: "Cancel" }));
+    closeContextMenu(false);
+    await fireEvent.contextMenu(screen.getByRole("heading", { name: "Networks" }), { clientX: 40, clientY: 40 });
+    expect(contextMenu.label).toBe("Networks");
+    expect(contextMenu.items.map((item) => item.label)).toEqual(["New topic in it…", "Rename module…", "Delete module…"]);
+    pick("New topic in it…");
+    const dialog = await screen.findByRole("dialog", { name: "New topic" });
+    expect(within(dialog).getByLabelText(/Module/)).toHaveValue("1");
+    closeContextMenu(false);
   });
 
   it("renames a module and a topic", async () => {

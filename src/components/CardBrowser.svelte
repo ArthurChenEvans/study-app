@@ -7,6 +7,7 @@
   import { filterCards, parseQuery, sortCards, type CardSort, type CardStatus } from "../lib/cardQuery";
   import { deleteWithUndo, toast } from "../lib/celebrations.svelte";
   import { dueLabel } from "../lib/dates";
+  import { plainText } from "../lib/plain";
 
   // R199: one card's menu, or the ticked cards' when it's one of them.
   function menuFor(row: { id: Id; topic: Id; note: Id; front: string; paused?: boolean }) {
@@ -141,10 +142,10 @@
     </button>
     <label class="input min-w-64 flex-1">
       <Search class="size-4 opacity-70" />
-      <input type="search" aria-label="Search cards" aria-describedby="card-search-help" placeholder="Search cards, or try topic:DNS tag:exam is:due" bind:value={text} data-list-filter />
+      <input type="search" aria-label="Search cards" aria-describedby="card-search-help" placeholder="Search your cards" bind:value={text} data-list-filter />
     </label>
   </div>
-  <p id="card-search-help" class="-mt-2 text-xs text-muted">Words search fronts and answers you can see. Narrow it with <code>topic:</code> <code>module:</code> <code>tag:</code> <code>is:due</code> <code>is:new</code> <code>is:paused</code> <code>type:cloze</code>, and <code>-word</code> to leave a word out.</p>
+  <details class="-mt-2 text-sm"><summary class="link w-fit cursor-pointer font-bold text-primary-ink">Search tips</summary><p id="card-search-help" class="mt-1 text-muted">Words search fronts and answers you can see. Narrow it with <code>topic:</code> <code>module:</code> <code>tag:</code> <code>is:due</code> <code>is:new</code> <code>is:paused</code> <code>type:cloze</code>, and <code>-word</code> to leave a word out.</p></details>
 
   <div class="flex flex-col gap-5 tab:flex-row tab:items-start">
     {#if panelOpen}
@@ -215,10 +216,11 @@
             </tr></thead>
             <tbody>
               {#each shown.slice(0, limit) as row (row.id)}
-                <tr aria-label={row.front} use:rowMenu={menuFor(row)}>
-                  <td><input type="checkbox" class="checkbox size-6" aria-label="Tick {row.front}" checked={ticked.includes(row.id)} onchange={() => (ticked = flip(ticked, row.id))} /></td>
-                  <td class="max-w-0"><button type="button" class="block min-h-6 w-full truncate text-left font-extrabold" title={row.front} onclick={() => onEdit(row.topic, row.note)}>{row.front}</button><span class="block text-xs text-muted">{row.kind}</span></td>
-                  <td class="max-w-0 max-tab:hidden">{#if row.back === null}<span class="inline-flex items-center gap-1.5 text-sm italic text-muted"><EyeOff class="size-3.5" aria-hidden="true" />Hidden until you review it</span>{:else}<span class="block truncate text-sm text-muted" title={row.back}>{row.back}</span>{/if}</td>
+                {@const front = plainText(row.front)}
+                <tr aria-label={front} use:rowMenu={menuFor({ ...row, front })}>
+                  <td><input type="checkbox" class="checkbox size-6" aria-label="Tick {front}" checked={ticked.includes(row.id)} onchange={() => (ticked = flip(ticked, row.id))} /></td>
+                  <td class="max-w-0"><button type="button" class="line-clamp-2 min-h-6 w-full text-left leading-snug font-extrabold" title={front} onclick={() => onEdit(row.topic, row.note)}>{front}</button><span class="block text-xs text-muted">{row.kind}</span></td>
+                  <td class="max-w-0 max-tab:hidden">{#if row.back === null}<span class="inline-flex items-center gap-1.5 text-sm italic text-muted"><EyeOff class="size-3.5" aria-hidden="true" />Hidden until you review it</span>{:else}{@const back = plainText(row.back)}<span class="line-clamp-2 text-sm leading-snug text-muted" title={back}>{back}</span>{/if}</td>
                   <td class="max-w-0"><span class="block truncate text-sm">{row.topic_name}</span><span class="block truncate text-xs text-muted">{row.module_name ?? "No module"}</span></td>
                   <td class="text-sm {whenDue(row) === 'Today' ? 'font-extrabold text-[var(--accent-ink)]' : 'text-muted'}">{whenDue(row)}</td>
                 </tr>
