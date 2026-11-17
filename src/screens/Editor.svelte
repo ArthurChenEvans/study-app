@@ -226,14 +226,15 @@
   }}
 />
 
-<div class="flex h-screen">
+<!-- R216: on a phone the page scrolls, not a box inside it, so iPhone scrolls straight to the top and bottom. -->
+<div class="flex h-screen max-sm:h-auto">
   {#if !phone}
   <section class="flex w-1/2 min-w-0 flex-col border-r border-base-300 bg-base-200" aria-label="Source preview" hidden={!showReader}>
     <Preview bind:hasTabs={readerTabs} />
   </section>
   {/if}
 
-  <section class="{showReader ? 'w-1/2' : 'w-full'} flex flex-col overflow-auto" aria-label="Question editor">
+  <section class="{showReader ? 'w-1/2' : 'w-full'} flex flex-col overflow-auto max-sm:overflow-visible" aria-label="Question editor">
     <div class="flex max-w-[47rem] flex-col gap-4 px-10 pb-8 pt-8 max-tab:px-5">
       <nav aria-label="Breadcrumb" class="flex flex-wrap items-center gap-3 text-sm text-muted">
         <button type="button" class="btn btn-ghost btn-sm" aria-label="Back to Quizzes" onclick={onBack}><ArrowLeft class="size-4" />Quizzes</button>
@@ -260,7 +261,7 @@
     {/if}
 
     <form class="max-w-2xl flex-1 space-y-8 px-10 max-tab:px-5" onsubmit={save} onpaste={images.onPaste} onfocusin={images.onFocus} ondragover={images.onDragOver} ondrop={images.onDrop}>
-      <div class="flex items-center justify-between gap-4">
+      <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <span class="text-sm font-semibold" id="type-label">Type of question</span>
         <div class="seg" role="radiogroup" aria-labelledby="type-label">
           <button type="button" role="radio" aria-checked={draft.kind === "mcq"} onclick={() => (draft.kind = "mcq")}>Multiple choice</button>

@@ -19,7 +19,19 @@ const probe = () => {
   const problems = [];
   const width = document.documentElement.clientWidth;
   if (document.documentElement.scrollWidth > width + 1) problems.push(`page scrolls sideways (${document.documentElement.scrollWidth}px)`);
-  for (const element of document.querySelectorAll("main *")) {
+  // R216: a page-tall box that scrolls on its own makes iPhone bounce and stop short of the
+  // top and bottom, so on a phone the page itself scrolls.
+  if (width < 600) for (const element of document.querySelectorAll("body *")) {
+    if (element.closest(".modal-box, nav, aside")) continue;
+    const style = getComputedStyle(element);
+    if (/(auto|scroll)/.test(style.overflowY) && element.clientHeight >= window.innerHeight * 0.6 && element.scrollHeight > element.clientHeight + 4) problems.push(`scrolls inside a page-tall box: <${element.tagName.toLowerCase()} class="${String(element.className).slice(0, 40)}">`);
+  }
+  // Two or three choices side by side (a .seg) shouldn't fall into a stack.
+  for (const seg of document.querySelectorAll(".seg")) {
+    const tops = new Set([...seg.children].filter((child) => child.getBoundingClientRect().height).map((child) => Math.round(child.getBoundingClientRect().top)));
+    if (tops.size > 1) problems.push(`choices stacked: "${seg.textContent.trim().slice(0, 40)}"`);
+  }
+  for (const element of document.querySelectorAll("main *, dialog[open] *, [role=dialog] *")) {
     const style = getComputedStyle(element);
     if (style.display === "none" || style.visibility === "hidden" || element.closest("[aria-hidden=true], .sr-only, svg, canvas") || (element.closest("details:not([open])") && !element.closest("summary"))) continue;
     const rect = element.getBoundingClientRect();
@@ -31,24 +43,56 @@ const probe = () => {
       const lines = Math.round(inner / line);
       if ((lines >= 3 && text.length / lines < 12) || (lines >= 4 && rect.width < Math.min(220, width * 0.5))) problems.push(`squeezed: "${text.slice(0, 40)}" (${lines} lines in ${Math.round(rect.width)}px)`);
     }
-    const scroller = element.closest(".overflow-x-auto, .overflow-auto, .rail, [data-scrolls]");
+    const scroller = element.closest(".overflow-x-auto, .overflow-auto, .rail, .seg, [data-scrolls]");
     if (!scroller && style.position !== "fixed" && rect.right > width + 1) problems.push(`off the right edge: <${element.tagName.toLowerCase()}> "${(element.textContent ?? "").trim().slice(0, 30)}"`);
+    if (!scroller && style.position !== "fixed" && rect.left < -1) problems.push(`off the left edge: <${element.tagName.toLowerCase()}> "${(element.textContent ?? "").trim().slice(0, 30)}"`);
   }
   return [...new Set(problems)];
 };
 
+// Screens you reach by clicking: dialogs and the deeper pages (R216).
+const flows = {
+  "new quiz": ["quizzes", (page) => page.getByRole("button", { name: /Make a quiz/ }).first().click()],
+  "quiz schedule": ["quizzes", (page) => page.getByRole("button", { name: /^Schedule/ }).first().click()],
+  "question editor": ["quizzes", async (page) => { await page.getByRole("button", { name: "CPU" }).first().click(); await page.getByRole("complementary", { name: "Picked topic" }).getByRole("button", { name: /^Edit/ }).click(); }],
+  "new card": ["cards", (page) => page.getByRole("button", { name: /New card/ }).first().click()],
+  "card review": ["cards", (page) => page.getByRole("button", { name: /Start review/ }).first().click()],
+  "new log": ["projects", (page) => page.getByRole("button", { name: /New log/ }).first().click()],
+  "practice log": ["projects", (page) => page.getByRole("button", { name: "Study app" }).first().click()],
+  "checklist": ["recall", (page) => page.getByRole("button", { name: /OSI model/ }).first().click()],
+  "add a date": ["calendar", (page) => page.getByRole("button", { name: /Add a date/ }).first().click()],
+  "new topic": ["topics", (page) => page.getByRole("button", { name: /New topic/ }).first().click()],
+  "new module": ["topics", (page) => page.getByRole("button", { name: /New module/ }).first().click()],
+};
+const runFlows = !process.argv.slice(2).length || process.env.FLOWS;
+
 const browser = await playwright.chromium.launch();
 let failed = 0;
+const report = (name, size, problems) => {
+  if (problems.length) {
+    failed += problems.length;
+    console.log(`✗ ${name} at ${size}\n` + problems.slice(0, 12).map((problem) => "    " + problem).join("\n"));
+  } else console.log(`✓ ${name} at ${size}`);
+};
 for (const [size, [width, height]] of Object.entries(sizes)) {
-  const page = await browser.newPage({ viewport: { width, height } });
+  const page = await browser.newPage({ viewport: { width, height }, hasTouch: size === "phone" });
   for (const screen of screens) {
     await page.goto(base + "#" + screen);
     await page.waitForTimeout(600);
-    const problems = await page.evaluate(probe);
-    if (problems.length) {
-      failed += problems.length;
-      console.log(`✗ ${screen} at ${size}\n` + problems.slice(0, 12).map((problem) => "    " + problem).join("\n"));
-    } else console.log(`✓ ${screen} at ${size}`);
+    report(screen, size, await page.evaluate(probe));
+  }
+  if (runFlows) for (const [name, [screen, open]] of Object.entries(flows)) {
+    // A fresh load each time, so a dialog left open by the last one doesn't get in the way.
+    await page.goto(base + "#" + screen);
+    await page.reload();
+    await page.waitForTimeout(700);
+    try {
+      await open(page);
+      await page.waitForTimeout(600);
+      report(name, size, await page.evaluate(probe));
+    } catch (error) {
+      report(name, size, [`couldn't open it: ${String(error.message).split("\n")[0]}`]);
+    }
   }
   await page.close();
 }

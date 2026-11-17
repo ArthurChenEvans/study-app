@@ -301,8 +301,8 @@
               <button type="button" role="radio" aria-checked={status === key} onclick={() => { status = key; selected = null; }}>{label}{#if count !== null}{" "}<span class="tabular-nums">{count}</span>{/if}</button>
             {/each}
           </div>
-          <span class="flex-1"></span>
-          <ColumnsMenu options={[{ key: "tags", label: "Tags" }, { key: "questions", label: "Questions" }, { key: "short", label: "Short answers" }, { key: "step", label: "Repeats" }, { key: "next", label: "Next quiz" }]} bind:value={columns} />
+          <span class="flex-1 max-sm:hidden"></span>
+          <span class="max-sm:hidden"><ColumnsMenu options={[{ key: "tags", label: "Tags" }, { key: "questions", label: "Questions" }, { key: "short", label: "Short answers" }, { key: "step", label: "Repeats" }, { key: "next", label: "Next quiz" }]} bind:value={columns} /></span>
         </div>
         {#if shown.length}
           <div class="panel pane" bind:this={pane}>

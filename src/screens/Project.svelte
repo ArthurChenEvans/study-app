@@ -178,7 +178,7 @@
   {#if view}
     <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 pb-6 pt-4">
       <div><p class="text-sm text-muted">{view.row.kind ? `${view.row.kind} · ` : ""}started {pastOn(view.row.created, today).replace(/^on /, "")} · {view.row.struggles} {view.row.struggles === 1 ? "struggle" : "struggles"}</p><h1 class="mt-1 text-3xl font-semibold">{view.row.name}</h1></div>
-      <div class="flex items-center gap-3">
+      <div class="flex flex-wrap items-center gap-3">
         {#if session}
           <span class="timer-chip" role="timer" aria-label="Session time"><Timer class="size-4" />{clock(elapsed)}</span>
           <button class="btn btn-outline" onclick={end}><Square class="size-4" />End session{view.row.to_review ? " and review" : ""}</button>
