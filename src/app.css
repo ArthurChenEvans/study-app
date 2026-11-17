@@ -630,6 +630,14 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
 @media (max-width: 599px) {
   .itemcard { left: 0; bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
 }
+/* R215: on a tablet the picked card sits beside the list (the module row goes above both),
+   instead of a sheet that covers most of the list. */
+@media (min-width: 800px) and (max-width: 1099px) {
+  :has(> .rail):has(> .itemcard) { display: grid; grid-template-columns: minmax(0, 1fr) 17rem; column-gap: 20px; align-items: start; }
+  :has(> .rail):has(> .itemcard) > .rail { grid-column: 1 / -1; margin-bottom: 4px; }
+  .itemcard { position: sticky; z-index: auto; top: 16px; left: auto; right: auto; bottom: auto; width: auto; max-height: none; overflow: visible; padding: 0; background: none; animation: none; }
+  .itemcard > .panel { box-shadow: none; }
+}
 
 /* navigation.feature (R161): the month on smaller screens. Tablets keep the words but let
    them cut off cleanly. Phones show a coloured dot for each kind of work, and the words are

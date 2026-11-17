@@ -59,6 +59,8 @@
   // R196: a topic with no questions isn't a quiz yet, so it waits on its own line below.
   const withQuestions = $derived(topics.filter((topic) => topic.question_count + topic.short_count > 0));
   const emptyTopics = $derived(topics.filter((topic) => topic.question_count + topic.short_count === 0));
+  // R215: when no quiz has questions yet, say that instead of "No topics here".
+  const onlyEmpty = $derived(withQuestions.length === 0 && !filter.trim() && status === "all" && rail === "all");
   const filtered = $derived(withQuestions.filter((topic) => inStatus(topic) && matchesFilter(filter, topic.name, moduleName(topic.module), topic.tags.join(" "))));
   const railItems = $derived<RailItem[]>([
     { key: "all", label: "All modules", count: filtered.length },
@@ -290,9 +292,9 @@
     </div>
   {:else if loaded}
     <div class="flex gap-5">
-      <Rail items={railItems} bind:value={rail} onPick={() => (selected = null)} />
+      {#if !onlyEmpty}<Rail items={railItems} bind:value={rail} onPick={() => (selected = null)} />{/if}
       <section class="min-w-0 flex-1" aria-label="Topic list">
-        <div class="mb-3 flex flex-wrap items-center gap-3">
+        <div class="mb-3 flex flex-wrap items-center gap-3" hidden={onlyEmpty}>
           <FilterBox bind:value={filter} shown={shown.length} total={topics.length} placeholder="Filter by name, module or tag…" />
           <div class="seg" role="radiogroup" aria-label="Show">
             {#each [["all", "All", null], ["due", "Due today", counts.due], ["tight", "Exam soon", counts.tight], ["new", "Not started", counts.new]] as const as [key, label, count] (key)}
@@ -335,7 +337,7 @@
           </div>
           <p class="mt-3 text-sm text-muted">Click a quiz to see it. Tick a few to quiz them together.</p>
           <p class="keys-hint mt-1 text-xs text-muted max-tab:hidden"><kbd class="kbd kbd-xs">↑</kbd> <kbd class="kbd kbd-xs">↓</kbd> to move, <kbd class="kbd kbd-xs">Enter</kbd> to edit, <kbd class="kbd kbd-xs">Space</kbd> to tick, <kbd class="kbd kbd-xs">/</kbd> to filter</p>
-        {:else}
+        {:else if !onlyEmpty}
           <div class="panel p-8">
             <p class="font-extrabold">{filter.trim() ? `Nothing matches "${filter.trim()}"` : "No topics here"}{railModule ? ` in ${railModule.name}` : ""}</p>
             <p class="mt-1 text-sm text-muted">Filters look at names, modules and tags. To look inside questions, use Search.</p>
@@ -345,6 +347,16 @@
               {#if filter.trim()}<button class="btn btn-ghost btn-sm" onclick={() => onSearch(filter.trim())}><Search class="size-4" />Search questions</button>{/if}
             </div>
           </div>
+        {/if}
+        <!-- R215: quizzes with no questions wait under the list, never beside it. -->
+        {#if emptyTopics.length}
+          <section class="{onlyEmpty ? 'panel p-6' : 'mt-6'} flex flex-wrap items-center gap-2 text-sm" aria-labelledby="empty-topics-h">
+            <h2 id="empty-topics-h" class="{onlyEmpty ? 'w-full text-base text-base-content' : 'text-muted'} font-bold">No questions yet</h2>
+            {#if onlyEmpty}<p class="mb-2 w-full text-muted">None of your quizzes have questions yet. Add some to start quizzing.</p>{/if}
+            {#each emptyTopics as topic (topic.id)}
+              <button class="btn btn-ghost btn-sm" aria-label="Add questions to {topic.name}" onclick={() => onEdit(topic.id)}><Plus class="size-4" />{topic.name}</button>
+            {/each}
+          </section>
         {/if}
         {#if ticked.length}
           <div class="selbar" role="region" aria-label="Ticked topics">
@@ -356,14 +368,6 @@
           </div>
         {/if}
       </section>
-      {#if emptyTopics.length}
-        <section class="mt-4 flex flex-wrap items-center gap-2 text-sm" aria-labelledby="empty-topics-h">
-          <h2 id="empty-topics-h" class="font-bold text-muted">No questions yet</h2>
-          {#each emptyTopics as topic (topic.id)}
-            <button class="btn btn-ghost btn-sm" aria-label="Add questions to {topic.name}" onclick={() => onEdit(topic.id)}><Plus class="size-4" />{topic.name}</button>
-          {/each}
-        </section>
-      {/if}
       <!-- R214: the card only takes up room once a quiz is picked. -->
       {#if picked}
       {@const quiz = quizOf(picked.id)}
@@ -375,7 +379,7 @@
             {#if picked.tags.length}<div class="mt-2 flex flex-wrap gap-1">{#each picked.tags as tag (tag)}<span class="chip">{tag}</span>{/each}</div>{/if}
             <dl class="mt-4 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2.5 text-sm">
               <dt class="text-muted">Questions</dt><dd class="text-right font-extrabold tabular-nums">{picked.question_count}{picked.short_count ? `, ${picked.short_count} short answer` : ""}</dd>
-              <dt class="text-muted">Repeats</dt><dd class="flex items-center justify-end gap-2 font-extrabold">{#if quiz}{@render pips(quiz)}{repeatsLabel(quiz.step)}{:else}Not started{/if}</dd>
+              <dt class="text-muted">Repeats</dt><dd class="flex flex-wrap items-center justify-end gap-x-2 gap-y-1 font-extrabold">{#if quiz}{@render pips(quiz)}<span class="whitespace-nowrap">{repeatsLabel(quiz.step)}</span>{:else}Not started{/if}</dd>
               <dt class="text-muted">Next quiz</dt><dd class="text-right font-extrabold">{#if quiz}{quiz.due_today ? "Due today" : quiz.waiting ? "Waiting its turn" : dueLabel(quiz.due, today)}{:else}{picked.question_count ? "Quiz it to start" : "No questions yet"}{/if}</dd>
             </dl>
             {#if quiz?.tightened_for}<p class="note-box mt-3 flex items-start gap-2 p-2 text-xs"><GraduationCap class="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />Exam soon: {quiz.tightened_for}, so it comes round sooner{quiz.normal_due !== quiz.due ? `, it would be ${dueLabel(quiz.normal_due, today)}` : ""}</p>{/if}

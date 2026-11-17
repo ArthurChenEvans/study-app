@@ -144,6 +144,20 @@ describe("Quizzes screen", () => {
     expect(within(screen.getByRole("region", { name: "No questions yet" })).getByRole("button", { name: "Add questions to CPU" })).toBeInTheDocument();
   });
 
+  // R215: quizzes with no questions wait under the list, never beside it as a squeezed column
+  it("puts quizzes with no questions under the list, and says so plainly when that's all of them", async () => {
+    given([{ id: 1, name: "Boolean Algebra", module: null, tags: [], question_count: 0, short_count: 0 }, { id: 2, name: "test", module: null, tags: [], question_count: 0, short_count: 0 }]);
+    const onEdit = vi.fn();
+    const user = userEvent.setup();
+    render(Topics, { onEdit });
+    const empty = await screen.findByRole("region", { name: "No questions yet" });
+    expect(screen.getByRole("region", { name: "Topic list" }).contains(empty)).toBe(true);
+    expect(screen.queryByText("No topics here")).not.toBeInTheDocument();
+    expect(empty).toHaveTextContent("None of your quizzes have questions yet. Add some to start quizzing.");
+    await user.click(within(empty).getByRole("button", { name: "Add questions to Boolean Algebra" }));
+    expect(onEdit).toHaveBeenCalledWith(1);
+  });
+
   it("renames a quiz from its card", async () => {
     given([{ id: 1, name: "CPU", module: 1, tags: [], question_count: 2, short_count: 0 }]);
     const user = userEvent.setup();
