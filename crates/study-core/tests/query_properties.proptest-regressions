@@ -1,8 +1,0 @@
-# Seeds for failure cases proptest has generated in the past. It is
-# automatically read and these particular cases re-run before any
-# novel cases are generated.
-#
-# It is recommended to check this file in to source control so that
-# everyone who runs the test benefits from these saved cases.
-cc bdbf56ba52b281351b02e3e20a4e23a18469edafbd7891e1c29eb5051985493f # shrinks to tree = Term("a")
-cc 03ec58c342e51cb74842c4915b6036d915f26777941a780f8e0ca2edfc602d48 # shrinks to tree = Xor(Term("a"), Or(And { left: Or(Term("s81"), Term("jy83")), right: Or(Term("agsovt"), Term("y1v")), implicit: false }, Xor(Scope { kind: Topic, name: "h319v" }, Scope { kind: Module, name: "im3" })))
