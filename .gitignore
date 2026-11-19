@@ -8,3 +8,5 @@ e2e/failure.png
 # Phone version build output
 dist-phone/
 crates/study-phone/pkg/
+__pycache__/
+crates/study-core/tests/query_properties.proptest-regressions
