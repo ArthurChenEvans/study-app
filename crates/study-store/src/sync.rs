@@ -458,6 +458,9 @@ struct Merge<'a> {
     replay: HashSet<String>,
     /// Records by what they refer to, for deletes (R124).
     children: HashMap<String, Vec<Key>>,
+    /// Records a delete was undone for in this merge, with the change that undid it when it
+    /// came in a line (R124). What they hold onto that went with the same delete comes back too.
+    restored: HashMap<String, Option<(String, Line)>>,
 }
 
 impl Merge<'_> {
@@ -524,6 +527,7 @@ impl Merge<'_> {
                     row.state = State::Here;
                     row.clocks.remove(DELETED);
                     take_all = true;
+                    self.restored.insert(line.uid.clone(), Some((by.to_string(), line.clone())));
                 }
             }
         }
@@ -598,6 +602,11 @@ impl Merge<'_> {
         if (changed_since || held) && row.state != State::Alias {
             let newest = row.clocks.values().max_by(|left, right| left.at().cmp(right.at())).cloned().unwrap_or_else(|| Tick(String::new(), self.me.clone(), 0));
             self.conflict(kind, &line.uid, DELETED, (None, &newest), (None, &tick));
+            // Only a record kept for its own change brings back its contents. One kept because
+            // something was added to it keeps just that, as before.
+            if changed_since {
+                self.restored.insert(line.uid.clone(), None);
+            }
             return Ok(false);
         }
         let mut row = row;
@@ -609,6 +618,48 @@ impl Merge<'_> {
         self.touched.remove(&key);
         self.deleted.push(key);
         Ok(false)
+    }
+
+    /// A module that comes back from a delete brings back what it holds that went with the same
+    /// delete, even untouched (R124): deleted records whose holder was restored, and whose delete
+    /// didn't see the change that restored it, come back with it, all the way down.
+    fn restore_contents(&mut self) -> Result<()> {
+        let mut queue: Vec<String> = self.restored.keys().cloned().collect();
+        while let Some(uid) = queue.pop() {
+            let cause = self.restored.get(&uid).cloned().flatten();
+            let Some(keys) = self.children.get(&uid).cloned() else { continue };
+            for key in keys {
+                // Notes, cards and reviews are written back as a set with their schedule, which
+                // a partial restore can't rebuild, so contents come back down to questions.
+                if !matches!(key.0.as_str(), "modules" | "topics" | "questions") {
+                    continue;
+                }
+                let Some(row) = self.shadow.get(&key).cloned() else { continue };
+                let whole = row.body.as_ref().is_some_and(|body| complete(&key.0, &key.1, body));
+                if row.state != State::Deleted || !whole || self.restored.contains_key(&key.1) {
+                    continue;
+                }
+                let still_holds = row.body.as_ref().is_some_and(|body| refs_of(&key.0, body).iter().any(|(_, target, holds)| *holds && *target == uid));
+                if !still_holds {
+                    continue;
+                }
+                let Some(deletion) = row.clocks.get(DELETED).cloned() else { continue };
+                if let Some((by, line)) = &cause
+                    && self.seens.order(&deletion, by, line)? == Order::ClockAfter
+                {
+                    continue;
+                }
+                let mut row = row;
+                row.state = State::Here;
+                row.clocks.remove(DELETED);
+                row.dirty = true;
+                self.shadow.insert(key.clone(), row);
+                self.touched.insert(key.clone());
+                self.restored.insert(key.1.clone(), cause.clone());
+                queue.push(key.1.clone());
+            }
+        }
+        Ok(())
     }
 }
 
@@ -903,7 +954,7 @@ impl Store {
         let mut done = applied(&tx)?;
         let mut merged = Merged::default();
         let shadow = load_shadow(&tx)?;
-        let mut merge = Merge { me: me.clone(), shadow, seens: Seens { connection: &tx, cache: HashMap::new() }, conflicts: vec![], settled: vec![], touched: HashSet::new(), deleted: vec![], replay: HashSet::new(), children: HashMap::new() };
+        let mut merge = Merge { me: me.clone(), shadow, seens: Seens { connection: &tx, cache: HashMap::new() }, conflicts: vec![], settled: vec![], touched: HashSet::new(), deleted: vec![], replay: HashSet::new(), children: HashMap::new(), restored: HashMap::new() };
         let keys: Vec<Key> = merge.shadow.keys().cloned().collect();
         for key in &keys {
             merge.index(key);
@@ -952,6 +1003,7 @@ impl Store {
         for (kind, device, line) in std::mem::take(&mut waiting_deletes) {
             merge.delete(kind, &device, &line, true)?;
         }
+        merge.restore_contents()?;
 
         // Records waiting from before are tried again, then everything is checked for what
         // it refers to (R126). A record waits until what it refers to is here.

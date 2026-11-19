@@ -812,11 +812,9 @@ fn t_sync_02_a_move_against_a_deleted_parent_loses_nothing() {
     assert_same(&desktop, &laptop);
 }
 
-/// T-SYNC-02, the part sync can't do yet: N2T comes back because it was moved, but CPU inside
-/// it wasn't touched, so CPU follows the delete (R124's rule: a delete is only undone for
-/// what changed). Keeping untouched contents of a restored module needs that rule widened.
+/// T-SYNC-02: N2T comes back because it was moved, and CPU inside it comes back with it even
+/// though it wasn't touched (R124: a restored record brings back what it holds from the same delete).
 #[test]
-#[ignore = "R124 undoes a delete only for what changed; keeping a restored module's untouched contents is not built yet"]
 fn t_sync_02_untouched_contents_of_a_restored_module_survive() {
     let (mut desktop, mut laptop, _) = nested_pair("nest-delete-contents");
     let n2t = module_named(&desktop, "N2T");
@@ -829,6 +827,7 @@ fn t_sync_02_untouched_contents_of_a_restored_module_survive() {
     for app in [&desktop, &laptop] {
         assert!(app.topics().unwrap().iter().any(|topic| topic.name == "CPU"), "its topic kept");
     }
+    assert_same(&desktop, &laptop);
 }
 
 /// T-SYNC-03. Two offline moves of one module: the later one wins, and the other side is told.
