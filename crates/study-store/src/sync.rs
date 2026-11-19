@@ -629,11 +629,6 @@ impl Merge<'_> {
             let cause = self.restored.get(&uid).cloned().flatten();
             let Some(keys) = self.children.get(&uid).cloned() else { continue };
             for key in keys {
-                // Notes, cards and reviews are written back as a set with their schedule, which
-                // a partial restore can't rebuild, so contents come back down to questions.
-                if !matches!(key.0.as_str(), "modules" | "topics" | "questions") {
-                    continue;
-                }
                 let Some(row) = self.shadow.get(&key).cloned() else { continue };
                 let whole = row.body.as_ref().is_some_and(|body| complete(&key.0, &key.1, body));
                 if row.state != State::Deleted || !whole || self.restored.contains_key(&key.1) {
@@ -740,6 +735,15 @@ fn write_records(tx: &Connection, shadow: &HashMap<Key, Row>, keys: &HashSet<Key
     let snapshot = unflatten(&records)?;
     let theirs: HashSet<String> = records.iter().map(|(kind, uid, _, _)| if kind == "settings" { format!("settings:{uid}") } else { uid.clone() }).collect();
     crate::portable::write(tx, &snapshot, &Plan { theirs, today, history_edits: true })?;
+    // The writer leaves some rows as they are (a review already here, say, when a delete is
+    // undone in the same sync, R124), so any stamp it didn't set goes back.
+    for (kind, uid, changed, _) in &records {
+        match table_of(kind) {
+            Some(table) => tx.execute(&format!("UPDATE {table} SET changed = ?2 WHERE uid = ?1 AND changed IS NULL"), [uid, changed])?,
+            None if kind == "settings" => tx.execute("UPDATE settings SET changed = ?2 WHERE key = ?1 AND changed IS NULL", [uid, changed])?,
+            None => 0,
+        };
+    }
 
     // The writer only moves a schedule forward, sync sets it to the merged one.
     for (kind, uid, _, body) in &records {

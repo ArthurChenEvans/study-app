@@ -830,6 +830,40 @@ fn t_sync_02_untouched_contents_of_a_restored_module_survive() {
     assert_same(&desktop, &laptop);
 }
 
+/// T-SYNC-02, all the way down: CPU's question, flashcard, its cards and review history come
+/// back with N2T too, though nobody touched them after the delete (R124).
+#[test]
+fn t_sync_02_flashcards_and_history_of_a_restored_module_survive() {
+    let (mut desktop, mut laptop, _) = nested_pair("nest-delete-cards");
+    let cpu = desktop.topics().unwrap().into_iter().find(|topic| topic.name == "CPU").unwrap().id;
+    desktop.save_question(question(cpu, "What does the ALU do?")).unwrap();
+    desktop.save_note(None, basic(cpu, "ALU?", "Does the arithmetic"), TODAY).unwrap();
+    assert!(review_one(&mut desktop, Rating::Good, TODAY), "a card to review");
+    sync(&mut desktop, at(TODAY, 650));
+    sync(&mut laptop, at(TODAY, 651));
+    let counts = |app: &App| {
+        let all = everything(app);
+        let count = |kind: &str| all[kind].as_array().map_or(0, Vec::len);
+        let cards: usize = all["notes"].as_array().map_or(0, |notes| notes.iter().map(|note| note["cards"].as_array().map_or(0, Vec::len)).sum());
+        [count("questions"), count("notes"), cards, count("reviews")]
+    };
+    let before = counts(&desktop);
+    assert!(before.iter().all(|count| *count > 0), "something of each kind to lose: {before:?}");
+    assert_eq!(counts(&laptop), before, "both start the same");
+
+    let n2t = module_named(&desktop, "N2T");
+    desktop.move_module(n2t, None).unwrap();
+    let ca_there = module_named(&laptop, "Computer Architecture");
+    laptop.delete_module_with(ca_there, crate::tree::DeleteChoice::Everything).unwrap();
+    sync(&mut desktop, at(TODAY, 700));
+    sync(&mut laptop, at(TODAY, 701));
+    sync(&mut desktop, at(TODAY, 702));
+    for app in [&desktop, &laptop] {
+        assert_eq!(counts(app), before, "nothing inside N2T lost");
+    }
+    assert_same(&desktop, &laptop);
+}
+
 /// T-SYNC-03. Two offline moves of one module: the later one wins, and the other side is told.
 #[test]
 fn t_sync_03_two_moves_of_one_module_last_write_wins() {
