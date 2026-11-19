@@ -254,3 +254,22 @@ impl Tree {
         todo!("R218: quiz topics with related")
     }
 }
+
+/// Where an Anki deck lands: its `::` parts become modules and the last part the topic. Parts
+/// past [`MAX_MODULE_DEPTH`] modules are joined into the topic name with " › ", and a deck
+/// named Default lands in "Default (imported)" so it never merges into the real Default.
+///
+/// Spec: "Anki nested decks import as nested modules", "Anki decks deeper than the limit".
+/// Tests: T-IMP-01, T-IMP-02, T-IMP-04.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AnkiPlacement {
+    pub modules: Vec<String>,
+    pub topic: String,
+    /// True when levels were joined into the topic name, so the import can say so.
+    pub flattened: bool,
+}
+
+pub fn anki_placement(deck: &str) -> AnkiPlacement {
+    let _ = deck;
+    todo!("R217: place an Anki deck in the tree")
+}

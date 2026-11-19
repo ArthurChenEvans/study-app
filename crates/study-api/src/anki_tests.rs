@@ -363,3 +363,22 @@ fn a_cards_tags_survive_an_anki_export() {
     let back = notes_in(&other, "DNS").into_iter().find(|note| note.front == "Tagged card").unwrap();
     assert_eq!(back.tags, vec!["boolean::algebra".to_string()]);
 }
+
+// ---------- Nested modules (R217): T-IMP-03, specs/tests/nested-modules-and-search.md ----------
+
+/// T-IMP-03. A deck whose place already holds a topic of that name goes into it, even when
+/// the module is nested, rather than making a namesake beside it.
+#[test]
+fn t_imp_03_a_deck_matching_a_nested_topic_merges_into_it() {
+    let mut app = app();
+    let networks = app.create_submodule("Networks", None).unwrap();
+    let dns = app.create_topic("DNS", Some(networks)).unwrap();
+    app.anki_preview(MODERN, "networks-modern.apkg").unwrap();
+    app.anki_apply(AnkiChoice { decks: vec![], keep_progress: false, ..Default::default() }, at(TODAY)).unwrap();
+    let named_dns: Vec<_> = app.topics().unwrap().into_iter().filter(|topic| topic.name == "DNS").collect();
+    assert_eq!(named_dns.len(), 1, "no second DNS topic");
+    assert_eq!(named_dns[0].id, dns);
+    assert!(!notes_in(&app, "DNS").is_empty());
+    let tree = app.module_tree(TODAY).unwrap();
+    assert!(tree.nodes.iter().any(|node| node.breadcrumb == "Networks › DNS"));
+}

@@ -14,9 +14,9 @@ Feature: Organise topics into modules and tags
     When I create a topic called "CPU" in the module "Computer Architecture"
     Then "CPU" is listed under "Computer Architecture"
 
-  Scenario: Topic outside any module
-    When I create a topic called "Misc" with no module
-    Then "Misc" is listed outside any module
+  Scenario: Topic made without a module (R217 replaces "outside any module")
+    When I create a topic called "Misc" with no module and confirm the warning
+    Then "Misc" is listed in the root module "Default"
 
   @edge
   Scenario: Move a topic to another module

@@ -464,3 +464,33 @@ fn t_rel_08_only_topics_can_be_related() {
     let (mut fx, a, _) = two_cpus();
     assert_eq!(fx.tree.link_related(a, fx.n2t), Err(TreeError::NotATopic));
 }
+
+// 13. Anki placement (the store half, T-IMP-03, is in study-api)
+
+use study_core::tree::{AnkiPlacement, anki_placement};
+
+/// T-IMP-01. Spec: "Anki nested decks import as nested modules".
+#[test]
+fn t_imp_01_deck_parts_become_modules_and_a_topic() {
+    assert_eq!(
+        anki_placement("Computer Architecture::N2T::CPU"),
+        AnkiPlacement { modules: vec!["Computer Architecture".into(), "N2T".into()], topic: "CPU".into(), flattened: false }
+    );
+    assert_eq!(anki_placement("Misc"), AnkiPlacement { modules: vec![], topic: "Misc".into(), flattened: false });
+}
+
+/// T-IMP-02. Spec: "Anki decks deeper than the limit".
+#[test]
+fn t_imp_02_levels_past_four_join_the_topic_name() {
+    let placed = anki_placement("A::B::C::D::E::F");
+    assert_eq!(placed.modules, vec!["A", "B", "C", "D"]);
+    assert_eq!(placed.topic, "E › F");
+    assert!(placed.flattened);
+}
+
+/// T-IMP-04
+#[test]
+fn t_imp_04_a_deck_named_default_is_renamed() {
+    assert_eq!(anki_placement("Default").topic, "Default (imported)");
+    assert_eq!(anki_placement("Default::Loose").modules, vec!["Default (imported)"]);
+}

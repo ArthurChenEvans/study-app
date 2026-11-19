@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 11694eb409198120960ab3e0ada4dbb51edba90bc9c8c1a1e13c54deb6e728e7 # shrinks to tree = Not(Not(Scope { kind: Module, name: "a9" }))
+cc da883f7adf2dc1daf32277491b7b36e2bca7865d998b0e83acf860e1dce07ae9 # shrinks to tree = Not(Phrase("a a3ej"))

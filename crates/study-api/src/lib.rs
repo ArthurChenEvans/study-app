@@ -20,6 +20,7 @@ pub mod seed;
 pub mod seed_large;
 pub mod sync;
 pub mod transfer;
+pub mod tree;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod web;
 
@@ -1007,3 +1008,5 @@ mod sync_tests;
 mod dates_tests;
 #[cfg(test)]
 mod audit_tests;
+#[cfg(test)]
+mod tree_tests;

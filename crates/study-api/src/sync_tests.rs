@@ -748,3 +748,105 @@ fn celebration_choices_sync() {
     sync(&mut laptop, at(TODAY, 603));
     assert_eq!(laptop.celebrations().unwrap().as_deref(), Some(r#"{"streaks":false}"#));
 }
+
+// ---------- Nested modules (R217): nested-modules.feature, "Existing data, sync and import/export" ----------
+// Test IDs: specs/tests/nested-modules-and-search.md, section 13.
+
+fn module_parent(app: &App, name: &str) -> Option<String> {
+    let tree = app.module_tree(TODAY).unwrap();
+    let node = tree.nodes.iter().find(|node| node.name == name && matches!(node.node, crate::tree::NodeRef::Module(_))).unwrap_or_else(|| panic!("no module {name}"));
+    let parent = node.parent?;
+    tree.nodes.iter().find(|other| other.node == crate::tree::NodeRef::Module(parent)).map(|other| other.name.clone())
+}
+
+fn module_named(app: &App, name: &str) -> ModuleId {
+    app.modules().unwrap().into_iter().find(|module| module.name == name).unwrap_or_else(|| panic!("no module {name}")).id
+}
+
+/// Two computers sharing Computer Architecture › N2T and CS:APP, synced once.
+fn nested_pair(test: &str) -> (App, App, PathBuf) {
+    let shared = folder(test);
+    let mut desktop = computer(test, "desktop", 1);
+    let ca = desktop.create_submodule("Computer Architecture", None).unwrap();
+    let n2t = desktop.create_submodule("N2T", Some(ca)).unwrap();
+    desktop.create_submodule("CS:APP", Some(ca)).unwrap();
+    desktop.create_topic("CPU", Some(n2t)).unwrap();
+    join(&mut desktop, &shared, "Desktop", at(TODAY, 600));
+    let mut laptop = computer(test, "laptop", 2);
+    join(&mut laptop, &shared, "Laptop", at(TODAY, 601));
+    sync(&mut desktop, at(TODAY, 602));
+    sync(&mut laptop, at(TODAY, 603));
+    (desktop, laptop, shared)
+}
+
+/// T-SYNC-01. Spec: "Moves sync across devices". The nesting itself syncs too.
+#[test]
+fn t_sync_01_nesting_and_moves_sync() {
+    let (mut desktop, mut laptop, _) = nested_pair("nest-move");
+    assert_eq!(module_parent(&laptop, "N2T").as_deref(), Some("Computer Architecture"));
+    let cpu = laptop.topics().unwrap().into_iter().find(|topic| topic.name == "CPU").unwrap().id;
+    let csapp = module_named(&laptop, "CS:APP");
+    laptop.move_topic(cpu, Some(csapp)).unwrap();
+    sync(&mut laptop, at(TODAY, 700));
+    sync(&mut desktop, at(TODAY, 701));
+    let moved = desktop.topics().unwrap().into_iter().find(|topic| topic.name == "CPU").unwrap();
+    assert_eq!(moved.module, Some(module_named(&desktop, "CS:APP")));
+    assert_same(&desktop, &laptop);
+}
+
+/// T-SYNC-02. Spec: "Conflicting moves while offline".
+#[test]
+fn t_sync_02_a_move_against_a_deleted_parent_loses_nothing() {
+    let (mut desktop, mut laptop, _) = nested_pair("nest-delete");
+    let n2t = module_named(&desktop, "N2T");
+    let csapp = module_named(&desktop, "CS:APP");
+    desktop.move_module(n2t, Some(csapp)).unwrap();
+    let ca_there = module_named(&laptop, "Computer Architecture");
+    laptop.delete_module_with(ca_there, crate::tree::DeleteChoice::Everything).unwrap();
+    sync(&mut desktop, at(TODAY, 700));
+    sync(&mut laptop, at(TODAY, 701));
+    sync(&mut desktop, at(TODAY, 702));
+    for app in [&desktop, &laptop] {
+        assert_eq!(module_parent(app, "N2T"), None, "N2T restored as a root");
+        assert!(app.topics().unwrap().iter().any(|topic| topic.name == "CPU"), "its topic kept");
+    }
+    assert!(!desktop.sync_to_check().unwrap().is_empty(), "a notice says what happened");
+    assert_same(&desktop, &laptop);
+}
+
+/// T-SYNC-03. Two offline moves of one module: the later one wins, and the other side is told.
+#[test]
+fn t_sync_03_two_moves_of_one_module_last_write_wins() {
+    let (mut desktop, mut laptop, _) = nested_pair("nest-twice");
+    let n2t = module_named(&desktop, "N2T");
+    desktop.move_module(n2t, None).unwrap();
+    let n2t_there = module_named(&laptop, "N2T");
+    let csapp_there = module_named(&laptop, "CS:APP");
+    laptop.move_module(n2t_there, Some(csapp_there)).unwrap();
+    sync(&mut desktop, at(TODAY, 700));
+    sync(&mut laptop, at(TODAY, 710));
+    sync(&mut desktop, at(TODAY, 711));
+    assert_eq!(module_parent(&desktop, "N2T").as_deref(), Some("CS:APP"));
+    assert_same(&desktop, &laptop);
+}
+
+/// T-SYNC-04. Moves on two computers that together would make a loop can't make one.
+#[test]
+fn t_sync_04_crossed_moves_never_make_a_cycle() {
+    let (mut desktop, mut laptop, _) = nested_pair("nest-cycle");
+    let n2t = module_named(&desktop, "N2T");
+    let csapp = module_named(&desktop, "CS:APP");
+    desktop.move_module(n2t, Some(csapp)).unwrap();
+    let n2t_there = module_named(&laptop, "N2T");
+    let csapp_there = module_named(&laptop, "CS:APP");
+    laptop.move_module(csapp_there, Some(n2t_there)).unwrap();
+    sync(&mut desktop, at(TODAY, 700));
+    sync(&mut laptop, at(TODAY, 701));
+    sync(&mut desktop, at(TODAY, 702));
+    let n2t_parent = module_parent(&desktop, "N2T");
+    let csapp_parent = module_parent(&desktop, "CS:APP");
+    assert!(!(n2t_parent.as_deref() == Some("CS:APP") && csapp_parent.as_deref() == Some("N2T")), "no loop");
+    assert!(n2t_parent.is_none() || csapp_parent.is_none(), "one went to the roots");
+    assert!(!desktop.sync_to_check().unwrap().is_empty());
+    assert_same(&desktop, &laptop);
+}

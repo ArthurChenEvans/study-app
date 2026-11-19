@@ -2,6 +2,17 @@
 
 Traces to `specs/features/nested-modules.feature` and `specs/features/search-query.feature` (R217 to R220). Every test ID below appears in the name or doc comment of the test that covers it.
 
+## Where each test lives
+
+| Layer | Files |
+|---|---|
+| core | `crates/study-core/tests/tree.rs`, `query.rs`, `query_properties.rs` |
+| command and store | `crates/study-api/src/tree_tests.rs`, the nested sections of `sync_tests.rs` and `anki_tests.rs`, `crates/study-store/src/tree_tests.rs` (upgrade) |
+| component | `src/components/tree/*.test.ts` |
+| e2e | `e2e/nested_modules_test.py` |
+
+T-IMP-01, T-IMP-02 and T-IMP-04 test the deck-to-tree mapping in core (`anki_placement`), and T-IMP-03 tests the import itself in study-api.
+
 Layers: **core** is `crates/study-core` unit and property tests, **store** is `crates/study-store` integration tests, **component** is a Svelte component test, **e2e** is Playwright.
 
 ## 1. Module tree rules (core)

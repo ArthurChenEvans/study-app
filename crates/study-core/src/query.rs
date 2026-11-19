@@ -22,11 +22,13 @@
 
 use std::collections::BTreeMap;
 
+use serde::Serialize;
+
 // ---------------------------------------------------------------------------------------------
 // Tokens (tests T-TOK-01 to T-TOK-15)
 // ---------------------------------------------------------------------------------------------
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub enum ScopeKind {
     /// `module:`, anything inside a module or its submodules.
     Module,
@@ -115,7 +117,7 @@ pub struct Query {
 }
 
 /// A broken query, with the byte range of the token to outline.
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, Serialize)]
 #[error("{message}")]
 pub struct QueryError {
     pub message: String,
@@ -138,14 +140,14 @@ pub fn parse(input: &str) -> Result<Query, QueryError> {
 // Pill display model (tests T-PILL-09 to T-PILL-24, the core half)
 // ---------------------------------------------------------------------------------------------
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum PillKind {
     Term,
     Phrase,
     Scope(ScopeKind),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Pill {
     pub text: String,
     pub kind: PillKind,
@@ -155,7 +157,7 @@ pub struct Pill {
 
 /// Outline around a group. Spec: "AND groups are plain", "OR groups have a solid outline",
 /// "XOR groups have a dashed outline".
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum Outline {
     None,
     Solid,
@@ -164,14 +166,14 @@ pub enum Outline {
 
 /// Brackets drawn around a group. Spec: "Typed brackets are shown", "Grouping the app works
 /// out is shown as faint brackets".
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum Brackets {
     None,
     Typed,
     Faint,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Group {
     pub outline: Outline,
     pub brackets: Brackets,
@@ -180,7 +182,7 @@ pub struct Group {
     pub parts: Vec<Part>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub enum Part {
     Pill(Pill),
     /// An operator as its word: "AND", "OR", "XOR" or "NOT", whatever was typed (T-PILL-09).
@@ -220,7 +222,7 @@ pub fn suggest_scopes(names: &[String], prefix: &str) -> Vec<String> {
 // ---------------------------------------------------------------------------------------------
 
 /// Result groups, in the order the screen shows them. Spec: "Results are grouped by kind".
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub enum ItemKind {
     Module,
     Topic,
@@ -243,7 +245,7 @@ pub struct Item {
     pub topic: Option<(u64, String)>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize)]
 pub struct Results {
     /// Matching item ids per kind, in the order given.
     pub groups: BTreeMap<ItemKind, Vec<u64>>,
@@ -274,7 +276,7 @@ pub fn search(items: &[Item], query: &Query) -> Results {
 
 /// A scope that names nothing, with the closest name to offer. Spec: "Scope names match
 /// exactly, ignoring case" (`module:n2` suggests "N2T").
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct UnknownScope {
     pub kind: ScopeKind,
     pub value: String,

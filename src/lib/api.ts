@@ -239,6 +239,32 @@ export function errorMessage(error: unknown): string {
   return String(error);
 }
 
+
+// ---------- Nested modules, related topics, graph and query search (R217 to R220) ----------
+// Mirrors crates/study-api/src/tree.rs and study_core::query. Specs: nested-modules.feature,
+// search-query.feature. Test IDs: specs/tests/nested-modules-and-search.md.
+export type NodeRef = { kind: "Module"; id: Id } | { kind: "Topic"; id: Id };
+export interface TreeNode {
+  node: NodeRef; name: string; parent: Id | null; path: string[]; breadcrumb: string; is_default: boolean;
+  due: number; question_count: number; card_count: number; sources: Id[]; related: Id[];
+}
+export interface TreeView { nodes: TreeNode[] }
+export interface DeletePreview { modules: string[]; topics: string[]; questions: number; cards: number; checklists: number; clashes: string[] }
+export type DeleteChoice = "Everything" | "MoveContentsUp";
+export type ScopeKind = "Module" | "Topic";
+export type PillKind = "Term" | "Phrase" | { Scope: ScopeKind };
+export interface Pill { text: string; kind: PillKind; negated: boolean }
+export interface PillGroup { outline: "None" | "Solid" | "Dashed"; brackets: "None" | "Typed" | "Faint"; negated: boolean; parts: Part[] }
+export type Part = { Pill: Pill } | { Op: "AND" | "OR" | "XOR" | "NOT" } | { Group: PillGroup };
+export type ItemKind = "Module" | "Topic" | "Question" | "Flashcard" | "RecallPoint" | "PracticeEntry";
+export interface QueryResults { groups: Partial<Record<ItemKind, number[]>>; children: Record<string, number[]> }
+export interface QueryProblem { message: string; start: number; end: number }
+export interface UnknownScope { kind: ScopeKind; value: string; suggestion: string | null }
+export interface QuerySearch {
+  parts: Part[]; error: QueryProblem | null; results: QueryResults; paths: [NodeRef, string][];
+  unknown: UnknownScope[]; scope_paths: [string, string[]][]; spoken: string;
+}
+
 export const api = {
   modules: () => invoke<ModuleRow[]>("modules"),
   createModule: (name: string) => invoke<Id>("create_module", { name }),
@@ -250,6 +276,19 @@ export const api = {
   moveTopic: (topic: Id, module: Id | null) => invoke<void>("move_topic", { topic, module }),
   setTopicTags: (topic: Id, tags: string[]) => invoke<void>("set_topic_tags", { topic, tags }),
   deleteTopic: (topic: Id) => invoke<void>("delete_topic", { topic }),
+
+  // R217 to R220
+  createSubmodule: (name: string, parent: Id | null) => invoke<Id>("create_submodule", { name, parent }),
+  moveModule: (module: Id, parent: Id | null) => invoke<void>("move_module", { module, parent }),
+  moduleDeletePreview: (module: Id) => invoke<DeletePreview>("module_delete_preview", { module }),
+  deleteModuleWith: (module: Id, choice: DeleteChoice) => invoke<void>("delete_module_with", { module, choice }),
+  defaultModule: () => invoke<Id | null>("default_module"),
+  moduleTree: () => invoke<TreeView>("module_tree"),
+  topicsUnder: (module: Id, excluded: Id[]) => invoke<Id[]>("topics_under", { module, excluded }),
+  linkRelated: (first: Id, second: Id) => invoke<void>("link_related", { first, second }),
+  unlinkRelated: (first: Id, second: Id) => invoke<void>("unlink_related", { first, second }),
+  relatedTopics: (topic: Id) => invoke<Id[]>("related_topics", { topic }),
+  querySearch: (input: string) => invoke<QuerySearch>("query_search", { input }),
 
   saveQuestion: (input: QuestionInput) => invoke<Id>("save_question", { input }),
   updateQuestion: (id: Id, input: QuestionInput) => invoke<void>("update_question", { id, input }),

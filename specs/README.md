@@ -7,7 +7,7 @@ Behaviour specs in Gherkin for everything a user does in the MVP. Every scenario
 | ID | Requirement |
 |---|---|
 | R1 | A topic is the deck. Questions are grouped by topic |
-| R2 | A topic sits in at most one module, or in none |
+| R2 | A topic sits in exactly one module. Superseded by R217: a topic made without a module goes to Default |
 | R3 | Tags can be added to topics and to questions |
 | R4 | A question has 3 to 5 options |
 | R5 | Each question is set to single or multiple correct answers |
@@ -85,7 +85,7 @@ Preset wrong-answer reasons (R25): blank, misremembered, confused with something
 | Req | Scenarios |
 |---|---|
 | R1 | topics: Create a topic |
-| R2 | topics: Put a topic in a module, Topic outside any module, Move a topic to another module |
+| R2 | topics: Put a topic in a module, Topic made without a module, Move a topic to another module |
 | R3 | topics: Tag a topic, questions: Tag a question |
 | R4 | questions: Option count limits (outline) |
 | R5 | questions: Single-answer question, Multiple-answer question |

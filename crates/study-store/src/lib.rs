@@ -709,6 +709,8 @@ fn write_question_parts(
 mod tests;
 #[cfg(test)]
 mod upgrade_tests;
+#[cfg(test)]
+mod tree_tests;
 
 /// R46: a source needs a title. Every other field is optional.
 fn check_source(fields: &SourceFields) -> Result<()> {
