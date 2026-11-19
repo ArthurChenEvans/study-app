@@ -658,6 +658,28 @@ const MIGRATIONS: &[&str] = &[
         UPDATE dates SET changed = stamp_now() WHERE id = OLD.date_id;
     END;
     ",
+    // 11: nested modules, Default and related topics (R217, R218)
+    "
+    ALTER TABLE modules ADD COLUMN parent_id INTEGER REFERENCES modules(id) ON DELETE SET NULL;
+    ALTER TABLE modules ADD COLUMN is_default INTEGER NOT NULL DEFAULT 0;
+    CREATE INDEX modules_by_parent ON modules(parent_id);
+    INSERT INTO modules (name, is_default, uid) SELECT 'Default', 1, '01000000-0000-7000-8000-00000000def0' WHERE EXISTS (SELECT 1 FROM topics WHERE module_id IS NULL);
+    UPDATE topics SET module_id = (SELECT id FROM modules WHERE is_default = 1) WHERE module_id IS NULL;
+    CREATE TABLE related_topics (
+        first  INTEGER NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+        second INTEGER NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+        PRIMARY KEY (first, second),
+        CHECK (first < second)
+    ) WITHOUT ROWID;
+    CREATE INDEX related_by_second ON related_topics(second);
+    -- A link belongs to both its topics, so adding or removing one changes them.
+    CREATE TRIGGER related_insert_touches AFTER INSERT ON related_topics BEGIN
+        UPDATE topics SET changed = stamp_now() WHERE id IN (NEW.first, NEW.second);
+    END;
+    CREATE TRIGGER related_delete_touches AFTER DELETE ON related_topics BEGIN
+        UPDATE topics SET changed = stamp_now() WHERE id IN (OLD.first, OLD.second);
+    END;
+    ",
 ];
 
 pub const LATEST: i64 = MIGRATIONS.len() as i64;

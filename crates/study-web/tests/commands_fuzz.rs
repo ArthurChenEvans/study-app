@@ -170,6 +170,9 @@ fn shapes(scratch: &str) -> BTreeMap<String, Vec<Value>> {
     put(&["set_backup_settings.settings"], &vec![json!({"keep_days": 7, "keep_weeks": 4, "keep_months": 12, "copy_to": null}), json!({"keep_days": 1, "keep_weeks": 0, "keep_months": 0, "copy_to": format!("{scratch}/copies")})]);
     put(&["answer.picked", "finish_check.recalled"], &numbers_list);
     put(&["set_topic_tags.tags"], &vec![json!(["a", "b"]), json!([])]);
+    put(&["delete_module_with.choice"], &vec![json!("Everything"), json!("MoveContentsUp")]);
+    put(&["topics_under.excluded"], &vec![json!([]), json!([1, 2])]);
+    put(&["query_search.input"], &vec![json!("CPU $ ALU"), json!("module:\"A B\" !(x ^ y)"), json!("(((")]);
     put(&["archive_card.archived", "sync_now.auto", "sync_settle.other"], &flag);
     put(&["create_module.name", "rename_module.name", "rename_topic.name", "update_project.name", "update_project.kind", "update_struggle.what", "update_struggle.why", "rename_issue.name", "update_drill.task", "update_drill.hints", "create_topic.name", "create_project.name", "create_project.kind", "answer_text.typed", "try_short_answer.typed", "finish_check.dump", "rate_drill.note", "known_drill.issue", "dismiss_suggestion.key", "sync_rename.name", "restore_preview.name", "restore_backup.name", "import_preview.name"], &text);
     shapes

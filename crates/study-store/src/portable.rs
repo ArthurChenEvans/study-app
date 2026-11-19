@@ -19,6 +19,12 @@ pub struct Module {
     pub uid: String,
     pub changed: String,
     pub name: String,
+    /// The module it sits in, `None` for a root (R217).
+    #[serde(default)]
+    pub parent: Option<String>,
+    /// The module that takes topics made without one (R217).
+    #[serde(default)]
+    pub is_default: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -37,6 +43,9 @@ pub struct Topic {
     pub tags: Vec<String>,
     /// Only with history.
     pub schedule: Option<QuizStep>,
+    /// Topics linked as related (R218), each link listed on both its topics.
+    #[serde(default)]
+    pub related: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -521,16 +530,32 @@ impl Store {
             } else {
                 None
             };
-            snapshot.topics.push(Topic { uid, changed, name, module: uids.opt("modules", module), tags, schedule });
+            let related: Vec<i64> = connection
+                .prepare("SELECT second FROM related_topics WHERE first = ?1 UNION SELECT first FROM related_topics WHERE second = ?1 ORDER BY 1")?
+                .query_map([id], |row| row.get(0))?
+                .collect::<rusqlite::Result<_>>()?;
+            let related = related.into_iter().filter(|other| topic_in(*other)).filter_map(|other| uids.of("topics", other)).collect();
+            snapshot.topics.push(Topic { uid, changed, name, module: uids.opt("modules", module), tags, schedule, related });
         }
-        let mut statement = connection.prepare("SELECT id, uid, changed, name FROM modules ORDER BY id")?;
-        snapshot.modules = statement
-            .query_map([], |row| Ok((row.get::<_, i64>(0)?, Module { uid: row.get(1)?, changed: row.get(2)?, name: row.get(3)? })))?
-            .collect::<rusqlite::Result<Vec<_>>>()?
-            .into_iter()
-            .filter(|(id, _)| everything || module_ids.contains(id))
-            .map(|(_, module)| module)
-            .collect();
+        let mut statement = connection.prepare("SELECT id, uid, changed, name, parent_id, is_default FROM modules ORDER BY id")?;
+        let modules: Vec<(i64, Option<i64>, Module)> = statement
+            .query_map([], |row| {
+                let parent: Option<i64> = row.get(4)?;
+                Ok((row.get::<_, i64>(0)?, parent, Module { uid: row.get(1)?, changed: row.get(2)?, name: row.get(3)?, parent: uids.opt("modules", parent), is_default: row.get(5)? }))
+            })?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+        // A topic's module brings the modules above it, so the tree is rebuilt whole (R217).
+        let parents: HashMap<i64, Option<i64>> = modules.iter().map(|(id, parent, _)| (*id, *parent)).collect();
+        for id in module_ids.clone() {
+            let mut current = parents.get(&id).copied().flatten();
+            while let Some(parent) = current {
+                if !module_ids.insert(parent) {
+                    break;
+                }
+                current = parents.get(&parent).copied().flatten();
+            }
+        }
+        snapshot.modules = modules.into_iter().filter(|(id, _, _)| everything || module_ids.contains(id)).map(|(_, _, module)| module).collect();
 
         // Questions, with their options, tags and citations.
         let mut source_ids = HashSet::new();
@@ -817,6 +842,7 @@ impl Store {
     pub fn apply(&mut self, snapshot: &Snapshot, plan: &Plan) -> Result<Added> {
         let transaction = self.connection.savepoint()?;
         let added = write(&transaction, snapshot, plan)?;
+        break_module_loops(&transaction)?;
         transaction.commit()?;
         crate::ids::catch_up(&self.connection, &self.clock)?;
         Ok(added)
@@ -866,6 +892,47 @@ impl Writer<'_> {
     }
 }
 
+/// Modules can only form a loop when two computers move modules into each other at the same
+/// time. The later one in id order goes to the root, and a note says so (R217, T-SYNC-04).
+pub(crate) fn break_module_loops(tx: &Connection) -> Result<()> {
+    let rows: Vec<(i64, Option<i64>, String)> = tx.prepare("SELECT id, parent_id, coalesce(uid, '') FROM modules")?.query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?.collect::<rusqlite::Result<_>>()?;
+    let parents: HashMap<i64, Option<i64>> = rows.iter().map(|(id, parent, _)| (*id, *parent)).collect();
+    // By ID, which every computer shares, so they all free the same module.
+    let uid_of: HashMap<i64, String> = rows.iter().map(|(id, _, uid)| (*id, uid.clone())).collect();
+    let mut ids: Vec<i64> = parents.keys().copied().collect();
+    ids.sort_by_key(|id| uid_of[id].clone());
+    let mut freed = HashSet::new();
+    for start in ids {
+        let mut seen = vec![start];
+        let mut current = parents.get(&start).copied().flatten();
+        while let Some(parent) = current {
+            if freed.contains(&parent) {
+                break;
+            }
+            if let Some(at) = seen.iter().position(|id| *id == parent) {
+                let looped = seen[at..].iter().copied().max_by_key(|id| uid_of[id].clone()).unwrap_or(parent);
+                // Keeping its stamp: every computer frees the same module, so none of them
+                // needs to tell the others, and a new stamp on each would never agree.
+                let stamp: Option<String> = tx.query_row("SELECT changed FROM modules WHERE id = ?1", [looped], |row| row.get(0))?;
+                tx.execute("UPDATE modules SET changed = NULL WHERE id = ?1", [looped])?;
+                tx.execute("UPDATE modules SET parent_id = NULL, changed = ?2 WHERE id = ?1", params![looped, stamp])?;
+                let other: Option<i64> = parents.get(&looped).copied().flatten();
+                tx.execute(
+                    "INSERT INTO sync_conflicts (kind, uid, field, kept, other, kept_by, kept_at, other_by, other_at)
+                     SELECT 'modules', m.uid, 'parent', 'null', coalesce(json_quote((SELECT uid FROM modules WHERE id = ?2)), 'null'), 'loop', stamp_now(), 'loop', stamp_now() FROM modules m WHERE m.id = ?1
+                     ON CONFLICT(kind, uid, field) DO UPDATE SET kept = 'null', other = excluded.other",
+                    params![looped, other],
+                )?;
+                freed.insert(looped);
+                break;
+            }
+            seen.push(parent);
+            current = parents.get(&parent).copied().flatten();
+        }
+    }
+    Ok(())
+}
+
 pub(crate) fn write(tx: &Connection, snapshot: &Snapshot, plan: &Plan) -> Result<Added> {
     let mut writer = Writer { tx, plan, local: ToLocal::read(tx)?, added: HashMap::new(), replaced: 0 };
 
@@ -888,20 +955,37 @@ pub(crate) fn write(tx: &Connection, snapshot: &Snapshot, plan: &Plan) -> Result
     let swap = move |token: &str| images.get(token).map(|id| id.to_string());
     let snapshot = &with_images(snapshot, &swap)?;
 
+    // Modules first without their parents, then the parents once every module has a row (R217).
+    let mut placed = Vec::new();
     for module in &snapshot.modules {
         match writer.fate("modules", &module.uid) {
             Fate::New => {
-                tx.execute("INSERT INTO modules (name, uid, changed) VALUES (?1, ?2, ?3)", params![module.name, module.uid, module.changed])?;
-                writer.inserted("modules", "modules", &module.uid);
+                // One Default only. Every Default has the same ID, so this only catches a damaged file.
+                let here: Option<i64> = if module.is_default { tx.query_row("SELECT id FROM modules WHERE is_default = 1 LIMIT 1", [], |row| row.get(0)).optional()? } else { None };
+                match here {
+                    Some(id) => writer.local.set("modules", &module.uid, id),
+                    None => {
+                        tx.execute("INSERT INTO modules (name, is_default, uid, changed) VALUES (?1, ?2, ?3, ?4)", params![module.name, module.is_default, module.uid, module.changed])?;
+                        let id = writer.inserted("modules", "modules", &module.uid);
+                        placed.push((id, module));
+                    }
+                }
             }
             Fate::Replace(id) => {
-                tx.execute("UPDATE modules SET name = ?2, changed = ?3 WHERE id = ?1", params![id, module.name, module.changed])?;
+                tx.execute("UPDATE modules SET name = ?2, is_default = ?3, changed = ?4 WHERE id = ?1", params![id, module.name, module.is_default, module.changed])?;
                 writer.replaced += 1;
+                placed.push((id, module));
             }
             Fate::Keep(_) => {}
         }
     }
+    for (id, module) in placed {
+        let parent = writer.local.opt("modules", module.parent.as_deref()).filter(|parent| *parent != id);
+        tx.execute("UPDATE modules SET parent_id = ?2 WHERE id = ?1 AND parent_id IS NOT ?2", params![id, parent])?;
+        writer.stamp("modules", id, &module.changed)?;
+    }
 
+    let mut written_topics = HashSet::new();
     for topic in &snapshot.topics {
         let module = writer.local.opt("modules", topic.module.as_deref());
         let fate = writer.fate("topics", &topic.uid);
@@ -924,12 +1008,48 @@ pub(crate) fn write(tx: &Connection, snapshot: &Snapshot, plan: &Plan) -> Result
             }
         };
         if let Some(id) = id {
+            written_topics.insert(id);
             for tag in &topic.tags {
                 tx.execute("INSERT OR IGNORE INTO topic_tags (topic_id, tag) VALUES (?1, ?2)", params![id, tag])?;
             }
             if let (Some(schedule), true) = (&topic.schedule, is_new) {
                 tx.execute("INSERT INTO topic_schedule (topic_id, step, rep, due) VALUES (?1, ?2, ?3, ?4) ON CONFLICT(topic_id) DO UPDATE SET step = excluded.step, rep = excluded.rep, due = excluded.due", params![id, schedule.step, schedule.rep, schedule.due])?;
             }
+            writer.stamp("topics", id, &topic.changed)?;
+        }
+    }
+
+    // Related links once every topic has a row (R218). A link belongs to both its topics,
+    // so each topic written keeps the stamp it came with.
+    let mut restamp = Vec::new();
+    for topic in &snapshot.topics {
+        let Some(id) = writer.local.of("topics", &topic.uid) else { continue };
+        if !written_topics.contains(&id) {
+            continue;
+        }
+        let wanted: HashSet<i64> = topic.related.iter().filter_map(|uid| writer.local.of("topics", uid)).filter(|other| *other != id).collect();
+        let have: Vec<i64> = tx.prepare("SELECT second FROM related_topics WHERE first = ?1 UNION SELECT first FROM related_topics WHERE second = ?1")?.query_map([id], |row| row.get(0))?.collect::<rusqlite::Result<_>>()?;
+        let mut touched = false;
+        for other in &have {
+            if !wanted.contains(other) {
+                tx.execute("DELETE FROM related_topics WHERE first = min(?1, ?2) AND second = max(?1, ?2)", params![id, other])?;
+                touched = true;
+            }
+        }
+        for other in &wanted {
+            if !have.contains(other) {
+                tx.execute("INSERT OR IGNORE INTO related_topics (first, second) VALUES (min(?1, ?2), max(?1, ?2))", params![id, other])?;
+                touched = true;
+            }
+        }
+        if touched {
+            restamp.push(id);
+            restamp.extend(wanted.iter().copied());
+            restamp.extend(have.iter().copied());
+        }
+    }
+    for topic in &snapshot.topics {
+        if let Some(id) = writer.local.of("topics", &topic.uid).filter(|id| restamp.contains(id)) {
             writer.stamp("topics", id, &topic.changed)?;
         }
     }

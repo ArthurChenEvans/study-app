@@ -14,7 +14,7 @@ import QueryBox from "./QueryBox.svelte";
 import { broken, group, op, pill, scope, searched } from "./fixtures";
 
 const mocked = vi.mocked(api);
-const box = () => screen.getByRole("textbox", { name: "Search" });
+const box = () => screen.getByRole("searchbox", { name: "Search" });
 const calls = () => mocked.querySearch.mock.calls.map(([input]) => input);
 
 describe("QueryBox", () => {

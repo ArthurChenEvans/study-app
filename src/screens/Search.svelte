@@ -1,12 +1,16 @@
 <script lang="ts">
-  // search.feature (R31, R50)
+  // search.feature (R31, R50), search-query.feature (R220): the query language is the default,
+  // and the filter search (tags, sources, sorting) is one click away.
   import { ArrowDown, ArrowUp, Search as SearchIcon, X } from "@lucide/svelte";
   import { api, type Id, type Matched, type ModuleRow, type SearchHit, type SearchQuery } from "../lib/api";
   import Highlight from "../components/Highlight.svelte";
   import PageHeader from "../components/PageHeader.svelte";
+  import QuerySearch from "../components/tree/QuerySearch.svelte";
   import { dayFromUtc, dayLabel } from "../lib/dates";
 
-  let { onOpenTopic, initialText = "" }: { onOpenTopic: (topic: Id) => void; initialText?: string } = $props();
+  let { onOpenTopic, initialText = "", mode: startMode = "query" }: { onOpenTopic: (topic: Id) => void; initialText?: string; mode?: "query" | "filters" } = $props();
+  // svelte-ignore state_referenced_locally
+  let mode = $state(startMode);
 
   const tabs: SearchQuery["tab"][] = ["All", "Questions", "Modules", "Topics", "Tags", "Sources"];
   // svelte-ignore state_referenced_locally
@@ -111,7 +115,15 @@
 
 
 <div class="mx-auto max-w-6xl px-12 pb-24">
-  <PageHeader title="Search" />
+  <PageHeader title="Search">
+    <div class="join" role="group" aria-label="Kind of search">
+      <button class="btn btn-sm join-item {mode === 'query' ? 'btn-neutral' : 'btn-ghost'}" aria-pressed={mode === "query"} onclick={() => (mode = "query")}>Query</button>
+      <button class="btn btn-sm join-item {mode === 'filters' ? 'btn-neutral' : 'btn-ghost'}" aria-pressed={mode === "filters"} onclick={() => (mode = "filters")}>Filters</button>
+    </div>
+  </PageHeader>
+  {#if mode === "query"}
+    <QuerySearch value={initialText} {onOpenTopic} />
+  {:else}
   <label class="input input-lg search-big flex w-full items-center gap-3">
     <SearchIcon class="size-5" />
     <!-- svelte-ignore a11y_autofocus -->
@@ -194,5 +206,6 @@
         <li class="flex items-center gap-4 px-6 py-3 text-sm"><span class="chip w-20 justify-center">{item.kind}</span>{" "}<span>{item.label}</span></li>
       {/each}
     </ul>
+  {/if}
   {/if}
 </div>

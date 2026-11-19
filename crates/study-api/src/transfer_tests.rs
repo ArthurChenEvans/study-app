@@ -321,7 +321,7 @@ fn broken_or_hostile_files_are_refused_with_a_reason() {
     use crate::transfer::{Manifest, pack};
     use study_store::portable::{Image, Question, Snapshot, Topic};
     let manifest = |version: u32| Manifest { format: "studyapp".into(), version, app_version: "0.1.0".into(), exported: TODAY, device: "aaaa0000".into(), everything: false, history: false, counts: vec![] };
-    let topic = Topic { uid: "01a1a800-0000-7000-8000-000000000001".into(), changed: "0000000000000001-0000-aaaa0000".into(), name: "Shared".into(), module: None, tags: vec![], schedule: None };
+    let topic = Topic { uid: "01a1a800-0000-7000-8000-000000000001".into(), changed: "0000000000000001-0000-aaaa0000".into(), name: "Shared".into(), module: None, tags: vec![], schedule: None, related: vec![] };
     let question = |topic: &str| Question { uid: "01a1a800-0000-7000-8000-000000000002".into(), changed: "0000000000000001-0000-aaaa0000".into(), topic: topic.into(), kind: "Single".into(), text: "Q".into(), explanation: String::new(), short: None, edited_at: "2026-11-04 10:00:00".into(), options: vec![], tags: vec![], citations: vec![] };
     let refused = |bytes: Vec<u8>| -> String {
         let mut app = App::with_seed(Store::in_memory().unwrap(), 1);

@@ -145,8 +145,28 @@ fn topic_list(names: &[String]) -> String {
 }
 
 impl App {
+    /// Every topic with each module it sits in, its own and every one above it, so a date
+    /// covering a module covers its submodules' topics too (R217, T-USE-04).
     fn topic_modules(&self) -> ApiResult<Vec<(TopicId, Option<ModuleId>)>> {
-        Ok(self.store.topics()?.into_iter().map(|topic| (topic.id, topic.module)).collect())
+        let modules = self.store.modules()?;
+        let parent_of: HashMap<ModuleId, Option<ModuleId>> = modules.iter().map(|module| (module.id, module.parent)).collect();
+        let mut pairs = Vec::new();
+        for topic in self.store.topics()? {
+            let mut current = topic.module;
+            if current.is_none() {
+                pairs.push((topic.id, None));
+            }
+            let mut steps = 0;
+            while let Some(module) = current {
+                pairs.push((topic.id, Some(module)));
+                current = parent_of.get(&module).copied().flatten();
+                steps += 1;
+                if steps > study_core::tree::MAX_MODULE_DEPTH + 1 {
+                    break;
+                }
+            }
+        }
+        Ok(pairs)
     }
 
     /// Tightened due days as of `today`, from `dates` instead of the saved ones.

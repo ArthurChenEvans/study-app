@@ -122,13 +122,15 @@ fn create_topics_in_a_module_or_none() {
         topics.iter().find(|t| t.id == cpu).unwrap().module,
         Some(architecture)
     );
-    assert_eq!(topics.iter().find(|t| t.id == misc).unwrap().module, None);
+    // R217: a topic made without a module goes to Default.
+    let default = store.default_module().unwrap().unwrap();
+    assert_eq!(topics.iter().find(|t| t.id == misc).unwrap().module, Some(default));
     assert_eq!(
         store.modules().unwrap(),
-        vec![ModuleRow {
-            id: architecture,
-            name: "Computer Architecture".into()
-        }]
+        vec![
+            ModuleRow { id: architecture, name: "Computer Architecture".into(), parent: None, is_default: false },
+            ModuleRow { id: default, name: "Default".into(), parent: None, is_default: true },
+        ]
     );
 }
 
@@ -351,7 +353,7 @@ fn reasons_are_saved_and_feed_the_overview() {
     assert_eq!(records[0].sequence, id.0 as u64);
 }
 
-// R43: deleting a module moves its topics to "No module"
+// R43 with R217: deleting a module keeps its topics, a root's going to Default
 #[test]
 fn deleting_a_module_keeps_its_topics() {
     let mut store = store();
@@ -359,10 +361,11 @@ fn deleting_a_module_keeps_its_topics() {
     let gpu = store.create_topic("GPU", Some(arch)).unwrap();
     store.save_question(&question(gpu, "Q1")).unwrap();
     store.delete_module(arch).unwrap();
-    assert!(store.modules().unwrap().is_empty());
+    let default = store.default_module().unwrap().unwrap();
+    assert_eq!(store.modules().unwrap().len(), 1, "only Default is left");
     let topics = store.topics().unwrap();
     assert_eq!(topics.len(), 1);
-    assert_eq!(topics[0].module, None);
+    assert_eq!(topics[0].module, Some(default));
     assert_eq!(topics[0].question_count, 1);
     assert!(matches!(store.delete_module(arch), Err(StoreError::NotFound(_))));
 }

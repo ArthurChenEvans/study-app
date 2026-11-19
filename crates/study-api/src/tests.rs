@@ -386,7 +386,8 @@ fn modules_and_sources_can_be_edited_and_deleted() {
     let arch = app.create_module("Arch").unwrap();
     let gpu = app.create_topic("GPU", Some(arch)).unwrap();
     app.delete_module(arch).unwrap();
-    assert_eq!(app.topics().unwrap()[0].module, None);
+    // R217: a deleted root's topics go to Default.
+    assert_eq!(app.topics().unwrap()[0].module, app.default_module().unwrap());
 
     let fields = SourceFields { authors: "Kirk".into(), title: "Parallel".into(), ..Default::default() };
     let source = app.add_source(fields.clone()).unwrap();

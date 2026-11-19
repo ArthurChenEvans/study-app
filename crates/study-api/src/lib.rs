@@ -65,6 +65,7 @@ macro_rules! from_error {
 }
 from_error!(
     study_store::StoreError,
+    study_core::tree::TreeError,
     study_core::question::QuestionError,
     study_core::assembly::AssemblyError,
     study_core::attempt::AttemptError,
@@ -870,7 +871,7 @@ fn running_quiz(store: &Store) -> Option<Attempt> {
     view_of(&attempt).is_some().then_some(attempt)
 }
 
-fn required<'a>(text: &'a str, message: &str) -> ApiResult<&'a str> {
+pub(crate) fn required<'a>(text: &'a str, message: &str) -> ApiResult<&'a str> {
     let trimmed = text.trim();
     if trimmed.is_empty() {
         Err(ApiError::new(message))

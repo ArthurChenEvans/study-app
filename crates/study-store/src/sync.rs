@@ -319,6 +319,7 @@ fn refs_of(kind: &str, body: &Map<String, Value>) -> Vec<(&'static str, String, 
         }
     };
     match kind {
+        "modules" => one("parent", "modules", true, &mut refs),
         "topics" => one("module", "modules", true, &mut refs),
         "questions" => {
             one("topic", "topics", true, &mut refs);
@@ -571,15 +572,17 @@ impl Merge<'_> {
         Ok(())
     }
 
-    fn delete(&mut self, kind: &'static str, by: &str, line: &Line) -> Result<()> {
+    /// Returns true when the delete waits: what holds onto the record may be deleted later in
+    /// the same batch (a module's submodules, R217), so it's tried again after the batch.
+    fn delete(&mut self, kind: &'static str, by: &str, line: &Line, last_try: bool) -> Result<bool> {
         let key = (kind.to_string(), line.uid.clone());
         let tick = Tick(line.at.clone(), by.to_string(), line.seq);
         let Some(row) = self.shadow.get(&key).cloned() else {
             self.shadow.insert(key, Row { body: None, clocks: [(DELETED.to_string(), tick)].into(), state: State::Deleted, dirty: true });
-            return Ok(());
+            return Ok(false);
         };
         if row.state == State::Deleted {
-            return Ok(());
+            return Ok(false);
         }
         // Changed, or added to, here before the deleting computer saw it: keep it (R124).
         let mut changed_since = false;
@@ -588,10 +591,14 @@ impl Merge<'_> {
                 changed_since = true;
             }
         }
-        if (changed_since || self.has_children(&line.uid)) && row.state != State::Alias {
+        let held = self.has_children(&line.uid);
+        if held && !changed_since && !last_try && row.state != State::Alias {
+            return Ok(true);
+        }
+        if (changed_since || held) && row.state != State::Alias {
             let newest = row.clocks.values().max_by(|left, right| left.at().cmp(right.at())).cloned().unwrap_or_else(|| Tick(String::new(), self.me.clone(), 0));
             self.conflict(kind, &line.uid, DELETED, (None, &newest), (None, &tick));
-            return Ok(());
+            return Ok(false);
         }
         let mut row = row;
         row.state = State::Deleted;
@@ -601,7 +608,7 @@ impl Merge<'_> {
         self.settled.push((kind.to_string(), line.uid.clone(), None));
         self.touched.remove(&key);
         self.deleted.push(key);
-        Ok(())
+        Ok(false)
     }
 }
 
@@ -903,6 +910,7 @@ impl Store {
         }
 
         let mut seen_lines: Vec<(String, u64, String)> = vec![];
+        let mut waiting_deletes: Vec<(&'static str, String, Line)> = vec![];
         for (device, line) in incoming {
             if line.seq <= done.get(device).copied().unwrap_or(0) {
                 continue;
@@ -919,10 +927,30 @@ impl Store {
             };
             merged.changes += 1;
             if line.del {
-                merge.delete(kind, device, line)?;
+                if merge.delete(kind, device, line, false)? {
+                    waiting_deletes.push((kind, device.clone(), line.clone()));
+                }
             } else if let Some(set) = &line.set {
                 merge.set(kind, device, line, set)?;
             }
+        }
+        // Deletes held up by something deleted later in the batch, until none goes through,
+        // then once more for good, keeping what something still holds onto (R124).
+        loop {
+            let before = waiting_deletes.len();
+            let mut still = vec![];
+            for (kind, device, line) in std::mem::take(&mut waiting_deletes) {
+                if merge.delete(kind, &device, &line, false)? {
+                    still.push((kind, device, line));
+                }
+            }
+            waiting_deletes = still;
+            if waiting_deletes.is_empty() || waiting_deletes.len() == before {
+                break;
+            }
+        }
+        for (kind, device, line) in std::mem::take(&mut waiting_deletes) {
+            merge.delete(kind, &device, &line, true)?;
         }
 
         // Records waiting from before are tried again, then everything is checked for what
@@ -1026,6 +1054,8 @@ impl Store {
                 statement.execute(params![conflict.kind, conflict.uid, conflict.field, json(&conflict.kept)?, json(&conflict.other)?, conflict.kept_by, conflict.kept_at, conflict.other_by, conflict.other_at])?;
             }
         }
+        // Moves on two computers can join modules into a loop: one goes to the root (R217).
+        crate::portable::break_module_loops(&tx)?;
         {
             let mut statement = tx.prepare("INSERT OR REPLACE INTO sync_lines (device, seq, seen) VALUES (?1, ?2, ?3)")?;
             for (device, seq, seen) in &seen_lines {

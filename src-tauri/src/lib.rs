@@ -200,6 +200,51 @@ fn create_topic(state: AppState, name: String, module: Option<ModuleId>) -> ApiR
 fn move_topic(state: AppState, topic: TopicId, module: Option<ModuleId>) -> ApiResult<()> {
     with(state, |app| app.move_topic(topic, module))
 }
+// R217 to R220: nested modules, related topics, the graph and query search.
+#[tauri::command]
+fn create_submodule(state: AppState, name: String, parent: Option<ModuleId>) -> ApiResult<ModuleId> {
+    with(state, |app| app.create_submodule(&name, parent))
+}
+#[tauri::command]
+fn move_module(state: AppState, module: ModuleId, parent: Option<ModuleId>) -> ApiResult<()> {
+    with(state, |app| app.move_module(module, parent))
+}
+#[tauri::command]
+fn module_delete_preview(state: AppState, module: ModuleId) -> ApiResult<study_api::tree::DeletePreviewView> {
+    with(state, |app| app.module_delete_preview(module))
+}
+#[tauri::command]
+fn delete_module_with(state: AppState, module: ModuleId, choice: study_api::tree::DeleteChoice) -> ApiResult<()> {
+    with(state, |app| app.delete_module_with(module, choice))
+}
+#[tauri::command]
+fn default_module(state: AppState) -> ApiResult<Option<ModuleId>> {
+    with(state, |app| app.default_module())
+}
+#[tauri::command]
+fn module_tree(state: AppState) -> ApiResult<study_api::tree::TreeView> {
+    with(state, |app| app.module_tree(today()))
+}
+#[tauri::command]
+fn topics_under(state: AppState, module: ModuleId, excluded: Vec<ModuleId>) -> ApiResult<Vec<TopicId>> {
+    with(state, |app| app.topics_under(module, &excluded))
+}
+#[tauri::command]
+fn link_related(state: AppState, first: TopicId, second: TopicId) -> ApiResult<()> {
+    with(state, |app| app.link_related(first, second))
+}
+#[tauri::command]
+fn unlink_related(state: AppState, first: TopicId, second: TopicId) -> ApiResult<()> {
+    with(state, |app| app.unlink_related(first, second))
+}
+#[tauri::command]
+fn related_topics(state: AppState, topic: TopicId) -> ApiResult<Vec<TopicId>> {
+    with(state, |app| app.related_topics(topic))
+}
+#[tauri::command]
+fn query_search(state: AppState, input: String) -> ApiResult<study_api::tree::QuerySearch> {
+    with(state, |app| app.query_search(&input, today()))
+}
 #[tauri::command]
 fn set_topic_tags(state: AppState, topic: TopicId, tags: Vec<String>) -> ApiResult<()> {
     with(state, |app| app.set_topic_tags(topic, tags))
@@ -1057,6 +1102,17 @@ pub fn run() {
             topics,
             create_topic,
             move_topic,
+            create_submodule,
+            move_module,
+            module_delete_preview,
+            delete_module_with,
+            default_module,
+            module_tree,
+            topics_under,
+            link_related,
+            unlink_related,
+            related_topics,
+            query_search,
             set_topic_tags,
             delete_topic,
             save_question,

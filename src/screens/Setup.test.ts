@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../lib/api", async (original) => {
   const actual = await original<typeof import("../lib/api")>();
-  return { ...actual, api: { topics: vi.fn(), modules: vi.fn(), startQuiz: vi.fn(), topicQuizzes: vi.fn() } };
+  return { ...actual, api: { topics: vi.fn(), modules: vi.fn(), startQuiz: vi.fn(), topicQuizzes: vi.fn(), relatedTopics: vi.fn() } };
 });
 
 import { api } from "../lib/api";
@@ -24,6 +24,33 @@ beforeEach(() => {
 });
 
 describe("Quiz setup", () => {
+  // nested-modules.feature (R218): "A quiz can include related topics", T-REL-05
+  it("adds related topics when asked", async () => {
+    mocked.relatedTopics.mockImplementation(async (topic) => (topic === 1 ? [2] : [1]));
+    const u = userEvent.setup();
+    render(Setup, { onStarted: vi.fn() });
+    await u.click(await screen.findByRole("checkbox", { name: /CPU/ }));
+    await u.click(screen.getByRole("checkbox", { name: "Include related topics" }));
+    await u.click(screen.getByRole("button", { name: "Start quiz" }));
+    expect(mocked.startQuiz).toHaveBeenCalledWith(expect.objectContaining({ topics: [1, 2] }));
+  });
+
+  // nested-modules.feature (R217): "Quizzing a module includes its submodules", "Excluding a submodule", T-USE-01, T-USE-02
+  it("ticks a module's submodules too, and leaves one out in a click", async () => {
+    mocked.topics.mockResolvedValue([
+      { id: 1, name: "CPU", module: 2, tags: [], question_count: 10, short_count: 0 },
+      { id: 2, name: "CPU", module: 3, tags: [], question_count: 10, short_count: 0 },
+    ]);
+    mocked.modules.mockResolvedValue([{ id: 1, name: "Computer Architecture" }, { id: 2, name: "N2T", parent: 1 }, { id: 3, name: "CS:APP", parent: 1 }]);
+    const u = userEvent.setup();
+    render(Setup, { onStarted: vi.fn() });
+    await u.click(await screen.findByRole("button", { name: "Computer Architecture 2 topics" }));
+    await u.click(screen.getByRole("button", { name: "Tick all 2 in Computer Architecture" }));
+    await u.click(screen.getByRole("button", { name: "Leave out CS:APP" }));
+    await u.click(screen.getByRole("button", { name: "Start quiz" }));
+    expect(mocked.startQuiz).toHaveBeenCalledWith(expect.objectContaining({ topics: [1] }));
+  });
+
   // quiz-setup.feature: Quiz on several topics, with the default settings
   it("starts with the default settings", async () => {
     const onStarted = vi.fn();

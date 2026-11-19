@@ -18,7 +18,7 @@ use study_store::portable::{self, CardSchedule, Snapshot};
 
 use crate::markup::{Dropped, html_to_markdown};
 use crate::practice::Clock;
-use crate::{ApiError, ApiResult, App, ModuleId, TopicId};
+use crate::{ApiError, ApiResult, App, TopicId};
 
 const NOT_ANKI: &str = "that file isn't an Anki deck (.apkg) or collection (.colpkg)";
 const ZSTD_MAGIC: [u8; 4] = [0x28, 0xb5, 0x2f, 0xfd];
@@ -401,15 +401,12 @@ impl Package {
     }
 }
 
+/// R217: a deck's parents become nested modules, written as one `A::B` path, and its last
+/// part the topic (study_core::tree::anki_placement). A deck with no parent goes to Default.
 fn suggested(name: &str) -> DeckTarget {
-    match name.rsplit_once("::") {
-        Some((parent, leaf)) => {
-            let module = parent.split("::").next().unwrap_or(parent);
-            let topic = if parent.contains("::") { format!("{} / {leaf}", parent.split_once("::").map(|(_, rest)| rest).unwrap_or(parent).replace("::", " / ")) } else { leaf.to_string() };
-            DeckTarget::NewTopic { name: topic, module: Some(module.to_string()) }
-        }
-        None => DeckTarget::NewTopic { name: name.to_string(), module: None },
-    }
+    let placed = study_core::tree::anki_placement(name);
+    let module = if placed.modules.is_empty() { None } else { Some(placed.modules.join("::")) };
+    DeckTarget::NewTopic { name: placed.topic, module }
 }
 
 impl App {
@@ -514,9 +511,8 @@ impl App {
         let device = "anki";
         let stamp = |ms: i64| format!("{:016}-0000-{device}", ms.max(0));
         let mut snapshot = Snapshot::default();
-        let modules_here: HashMap<String, ModuleId> = self.modules()?.into_iter().map(|module| (module.name.to_lowercase(), module.id)).collect();
+        let mut places = crate::tree::ModulePlaces::read(self, stamp(0), "anki-module")?;
         let mut topic_uids: HashMap<String, Option<String>> = HashMap::new();
-        let mut module_uids: HashMap<String, String> = HashMap::new();
         let mut image_uids: HashMap<String, String> = HashMap::new();
 
         let mut topic_for = |deck: &str, snapshot: &mut Snapshot| -> ApiResult<Option<String>> {
@@ -530,20 +526,18 @@ impl App {
                 DeckTarget::NewTopic { name, module } => {
                     let module = match module {
                         None => None,
-                        Some(module) => Some(match modules_here.get(&module.to_lowercase()) {
-                            Some(id) => self.store.uid_of("modules", id.0)?.ok_or_else(|| ApiError::new("one of the modules is gone, pick again"))?,
-                            None => module_uids
-                                .entry(module.to_lowercase())
-                                .or_insert_with(|| {
-                                    let uid = format!("anki-module-{}", module.to_lowercase());
-                                    snapshot.modules.push(portable::Module { uid: uid.clone(), changed: stamp(0), name: module.clone() });
-                                    uid
-                                })
-                                .clone(),
-                        }),
+                        Some(module) => Some(places.place(self, &module, snapshot)?),
                     };
+                    let here = match &module {
+                        Some(module) if self.store.local_id("topics", &format!("anki-deck-{deck}"))?.is_none() => places.existing_topic(self, module, &name)?,
+                        _ => None,
+                    };
+                    if let Some(uid) = here {
+                        topic_uids.insert(deck.to_string(), Some(uid.clone()));
+                        return Ok(Some(uid));
+                    }
                     let uid = format!("anki-deck-{deck}");
-                    snapshot.topics.push(portable::Topic { uid: uid.clone(), changed: stamp(0), name: name.trim().to_string(), module, tags: vec![], schedule: None });
+                    snapshot.topics.push(portable::Topic { uid: uid.clone(), changed: stamp(0), name: name.trim().to_string(), module, tags: vec![], schedule: None, related: vec![] });
                     Some(uid)
                 }
             };

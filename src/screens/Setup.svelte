@@ -73,6 +73,9 @@
     chosen = chosen.includes(id) ? chosen.filter((topic) => topic !== id) : [...chosen, id];
   }
 
+  // R218: a quiz can add the chosen topics' related topics (T-REL-05), one hop only.
+  let withRelated = $state(false);
+
   async function start() {
     error = "";
     if (chosen.length === 0) {
@@ -85,8 +88,14 @@
     }
     starting = true;
     try {
+      let picked = included.map((topic) => topic.id);
+      if (withRelated) {
+        const related = (await Promise.all(picked.map((id) => api.relatedTopics(id).catch(() => [])))).flat();
+        const usable = new Set(topics.filter((topic) => countOf(topic) > 0).map((topic) => topic.id));
+        picked = [...new Set([...picked, ...related.filter((id) => usable.has(id))])];
+      }
       const view = await api.startQuiz({
-        topics: included.map((topic) => topic.id),
+        topics: picked,
         count: setNumber ? Number(count) : null,
         even,
         shuffle_questions: shuffleQuestions,
@@ -133,6 +142,7 @@
           <span class="shrink-0 text-[13px] tabular-nums text-muted">{countLabel(topic)}</span>
         {/snippet}
         <TopicPicker {topics} {modules} bind:chosen label="Topics to quiz" disabled={(topic) => countOf(topic) === 0} extra={rowEnd} />
+        <label class="mt-3 flex items-center gap-2 text-[15px] font-bold"><input type="checkbox" class="checkbox checkbox-sm" bind:checked={withRelated} />Include related topics</label>
       </section>
 
       <section>

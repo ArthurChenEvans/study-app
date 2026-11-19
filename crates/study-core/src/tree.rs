@@ -113,8 +113,18 @@ pub struct Tree {
 ///
 /// Tests: T-TREE-06, T-TREE-07, T-DEF-07.
 pub fn same_name(first: &str, second: &str) -> bool {
-    let _ = (first, second);
-    todo!("R217: compare names ignoring case and outer spaces")
+    first.trim().to_lowercase() == second.trim().to_lowercase()
+}
+
+fn kind_word(kind: NodeKind) -> &'static str {
+    match kind {
+        NodeKind::Module => "module",
+        NodeKind::Topic => "topic",
+    }
+}
+
+fn ordered(first: NodeId, second: NodeId) -> (NodeId, NodeId) {
+    if first < second { (first, second) } else { (second, first) }
 }
 
 impl Tree {
@@ -126,14 +136,94 @@ impl Tree {
         self.nodes.get(&id)
     }
 
+    /// Every node, in id order.
+    pub fn nodes(&self) -> impl Iterator<Item = &Node> {
+        self.nodes.values()
+    }
+
+    /// Every related link once, smaller id first.
+    pub fn links(&self) -> impl Iterator<Item = (NodeId, NodeId)> + '_ {
+        self.related.iter().copied()
+    }
+
+    fn node(&self, id: NodeId) -> Result<&Node, TreeError> {
+        self.nodes.get(&id).ok_or(TreeError::NotFound(id))
+    }
+
+    fn fresh_id(&mut self) -> NodeId {
+        self.next_id = self.next_id.max(self.nodes.keys().next_back().map_or(0, |last| last + 1));
+        let id = self.next_id;
+        self.next_id += 1;
+        id
+    }
+
+    /// The checks shared by making, renaming and moving: a name, not reserved, a parent that
+    /// can hold it, and no namesake beside it. `moving` is left out of the namesake check.
+    fn check_place(&self, name: &str, kind: NodeKind, parent: Option<NodeId>, moving: Option<NodeId>) -> Result<String, TreeError> {
+        let name = name.trim();
+        if name.is_empty() {
+            return Err(TreeError::EmptyName);
+        }
+        if kind == NodeKind::Module && same_name(name, DEFAULT_MODULE_NAME) {
+            return Err(TreeError::ReservedName);
+        }
+        let parent_name = match parent {
+            Some(parent) => {
+                let holder = self.node(parent)?;
+                if holder.kind == NodeKind::Topic {
+                    return Err(TreeError::ParentIsTopic);
+                }
+                if holder.is_default && kind == NodeKind::Module {
+                    return Err(TreeError::ReservedModule);
+                }
+                holder.name.clone()
+            }
+            None if kind == NodeKind::Topic => return Err(TreeError::ParentIsTopic),
+            None => "The top level".to_string(),
+        };
+        let clash = self.nodes.values().find(|other| other.parent == parent && other.kind == kind && Some(other.id) != moving && same_name(&other.name, name));
+        if let Some(existing) = clash {
+            return Err(TreeError::DuplicateName { parent: parent_name, kind: kind_word(kind), name: existing.name.clone() });
+        }
+        Ok(name.to_string())
+    }
+
+    /// Levels of modules below `id` (0 for a module with no submodules, or a topic).
+    fn height(&self, id: NodeId) -> usize {
+        self.nodes.values().filter(|child| child.parent == Some(id) && child.kind == NodeKind::Module).map(|child| 1 + self.height(child.id)).max().unwrap_or(0)
+    }
+
     /// Makes a module, at the root when `parent` is `None`.
     ///
     /// Refuses an empty name, a duplicate under the same parent, the reserved name Default,
     /// a topic or Default as the parent, and anything deeper than [`MAX_MODULE_DEPTH`].
     /// Tests: T-TREE-01, T-TREE-05, T-TREE-08 to T-TREE-11, T-DEF-06, T-DEF-07.
     pub fn add_module(&mut self, name: &str, parent: Option<NodeId>) -> Result<NodeId, TreeError> {
-        let _ = (name, parent, &mut self.next_id);
-        todo!("R217: add a module")
+        let id = self.fresh_id();
+        self.insert_module(id, name, parent)?;
+        Ok(id)
+    }
+
+    /// [`Tree::add_module`] with an id chosen by the caller (the store's row id).
+    pub fn insert_module(&mut self, id: NodeId, name: &str, parent: Option<NodeId>) -> Result<(), TreeError> {
+        let name = self.check_place(name, NodeKind::Module, parent, None)?;
+        let depth = parent.map_or(0, |parent| self.depth(parent)) + 1;
+        if depth > MAX_MODULE_DEPTH {
+            return Err(TreeError::TooDeep { limit: MAX_MODULE_DEPTH });
+        }
+        self.nodes.insert(id, Node { id, kind: NodeKind::Module, name, parent, is_default: false });
+        Ok(())
+    }
+
+    /// Puts a node in as it is, without checks: for loading saved data, which may predate a
+    /// rule (a namesake made before nesting, say). The rules apply to every later change.
+    pub fn force(&mut self, node: Node) {
+        self.nodes.insert(node.id, node);
+    }
+
+    /// Adds the Default module with a given id (the store's row). Test: T-DEF-03.
+    pub fn insert_default(&mut self, id: NodeId) {
+        self.nodes.insert(id, Node { id, kind: NodeKind::Module, name: DEFAULT_MODULE_NAME.into(), parent: None, is_default: true });
     }
 
     /// Makes a topic. `None` puts it in Default, creating Default if needed. The warning
@@ -141,30 +231,82 @@ impl Tree {
     ///
     /// Tests: T-TREE-02, T-TREE-05 to T-TREE-08, T-DEF-01, T-DEF-02.
     pub fn add_topic(&mut self, name: &str, module: Option<NodeId>) -> Result<NodeId, TreeError> {
-        let _ = (name, module);
-        todo!("R217: add a topic")
+        if name.trim().is_empty() {
+            return Err(TreeError::EmptyName);
+        }
+        let module = match module {
+            Some(module) => module,
+            None => match self.default_module() {
+                Some(default) => default,
+                None => {
+                    let id = self.fresh_id();
+                    self.insert_default(id);
+                    id
+                }
+            },
+        };
+        let id = self.fresh_id();
+        self.insert_topic(id, name, module)?;
+        Ok(id)
+    }
+
+    /// [`Tree::add_topic`] with an id chosen by the caller and a module that must exist.
+    pub fn insert_topic(&mut self, id: NodeId, name: &str, module: NodeId) -> Result<(), TreeError> {
+        let name = self.check_place(name, NodeKind::Topic, Some(module), None)?;
+        self.nodes.insert(id, Node { id, kind: NodeKind::Topic, name, parent: Some(module), is_default: false });
+        Ok(())
+    }
+
+    /// Adds a related link while loading, without checks beyond both ends existing.
+    pub fn insert_link(&mut self, first: NodeId, second: NodeId) {
+        if first != second && self.nodes.contains_key(&first) && self.nodes.contains_key(&second) {
+            self.related.insert(ordered(first, second));
+        }
     }
 
     /// The Default module, if it has been created. Tests: T-DEF-02, T-DEF-03.
     pub fn default_module(&self) -> Option<NodeId> {
-        todo!("R217: find Default")
+        self.nodes.values().find(|node| node.is_default).map(|node| node.id)
     }
 
-    /// Root modules in name order, Default among them. Test: T-DEF-03.
+    fn sorted(&self, mut ids: Vec<NodeId>) -> Vec<NodeId> {
+        ids.sort_by_key(|id| {
+            let node = &self.nodes[id];
+            (node.kind == NodeKind::Topic, node.is_default, node.name.to_lowercase(), node.id)
+        });
+        ids
+    }
+
+    /// Root modules in name order, Default last. Test: T-DEF-03.
     pub fn roots(&self) -> Vec<NodeId> {
-        todo!("R217: list root modules")
+        self.sorted(self.nodes.values().filter(|node| node.parent.is_none()).map(|node| node.id).collect())
     }
 
     /// Direct children in name order, modules first.
     pub fn children(&self, id: NodeId) -> Vec<NodeId> {
-        let _ = id;
-        todo!("R217: list children")
+        self.sorted(self.nodes.values().filter(|node| node.parent == Some(id)).map(|node| node.id).collect())
     }
 
     /// Renames a node, with the same checks as creating it. Test: T-DEF-04.
     pub fn rename(&mut self, id: NodeId, name: &str) -> Result<(), TreeError> {
-        let _ = (id, name);
-        todo!("R217: rename")
+        let node = self.node(id)?.clone();
+        if node.is_default {
+            return Err(TreeError::ReservedModule);
+        }
+        let name = self.check_place(name, node.kind, node.parent, Some(id))?;
+        self.nodes.get_mut(&id).unwrap().name = name;
+        Ok(())
+    }
+
+    fn is_under(&self, id: NodeId, ancestor: NodeId) -> bool {
+        let mut current = self.nodes.get(&id).and_then(|node| node.parent);
+        while let Some(parent) = current {
+            if parent == ancestor {
+                return true;
+            }
+            current = self.nodes.get(&parent).and_then(|node| node.parent);
+        }
+        false
     }
 
     /// Moves a node under `parent` (`None` makes a module a root). All or nothing: on any
@@ -172,15 +314,72 @@ impl Tree {
     ///
     /// Spec: "Moving" scenarios. Tests: T-DEF-05, T-DEF-08, T-MOVE-02 to T-MOVE-06.
     pub fn move_node(&mut self, id: NodeId, parent: Option<NodeId>) -> Result<(), TreeError> {
-        let _ = (id, parent);
-        todo!("R217: move a node")
+        let node = self.node(id)?.clone();
+        if node.is_default {
+            return Err(TreeError::ReservedModule);
+        }
+        if node.parent == parent {
+            return Ok(());
+        }
+        if let Some(target) = parent {
+            if target == id || self.is_under(target, id) {
+                return Err(TreeError::Cycle);
+            }
+        }
+        self.check_place(&node.name, node.kind, parent, Some(id))?;
+        if node.kind == NodeKind::Module {
+            let depth = parent.map_or(0, |parent| self.depth(parent)) + 1 + self.height(id);
+            if depth > MAX_MODULE_DEPTH {
+                return Err(TreeError::TooDeep { limit: MAX_MODULE_DEPTH });
+            }
+        }
+        self.nodes.get_mut(&id).unwrap().parent = parent;
+        Ok(())
+    }
+
+    fn subtree(&self, id: NodeId) -> Vec<NodeId> {
+        let mut found = Vec::new();
+        for child in self.children(id) {
+            found.push(child);
+            found.extend(self.subtree(child));
+        }
+        found
     }
 
     /// What deleting `id` would remove. Spec: "Deleting a module names everything it removes".
     /// Test: T-DEL-01.
     pub fn delete_preview(&self, id: NodeId) -> Result<DeletePreview, TreeError> {
-        let _ = id;
-        todo!("R217: preview a delete")
+        self.node(id)?;
+        let mut preview = DeletePreview::default();
+        for below in self.subtree(id) {
+            match self.nodes[&below].kind {
+                NodeKind::Module => preview.modules.push(below),
+                NodeKind::Topic => preview.topics.push(below),
+            }
+        }
+        Ok(preview)
+    }
+
+    /// Names that would clash if `id`'s children moved up into its parent. Test: T-DEL-04.
+    pub fn clashes_moving_up(&self, id: NodeId) -> Result<Vec<String>, TreeError> {
+        let node = self.node(id)?;
+        let mut names = Vec::new();
+        for child in self.children(id) {
+            let child = &self.nodes[&child];
+            let target = match (child.kind, node.parent) {
+                (_, Some(parent)) => Some(parent),
+                (NodeKind::Module, None) => None,
+                (NodeKind::Topic, None) => match self.default_module() {
+                    Some(default) if default != id => Some(default),
+                    _ => continue,
+                },
+            };
+            let clash = self.nodes.values().any(|other| other.id != id && other.parent == target && other.kind == child.kind && same_name(&other.name, &child.name));
+            if clash {
+                names.push(child.name.clone());
+            }
+        }
+        Ok(names)
     }
 
     /// Deletes a node and returns every id removed (for deletion markers, R111). Related
@@ -188,20 +387,61 @@ impl Tree {
     ///
     /// Tests: T-DEL-02 to T-DEL-06, T-REL-07.
     pub fn delete(&mut self, id: NodeId, mode: DeleteMode) -> Result<Vec<NodeId>, TreeError> {
-        let _ = (id, mode);
-        todo!("R217: delete a node")
+        let node = self.node(id)?.clone();
+        let removed = match (mode, node.kind) {
+            (DeleteMode::MoveContentsUp, NodeKind::Module) => {
+                let names = self.clashes_moving_up(id)?;
+                if !names.is_empty() {
+                    return Err(TreeError::Clashes { names });
+                }
+                for child in self.children(id) {
+                    let target = match (self.nodes[&child].kind, node.parent) {
+                        (_, Some(parent)) => Some(parent),
+                        (NodeKind::Module, None) => None,
+                        (NodeKind::Topic, None) => Some(match self.default_module().filter(|default| *default != id) {
+                            Some(default) => default,
+                            None => {
+                                let fresh = self.fresh_id();
+                                self.insert_default(fresh);
+                                fresh
+                            }
+                        }),
+                    };
+                    self.nodes.get_mut(&child).unwrap().parent = target;
+                }
+                vec![id]
+            }
+            _ => {
+                let mut all = vec![id];
+                all.extend(self.subtree(id));
+                all
+            }
+        };
+        for gone in &removed {
+            self.nodes.remove(gone);
+        }
+        self.related.retain(|(first, second)| !removed.contains(first) && !removed.contains(second));
+        Ok(removed)
     }
 
     /// The level a module sits at, a root being 1. For a topic, its module's level.
     pub fn depth(&self, id: NodeId) -> usize {
-        let _ = id;
-        todo!("R217: depth")
+        let Some(node) = self.nodes.get(&id) else { return 0 };
+        let own = usize::from(node.kind == NodeKind::Module);
+        own + node.parent.map_or(0, |parent| self.depth(parent))
     }
 
     /// Names from the root down to `id`. Test: T-PATH-01, T-PATH-03.
     pub fn path(&self, id: NodeId) -> Vec<String> {
-        let _ = id;
-        todo!("R217: path")
+        let mut names = Vec::new();
+        let mut current = Some(id);
+        while let Some(at) = current {
+            let Some(node) = self.nodes.get(&at) else { break };
+            names.push(node.name.clone());
+            current = node.parent;
+        }
+        names.reverse();
+        names
     }
 
     /// The path joined with [`PATH_SEPARATOR`]. Over 4 parts it keeps the first and the last
@@ -209,8 +449,7 @@ impl Tree {
     ///
     /// Spec: "Long paths are shortened in the middle". Tests: T-PATH-01 to T-PATH-03.
     pub fn breadcrumb(&self, id: NodeId) -> String {
-        let _ = id;
-        todo!("R217: breadcrumb")
+        shorten(&self.path(id))
     }
 
     /// Every topic under `id` at any depth, or `id` itself if it is a topic, minus anything
@@ -219,8 +458,14 @@ impl Tree {
     /// Spec: "Quizzing a module includes its submodules", "Excluding a submodule from a quiz",
     /// recall checklists and calendar dates covering a module. Tests: T-USE-01 to T-USE-04.
     pub fn topics_under(&self, id: NodeId, excluded: &[NodeId]) -> Vec<NodeId> {
-        let _ = (id, excluded);
-        todo!("R217: topics under a node")
+        let Some(node) = self.nodes.get(&id) else { return vec![] };
+        if excluded.contains(&id) {
+            return vec![];
+        }
+        if node.kind == NodeKind::Topic {
+            return vec![id];
+        }
+        self.children(id).into_iter().flat_map(|child| self.topics_under(child, excluded)).collect()
     }
 
     /// A count rolled up the tree: `own` holds each topic's count, the result is the total
@@ -228,30 +473,57 @@ impl Tree {
     ///
     /// Spec: "Dashboard rolls counts up the tree". Tests: T-USE-05, T-USE-06.
     pub fn rollup(&self, id: NodeId, own: &BTreeMap<NodeId, u32>) -> u32 {
-        let _ = (id, own);
-        todo!("R217: roll a count up")
+        self.topics_under(id, &[]).iter().map(|topic| own.get(topic).copied().unwrap_or(0)).sum()
     }
 
     /// Links two topics as related. Linking twice is a no-op. Never merges them.
     ///
     /// Spec: "Link related topics". Tests: T-REL-01 to T-REL-04, T-REL-08.
     pub fn link_related(&mut self, first: NodeId, second: NodeId) -> Result<(), TreeError> {
-        let _ = (first, second, &mut self.related);
-        todo!("R218: link related topics")
+        if first == second {
+            return Err(TreeError::SelfLink);
+        }
+        if self.node(first)?.kind != NodeKind::Topic || self.node(second)?.kind != NodeKind::Topic {
+            return Err(TreeError::NotATopic);
+        }
+        self.related.insert(ordered(first, second));
+        Ok(())
+    }
+
+    /// Removes a link, if there is one.
+    pub fn unlink_related(&mut self, first: NodeId, second: NodeId) {
+        self.related.remove(&ordered(first, second));
     }
 
     /// Topics directly related to `id`, one hop only. Tests: T-REL-01, T-REL-06.
     pub fn related(&self, id: NodeId) -> Vec<NodeId> {
-        let _ = id;
-        todo!("R218: related topics")
+        self.related.iter().filter_map(|&(first, second)| if first == id { Some(second) } else if second == id { Some(first) } else { None }).collect()
     }
 
     /// The topics a quiz on `topics` covers, adding directly related topics when asked.
     ///
     /// Spec: "A quiz can include related topics". Tests: T-REL-05, T-REL-06.
     pub fn quiz_topics(&self, topics: &[NodeId], include_related: bool) -> Vec<NodeId> {
-        let _ = (topics, include_related);
-        todo!("R218: quiz topics with related")
+        let mut all: Vec<NodeId> = topics.to_vec();
+        if include_related {
+            for topic in topics {
+                all.extend(self.related(*topic));
+            }
+        }
+        let mut seen = BTreeSet::new();
+        all.retain(|id| seen.insert(*id));
+        all
+    }
+}
+
+/// Joins a path for showing, shortened in the middle past 4 parts. Test: T-PATH-02.
+pub fn shorten(path: &[String]) -> String {
+    if path.len() > 4 {
+        let mut parts = vec![path[0].clone(), "…".to_string()];
+        parts.extend(path[path.len() - 2..].iter().cloned());
+        parts.join(PATH_SEPARATOR)
+    } else {
+        path.join(PATH_SEPARATOR)
     }
 }
 
@@ -270,6 +542,15 @@ pub struct AnkiPlacement {
 }
 
 pub fn anki_placement(deck: &str) -> AnkiPlacement {
-    let _ = deck;
-    todo!("R217: place an Anki deck in the tree")
+    let mut parts: Vec<String> = deck.split("::").map(str::trim).filter(|part| !part.is_empty()).map(|part| if same_name(part, DEFAULT_MODULE_NAME) { format!("{DEFAULT_MODULE_NAME} (imported)") } else { part.to_string() }).collect();
+    if parts.is_empty() {
+        parts.push(deck.trim().to_string());
+    }
+    let topic = parts.pop().unwrap();
+    if parts.len() > MAX_MODULE_DEPTH {
+        let extra: Vec<String> = parts.drain(MAX_MODULE_DEPTH..).collect();
+        let topic = extra.into_iter().chain(std::iter::once(topic)).collect::<Vec<_>>().join(PATH_SEPARATOR);
+        return AnkiPlacement { modules: parts, topic, flattened: true };
+    }
+    AnkiPlacement { modules: parts, topic, flattened: false }
 }

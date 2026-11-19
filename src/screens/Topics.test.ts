@@ -10,11 +10,13 @@ vi.mock("../lib/api", async (original) => {
       topics: vi.fn(), modules: vi.fn(), cardsHome: vi.fn(), recallList: vi.fn(),
       createTopic: vi.fn(), createModule: vi.fn(), deleteTopic: vi.fn(), deleteModule: vi.fn(),
       renameModule: vi.fn(), renameTopic: vi.fn(), setTopicTags: vi.fn(), moveTopic: vi.fn(),
+      moduleTree: vi.fn(), createSubmodule: vi.fn(), moveModule: vi.fn(), moduleDeletePreview: vi.fn(), deleteModuleWith: vi.fn(),
+      linkRelated: vi.fn(), unlinkRelated: vi.fn(), sources: vi.fn(), querySearch: vi.fn(),
     },
   };
 });
 
-import { api, type CardsHome, type RecallRow, type TopicRow } from "../lib/api";
+import { api, type CardsHome, type ModuleRow, type RecallRow, type TopicRow } from "../lib/api";
 import { flushPendingDeletes, live } from "../lib/celebrations.svelte";
 import { closeContextMenu, contextMenu } from "../lib/contextMenu.svelte";
 import Topics from "./Topics.svelte";
@@ -23,11 +25,13 @@ const mocked = vi.mocked(api);
 const home = (per: [number, number][]): CardsHome => ({ due: { new: 0, learning: 0, review: 0 }, total_cards: 0, minutes: 0, forecast: [], retention: null, target: 90, suggestions: 0, per_topic: per.map(([topic, total]) => ({ topic, name: "", module: null, due: { new: 0, learning: 0, review: 0 }, total, retention: null })) });
 const checklist = (name: string, module = false): RecallRow => ({ id: 1, subject_name: name, module, subject_exists: true, points: 4, step: null, next_step: "", position: null, due: 0, due_today: false, days_late: 0, last_score: null });
 
-function given(topics: TopicRow[], modules = [{ id: 1, name: "Networks" }], cards: [number, number][] = [], checklists: RecallRow[] = []) {
+function given(topics: TopicRow[], modules: ModuleRow[] = [{ id: 1, name: "Networks" }], cards: [number, number][] = [], checklists: RecallRow[] = []) {
   mocked.topics.mockResolvedValue(topics);
   mocked.modules.mockResolvedValue(modules);
   mocked.cardsHome.mockResolvedValue(home(cards));
   mocked.recallList.mockResolvedValue(checklists);
+  mocked.moduleTree.mockResolvedValue({ nodes: [] });
+  mocked.sources.mockResolvedValue([]);
 }
 
 // R189: Topics & Modules is where topics and modules are made, renamed, moved and deleted.
@@ -89,14 +93,60 @@ describe("Topics & Modules", () => {
 
   it("makes a module", async () => {
     given([]);
-    mocked.createModule.mockResolvedValue(5);
+    mocked.createSubmodule.mockResolvedValue(5);
     const u = userEvent.setup();
     render(Topics);
     await u.click(await screen.findByRole("button", { name: "New module" }));
     const dialog = screen.getByRole("dialog", { name: "New module" });
     await u.type(within(dialog).getByLabelText("Name"), "Security");
     await u.click(within(dialog).getByRole("button", { name: "Create module" }));
-    expect(mocked.createModule).toHaveBeenCalledWith("Security");
+    expect(mocked.createSubmodule).toHaveBeenCalledWith("Security", null);
+  });
+
+  // nested-modules.feature (R217): "Create a submodule"
+  it("makes a submodule from a module's actions", async () => {
+    given([]);
+    mocked.createSubmodule.mockResolvedValue(5);
+    const u = userEvent.setup();
+    render(Topics);
+    await u.click(await screen.findByRole("button", { name: "Networks module actions" }));
+    await u.click(screen.getByRole("menuitem", { name: "New submodule…" }));
+    const dialog = screen.getByRole("dialog", { name: "New module" });
+    expect(within(dialog).getByLabelText("Inside")).toHaveValue("1");
+    await u.type(within(dialog).getByLabelText("Name"), "DNS");
+    await u.click(within(dialog).getByRole("button", { name: "Create module" }));
+    expect(mocked.createSubmodule).toHaveBeenCalledWith("DNS", 1);
+  });
+
+  // nested-modules.feature (R217): "Creating a topic with no module asks first", T-DEF-09 to T-DEF-11
+  it("asks before putting a topic with no module in Default", async () => {
+    given([]);
+    mocked.createTopic.mockResolvedValue(9);
+    const u = userEvent.setup();
+    render(Topics);
+    await u.click(await screen.findByRole("button", { name: "New topic" }));
+    const form = screen.getByRole("dialog", { name: "New topic" });
+    await u.type(within(form).getByLabelText("Name"), "Misc");
+    await u.click(within(form).getByRole("button", { name: "Create topic" }));
+    const warning = screen.getByRole("dialog", { name: "Put this topic in Default?" });
+    expect(warning).toHaveTextContent("Creating this topic without selecting a module will put this under Default. Are you sure you want this?");
+    await u.click(within(warning).getByRole("button", { name: "No" }));
+    expect(mocked.createTopic).not.toHaveBeenCalled();
+    expect(within(form).getByLabelText("Name")).toHaveValue("Misc");
+    await u.click(within(form).getByRole("button", { name: "Create topic" }));
+    await u.click(within(screen.getByRole("dialog", { name: "Put this topic in Default?" })).getByRole("button", { name: "Yes" }));
+    expect(mocked.createTopic).toHaveBeenCalledWith("Misc", null);
+  });
+
+  // nested-modules.feature (R217): nested modules show under their parent, with full paths
+  it("shows submodules under their parent and full paths in the module picker", async () => {
+    given([{ id: 3, name: "CPU", module: 2, tags: [], question_count: 0, short_count: 0 }], [{ id: 1, name: "Computer Architecture" }, { id: 2, name: "N2T", parent: 1 }]);
+    const u = userEvent.setup();
+    render(Topics);
+    await u.click(await screen.findByRole("button", { name: "CPU" }));
+    const picked = screen.getByRole("region", { name: "CPU" });
+    expect(within(picked).getByText("Topic in Computer Architecture › N2T")).toBeInTheDocument();
+    expect(within(picked).getByRole("option", { name: "Computer Architecture › N2T" })).toBeInTheDocument();
   });
 
   // R215: right-click (or long-press) a topic or module for the same actions as everywhere else
@@ -121,7 +171,7 @@ describe("Topics & Modules", () => {
     closeContextMenu(false);
     await fireEvent.contextMenu(screen.getByRole("heading", { name: "Networks" }), { clientX: 40, clientY: 40 });
     expect(contextMenu.label).toBe("Networks");
-    expect(contextMenu.items.map((item) => item.label)).toEqual(["New topic in it…", "Rename module…", "Delete module…"]);
+    expect(contextMenu.items.map((item) => item.label)).toEqual(["New topic in it…", "New submodule…", "Rename module…", "Move module…", "Delete module…"]);
     pick("New topic in it…");
     const dialog = await screen.findByRole("dialog", { name: "New topic" });
     expect(within(dialog).getByLabelText(/Module/)).toHaveValue("1");
@@ -196,21 +246,24 @@ describe("Topics & Modules", () => {
     expect(mocked.deleteTopic).not.toHaveBeenCalled();
   });
 
-  // R43
+  // R43 with R217: deleting a module names what goes and can keep its contents, moving them up
   it("deletes a module after asking, keeping its topics", async () => {
     given([{ id: 1, name: "CPU", module: 1, tags: [], question_count: 3, short_count: 0 }]);
+    mocked.moduleDeletePreview.mockResolvedValue({ modules: [], topics: ["CPU"], questions: 3, cards: 0, checklists: 0, clashes: [] });
     const u = userEvent.setup();
     render(Topics);
     await u.click(await screen.findByRole("button", { name: "Networks module actions" }));
     await u.click(screen.getByRole("menuitem", { name: "Delete module…" }));
-    const dialog = screen.getByRole("dialog");
-    expect(dialog).toHaveTextContent('moved to "No module"');
-    given([{ id: 1, name: "CPU", module: null, tags: [], question_count: 3, short_count: 0 }], []);
-    await u.click(within(dialog).getByRole("button", { name: "Delete module" }));
+    const dialog = await screen.findByRole("dialog", { name: "Delete Networks?" });
+    expect(dialog).toHaveTextContent("3 questions");
+    expect(within(dialog).getByRole("radio", { name: /Move contents up/ })).toBeChecked();
+    await u.type(within(dialog).getByLabelText("Type Networks to confirm"), "Networks");
+    given([{ id: 1, name: "CPU", module: 7, tags: [], question_count: 3, short_count: 0 }], [{ id: 7, name: "Default", is_default: true }]);
+    await u.click(within(dialog).getByRole("button", { name: "Delete Networks" }));
     expect(live.toasts.at(-1)).toMatchObject({ text: "Module deleted", action: { label: "Undo" } });
     await flushPendingDeletes();
-    expect(mocked.deleteModule).toHaveBeenCalledWith(1);
-    expect(await screen.findByRole("heading", { name: "No module" })).toBeInTheDocument();
+    expect(mocked.deleteModuleWith).toHaveBeenCalledWith(1, "MoveContentsUp");
+    expect(await screen.findByRole("heading", { name: "Default" })).toBeInTheDocument();
   });
 
   it("filters the tree", async () => {

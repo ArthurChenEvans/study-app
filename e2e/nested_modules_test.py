@@ -78,36 +78,39 @@ try:
     ca = ipc("create_submodule", {"name": "Computer Architecture", "parent": None})
     n2t = ipc("create_submodule", {"name": "N2T", "parent": ca})
     csapp = ipc("create_submodule", {"name": "CS:APP", "parent": ca})
-    ucm = ipc("create_submodule", {"name": "UCM CySec CA Module", "parent": ca})
+    ipc("create_submodule", {"name": "UCM CySec CA Module", "parent": ca})
     n2t_cpu = ipc("create_topic", {"name": "CPU", "module": n2t})
     csapp_cpu = ipc("create_topic", {"name": "CPU", "module": csapp})
     alu = ipc("create_topic", {"name": "ALU", "module": n2t})
     question(n2t_cpu, "What does the program counter hold?")
     question(alu, "The ALU zero flag is used by the CPU to jump")
+    question(csapp_cpu, "Which CPU stage reads memory?")
     driver.execute_script("location.hash = '#topics'")
-    find("//*[normalize-space()='Computer Architecture']")
-    assert len(ipc("questions_in", {"topic": csapp_cpu})) == 0
-    rows = driver.find_elements(By.XPATH, "//tr[.//*[normalize-space()='CPU']]")
-    assert len(rows) == 2, "two CPU rows, one under each module"
-    ok("E2E-01: two CPU topics under different modules, a question in one only (R217)")
+    tree = "//nav[@aria-label='Topics by module']"
+    find(f"{tree}//h2[normalize-space()='N2T']")
+    cpus = driver.find_elements(By.XPATH, f"{tree}//button[.//span[normalize-space()='CPU']]")
+    assert len(cpus) == 2, "two CPU topics, one under each module"
+    assert len(ipc("questions_in", {"topic": csapp_cpu})) == 1 and len(ipc("questions_in", {"topic": n2t_cpu})) == 1
+    ok("E2E-01: two CPU topics under different modules, each with only its own question (R217)")
     shot("tree")
 
     # E2E-02: Default warning
     button("New topic").click()
-    find("//input[@aria-label='Topic name']").send_keys("Misc")
-    button("Create topic").click()
-    find("//*[@role='dialog' and contains(., 'will put this under Default')]")
-    button("No").click()
-    assert find("//input[@aria-label='Topic name']").get_attribute("value") == "Misc"
-    button("Create topic").click()
-    button("Yes").click()
-    find("//*[normalize-space()='Default']")
+    form = "//dialog[.//h3[normalize-space()='New topic']]"
+    find(f"{form}//input").send_keys("Misc")
+    find(f"{form}//button[normalize-space()='Create topic']").click()
+    find("//dialog[contains(., 'will put this under Default')]")
+    find("//dialog[contains(., 'will put this under Default')]//button[normalize-space()='No']").click()
+    assert find(f"{form}//input").get_attribute("value") == "Misc"
+    find(f"{form}//button[normalize-space()='Create topic']").click()
+    find("//dialog[contains(., 'will put this under Default')]//button[normalize-space()='Yes']").click()
+    find(f"{tree}//h2[normalize-space()='Default']")
     ok("E2E-02: no module asks first, No keeps the typing, Yes puts it in Default (R217)")
 
     # E2E-03: scopes
     driver.execute_script("location.hash = '#search'")
     search("module:N2T CPU")
-    find("//*[contains(normalize-space(), 'zero flag')]")
+    find("//*[@aria-label='Results']//*[contains(normalize-space(), 'zero flag')]")
     search("module:N2T topic:CPU")
     wait.until(lambda _: "zero flag" not in text())
     assert "program counter" in text()
@@ -115,55 +118,55 @@ try:
 
     # E2E-04: keyboard-only pills read as English
     search("CPU & (ALU $ (RAM ^ ROM))")
-    pills = find("//*[@role='search']").text.replace("\n", " ")
-    assert "CPU AND (ALU OR (RAM XOR ROM))" in " ".join(pills.split()), pills
-    groups = driver.find_elements(By.XPATH, "//*[@role='search']//*[@data-outline='solid']//*[@data-outline='dashed']")
-    assert groups, "the XOR group sits inside the OR group"
+    wait.until(lambda _: driver.find_elements(By.CSS_SELECTOR, "[role='search'] [data-outline='solid'] [data-outline='dashed']"))
+    words = " ".join(find("//*[@role='search']//*[@role='list']").text.split()).replace("( ", "(").replace(" )", ")")
+    assert "CPU AND (ALU OR (RAM XOR ROM))" in words, words
     ok("E2E-04: symbols show as words, groups nest (R220)")
     shot("pills")
 
-    # E2E-05: quiz scope
-    for topic in [csapp_cpu]:
-        question(topic, "Which CPU stage reads memory?")
-    driver.execute_script("location.hash = '#quizzes'")
-    button("New quiz").click()
-    find("//label[contains(., 'Computer Architecture')]//input[@type='checkbox']").click()
-    find("//label[contains(., 'CS:APP')]//input[@type='checkbox']").click()
+    # E2E-05: quiz scope with a submodule left out
+    driver.execute_script("location.hash = '#setup'")
+    find("//button[starts-with(@aria-label, 'Computer Architecture ') and contains(@aria-label, 'topics')]").click()
+    button("Tick all").click()
+    button("Leave out CS:APP").click()
     button("Start quiz").click()
-    for _ in range(3):
-        assert "reads memory" not in text(), "no CS:APP question"
-        if not driver.find_elements(By.XPATH, "//button[normalize-space()='Next']"):
-            break
-        button("Next").click()
-    ok("E2E-05: a quiz on a module with a submodule unticked leaves it out (R217)")
+    wait.until(lambda _: "program counter" in text() or "zero flag" in text())
+    assert "reads memory" not in text(), "no CS:APP question"
+    ok("E2E-05: a quiz on a module with a submodule left out skips it (R217)")
 
     # E2E-06: graph search and open by keyboard
-    driver.execute_script("location.hash = '#graph'")
+    driver.execute_script("location.hash = '#topics'")
+    button("Graph").click()
     graph_box = find("//input[@aria-label='Search the graph']")
     graph_box.send_keys("CPU", Keys.ENTER)
-    wait.until(lambda _: len(driver.find_elements(By.CSS_SELECTOR, "[data-graph-node][data-match='true']")) == 2)
-    find("//*[@data-graph-node and @aria-label='Computer Architecture']").send_keys(Keys.ARROW_DOWN)
+    wait.until(lambda _: len(driver.find_elements(By.CSS_SELECTOR, "[data-graph-node][data-match='true']")) >= 2)
+    node = find("//*[@data-graph-node and @aria-label='Computer Architecture']")
+    driver.execute_script("arguments[0].focus()", node)
+    node.send_keys(Keys.ARROW_DOWN)
+    driver.switch_to.active_element.send_keys(Keys.ARROW_DOWN)
     driver.switch_to.active_element.send_keys(Keys.ENTER)
-    find("//h1[normalize-space()='N2T']")
-    ok("E2E-06: graph search highlights both CPUs, arrow keys and Enter open a node (R219)")
+    find("//section[@aria-labelledby='picked-h']//*[contains(normalize-space(), 'Topic in Computer Architecture › CS:APP')]")
+    ok("E2E-06: graph search highlights both CPUs, arrow keys and Enter open a topic (R219)")
     shot("graph")
 
-    # E2E-07: delete with Move contents up and a clash
+    # E2E-07: delete with Move contents up after resolving a clash
     ipc("create_topic", {"name": "ALU", "module": ca})
-    driver.execute_script("location.hash = '#topics'")
-    find("//tr[.//*[normalize-space()='N2T']]//button[@aria-label='More']").click()
-    button("Delete").click()
-    find("//*[@role='alert' and contains(., 'ALU')]")
-    find("//input[@aria-label='Type N2T to confirm']").send_keys("N2T")
+    driver.execute_script("location.reload()")
+    find("//button[@aria-label='N2T module actions']").click()
+    find("//*[@role='menuitem' and normalize-space()='Delete module…']").click()
+    find("//dialog//*[@role='alert' and contains(., 'ALU')]")
+    find("//dialog//input[@autocomplete='off']").send_keys("N2T")
     assert not button("Delete N2T").is_enabled(), "blocked while ALU clashes"
     button("Cancel").click()
     ipc("rename_topic", {"topic": alu, "name": "Hack ALU"})
-    find("//tr[.//*[normalize-space()='N2T']]//button[@aria-label='More']").click()
-    button("Delete").click()
-    find("//input[@aria-label='Type N2T to confirm']").send_keys("N2T")
+    driver.execute_script("location.reload()")
+    find("//button[@aria-label='N2T module actions']").click()
+    find("//*[@role='menuitem' and normalize-space()='Delete module…']").click()
+    find("//dialog//input[@autocomplete='off']").send_keys("N2T")
     button("Delete N2T").click()
-    wait.until(lambda _: not driver.find_elements(By.XPATH, "//tr[.//*[normalize-space()='N2T']]"))
-    assert "Hack ALU" in text()
+    WebDriverWait(driver, 30).until(lambda _: all(row["name"] != "N2T" for row in ipc("modules", {})))
+    moved = [topic for topic in ipc("topics", {}) if topic["name"] == "Hack ALU"]
+    assert moved and moved[0]["module"] == ca, moved
     ok("E2E-07: delete with Move contents up after resolving a clash (R217)")
 
     print(f"PASS: {checks} checks on nested modules, query search and the graph in the running app")

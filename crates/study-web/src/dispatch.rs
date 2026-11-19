@@ -47,6 +47,18 @@ pub fn dispatch_at(app: &mut App, command: &str, args: &Value, today: i64, clock
         "topics" => json(app.topics()),
         "create_topic" => json(app.create_topic(&arg::<String>(a, "name")?, arg(a, "module")?)),
         "move_topic" => json(app.move_topic(arg(a, "topic")?, arg(a, "module")?)),
+        // R217 to R220
+        "create_submodule" => json(app.create_submodule(&arg::<String>(a, "name")?, arg(a, "parent")?)),
+        "move_module" => json(app.move_module(arg(a, "module")?, arg(a, "parent")?)),
+        "module_delete_preview" => json(app.module_delete_preview(arg(a, "module")?)),
+        "delete_module_with" => json(app.delete_module_with(arg(a, "module")?, arg(a, "choice")?)),
+        "default_module" => json(app.default_module()),
+        "module_tree" => json(app.module_tree(today)),
+        "topics_under" => json(app.topics_under(arg(a, "module")?, &arg::<Vec<study_store::ModuleId>>(a, "excluded")?)),
+        "link_related" => json(app.link_related(arg(a, "first")?, arg(a, "second")?)),
+        "unlink_related" => json(app.unlink_related(arg(a, "first")?, arg(a, "second")?)),
+        "related_topics" => json(app.related_topics(arg(a, "topic")?)),
+        "query_search" => json(app.query_search(&arg::<String>(a, "input")?, today)),
         "set_topic_tags" => json(app.set_topic_tags(arg(a, "topic")?, arg(a, "tags")?)),
         "delete_topic" => json(app.delete_topic(arg(a, "topic")?)),
 

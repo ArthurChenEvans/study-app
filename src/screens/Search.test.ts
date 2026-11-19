@@ -27,7 +27,7 @@ describe("Search", () => {
   // search.feature: Search as you type
   it("searches as you type", async () => {
     const u = userEvent.setup();
-    render(Search, { onOpenTopic: vi.fn() });
+    render(Search, { onOpenTopic: vi.fn(), mode: "filters" });
     await u.type(await screen.findByRole("searchbox", { name: "Search" }), "shad");
     expect(lastQuery()).toEqual({ text: "shad", tab: "All", module: null, tag: null, sort: "Edited", descending: true });
     const results = await screen.findByRole("list", { name: "Questions" });
@@ -40,7 +40,7 @@ describe("Search", () => {
   // search.feature: Search across categories
   it("switches category tabs", async () => {
     const u = userEvent.setup();
-    render(Search, { onOpenTopic: vi.fn() });
+    render(Search, { onOpenTopic: vi.fn(), mode: "filters" });
     await u.click(await screen.findByRole("tab", { name: "Topics" }));
     expect(lastQuery().tab).toBe("Topics");
     expect(screen.getByRole("tab", { name: "Topics" })).toHaveAttribute("aria-selected", "true");
@@ -51,7 +51,7 @@ describe("Search", () => {
   // search.feature: Combine filters
   it("combines a module and a tag filter", async () => {
     const u = userEvent.setup();
-    render(Search, { onOpenTopic: vi.fn() });
+    render(Search, { onOpenTopic: vi.fn(), mode: "filters" });
     await u.selectOptions(await screen.findByLabelText("Module"), "Computer Architecture");
     await u.type(screen.getByLabelText("Tag"), "hardware");
     expect(lastQuery()).toMatchObject({ module: 1, tag: "hardware" });
@@ -60,7 +60,7 @@ describe("Search", () => {
   // search.feature: Sort results
   it("sorts by a column, then flips the direction", async () => {
     const u = userEvent.setup();
-    render(Search, { onOpenTopic: vi.fn() });
+    render(Search, { onOpenTopic: vi.fn(), mode: "filters" });
     await u.click(await screen.findByRole("radio", { name: "Topic" }));
     expect(lastQuery()).toMatchObject({ sort: "Topic", descending: false });
     await u.click(screen.getByRole("button", { name: /switch to descending/ }));
@@ -73,7 +73,7 @@ describe("Search", () => {
       { Question: { id: 10, text: "What does the TLB cache?", topic: 2, topic_name: "Memory", tags: [], edited: "2026-11-02 10:15:00", matched: null } },
       { Question: { id: 11, text: "What does a branch predictor guess?", topic: 3, topic_name: "CPU", tags: [], edited: "2026-11-02 10:15:00", matched: { Option: "Which cache line to evict" } } },
     ]);
-    render(Search, { onOpenTopic: vi.fn() });
+    render(Search, { onOpenTopic: vi.fn(), mode: "filters" });
     const box = await screen.findByRole("searchbox", { name: "Search" });
     await u.type(box, "cache");
     const second = await screen.findByRole("button", { name: "What does a branch predictor guess? Option: Which cache line to evict" });
@@ -88,7 +88,7 @@ describe("Search", () => {
 
   it("opens a question's topic", async () => {
     const onOpenTopic = vi.fn();
-    render(Search, { onOpenTopic });
+    render(Search, { onOpenTopic, mode: "filters" });
     await userEvent.click(await screen.findByRole("button", { name: "What is a shader core?" }));
     expect(onOpenTopic).toHaveBeenCalledWith(2);
   });
@@ -96,7 +96,7 @@ describe("Search", () => {
   it("says when nothing matches", async () => {
     const u = userEvent.setup();
     mocked.search.mockResolvedValue([]);
-    render(Search, { onOpenTopic: vi.fn() });
+    render(Search, { onOpenTopic: vi.fn(), mode: "filters" });
     await u.type(await screen.findByRole("searchbox"), "tensor core");
     expect(await screen.findByText('No matches for "tensor core"')).toBeInTheDocument();
   });
@@ -107,7 +107,7 @@ describe("Search", () => {
     localStorage.setItem("studyapp-recent-searches", JSON.stringify(["cache", "tlb"]));
     mocked.search.mockResolvedValue(Array.from({ length: 120 }, (_, index) => ({ Question: { id: index, text: `Question ${index}`, topic: 1, topic_name: "CPU", tags: [], edited: "2026-11-02 10:15:00" } })));
     const u = userEvent.setup();
-    render(Search, { onOpenTopic: vi.fn() });
+    render(Search, { onOpenTopic: vi.fn(), mode: "filters" });
     const recent = await screen.findByRole("region", { name: "Recent searches" });
     expect(await screen.findByText("Recently edited")).toBeInTheDocument();
     expect(within(await screen.findByRole("list", { name: "Questions" })).getAllByRole("listitem")).toHaveLength(10);

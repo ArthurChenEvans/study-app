@@ -14,7 +14,7 @@ import QuerySearch from "./QuerySearch.svelte";
 import { broken, pill, searched } from "./fixtures";
 
 const mocked = vi.mocked(api);
-const box = () => screen.getByRole("textbox", { name: "Search" });
+const box = () => screen.getByRole("searchbox", { name: "Search" });
 const found = searched([pill("CPU")], {
   results: { groups: { Topic: [10, 11], Question: [20] }, children: {} },
   paths: [[{ kind: "Topic", id: 10 }, "Computer Architecture › N2T › CPU"], [{ kind: "Topic", id: 11 }, "Computer Architecture › CS:APP › CPU"]],

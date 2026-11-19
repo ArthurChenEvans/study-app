@@ -4,7 +4,7 @@ import { invoke } from "./transport";
 
 export type Id = number;
 
-export interface ModuleRow { id: Id; name: string }
+export interface ModuleRow { id: Id; name: string; parent?: Id | null; is_default?: boolean }
 export interface TopicRow { id: Id; name: string; module: Id | null; tags: string[]; question_count: number; short_count: number }
 
 export interface OptionInput { text: string; correct: boolean }
@@ -260,9 +260,10 @@ export type ItemKind = "Module" | "Topic" | "Question" | "Flashcard" | "RecallPo
 export interface QueryResults { groups: Partial<Record<ItemKind, number[]>>; children: Record<string, number[]> }
 export interface QueryProblem { message: string; start: number; end: number }
 export interface UnknownScope { kind: ScopeKind; value: string; suggestion: string | null }
+export interface ResultItem { kind: ItemKind; id: number; title: string; path: string; topic: Id | null }
 export interface QuerySearch {
   parts: Part[]; error: QueryProblem | null; results: QueryResults; paths: [NodeRef, string][];
-  unknown: UnknownScope[]; scope_paths: [string, string[]][]; spoken: string;
+  unknown: UnknownScope[]; scope_paths: [string, string[]][]; spoken: string; items: ResultItem[];
 }
 
 export const api = {

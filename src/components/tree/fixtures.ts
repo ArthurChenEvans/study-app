@@ -7,7 +7,7 @@ export const op = (word: "AND" | "OR" | "XOR" | "NOT"): Part => ({ Op: word });
 export const group = (outline: "None" | "Solid" | "Dashed", parts: Part[], brackets: "None" | "Typed" | "Faint" = "None", negated = false): Part => ({ Group: { outline, brackets, negated, parts } });
 
 export function searched(parts: Part[], extra: Partial<QuerySearch> = {}): QuerySearch {
-  return { parts, error: null, results: { groups: {}, children: {} }, paths: [], unknown: [], scope_paths: [], spoken: "", ...extra };
+  return { parts, error: null, results: { groups: {}, children: {} }, paths: [], unknown: [], scope_paths: [], spoken: "", items: [], ...extra };
 }
 
 export function broken(message: string, start = 0, end = 1): QuerySearch {

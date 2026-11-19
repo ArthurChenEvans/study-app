@@ -210,12 +210,17 @@ impl App {
         &self,
         subject: Option<Subject>,
     ) -> ApiResult<Vec<(study_core::question::TopicId, String)>> {
+        // R217: a checklist about a module covers its submodules' topics too (T-USE-03).
+        let under = match subject {
+            Some(Subject::Module(module)) => self.topics_under(module, &[])?,
+            _ => vec![],
+        };
         Ok(self
             .store
             .topics()?
             .into_iter()
             .filter(|topic| match subject {
-                Some(Subject::Module(module)) => topic.module == Some(module),
+                Some(Subject::Module(_)) => under.contains(&topic.id),
                 Some(Subject::Topic(id)) => topic.id == id,
                 None => false,
             })

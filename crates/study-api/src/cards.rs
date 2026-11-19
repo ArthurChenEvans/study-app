@@ -256,7 +256,11 @@ impl App {
 
     /// Cards in the scope, not archived, with due days tightened for dates (R132).
     fn in_scope(&self, scope: Option<Subject>, today: i64) -> ApiResult<Vec<CardRow>> {
-        let topics = self.store.topics()?;
+        // R217: a module covers its submodules' topics too.
+        let under = match scope {
+            Some(Subject::Module(module)) => self.topics_under(module, &[])?,
+            _ => vec![],
+        };
         let now = self.now(today)?;
         Ok(self
             .cards_now(self.store.cards()?, &now)
@@ -266,9 +270,7 @@ impl App {
                     && match scope {
                         None => true,
                         Some(Subject::Topic(topic)) => card.topic == topic,
-                        Some(Subject::Module(module)) => topics
-                            .iter()
-                            .any(|t| t.id == card.topic && t.module == Some(module)),
+                        Some(Subject::Module(_)) => under.contains(&card.topic),
                     }
             })
             .collect())
@@ -1119,7 +1121,7 @@ mod tests {
         assert!(done.due > TODAY && !done.is_new);
         assert_eq!(done.back.as_deref(), Some("Back"), "not due today, so its answer shows");
         let waiting = find("Waiting");
-        assert!(waiting.is_new && waiting.module_name.is_none());
+        assert!(waiting.is_new && waiting.module_name.as_deref() == Some("Default"), "R217: no module means Default");
         assert_eq!(waiting.back, None, "due today, so its answer waits for the review");
         assert_eq!(waiting.kind, "Basic");
         let off = find("Paused");

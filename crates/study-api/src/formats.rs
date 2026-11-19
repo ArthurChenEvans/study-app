@@ -18,7 +18,7 @@ use study_store::portable::{self, Snapshot};
 use crate::anki::{DeckTarget, stable_uid};
 use crate::practice::Clock;
 use crate::transfer::ExportFormat;
-use crate::{ApiError, ApiResult, App, ModuleId, TopicId};
+use crate::{ApiError, ApiResult, App, TopicId};
 
 const NOT_READABLE: &str = "it isn't a kind of file Shudhana can import, so nothing was added. Try a .studyapp, an Anki .apkg or .colpkg, a .csv, .json, .md, or a Moodle .txt";
 const LETTERS: [&str; 5] = ["A", "B", "C", "D", "E"];
@@ -750,8 +750,7 @@ impl App {
             let (day, time) = (seconds.div_euclid(86_400), seconds.rem_euclid(86_400));
             format!("{} {:02}:{:02}:{:02}", crate::backup::date_label(day), time / 3600, time / 60 % 60, time % 60)
         };
-        let modules_here: HashMap<String, ModuleId> = self.modules()?.into_iter().map(|module| (module.name.to_lowercase(), module.id)).collect();
-        let mut module_uids: HashMap<String, String> = HashMap::new();
+        let mut places = crate::tree::ModulePlaces::read(self, stamp.clone(), "items-module")?;
         let mut snapshot = Snapshot::default();
         for topic in &items.topics {
             let key = topic_key(topic);
@@ -765,20 +764,10 @@ impl App {
                 DeckTarget::NewTopic { name, module } => {
                     let module = match module {
                         None => None,
-                        Some(module) => Some(match modules_here.get(&module.to_lowercase()) {
-                            Some(id) => self.store.uid_of("modules", id.0)?.ok_or_else(|| ApiError::new("one of the modules is gone, pick again"))?,
-                            None => module_uids
-                                .entry(module.to_lowercase())
-                                .or_insert_with(|| {
-                                    let uid = stable_uid(&format!("items-module:{}", module.to_lowercase()));
-                                    snapshot.modules.push(portable::Module { uid: uid.clone(), changed: stamp.clone(), name: module.clone() });
-                                    uid
-                                })
-                                .clone(),
-                        }),
+                        Some(module) => Some(places.place(self, &module, &mut snapshot)?),
                     };
                     let uid = stable_uid(&format!("items-topic:{key}"));
-                    snapshot.topics.push(portable::Topic { uid: uid.clone(), changed: stamp.clone(), name: name.trim().to_string(), module, tags: vec![], schedule: None });
+                    snapshot.topics.push(portable::Topic { uid: uid.clone(), changed: stamp.clone(), name: name.trim().to_string(), module, tags: vec![], schedule: None, related: vec![] });
                     (uid, name)
                 }
             };
