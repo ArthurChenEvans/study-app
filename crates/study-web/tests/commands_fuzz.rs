@@ -172,6 +172,9 @@ fn shapes(scratch: &str) -> BTreeMap<String, Vec<Value>> {
     put(&["set_topic_tags.tags"], &vec![json!(["a", "b"]), json!([])]);
     put(&["delete_module_with.choice"], &vec![json!("Everything"), json!("MoveContentsUp")]);
     put(&["topics_under.excluded"], &vec![json!([]), json!([1, 2])]);
+    put(&["cloud_set_images.allowed"], &flag);
+    put(&["unlink_related.first", "unlink_related.second", "create_submodule.parent"], &vec![json!(1), json!(2), json!(0), json!(-1)]);
+    put(&["create_submodule.name"], &vec![json!("Memory"), json!(""), json!("CS:APP")]);
     put(&["query_search.input"], &vec![json!("CPU $ ALU"), json!("module:\"A B\" !(x ^ y)"), json!("(((")]);
     put(&["archive_card.archived", "sync_now.auto", "sync_settle.other"], &flag);
     put(&["create_module.name", "rename_module.name", "rename_topic.name", "update_project.name", "update_project.kind", "update_struggle.what", "update_struggle.why", "rename_issue.name", "update_drill.task", "update_drill.hints", "create_topic.name", "create_project.name", "create_project.kind", "answer_text.typed", "try_short_answer.typed", "finish_check.dump", "rate_drill.note", "known_drill.issue", "dismiss_suggestion.key", "sync_rename.name", "restore_preview.name", "restore_backup.name", "import_preview.name"], &text);
@@ -261,8 +264,9 @@ fn no_command_panics_when_the_clock_is_wrong() {
 
 fn fuzz(odd_clock: bool, default_seed: u64) {
     let iterations: usize = std::env::var("FUZZ_ITERS").ok().and_then(|n| n.parse().ok()).unwrap_or(12_000);
-    // fit_scheduler trains a model, which takes seconds by design.
-    let skip: Vec<String> = std::env::var("FUZZ_SKIP").unwrap_or_else(|_| "fit_scheduler".into()).split(',').map(String::from).collect();
+    // fit_scheduler trains a model, which takes seconds by design. fetch_page and fetch_record
+    // go out to the internet, so a run would depend on the network and could hit real sites.
+    let skip: Vec<String> = std::env::var("FUZZ_SKIP").unwrap_or_else(|_| "fit_scheduler,fetch_page,fetch_record".into()).split(',').map(String::from).collect();
     let seed: u64 = std::env::var("FUZZ_SEED").ok().and_then(|n| n.parse().ok()).unwrap_or(default_seed);
     let commands = commands();
     let names: Vec<&String> = commands.keys().filter(|name| !skip.contains(name)).collect();
