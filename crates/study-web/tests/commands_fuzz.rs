@@ -173,6 +173,7 @@ fn shapes(scratch: &str) -> BTreeMap<String, Vec<Value>> {
     put(&["delete_module_with.choice"], &vec![json!("Everything"), json!("MoveContentsUp")]);
     put(&["topics_under.excluded"], &vec![json!([]), json!([1, 2])]);
     put(&["cloud_set_images.allowed"], &flag);
+    put(&["cloud_keep.here"], &flag);
     put(&["unlink_related.first", "unlink_related.second", "create_submodule.parent"], &vec![json!(1), json!(2), json!(0), json!(-1)]);
     put(&["create_submodule.name"], &vec![json!("Memory"), json!(""), json!("CS:APP")]);
     put(&["query_search.input"], &vec![json!("CPU $ ALU"), json!("module:\"A B\" !(x ^ y)"), json!("(((")]);

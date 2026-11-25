@@ -7,13 +7,13 @@
   // with the links in three groups when there's room, an icon rail on tablets, and a dock
   // of five on phones. Anything that doesn't fit lives under More. Preferences live in
   // Settings, so the navigation only holds places you go.
-  import { ArrowDownUp, BookOpen, Brain, CalendarDays, ChevronDown, ChevronRight, Database, FolderTree, ListChecks, Ellipsis, FolderX, GitCompare, Hammer, History, LayoutDashboard, Layers, Library, Play, RefreshCw, RefreshCwOff, Search, Settings2, ShieldAlert, ShieldCheck, SquareStack, X } from "@lucide/svelte";
+  import { ArrowDownUp, Cloud, BookOpen, Brain, CalendarDays, ChevronDown, ChevronRight, Database, FolderTree, ListChecks, Ellipsis, FolderX, GitCompare, Hammer, History, LayoutDashboard, Layers, Library, Play, RefreshCw, RefreshCwOff, Search, Settings2, ShieldAlert, ShieldCheck, SquareStack, X } from "@lucide/svelte";
   import type { Screen } from "../lib/router";
   import StartMenu, { type StartKind } from "./StartMenu.svelte";
   import { inPhone } from "../lib/transport";
 
 
-  let { current, onNavigate, onStart = () => onNavigate("setup"), due = {}, backup = null, sync = null, mode = "full", startHidden = false }: {
+  let { current, onNavigate, onStart = () => onNavigate("setup"), due = {}, backup = null, sync = null, mode = "full", startHidden = false, offerSync = false }: {
     current: Screen;
     onNavigate: (screen: Screen) => void;
     onStart?: (kind: StartKind) => void;
@@ -23,6 +23,8 @@
     mode?: NavMode;
     /** R214: screens with a form leave out the floating Start button, which would cover it. */
     startHidden?: boolean;
+    /** R221: nothing syncs yet, so quietly show where to set it up. Never on the phone, which is always signed in. */
+    offerSync?: boolean;
   } = $props();
   // One line: the backup when it needs attention, otherwise sync once it's on (R108, R128).
   const showSync = $derived(sync !== null && (backup === null || backup.safe));
@@ -205,6 +207,11 @@
     </div>
     <div class="mt-auto flex flex-col gap-1 px-3 pb-1 pt-4">
       {@render status()}
+      {#if offerSync}
+        <a href="#settings" class="-mx-2 flex min-h-9 items-center gap-2 rounded-lg px-2 text-[13px] font-bold text-muted hover:bg-base-300" onclick={(event) => go(event, "settings")}>
+          <Cloud class="size-4" /><span>Sync across devices</span>
+        </a>
+      {/if}
       <a href="#settings" class="-mx-2 flex min-h-9 items-center gap-2 rounded-lg px-2 text-[13px] font-bold text-muted hover:bg-base-300" class:nav-current={current === "settings"} aria-current={current === "settings" ? "page" : undefined} onclick={(event) => go(event, "settings")}>
         <Settings2 class="size-4" /><span>Settings</span>
       </a>

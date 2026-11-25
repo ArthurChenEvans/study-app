@@ -182,10 +182,10 @@ e2e/run.sh                   # builds a debug app, then runs both (starts Xvfb i
 
 ## Accounts and sync (Supabase)
 
-Accounts are optional. Signed in, the app syncs through a free Supabase project. Setting one up:
+Accounts are optional on the desktop (the phone version needs one). Signed in, the app syncs through a free Supabase project. Setting one up:
 
 1. Make a Supabase project. Put its URL and publishable key in `crates/study-api/src/cloud.rs` (`PROJECT_URL`, `PUBLISHABLE_KEY`). Both are safe in the app. Never put the service_role key anywhere in the repo.
-2. In the SQL Editor, run `supabase/migrations/20261115000000_sync.sql`. It makes the tables, switches on Row Level Security for every table (and any made later), and adds the delete-my-account function.
+2. In the SQL Editor, run each file in `supabase/migrations` in order. They make the tables, switch on Row Level Security for every table (and any made later), and add the delete-my-account and clear-my-sync functions.
 3. Authentication, Sign In / Providers, Email: keep email on and "Confirm email" on, set Email OTP Expiration to 600.
 4. Authentication, Emails: put `{{ .Token }}` in both the Magic Link and the Confirm signup templates (a new email gets the second), so they send a code, not a link. Set up custom SMTP (a Gmail address with an app password works for a small group).
 5. Authentication, Rate Limits: keep emails per hour low (around 30). Authentication, Multi-Factor: turn on TOTP.
