@@ -30,7 +30,8 @@ export interface ShortFeedback { typed: string; marking: Marking; shown_answer: 
 export type QuestionTypes = "Both" | "Mcq" | "Short";
 
 export interface CloudDevice { id: string; name: string; this_one: boolean; last_seen: number | null }
-export interface CloudStatus { signed_in: boolean; email: string | null; two_step: boolean; needs_two_step: boolean; images_allowed: boolean; admin: boolean; devices: CloudDevice[]; last_synced: number | null; problem: string | null }
+export interface CloudStatus { signed_in: boolean; email: string | null; two_step: boolean; needs_two_step: boolean; images_allowed: boolean; admin: boolean; devices: CloudDevice[]; last_synced: number | null; problem: string | null; choose: CloudChoice | null }
+export interface CloudChoice { here: { topics: number; questions: number; notes: number; card_reviews: number; quizzes: number; recall_checks: number; drill_runs: number; struggles: number }; computers: number; computer_names: string[]; last_seen: number | null }
 export interface TwoStepSetup { factor: string; qr: string; secret: string }
 export interface SourceFields {
   authors: string;
@@ -452,6 +453,8 @@ export const api = {
   cloudTwoStepOff: () => invoke<CloudStatus>("cloud_two_step_off"),
   cloudSignOut: () => invoke<CloudStatus>("cloud_sign_out"),
   cloudSignOutOthers: () => invoke<CloudStatus>("cloud_sign_out_others"),
+  cloudSignedIn: () => invoke<boolean>("cloud_signed_in"),
+  cloudKeep: (here: boolean) => invoke<CloudStatus>("cloud_keep", { here }),
   cloudDeleteAccount: () => invoke<CloudStatus>("cloud_delete_account"),
   cloudSetImages: (allowed: boolean) => invoke<CloudStatus>("cloud_set_images", { allowed }),
   imagesAllowed: () => invoke<boolean>("images_allowed"),

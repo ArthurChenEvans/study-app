@@ -125,6 +125,9 @@ pub struct Cloud {
     problem: Option<String>,
     last_synced: Option<i64>,
     names: BTreeMap<String, String>,
+    /// R221: signed in with data both here and in the account, and still to pick which to keep.
+    /// Nothing syncs until then, so nothing merges.
+    pub(crate) choosing: bool,
 }
 
 impl Default for Cloud {
@@ -133,7 +136,7 @@ impl Default for Cloud {
         let http: Box<dyn Http> = Box::new(Network);
         #[cfg(target_arch = "wasm32")]
         let http: Box<dyn Http> = Box::new(Offline);
-        Self { url: PROJECT_URL.into(), key: PUBLISHABLE_KEY.into(), http, home: None, session: None, images_allowed: false, admin: false, problem: None, last_synced: None, names: BTreeMap::new() }
+        Self { url: PROJECT_URL.into(), key: PUBLISHABLE_KEY.into(), http, home: None, session: None, images_allowed: false, admin: false, problem: None, last_synced: None, names: BTreeMap::new(), choosing: false }
     }
 }
 
@@ -166,6 +169,19 @@ pub struct CloudStatus {
     /// Unix seconds.
     pub last_synced: Option<i64>,
     pub problem: Option<String>,
+    /// R221: there's data both here and in the account, and the user picks which to keep.
+    pub choose: Option<CloudChoice>,
+}
+
+/// What's on each side, so the pick is an informed one (R221).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct CloudChoice {
+    pub here: study_store::backup::Counts,
+    /// The other computers already syncing with the account.
+    pub computers: usize,
+    pub computer_names: Vec<String>,
+    /// When the account last heard from any of them, unix seconds.
+    pub last_seen: Option<i64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -240,7 +256,7 @@ impl Cloud {
 
     /// The sign-in as text, for a build without files (the phone keeps it in the browser).
     pub fn saved_text(&self) -> String {
-        json!({ "session": self.session, "last_synced": self.last_synced, "names": self.names }).to_string()
+        json!({ "session": self.session, "last_synced": self.last_synced, "names": self.names, "choosing": self.choosing }).to_string()
     }
 
     pub fn load_text(&mut self, text: &str) {
@@ -248,6 +264,7 @@ impl Cloud {
         self.session = serde_json::from_value(saved.get("session").cloned().unwrap_or(Value::Null)).ok();
         self.last_synced = saved.get("last_synced").and_then(Value::as_i64);
         self.names = serde_json::from_value(saved.get("names").cloned().unwrap_or(Value::Null)).unwrap_or_default();
+        self.choosing = saved.get("choosing").and_then(Value::as_bool).unwrap_or(false);
     }
 
     fn load(&mut self) {
@@ -257,6 +274,7 @@ impl Cloud {
         self.session = serde_json::from_value(saved.get("session").cloned().unwrap_or(Value::Null)).ok();
         self.last_synced = saved.get("last_synced").and_then(Value::as_i64);
         self.names = serde_json::from_value(saved.get("names").cloned().unwrap_or(Value::Null)).unwrap_or_default();
+        self.choosing = saved.get("choosing").and_then(Value::as_bool).unwrap_or(false);
     }
 
     fn auth(&self, method: &'static str, path: &str, body: Option<Value>, token: Option<&str>) -> ApiResult<Response> {
@@ -364,6 +382,11 @@ impl App {
         self.cloud.images_allowed()
     }
 
+    /// Signed in, without asking Supabase anything (R221: the sidebar checks this every sync).
+    pub fn cloud_signed_in(&self) -> bool {
+        self.cloud.signed_in()
+    }
+
     /// The phone keeps the sign-in in the browser: it reads it out after each command...
     pub fn cloud_saved_text(&self) -> String {
         self.cloud.saved_text()
@@ -400,6 +423,8 @@ impl App {
         }
         self.cloud.take_session(&response.body, email.trim())?;
         self.cloud.problem = None;
+        self.cloud.choosing = self.both_have_data(clock);
+        self.cloud.save()?;
         self.cloud_refresh_settings(clock);
         self.cloud_status(clock)
     }
@@ -484,8 +509,63 @@ impl App {
         self.cloud.session = None;
         self.cloud.images_allowed = false;
         self.cloud.admin = false;
+        self.cloud.choosing = false;
         self.cloud.save()?;
         self.cloud_status(clock)
+    }
+
+    /// R221: whether this computer and the account both have data, so signing in would merge
+    /// two separate sets. A computer the account already knows got its data from it, so it just
+    /// carries on. When the account can't be checked it asks rather than merging blind.
+    fn both_have_data(&mut self, clock: Clock) -> bool {
+        if !self.store.has_data().unwrap_or(true) {
+            return false;
+        }
+        let me = self.store.device_id();
+        match self.cloud.rest("GET", "devices?select=device", None, None, clock.unix) {
+            Ok(response) => {
+                let rows: Vec<Value> = serde_json::from_str(&response.body).unwrap_or_default();
+                let ids: Vec<&str> = rows.iter().filter_map(|row| row.get("device")?.as_str()).collect();
+                !ids.is_empty() && !ids.contains(&me.as_str())
+            }
+            Err(_) => true,
+        }
+    }
+
+    /// R221: keeps this computer's data (`keep_here`) or the account's. A backup is made first
+    /// either way. Keeping this computer's clears what the account had and sends everything
+    /// from here. Keeping the account's empties this computer and takes everything in.
+    pub fn cloud_keep(&mut self, keep_here: bool, clock: Clock) -> ApiResult<CloudStatus> {
+        if !self.cloud.choosing {
+            return self.cloud_status(clock);
+        }
+        if self.backups.is_some() {
+            self.make_backup(clock, crate::backup::Reason::BeforeSync)?;
+        }
+        if keep_here {
+            self.cloud.rest("POST", "rpc/clear_my_sync", Some(json!({})), None, clock.unix)?;
+            let user = self.cloud.session.as_ref().map(|session| session.user_id.clone()).unwrap_or_default();
+            self.store.set_sync_meta(&format!("cloud_pushed:{user}"), "0")?;
+        } else {
+            self.empty_this_computer()?;
+        }
+        self.cloud.choosing = false;
+        self.cloud.save()?;
+        self.cloud_status(clock)
+    }
+
+    /// Swaps the database for a new empty one, so the account's data comes in on its own.
+    fn empty_this_computer(&mut self) -> ApiResult<()> {
+        let dir = std::env::temp_dir().join(format!("shudhana-empty-{}", study_store::ids::new_uid()));
+        std::fs::create_dir_all(&dir).map_err(|error| ApiError::new(format!("couldn't empty this computer: {error}")))?;
+        let path = dir.join("empty.db");
+        let result = study_store::Store::open(&path).map(drop).and_then(|()| self.store.restore_from(&path));
+        let _ = std::fs::remove_dir_all(&dir);
+        result?;
+        self.forget_running_quiz()?;
+        self.card_session = None;
+        self.pause_sync_after_restore();
+        Ok(())
     }
 
     /// Signs every other computer out of this account.
@@ -538,7 +618,7 @@ impl App {
 
     pub fn cloud_status(&mut self, clock: Clock) -> ApiResult<CloudStatus> {
         let Some(session) = self.cloud.session.clone() else {
-            return Ok(CloudStatus { signed_in: false, email: None, two_step: false, needs_two_step: false, images_allowed: true, admin: false, devices: vec![], last_synced: None, problem: self.cloud.problem.clone() });
+            return Ok(CloudStatus { signed_in: false, email: None, two_step: false, needs_two_step: false, images_allowed: true, admin: false, devices: vec![], last_synced: None, problem: self.cloud.problem.clone(), choose: None });
         };
         let factor = self.cloud.verified_factor(clock.unix);
         if let Err(error) = &factor
@@ -563,13 +643,19 @@ impl App {
                 })
                 .collect()
         };
-        Ok(CloudStatus { signed_in: true, email: Some(session.email), two_step, needs_two_step, images_allowed: self.cloud.images_allowed, admin: self.cloud.admin, devices, last_synced: self.cloud.last_synced, problem: self.cloud.problem.clone() })
+        let choose = if self.cloud.choosing && !needs_two_step {
+            let others: Vec<&CloudDevice> = devices.iter().filter(|device| !device.this_one).collect();
+            Some(CloudChoice { here: self.store.counts()?, computers: others.len(), computer_names: others.iter().map(|device| device.name.clone()).collect(), last_seen: others.iter().filter_map(|device| device.last_seen).max() })
+        } else {
+            None
+        };
+        Ok(CloudStatus { signed_in: true, email: Some(session.email), two_step, needs_two_step, images_allowed: self.cloud.images_allowed, admin: self.cloud.admin, devices, last_synced: self.cloud.last_synced, problem: self.cloud.problem.clone(), choose })
     }
 
     /// Sends this computer's new lines and takes in the other computers' (R207). Called from
     /// `sync_now`, after the lines are collected. Returns (sent, lines read, lines).
     pub(crate) fn cloud_exchange(&mut self, name: &str, clock: Clock) -> ApiResult<(usize, Vec<(String, Line)>)> {
-        if !self.cloud.signed_in() {
+        if !self.cloud.signed_in() || self.cloud.choosing {
             return Ok((0, vec![]));
         }
         if self.cloud.aal() != "aal2" && self.cloud.verified_factor(clock.unix)?.is_some() {
@@ -815,6 +901,126 @@ mod tests {
         fake.log.lock().unwrap().clear();
         app.cloud_exchange("Desk", CLOCK).unwrap();
         assert!(fake.sent("POST", "/rest/v1/changes").is_empty());
+    }
+
+    /// A computer with something on it, signing in to an account other computers already use.
+    fn signed_in_with_data_on_both(fake: &Fake) -> App {
+        fake.reply("POST", "/auth/v1/verify", 200, session("aal1"));
+        fake.reply("GET", "/auth/v1/user", 200, json!({ "factors": [] }));
+        fake.reply("GET", "/rest/v1/app_settings", 200, json!([{ "images_allowed": false }]));
+        fake.reply("GET", "/rest/v1/admins", 200, json!([]));
+        fake.reply("GET", "/rest/v1/devices", 200, json!([{ "device": "laptop1", "name": "Laptop", "seq": 4, "seen_at": "2027-01-15T08:00:00Z" }]));
+        let mut app = app_with(fake);
+        app.create_topic("DNS", None).unwrap();
+        app.cloud_verify_code("chen@example.com", "123456", CLOCK).unwrap();
+        app
+    }
+
+    #[test]
+    fn asks_which_to_keep_when_both_this_computer_and_the_account_have_data() {
+        let fake = Fake::default();
+        let mut app = signed_in_with_data_on_both(&fake);
+        let status = app.cloud_status(CLOCK).unwrap();
+        let choose = status.choose.expect("R221: asks which to keep");
+        assert_eq!(choose.here.topics, 1);
+        assert_eq!(choose.computers, 1);
+        assert_eq!(choose.computer_names, vec!["Laptop".to_string()]);
+        fake.log.lock().unwrap().clear();
+        assert_eq!(app.cloud_exchange("Desk", CLOCK).unwrap(), (0, vec![]), "nothing syncs, so nothing merges, until they pick");
+        assert!(fake.sent("POST", "/rest/v1/changes").is_empty());
+    }
+
+    #[test]
+    fn does_not_ask_when_only_one_side_has_data() {
+        let fake = Fake::default();
+        // Nothing here, the account has data: the account's comes in.
+        let mut app = signed_in(&fake);
+        fake.reply("GET", "/rest/v1/devices", 200, json!([{ "device": "laptop1", "name": "Laptop", "seq": 4 }]));
+        app.cloud_verify_code("chen@example.com", "123456", CLOCK).unwrap();
+        assert!(app.cloud_status(CLOCK).unwrap().choose.is_none());
+
+        // Something here, an empty account: this computer's goes up.
+        let fake = Fake::default();
+        fake.reply("POST", "/auth/v1/verify", 200, session("aal1"));
+        fake.reply("GET", "/auth/v1/user", 200, json!({ "factors": [] }));
+        fake.reply("GET", "/rest/v1/devices", 200, json!([]));
+        let mut app = app_with(&fake);
+        app.create_topic("DNS", None).unwrap();
+        app.cloud_verify_code("chen@example.com", "123456", CLOCK).unwrap();
+        assert!(app.cloud_status(CLOCK).unwrap().choose.is_none());
+    }
+
+    #[test]
+    fn does_not_ask_a_computer_that_already_synced_with_the_account() {
+        // Signing back in after signing out: its data came from the account, so it just carries on.
+        let fake = Fake::default();
+        fake.reply("POST", "/auth/v1/verify", 200, session("aal1"));
+        fake.reply("GET", "/auth/v1/user", 200, json!({ "factors": [] }));
+        let mut app = app_with(&fake);
+        app.create_topic("DNS", None).unwrap();
+        let me = app.store.device_id();
+        fake.reply("GET", "/rest/v1/devices", 200, json!([{ "device": me, "name": "Desk", "seq": 2 }, { "device": "laptop1", "name": "Laptop", "seq": 4 }]));
+        app.cloud_verify_code("chen@example.com", "123456", CLOCK).unwrap();
+        assert!(app.cloud_status(CLOCK).unwrap().choose.is_none());
+    }
+
+    #[test]
+    fn asks_rather_than_merging_when_the_account_cannot_be_checked() {
+        let fake = Fake::default();
+        fake.reply("POST", "/auth/v1/verify", 200, session("aal1"));
+        fake.reply("GET", "/auth/v1/user", 200, json!({ "factors": [] }));
+        fake.reply("GET", "/rest/v1/devices", 500, json!({ "message": "down" }));
+        let mut app = app_with(&fake);
+        app.create_topic("DNS", None).unwrap();
+        app.cloud_verify_code("chen@example.com", "123456", CLOCK).unwrap();
+        fake.reply("GET", "/rest/v1/devices", 200, json!([{ "device": "laptop1", "name": "Laptop", "seq": 4 }]));
+        assert!(app.cloud_status(CLOCK).unwrap().choose.is_some());
+    }
+
+    #[test]
+    fn keeping_this_computer_clears_the_account_then_sends_everything() {
+        let fake = Fake::default();
+        let mut app = signed_in_with_data_on_both(&fake);
+        fake.reply("POST", "/rest/v1/rpc/clear_my_sync", 204, json!(null));
+        let status = app.cloud_keep(true, CLOCK).unwrap();
+        assert!(status.choose.is_none());
+        assert_eq!(fake.sent("POST", "/rest/v1/rpc/clear_my_sync").len(), 1);
+        assert_eq!(app.store.counts().unwrap().topics, 1, "this computer's data stays");
+
+        fake.reply("GET", "/rest/v1/devices", 200, json!([]));
+        fake.reply("POST", "/rest/v1/changes", 201, json!(null));
+        fake.reply("POST", "/rest/v1/devices", 201, json!(null));
+        app.store.sync_collect().unwrap();
+        let (sent, incoming) = app.cloud_exchange("Desk", CLOCK).unwrap();
+        assert!(sent >= 1, "everything here goes up");
+        assert!(incoming.is_empty());
+    }
+
+    #[test]
+    fn keeping_the_account_empties_this_computer_then_takes_everything_in() {
+        let fake = Fake::default();
+        let mut app = signed_in_with_data_on_both(&fake);
+        let status = app.cloud_keep(false, CLOCK).unwrap();
+        assert!(status.choose.is_none());
+        assert_eq!(app.store.counts().unwrap().topics, 0, "this computer's data is replaced");
+        assert!(fake.sent("POST", "/rest/v1/rpc/clear_my_sync").is_empty(), "the account is left alone");
+
+        fake.reply("POST", "/rest/v1/changes", 201, json!(null));
+        fake.reply("POST", "/rest/v1/devices", 201, json!(null));
+        let line = json!({ "seq": 1, "at": "0000000001000-laptop1-0", "kind": "topics", "uid": "t-laptop", "set": { "name": "TLS" } });
+        fake.reply("GET", "/rest/v1/changes", 200, json!([{ "seq": 1, "line": line }]));
+        let (_, incoming) = app.cloud_exchange("Desk", CLOCK).unwrap();
+        assert_eq!(incoming.len(), 1, "the account's data comes in");
+    }
+
+    #[test]
+    fn the_choice_survives_closing_the_app() {
+        let fake = Fake::default();
+        let app = signed_in_with_data_on_both(&fake);
+        let mut cloud = Cloud::with("https://project.test", "key-1", Box::new(fake.clone()));
+        cloud.load_text(&app.cloud_saved_text());
+        assert!(cloud.choosing);
+        assert!(!signed_in(&Fake::default()).cloud.choosing);
     }
 
     #[test]

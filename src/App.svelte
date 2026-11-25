@@ -111,6 +111,8 @@
   // changes come in, and screens being edited are left alone.
   let sync = $state<{ ok: boolean; short: string; icon: string } | null>(null);
   const showSync = (status: SyncStatus | null) => (sync = status?.on ? syncLine(status, Math.floor(Date.now() / 1000)) : null);
+  // R221: accounts are optional on the desktop. While nothing syncs, the sidebar quietly says where to set it up.
+  let offerSync = $state(false);
   let dataVersion = $state(0);
   const RELOADS = ["overview", "calendar", "quizzes", "topics", "transfer", "cards", "recall", "projects", "bibliography", "history"];
   async function syncTick(auto = true) {
@@ -125,6 +127,7 @@
         if (result.received) refreshCounts();
       }
       showSync(status);
+      offerSync = !inPhone() && !status.on && !(await api.cloudSignedIn());
     } catch {
       /* shown on Your data */
     }
@@ -257,7 +260,7 @@
   </div>
 {:else}
 <div class="flex min-h-screen">
-  {#if !["quiz", "recall-session", "card-review", "session-review", "drills"].includes(route.screen)}<Sidebar current={navScreen} {due} onStart={start} {backup} {sync} {mode} startHidden={["editor", "checklist", "topic-cards"].includes(route.screen)} onNavigate={(screen) => go({ screen })} />{/if}
+  {#if !["quiz", "recall-session", "card-review", "session-review", "drills"].includes(route.screen)}<Sidebar current={navScreen} {due} onStart={start} {backup} {sync} {offerSync} {mode} startHidden={["editor", "checklist", "topic-cards"].includes(route.screen)} onNavigate={(screen) => go({ screen })} />{/if}
   <main class="min-w-0 flex-1" class:pb-24={mode === "dock"}>
     {#key dataVersion}
     <!-- R186: every screen comes in the same way, once, when you go to it -->

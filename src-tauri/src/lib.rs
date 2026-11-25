@@ -114,6 +114,14 @@ fn cloud_sign_out_others(state: AppState) -> ApiResult<study_api::cloud::CloudSt
     with(state, |app| app.cloud_sign_out_others(clock()))
 }
 #[tauri::command]
+fn cloud_signed_in(state: AppState) -> ApiResult<bool> {
+    with(state, |app| Ok(app.cloud_signed_in()))
+}
+#[tauri::command]
+fn cloud_keep(state: AppState, here: bool) -> ApiResult<study_api::cloud::CloudStatus> {
+    with(state, |app| app.cloud_keep(here, clock()))
+}
+#[tauri::command]
 fn cloud_delete_account(state: AppState) -> ApiResult<study_api::cloud::CloudStatus> {
     with(state, |app| app.cloud_delete_account(clock()))
 }
@@ -986,6 +994,8 @@ pub fn run() {
             cloud_two_step_off,
             cloud_sign_out,
             cloud_sign_out_others,
+            cloud_keep,
+            cloud_signed_in,
             cloud_delete_account,
             cloud_set_images,
             cloud_two_step_start,

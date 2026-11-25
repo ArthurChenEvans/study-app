@@ -206,4 +206,15 @@ describe("Sidebar", () => {
     await userEvent.click(within(sheet).getByRole("link", { name: /Import & Export/ }));
     expect(onNavigate).toHaveBeenCalledWith("transfer");
   });
+
+  // R221: no account needed on the desktop, but where to get one is easy to find, never pushed.
+  it("offers syncing quietly when nothing syncs yet, and only then", async () => {
+    const onNavigate = vi.fn();
+    const { rerender } = render(Sidebar, { current: "overview", onNavigate, offerSync: true });
+    const link = screen.getByRole("link", { name: "Sync across devices" });
+    await userEvent.click(link);
+    expect(onNavigate).toHaveBeenCalledWith("settings");
+    await rerender({ current: "overview", onNavigate, offerSync: false });
+    expect(screen.queryByRole("link", { name: "Sync across devices" })).toBeNull();
+  });
 });

@@ -174,6 +174,8 @@ pub fn dispatch_at(app: &mut App, command: &str, args: &Value, today: i64, clock
         "cloud_two_step_off" => json(app.cloud_two_step_off(clock)),
         "cloud_sign_out" => json(app.cloud_sign_out(clock)),
         "cloud_sign_out_others" => json(app.cloud_sign_out_others(clock)),
+        "cloud_signed_in" => json::<bool>(Ok(app.cloud_signed_in())),
+        "cloud_keep" => json(app.cloud_keep(arg(a, "here")?, clock)),
         "cloud_delete_account" => json(app.cloud_delete_account(clock)),
         "cloud_set_images" => json(app.cloud_set_images(arg(a, "allowed")?, clock)),
         "images_allowed" => json::<bool>(Ok(app.images_allowed())),

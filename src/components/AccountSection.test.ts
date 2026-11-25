@@ -8,7 +8,7 @@ vi.mock("../lib/api", async (original) => {
     ...actual,
     api: {
       cloudStatus: vi.fn(), cloudRequestCode: vi.fn(), cloudVerifyCode: vi.fn(), cloudVerifyTwoStep: vi.fn(), cloudTwoStepStart: vi.fn(), cloudTwoStepConfirm: vi.fn(),
-      cloudTwoStepOff: vi.fn(), cloudSignOut: vi.fn(), cloudSignOutOthers: vi.fn(), cloudDeleteAccount: vi.fn(), cloudSetImages: vi.fn(), syncNow: vi.fn(),
+      cloudTwoStepOff: vi.fn(), cloudSignOut: vi.fn(), cloudSignOutOthers: vi.fn(), cloudDeleteAccount: vi.fn(), cloudSetImages: vi.fn(), cloudKeep: vi.fn(), syncNow: vi.fn(),
     },
   };
 });
@@ -17,7 +17,7 @@ import { api, type CloudStatus } from "../lib/api";
 import AccountSection from "./AccountSection.svelte";
 
 const mocked = vi.mocked(api);
-const out: CloudStatus = { signed_in: false, email: null, two_step: false, needs_two_step: false, images_allowed: true, admin: false, devices: [], last_synced: null, problem: null };
+const out: CloudStatus = { signed_in: false, email: null, two_step: false, needs_two_step: false, images_allowed: true, admin: false, devices: [], last_synced: null, problem: null, choose: null };
 const signedIn: CloudStatus = { ...out, signed_in: true, email: "chen@example.com", images_allowed: false, devices: [{ id: "a", name: "Desk", this_one: true, last_seen: 1_800_000_000 }, { id: "b", name: "Laptop", this_one: false, last_seen: 1_799_990_000 }], last_synced: 1_800_000_000 };
 
 beforeEach(() => {
@@ -135,5 +135,60 @@ describe("Account", () => {
     expect(box).not.toBeChecked();
     await u.click(box);
     expect(mocked.cloudSetImages).toHaveBeenCalledWith(true);
+  });
+
+  // R221: data both here and in the account, so the user picks one. Nothing merges.
+  describe("picking which data to keep", () => {
+    const choosing: CloudStatus = { ...signedIn, choose: { here: { topics: 4, questions: 120, notes: 2, card_reviews: 30, quizzes: 9, recall_checks: 1, drill_runs: 0, struggles: 0 }, computers: 1, computer_names: ["Laptop"], last_seen: 1_799_990_000 } };
+
+    it("asks which to keep, saying what each side has, and doesn't sync before", async () => {
+      mocked.cloudStatus.mockResolvedValue(choosing);
+      render(AccountSection);
+      const dialog = await screen.findByRole("dialog", { name: "Keep which data?" });
+      expect(within(dialog).getByText(/4 topics, 120 questions/)).toBeInTheDocument();
+      expect(within(dialog).getByText(/Laptop/)).toBeInTheDocument();
+      expect(mocked.syncNow).not.toHaveBeenCalled();
+      expect(within(dialog).getByRole("button", { name: "Export this computer's data first" })).toBeInTheDocument();
+    });
+
+    it("keeps this computer's data, after naming what's replaced", async () => {
+      const u = userEvent.setup();
+      mocked.cloudStatus.mockResolvedValue(choosing);
+      mocked.cloudKeep.mockResolvedValue(signedIn);
+      mocked.syncNow.mockResolvedValue(undefined as never);
+      render(AccountSection);
+      const dialog = await screen.findByRole("dialog", { name: "Keep which data?" });
+      const confirm = within(dialog).getByRole("button", { name: /^Replace/ });
+      expect(confirm).toBeDisabled();
+      await u.click(within(dialog).getByRole("radio", { name: /This computer/ }));
+      expect(within(dialog).getByText(/The account's data is replaced/)).toBeInTheDocument();
+      await u.click(within(dialog).getByRole("button", { name: "Replace the account's data" }));
+      expect(mocked.cloudKeep).toHaveBeenCalledWith(true);
+      expect(mocked.syncNow).toHaveBeenCalled();
+      expect(screen.queryByRole("dialog", { name: "Keep which data?" })).not.toBeInTheDocument();
+    });
+
+    it("keeps the account's data", async () => {
+      const u = userEvent.setup();
+      mocked.cloudStatus.mockResolvedValue(choosing);
+      mocked.cloudKeep.mockResolvedValue(signedIn);
+      mocked.syncNow.mockResolvedValue(undefined as never);
+      render(AccountSection);
+      const dialog = await screen.findByRole("dialog", { name: "Keep which data?" });
+      await u.click(within(dialog).getByRole("radio", { name: /The account/ }));
+      await u.click(within(dialog).getByRole("button", { name: "Replace this computer's data" }));
+      expect(mocked.cloudKeep).toHaveBeenCalledWith(false);
+    });
+
+    it("can sign out instead, keeping everything as it is", async () => {
+      const u = userEvent.setup();
+      mocked.cloudStatus.mockResolvedValue(choosing);
+      mocked.cloudSignOut.mockResolvedValue(out);
+      render(AccountSection);
+      const dialog = await screen.findByRole("dialog", { name: "Keep which data?" });
+      await u.click(within(dialog).getByRole("button", { name: "Sign out instead" }));
+      expect(mocked.cloudSignOut).toHaveBeenCalled();
+      expect(mocked.cloudKeep).not.toHaveBeenCalled();
+    });
   });
 });

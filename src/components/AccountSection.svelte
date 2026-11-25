@@ -1,5 +1,5 @@
 <script lang="ts">
-  // accounts.feature (R206 to R210): sign in with a code emailed to you, two-step sign-in with
+  // accounts.feature (R206 to R210, R221): sign in with a code emailed to you, two-step sign-in with
   // an authenticator app, the computers signed in, your data, and the admin's image switch.
   import { KeyRound, LogOut, Mail, RefreshCw, ShieldCheck, Trash2 } from "@lucide/svelte";
   import { tick } from "svelte";
@@ -30,6 +30,8 @@
   let deleting = $state(false);
   let deleteWord = $state("");
   let exporting = $state(false);
+  // R221: data both here and in the account. "here" keeps this computer's, "account" the account's.
+  let keep = $state<"here" | "account" | null>(null);
 
   async function load() {
     try {
@@ -77,7 +79,7 @@
     step = "idle";
     await tick();
     if (status.needs_two_step) document.getElementById("two-step-code")?.focus();
-    else {
+    else if (!status.choose) {
       toast({ text: "Signed in", sub: "Your study syncs to your account now" });
       void Promise.resolve(api.syncNow(false)).catch(() => {});
     }
@@ -87,6 +89,7 @@
     event?.preventDefault();
     status = await api.cloudVerifyTwoStep(twoStepCode);
     twoStepCode = "";
+    if (status.choose) return;
     toast({ text: "Signed in", sub: "Your study syncs to your account now" });
     void Promise.resolve(api.syncNow(false)).catch(() => {});
   });
@@ -132,6 +135,23 @@
     deleteWord = "";
     toast({ text: "Account deleted", sub: "Everything synced to it is gone. This computer's copy is still here" });
   });
+
+  const keepChosen = () => run(async () => {
+    if (!keep) return;
+    status = await api.cloudKeep(keep === "here");
+    keep = null;
+    toast({ text: "Signed in", sub: "Your study syncs to your account now" });
+    void Promise.resolve(api.syncNow(false)).catch(() => {});
+  });
+
+  const plural = (count: number, one: string, many = `${one}s`) => `${count} ${count === 1 ? one : many}`;
+  const summary = (here: NonNullable<CloudStatus["choose"]>["here"]) => {
+    const parts = [plural(here.topics, "topic"), plural(here.questions, "question")];
+    if (here.notes) parts.push(plural(here.notes, "card"));
+    if (here.quizzes) parts.push(plural(here.quizzes, "quiz taken", "quizzes taken"));
+    if (here.struggles) parts.push(plural(here.struggles, "practice log entry", "practice log entries"));
+    return parts.join(", ");
+  };
 
   const setImages = (allowed: boolean) => run(async () => {
     status = await api.cloudSetImages(allowed);
@@ -274,6 +294,34 @@
       <label class="mt-4 block"><span class="block text-sm font-bold">Type DELETE to confirm</span><input class="input mt-1 w-full" bind:value={deleteWord} autocomplete="off" /></label>
       {#if error}<p role="alert" class="mt-3 text-sm text-error">{error}</p>{/if}
       <div class="modal-action"><button class="btn btn-ghost" onclick={() => { deleting = false; deleteWord = ""; }}>Cancel</button><button class="btn btn-error" disabled={busy || deleteWord !== "DELETE"} onclick={deleteAccount}>Delete account</button></div>
+    </div>
+  </dialog>
+{/if}
+
+{#if status?.choose && !exporting}
+  {@const choose = status.choose}
+  <dialog open class="modal modal-open" aria-labelledby="keep-h">
+    <div class="modal-box max-w-lg">
+      <h3 id="keep-h" class="text-lg font-semibold">Keep which data?</h3>
+      <p class="mt-2 text-sm text-muted">This computer and {status.email} both have study data. Pick one to keep. The other is replaced, nothing is merged.</p>
+      <fieldset class="mt-4 space-y-3">
+        <legend class="sr-only">Data to keep</legend>
+        <label class="flex cursor-pointer items-start gap-3 rounded-xl border-2 p-4 {keep === 'here' ? 'border-primary' : 'border-base-300'}">
+          <input type="radio" name="keep" class="radio mt-0.5" value="here" bind:group={keep} />
+          <span><span class="block font-extrabold">This computer</span><span class="block text-sm text-muted">{summary(choose.here)}</span></span>
+        </label>
+        <label class="flex cursor-pointer items-start gap-3 rounded-xl border-2 p-4 {keep === 'account' ? 'border-primary' : 'border-base-300'}">
+          <input type="radio" name="keep" class="radio mt-0.5" value="account" bind:group={keep} />
+          <span><span class="block font-extrabold">The account</span><span class="block text-sm text-muted">Synced from {choose.computer_names.join(", ") || plural(choose.computers, "computer")}{choose.last_seen ? `, last on ${when(choose.last_seen)}` : ""}</span></span>
+        </label>
+      </fieldset>
+      {#if keep}<p class="mt-3 text-sm font-bold">{keep === "here" ? "The account's data is replaced with this computer's, on every computer that syncs with it." : "This computer's data is replaced with the account's."} A backup is made here first.</p>{/if}
+      {#if error}<p role="alert" class="mt-3 text-sm text-error">{error}</p>{/if}
+      <div class="mt-4"><button class="btn btn-ghost btn-sm" onclick={() => (exporting = true)}>Export this computer's data first</button></div>
+      <div class="modal-action flex-wrap">
+        <button class="btn btn-ghost" disabled={busy} onclick={signOut}>Sign out instead</button>
+        <button class="btn btn-error" disabled={busy || !keep} onclick={keepChosen}>{keep === "account" ? "Replace this computer's data" : keep === "here" ? "Replace the account's data" : "Replace…"}</button>
+      </div>
     </div>
   </dialog>
 {/if}
