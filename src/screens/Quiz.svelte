@@ -184,7 +184,8 @@
     if (/^[1-5]$/.test(event.key)) {
       const option = current.options[Number(event.key) - 1];
       if (option) pick(option.index);
-    } else if (event.key === "Enter") {
+    } else if (event.key === "Enter" || event.key === " ") {
+      // Space as well as Enter, like Show answer and Good in card review.
       event.preventDefault();
       if (feedback) next();
       else submit();
@@ -301,7 +302,7 @@
             {#each feedback.citations as citation, index (index)}<p class="mt-2 flex items-center gap-2 text-[13px] font-extrabold uppercase tracking-[.06em] sheet-ink"><BookOpen class="size-4" />{citation.location}</p>{/each}
           {/if}
         </div>
-        <button class="btn btn-{tone === 'right' ? 'success' : 'wrong'} min-w-48 self-center" onclick={next}>Next question <kbd class="kbd kbd-xs">Enter</kbd></button>
+        <button class="btn btn-{tone === 'right' ? 'success' : 'wrong'} min-w-48 self-center" onclick={next}>Next question <kbd class="kbd kbd-xs">Space</kbd></button>
       </div>
     </div>
   {:else}
@@ -312,7 +313,7 @@
           aria-pressed={current.flagged}
           onclick={toggleFlag}><Flag class="size-4" />{current.flagged ? "Flagged as guessed" : "I guessed"} {#if current.short}<kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">G</kbd>{:else}<kbd class="kbd kbd-xs">F</kbd>{/if}</button>
         {#if current.exam}<span class="text-sm text-muted">No going back in exam mode{current.short ? ". You can overrule the marking on the results page." : ""}</span>{/if}
-        <button class="btn btn-primary ml-auto sm:min-w-48" onclick={submit} disabled={(current.short ? !typed.trim() : picked.length === 0) || busy}>Submit <kbd class="kbd kbd-xs">Enter</kbd></button>
+        <button class="btn btn-primary ml-auto sm:min-w-48" onclick={submit} disabled={(current.short ? !typed.trim() : picked.length === 0) || busy}>Submit <kbd class="kbd kbd-xs">Space</kbd></button>
       </div>
     </div>
   {/if}

@@ -481,6 +481,10 @@ fn undo_card(state: AppState) -> ApiResult<ReviewStep> {
     with(state, |app| app.undo_card(today()))
 }
 #[tauri::command]
+fn redo_card(state: AppState) -> ApiResult<ReviewStep> {
+    with(state, |app| app.redo_card(today()))
+}
+#[tauri::command]
 fn leave_review(state: AppState) -> ApiResult<()> {
     with(state, |app| { app.leave_review(); Ok(()) })
 }
@@ -1080,6 +1084,7 @@ pub fn run() {
             current_card,
             grade_card,
             undo_card,
+            redo_card,
             leave_review,
             card_suggestions,
             dismiss_suggestion,

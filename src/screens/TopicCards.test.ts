@@ -155,6 +155,25 @@ describe("Topic cards", () => {
     expect(screen.queryByRole("button", { name: "Save and return to list" })).toBeNull();
   });
 
+  // Edited from card review: saving, cancelling or the back link goes back to the review, not the list.
+  it("opened from a review, goes back to the review when done", async () => {
+    const u = userEvent.setup();
+    const onFinishEdit = vi.fn();
+    render(TopicCards, props({ editNote: 101, onFinishEdit, finishLabel: "Back to review" }));
+    await u.click(await screen.findByRole("button", { name: /Save changes/ }));
+    expect(onFinishEdit).toHaveBeenCalledTimes(1);
+    expect(mocked.saveNote).toHaveBeenCalled();
+  });
+
+  it("opened from a review, Cancel and the back link go back to it too", async () => {
+    const u = userEvent.setup();
+    const onFinishEdit = vi.fn();
+    render(TopicCards, props({ editNote: 101, onFinishEdit, finishLabel: "Back to review" }));
+    await u.click(await screen.findByRole("button", { name: "Cancel" }));
+    await u.click(screen.getByRole("button", { name: /Back to review/ }));
+    expect(onFinishEdit).toHaveBeenCalledTimes(2);
+  });
+
   // flashcards.feature (R7): images on either side
   it("adds an image to the front or the back by pasting or from a file", async () => {
     const u = userEvent.setup();

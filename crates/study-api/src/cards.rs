@@ -130,6 +130,8 @@ pub struct ReviewCard {
     pub done: usize,
     pub total: usize,
     pub can_undo: bool,
+    /// An undone answer can be put back (Ctrl+Shift+Z or Ctrl+Y).
+    pub can_redo: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -195,6 +197,8 @@ pub struct CardSession {
     queue: VecDeque<CardId>,
     total: usize,
     undo: Vec<Undo>,
+    /// Answers taken back by undo, newest last, as (card, rating, seconds). A new answer clears it.
+    redo: Vec<(CardId, Rating, u32)>,
     answers: usize,
     new_seen: usize,
     agains: usize,
@@ -554,6 +558,7 @@ impl App {
             total: queue.len(),
             queue,
             undo: vec![],
+            redo: vec![],
             answers: 0,
             new_seen: 0,
             agains: 0,
@@ -614,6 +619,7 @@ impl App {
             done: session.total.saturating_sub(session.queue.len()),
             total: session.total.max(session.answers + session.queue.len()),
             can_undo: !session.undo.is_empty(),
+            can_redo: !session.redo.is_empty(),
         }))
     }
 
@@ -622,12 +628,25 @@ impl App {
     }
 
     /// Answers the card at the front of the session. `seconds` is how long it took.
-    pub fn grade_card(
-        &mut self,
-        rating: Rating,
-        seconds: u32,
-        today: i64,
-    ) -> ApiResult<ReviewStep> {
+    pub fn grade_card(&mut self, rating: Rating, seconds: u32, today: i64) -> ApiResult<ReviewStep> {
+        if let Some(session) = self.card_session.as_mut() {
+            session.redo.clear();
+        }
+        self.answer_card(rating, seconds, today)
+    }
+
+    /// Puts back the answer undo last took back. Undo restored the queue, so its card is at the front.
+    pub fn redo_card(&mut self, today: i64) -> ApiResult<ReviewStep> {
+        let session = self.card_session.as_mut().ok_or_else(|| ApiError::new("no review in progress"))?;
+        let (card, rating, seconds) = session.redo.pop().ok_or_else(|| ApiError::new("there's nothing to redo"))?;
+        if session.queue.front() != Some(&card) {
+            session.redo.clear();
+            return Err(ApiError::new("there's nothing to redo"));
+        }
+        self.answer_card(rating, seconds, today)
+    }
+
+    fn answer_card(&mut self, rating: Rating, seconds: u32, today: i64) -> ApiResult<ReviewStep> {
         let settings = self.store.card_settings()?;
         let session = self
             .card_session
@@ -691,6 +710,7 @@ impl App {
             .pop()
             .ok_or_else(|| ApiError::new("there's nothing to undo"))?;
         session.queue = undo.queue;
+        session.redo.push((undo.card, undo.rating, undo.seconds));
         session.answers -= 1;
         session.new_seen -= usize::from(undo.was_new);
         session.seconds -= undo.seconds;
@@ -1009,6 +1029,31 @@ mod tests {
             ),
             (2, "Basic", true)
         );
+    }
+
+    // flashcards.feature: Redo (Ctrl+Shift+Z or Ctrl+Y) puts back an answer that was undone
+    #[test]
+    fn redo_puts_back_what_undo_took_back_until_a_new_answer() {
+        let (mut app, topic) = app();
+        for front in ["A", "B"] {
+            app.save_note(None, basic(topic, front), TODAY).unwrap();
+        }
+        let first = app.start_review(None, TODAY).unwrap();
+        assert!(!card(&first).can_redo);
+        app.grade_card(Rating::Good, 5, TODAY).unwrap();
+        let undone = app.undo_card(TODAY).unwrap();
+        assert_eq!(card(&undone).front, "A");
+        assert!(card(&undone).can_redo);
+        let redone = app.redo_card(TODAY).unwrap();
+        assert_eq!(card(&redone).front, "B", "the Good on A is back");
+        assert_eq!(app.store.reviews_since(TODAY).unwrap().len(), 1);
+        assert!(!card(&redone).can_redo);
+        assert!(card(&redone).can_undo);
+
+        app.undo_card(TODAY).unwrap();
+        let fresh = app.grade_card(Rating::Hard, 5, TODAY).unwrap();
+        assert!(!card(&fresh).can_redo, "a new answer clears what could be redone");
+        assert!(app.redo_card(TODAY).is_err());
     }
 
     // flashcards.feature: Grading moves a card on, Again shows a card again in the same session, Undo

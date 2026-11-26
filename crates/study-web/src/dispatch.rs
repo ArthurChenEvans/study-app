@@ -121,6 +121,7 @@ pub fn dispatch_at(app: &mut App, command: &str, args: &Value, today: i64, clock
         "current_card" => json(app.current_card(today)),
         "grade_card" => json(app.grade_card(arg(a, "rating")?, arg(a, "seconds")?, today)),
         "undo_card" => json(app.undo_card(today)),
+        "redo_card" => json(app.redo_card(today)),
         "leave_review" => {
             app.leave_review();
             json(Ok(()))

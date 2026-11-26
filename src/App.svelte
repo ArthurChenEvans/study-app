@@ -52,8 +52,8 @@
     | { screen: "results"; attempt: Id; fresh?: boolean }
     | { screen: "checklist"; id: Id }
     | { screen: "recall-session"; id: Id; run: number }
-    | { screen: "topic-cards"; topic: Id; note: Id | "new" | null; notice?: string }
-    | { screen: "card-review"; scope: Subject | null; run: number }
+    | { screen: "topic-cards"; topic: Id; note: Id | "new" | null; notice?: string; review?: Subject | null }
+    | { screen: "card-review"; scope: Subject | null; run: number; resume?: boolean }
     | { screen: "suggestions" }
     | { screen: "calendar-day"; day: number }
     | { screen: "project"; id: Id }
@@ -256,7 +256,7 @@
   <div class="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-4 px-4 py-10">
     <h1 class="text-3xl font-black">Shudhana</h1>
     <p class="text-muted">Sign in to study on your phone. Your quizzes, cards, free recall and practice logs come from your account.</p>
-    <AccountSection onChange={signedIn} />
+    <AccountSection signInScreen onChange={signedIn} />
   </div>
 {:else}
 <div class="flex min-h-screen">
@@ -288,9 +288,11 @@
     {:else if route.screen === "cards"}
       <Cards onReview={startCards} onEditNote={(topic, note) => go({ screen: "topic-cards", topic, note })} onTopic={(topic) => go({ screen: "topic-cards", topic, note: null })} onSuggestions={() => go({ screen: "suggestions" })} onNewCard={newCard} />
     {:else if route.screen === "topic-cards"}
-      {#key `${route.topic}:${route.note}`}<TopicCards topic={route.topic} editNote={route.note} notice={route.notice} onTopic={(topic, notice) => go({ screen: "topic-cards", topic, note: null, notice })} onBack={() => go({ screen: "cards" })} onReview={startCards} />{/key}
+      {@const review = route.review}
+      {#key `${route.topic}:${route.note}`}<TopicCards topic={route.topic} editNote={route.note} notice={route.notice} onTopic={(topic, notice) => go({ screen: "topic-cards", topic, note: null, notice })} onBack={() => go({ screen: "cards" })} onReview={startCards} onFinishEdit={review !== undefined ? () => go({ screen: "card-review", scope: review, run: ++runs, resume: true }) : undefined} />{/key}
     {:else if route.screen === "card-review"}
-      {#key route.run}<CardReview scope={route.scope} {scopeName} onLeave={() => go({ screen: "cards" })} onEdit={(topic, note) => go({ screen: "topic-cards", topic, note })} />{/key}
+      {@const scope = route.scope}
+      {#key route.run}<CardReview scope={route.scope} {scopeName} resume={route.resume} onLeave={() => go({ screen: "cards" })} onEdit={(topic, note) => go({ screen: "topic-cards", topic, note, review: scope })} />{/key}
     {:else if route.screen === "suggestions"}
       <Suggestions onBack={() => go({ screen: "cards" })} onChanged={refreshDue} />
     {:else if route.screen === "calendar" || route.screen === "calendar-day"}

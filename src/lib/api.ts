@@ -178,7 +178,7 @@ export interface NoteView { id: Id; note: Note; source: string | null; cards: Ca
 export interface ReviewCard {
   card: Id; note: Id; front: string; back: string; topic_name: string; kind: string; source: string | null;
   intervals: [number, number, number, number]; lapses: number; leech: boolean; left: DueCounts; queue: "new" | "learning" | "review";
-  done: number; total: number; can_undo: boolean;
+  done: number; total: number; can_undo: boolean; can_redo: boolean;
 }
 export interface Rewrite { note: Id; topic: Id; front: string; agains: number }
 export interface ReviewDone { reviewed: number; new: number; again: number; remembered: number | null; target: number; seconds: number; worth_rewriting: Rewrite[]; due_tomorrow: number; busiest: [number, number] | null }
@@ -358,6 +358,7 @@ export const api = {
   currentCard: () => invoke<ReviewStep>("current_card"),
   gradeCard: (rating: CardRating, seconds: number) => invoke<ReviewStep>("grade_card", { rating, seconds }),
   undoCard: () => invoke<ReviewStep>("undo_card"),
+  redoCard: () => invoke<ReviewStep>("redo_card"),
   leaveReview: () => invoke<void>("leave_review"),
   cardSuggestions: () => invoke<Suggestion[]>("card_suggestions"),
   dismissSuggestion: (key: string) => invoke<void>("dismiss_suggestion", { key }),

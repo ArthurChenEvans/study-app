@@ -191,4 +191,13 @@ describe("Account", () => {
       expect(mocked.cloudKeep).not.toHaveBeenCalled();
     });
   });
+
+  // The phone's sign-in screen already explains why: no cramped repeat beside the button.
+  it("on the sign-in screen, shows just a full-width sign-in button", async () => {
+    mocked.cloudStatus.mockResolvedValue(out);
+    render(AccountSection, { signInScreen: true });
+    const button = await screen.findByRole("button", { name: "Sign in to sync" });
+    expect(button).toHaveClass("btn-block");
+    expect(screen.queryByText(/across computers/)).toBeNull();
+  });
 });

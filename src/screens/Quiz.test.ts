@@ -106,6 +106,17 @@ describe("Quiz", () => {
     expect(mocked.answer).toHaveBeenCalledWith([1]);
   });
 
+  // Space does what Enter does (submit, then next), the same key as Show answer and Good in card review.
+  it("submits and moves on with Space as well as Enter", async () => {
+    const u = userEvent.setup();
+    mocked.answer.mockResolvedValue({ feedback: null, next: { Question: second } });
+    render(Quiz, { initial: view(), onFinished: vi.fn() });
+    await u.keyboard("3");
+    await u.keyboard(" ");
+    expect(mocked.answer).toHaveBeenCalledWith([1]);
+    expect(screen.getByRole("button", { name: /Submit/ })).toHaveTextContent("Space");
+  });
+
   // taking-quiz.feature: Easy and hard mode, multiple answers
   it("multiple answer: picks several and shows the count in easy mode", async () => {
     const u = userEvent.setup();

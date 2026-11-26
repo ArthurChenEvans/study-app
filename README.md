@@ -2,6 +2,28 @@
 
 An all-in-one study app for exams: quizzes (multiple choice and short answer), flashcards on FSRS, free recall checklists, and a practice log for hands-on work, all on one calendar. Built with Tauri 2, Svelte 5 and Rust (SQLite). Everything stays on your computers.
 
+## Screenshots
+
+**After a quiz:** wrong and guessed answers first, each with its explanation and a "why did you get it wrong?" picker, plus where every topic now sits on its quiz schedule.
+
+![Quiz results with the review and quiz schedule](docs/screenshots/quiz-results.png)
+
+**Suggestions:** questions you got wrong (and recall points you missed) are offered as cards. Nothing becomes a card until you say so.
+
+![Suggested cards from quiz mistakes](docs/screenshots/suggestions.png)
+
+**Card review:** every card shows its topic on the front, so you know the context before you answer.
+
+![Card review with the topic on the front](docs/screenshots/card-review.png)
+
+**Cards:** today's review, the next 14 days and your retention, with Browse all a tab away so today's answers stay hidden.
+
+![Cards page](docs/screenshots/cards.png)
+
+**Writing cards:** basic, reversed or cloze, with a live preview, several cues for one answer, Markdown, code, maths and images.
+
+![Card editor](docs/screenshots/card-editor.png)
+
 ## What's in it
 
 - **Quizzes:** each topic's questions make a quiz. Tick a few to mix them. Write questions with your slides, PDFs, Word files or EPUBs open beside you, and note which source each fact came from. Each topic climbs a quiz schedule.

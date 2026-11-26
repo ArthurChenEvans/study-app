@@ -1,13 +1,16 @@
 <script lang="ts">
   // flashcards.feature (R65 to R69, R71): review the due cards, grade them, undo, leave.
-  import { CircleCheck, Flag, Pencil, Undo2, X } from "@lucide/svelte";
+  import { CircleCheck, Flag, Pencil, Redo2, Undo2, X } from "@lucide/svelte";
   import { onDestroy } from "svelte";
   import { api, errorMessage, type CardRating, type ReviewCard, type ReviewDone, type ReviewStep, type Subject } from "../lib/api";
   import Rich from "../components/Rich.svelte";
   import { dueLabel } from "../lib/dates";
   import { celebrate, praise, startSession } from "../lib/celebrations.svelte";
 
-  let { scope = null, scopeName = "All topics", onLeave, onEdit }: { scope?: Subject | null; scopeName?: string; onLeave: () => void; onEdit: (topic: number, note: number) => void } = $props();
+  // `resume` carries on the review already running (coming back from editing a card).
+  let { scope = null, scopeName = "All topics", resume = false, onLeave, onEdit }: { scope?: Subject | null; scopeName?: string; resume?: boolean; onLeave: () => void; onEdit: (topic: number, note: number) => void } = $props();
+  // Set while away editing a card, so the review is kept to come back to.
+  let keep = false;
 
   let card = $state<ReviewCard | null>(null);
   let done = $state<ReviewDone | null>(null);
@@ -76,11 +79,13 @@
     run(() => api.gradeCard(rating, Math.min(600, Math.round((Date.now() - started) / 1000))));
   }
   const undo = () => run(() => api.undoCard());
+  const redo = () => run(() => api.redoCard());
 
+  // The review stays open while the card is edited, and picks up where it was afterwards.
   async function edit() {
     if (!card) return;
     const view = await api.noteView(card.note);
-    await api.leaveReview();
+    keep = true;
     onEdit(view.note.topic, card.note);
   }
 
@@ -92,10 +97,17 @@
   const rewrite = (note: number, topic: number) => onEdit(topic, note);
 
   function keys(event: KeyboardEvent) {
-    if (event.ctrlKey || event.metaKey || event.altKey) return;
     const target = event.target as HTMLElement | null;
     if (target?.closest("input, textarea, select")) return;
     if (!card) return;
+    if ((event.ctrlKey || event.metaKey) && !event.altKey) {
+      const key = event.key.toLowerCase();
+      const redoKey = key === "y" || (key === "z" && event.shiftKey);
+      if (redoKey && card.can_redo) { event.preventDefault(); redo(); }
+      else if (key === "z" && !event.shiftKey && card.can_undo) { event.preventDefault(); undo(); }
+      return;
+    }
+    if (event.altKey) return;
     if (event.key.toLowerCase() === "e") { event.preventDefault(); edit(); return; }
     if (event.key.toLowerCase() === "z" && card.can_undo) { event.preventDefault(); undo(); return; }
     if (!shown) {
@@ -106,10 +118,11 @@
     else if (/^[1-4]$/.test(event.key)) { event.preventDefault(); grade(ratings[Number(event.key) - 1]); }
   }
 
-  onDestroy(() => { if (card) api.leaveReview().catch(() => {}); });
+  onDestroy(() => { if (card && !keep) api.leaveReview().catch(() => {}); });
 
   api.today().then((day) => (today = day));
-  run(() => api.startReview(scope));
+  // Coming back from an edit: carry on. If that review is gone (the card was deleted), start again.
+  run(() => (resume ? api.currentCard().catch(() => api.startReview(scope)) : api.startReview(scope)));
 </script>
 
 <svelte:window onkeydown={keys} />
@@ -127,8 +140,9 @@
         <span class="chip tabular-nums {card.queue === 'learning' ? 'chip-now' : ''}">{card.left.learning} learning</span>
         <span class="chip chip-primary tabular-nums {card.queue === 'review' ? 'chip-now' : ''}">{card.left.review} to review</span>
       </p>
-      <button class="btn btn-quiet btn-sm" title="Edit this card (E)" onclick={edit}><Pencil class="size-4" />Edit</button>
-      <button class="btn btn-quiet btn-sm" title="Undo the last grade (Z)" disabled={!card.can_undo || busy} onclick={undo}><Undo2 class="size-4" />Undo</button>
+      <button class="btn btn-quiet btn-sm" title="Edit this card (E)" onclick={edit}><Pencil class="size-4" />Edit <kbd class="kbd kbd-xs">E</kbd></button>
+      <button class="btn btn-quiet btn-sm" title="Undo the last grade (Z or Ctrl+Z)" disabled={!card.can_undo || busy} onclick={undo}><Undo2 class="size-4" />Undo</button>
+      {#if card.can_redo}<button class="btn btn-quiet btn-sm" title="Redo (Ctrl+Shift+Z or Ctrl+Y)" disabled={busy} onclick={redo}><Redo2 class="size-4" />Redo</button>{/if}
     </div>
   </div>
 
@@ -168,7 +182,7 @@
       {:else}
         <div class="flex justify-center"><button class="btn btn-primary btn-lg min-w-80" onclick={() => (shown = true)}>Show answer <kbd class="kbd kbd-xs">Space</kbd></button></div>
       {/if}
-      <p class="mt-3 text-center text-[13px] text-muted">{shown ? "Again shows the card again later in this session." : "Say it in your head first, then check."}{#if shown}<span class="keys-hint"> Space picks Good.</span>{/if}</p>
+      <p class="mt-3 text-center text-[13px] text-muted">{shown ? "Again shows the card again later in this session." : "Say it in your head first, then check."}{#if shown}{" "}<span class="keys-hint">Space picks Good.</span>{/if}</p>
     </div>
   </div>
   </div>
