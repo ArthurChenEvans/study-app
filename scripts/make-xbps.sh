@@ -48,7 +48,8 @@ providers=$(for repodata in /var/db/xbps/*/x86_64-repodata; do bsdtar -xOf "$rep
 depends=""
 missing=""
 for lib in $needed; do
-  package=$(echo "$providers" | awk -v lib="$lib" '$1 == lib { print $2; exit }')
+  # A here-string, not a pipe: with pipefail, awk finishing early would fail the echo (SIGPIPE).
+  package=$(awk -v lib="$lib" '$1 == lib && !found { print $2; found = 1 }' <<< "$providers")
   if [ -z "$package" ]; then missing="$missing $lib"; else depends="$depends $package>=0"; fi
 done
 if [ -n "$missing" ]; then
