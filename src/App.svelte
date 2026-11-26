@@ -42,7 +42,7 @@
   import { statusLine } from "./lib/backup";
   import { syncLine } from "./lib/sync";
   import { screenFromHash, type Screen } from "./lib/router";
-  import { api, type Id, type QuizView, type Subject, type SyncStatus } from "./lib/api";
+  import { api, type CardKind, type Id, type QuizView, type Subject, type SyncStatus } from "./lib/api";
 
   type Route =
     | { screen: Screen }
@@ -53,7 +53,7 @@
     | { screen: "checklist"; id: Id }
     | { screen: "recall-session"; id: Id; run: number }
     | { screen: "topic-cards"; topic: Id; note: Id | "new" | null; notice?: string; review?: Subject | null }
-    | { screen: "card-review"; scope: Subject | null; run: number; resume?: boolean }
+    | { screen: "card-review"; scope: Subject | null; run: number; resume?: boolean; only?: CardKind }
     | { screen: "suggestions" }
     | { screen: "calendar-day"; day: number }
     | { screen: "project"; id: Id }
@@ -174,13 +174,13 @@
   }));
   // The review's top bar names what is being reviewed.
   let scopeName = $state("All topics");
-  async function startCards(scope: Subject | null) {
+  async function startCards(scope: Subject | null, only?: CardKind) {
     scopeName = "All topics";
     try {
       if (scope && "Topic" in scope) scopeName = (await api.topics()).find((topic) => topic.id === scope.Topic)?.name ?? "Topic";
       if (scope && "Module" in scope) scopeName = (await api.modules()).find((module) => module.id === scope.Module)?.name ?? "Module";
     } catch { /* keep the default name */ }
-    go({ screen: "card-review", scope, run: ++runs });
+    go({ screen: "card-review", scope, run: ++runs, only });
   }
   // A new card from the Cards home starts in the busiest topic, and the editor lets you change it.
   async function newCard() {
@@ -292,7 +292,7 @@
       {#key `${route.topic}:${route.note}`}<TopicCards topic={route.topic} editNote={route.note} notice={route.notice} onTopic={(topic, notice) => go({ screen: "topic-cards", topic, note: null, notice })} onBack={() => go({ screen: "cards" })} onReview={startCards} onFinishEdit={review !== undefined ? () => go({ screen: "card-review", scope: review, run: ++runs, resume: true }) : undefined} />{/key}
     {:else if route.screen === "card-review"}
       {@const scope = route.scope}
-      {#key route.run}<CardReview scope={route.scope} {scopeName} resume={route.resume} onLeave={() => go({ screen: "cards" })} onEdit={(topic, note) => go({ screen: "topic-cards", topic, note, review: scope })} />{/key}
+      {#key route.run}<CardReview scope={route.scope} {scopeName} resume={route.resume} only={route.only ?? null} onNext={(only) => go({ screen: "card-review", scope, run: ++runs, only })} onLeave={() => go({ screen: "cards" })} onEdit={(topic, note) => go({ screen: "topic-cards", topic, note, review: scope })} />{/key}
     {:else if route.screen === "suggestions"}
       <Suggestions onBack={() => go({ screen: "cards" })} onChanged={refreshDue} />
     {:else if route.screen === "calendar" || route.screen === "calendar-day"}

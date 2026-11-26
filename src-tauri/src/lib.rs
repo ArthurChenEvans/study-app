@@ -465,8 +465,8 @@ fn archive_card(state: AppState, id: CardId, archived: bool) -> ApiResult<()> {
     with(state, |app| app.archive_card(id, archived))
 }
 #[tauri::command]
-fn start_review(state: AppState, scope: Option<Subject>) -> ApiResult<ReviewStep> {
-    with(state, |app| app.start_review(scope, today()))
+fn start_review(state: AppState, scope: Option<Subject>, only: Option<study_api::cards::CardKind>) -> ApiResult<ReviewStep> {
+    with(state, |app| app.start_review_of(scope, only, today()))
 }
 #[tauri::command]
 fn current_card(state: AppState) -> ApiResult<ReviewStep> {

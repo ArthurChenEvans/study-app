@@ -2,18 +2,22 @@
   // flashcards.feature (R65 to R69, R71): review the due cards, grade them, undo, leave.
   import { CircleCheck, Flag, Pencil, Redo2, Undo2, X } from "@lucide/svelte";
   import { onDestroy } from "svelte";
-  import { api, errorMessage, type CardRating, type ReviewCard, type ReviewDone, type ReviewStep, type Subject } from "../lib/api";
+  import { api, errorMessage, type CardKind, type CardRating, type ReviewCard, type ReviewDone, type ReviewStep, type Subject } from "../lib/api";
   import Rich from "../components/Rich.svelte";
   import { dueLabel } from "../lib/dates";
   import { celebrate, praise, startSession } from "../lib/celebrations.svelte";
 
   // `resume` carries on the review already running (coming back from editing a card).
-  let { scope = null, scopeName = "All topics", resume = false, onLeave, onEdit }: { scope?: Subject | null; scopeName?: string; resume?: boolean; onLeave: () => void; onEdit: (topic: number, note: number) => void } = $props();
+  // `only`: a session of just new, learning or review cards (R226). `onNext` starts another kind afterwards.
+  let { scope = null, scopeName = "All topics", resume = false, only = null, onLeave, onEdit, onNext = () => {} }: { scope?: Subject | null; scopeName?: string; resume?: boolean; only?: CardKind | null; onLeave: () => void; onEdit: (topic: number, note: number) => void; onNext?: (only: CardKind) => void } = $props();
+  const begin = () => (only ? api.startReview(scope, only) : api.startReview(scope));
   // Set while away editing a card, so the review is kept to come back to.
   let keep = false;
 
   let card = $state<ReviewCard | null>(null);
   let done = $state<ReviewDone | null>(null);
+  // What's still due at the end, learning first, then reviews, then new (R226).
+  const nextUp = $derived(done ? ([["learning", done.still_due.learning, "learning"], ["review", done.still_due.review, "to review"], ["new", done.still_due.new, "new"]] as const).filter(([, count]) => count > 0) : []);
   let shown = $state(false);
   let busy = $state(false);
   let error = $state("");
@@ -122,7 +126,7 @@
 
   api.today().then((day) => (today = day));
   // Coming back from an edit: carry on. If that review is gone (the card was deleted), start again.
-  run(() => (resume ? api.currentCard().catch(() => api.startReview(scope)) : api.startReview(scope)));
+  run(() => (resume ? api.currentCard().catch(begin) : begin()));
 </script>
 
 <svelte:window onkeydown={keys} />
@@ -214,7 +218,12 @@
     {/if}
     <div class="mt-10 flex items-center justify-between gap-4">
       <p class="text-sm text-muted">{done.due_tomorrow} due tomorrow.{#if done.busiest}{" "}The busiest day this fortnight is {dueLabel(done.busiest[0], today)} with {done.busiest[1]}.{/if}</p>
-      <button class="btn btn-primary" onclick={onLeave}>Back to Cards</button>
+      <div class="flex flex-wrap justify-end gap-2">
+        {#each nextUp as [kind, count, label], index (kind)}
+          <button class="btn {index === 0 ? 'btn-primary' : 'btn-ghost'}" onclick={() => onNext(kind)}>Review the {count} {label}</button>
+        {/each}
+        <button class="btn {nextUp.length ? 'btn-ghost' : 'btn-primary'}" onclick={onLeave}>Back to Cards</button>
+      </div>
     </div>
   </div>
 {:else if error}

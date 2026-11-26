@@ -156,6 +156,7 @@ fn shapes(scratch: &str) -> BTreeMap<String, Vec<Value>> {
     put(&["sync_setup.setup"], &vec![json!({"folder": format!("{scratch}/sync"), "name": "Laptop"}), json!({"folder": "/nonexistent/sync", "name": ""})]);
     put(&["add_date.date", "update_date.date", "preview_date.date"], &date);
     put(&["create_checklist.subject", "start_review.scope"], &subject);
+    put(&["start_review.only"], &vec![json!(null), json!("new"), json!("learning"), json!("review")]);
     put(&["save_points.points"], &vec![json!([{"text": "a point", "question": null, "note": null}, {"text": "another", "question": 1, "note": 1}]), json!([])]);
     put(&["add_from_items.add", "add_from_items.remove"], &items);
     put(&["try_short_answer.check"], &vec![json!({"Accepted": {"answers": ["cache"], "typos": true}}), json!({"Keywords": {"keywords": [{"word": "fast", "also": ["quick"]}], "needed": null}})]);

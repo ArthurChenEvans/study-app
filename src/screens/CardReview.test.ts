@@ -26,7 +26,7 @@ const card: ReviewCard = {
   card: 10, note: 100, front: "What stops the compiler caching a register?", back: "Declare it `volatile`", topic_name: "CPU", kind: "Basic", source: null,
   intervals: [0, 2, 6, 45], lapses: 0, leech: false, left: { new: 9, learning: 2, review: 6 }, queue: "review", done: 10, total: 27, can_undo: false, can_redo: false,
 };
-const done: ReviewDone = { reviewed: 43, new: 10, again: 5, remembered: 88, target: 90, seconds: 1080, worth_rewriting: [{ note: 101, topic: 1, front: "Amdahl speedup?", agains: 2 }], due_tomorrow: 9, busiest: [TODAY + 6, 31] };
+const done: ReviewDone = { reviewed: 43, new: 10, again: 5, remembered: 88, target: 90, seconds: 1080, worth_rewriting: [{ note: 101, topic: 1, front: "Amdahl speedup?", agains: 2 }], due_tomorrow: 9, busiest: [TODAY + 6, 31], still_due: { new: 0, learning: 0, review: 0 } };
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -225,5 +225,31 @@ describe("Card review", () => {
     await u.keyboard(" ");
     const hint = screen.getByText(/later in this session/);
     expect(hint.textContent).toBe("Again shows the card again later in this session. Space picks Good.");
+  });
+
+  // R226: a session of one kind, and the end offers what's still due, learning first.
+  it("starts a session of only the kind asked for", async () => {
+    render(CardReview, props({ only: "learning" }));
+    await screen.findByText(card.front);
+    expect(mocked.startReview).toHaveBeenCalledWith(null, "learning");
+  });
+
+  it("at the end, offers the kinds still due with learning first, and starts the one picked", async () => {
+    const u = userEvent.setup();
+    const onNext = vi.fn();
+    mocked.startReview.mockResolvedValue({ Done: { ...done, still_due: { new: 12, learning: 3, review: 5 } } });
+    render(CardReview, props({ only: "review", onNext }));
+    const next = await screen.findAllByRole("button", { name: /^Review the/ });
+    expect(next.map((button) => button.textContent?.trim())).toEqual(["Review the 3 learning", "Review the 5 to review", "Review the 12 new"]);
+    expect(next[0]).toHaveClass("btn-primary");
+    await u.click(next[2]);
+    expect(onNext).toHaveBeenCalledWith("new");
+  });
+
+  it("offers nothing more when nothing else is due", async () => {
+    mocked.startReview.mockResolvedValue({ Done: structuredClone(done) });
+    render(CardReview, props({ onNext: vi.fn() }));
+    expect(await screen.findByRole("button", { name: "Back to Cards" })).toHaveClass("btn-primary");
+    expect(screen.queryByRole("button", { name: /^Review the/ })).toBeNull();
   });
 });

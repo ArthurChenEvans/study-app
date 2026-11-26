@@ -117,7 +117,7 @@ pub fn dispatch_at(app: &mut App, command: &str, args: &Value, today: i64, clock
         "save_note" => json(app.save_note(arg(a, "id")?, arg(a, "input")?, today)),
         "delete_note" => json(app.delete_note(arg(a, "id")?)),
         "archive_card" => json(app.archive_card(arg(a, "id")?, arg(a, "archived")?)),
-        "start_review" => json(app.start_review(arg(a, "scope")?, today)),
+        "start_review" => json(app.start_review_of(arg(a, "scope")?, arg(a, "only")?, today)),
         "current_card" => json(app.current_card(today)),
         "grade_card" => json(app.grade_card(arg(a, "rating")?, arg(a, "seconds")?, today)),
         "undo_card" => json(app.undo_card(today)),

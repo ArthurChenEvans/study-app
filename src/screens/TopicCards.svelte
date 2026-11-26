@@ -243,7 +243,7 @@
             <div class="space-y-2">
               <div class="flex items-end justify-between"><label class="text-sm font-semibold" for="cloze-text">Text</label>
                 <button type="button" class="btn btn-ghost btn-sm" onclick={makeGap}><Brackets class="size-4" />Make a gap <kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">Shift</kbd><kbd class="kbd kbd-xs">C</kbd></button></div>
-              <textarea id="cloze-text" data-rich="true" class="textarea w-full font-mono text-sm" rows="4" bind:this={clozeBox} bind:value={note.text}></textarea>
+              <textarea id="cloze-text" data-rich="true" class="textarea w-full text-[15px]" rows="4" bind:this={clozeBox} bind:value={note.text}></textarea>
               <p class="text-sm text-muted">Select a word and make a gap, or type <code>{"{{c1::answer}}"}</code>. Add a hint with <code>{"{{c1::answer::hint}}"}</code>. Gaps with the same number are hidden together.</p>
             </div>
             <div class="space-y-2">
@@ -259,7 +259,7 @@
             </div>
             <div class="space-y-2">
               <label class="text-sm font-semibold" for="card-back">Back</label>
-              <textarea id="card-back" data-rich="true" class="textarea w-full font-mono text-sm" rows="4" bind:value={note.back}></textarea>
+              <textarea id="card-back" data-rich="true" class="textarea w-full text-[15px]" rows="4" bind:value={note.back}></textarea>
               
             </div>
             {#if note.kind === "Basic"}

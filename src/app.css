@@ -901,3 +901,10 @@ del.chg { text-decoration: line-through; text-decoration-thickness: 2px; color: 
 .graph-node { cursor: pointer; outline: none; }
 .graph-node:focus-visible circle:last-of-type { stroke: var(--color-primary); stroke-width: 3; }
 .graph-tip { position: absolute; top: 12px; right: 12px; padding: 6px 10px; border-radius: 10px; background: var(--surface); border: 2px solid var(--color-base-300); font-size: 13px; font-weight: 700; }
+
+/* R226: the due counts on Cards start a session of just that kind. They stay chips, with a
+   hover and focus ring so they read as pressable, and dim when there's nothing of that kind. */
+.chip-button { cursor: pointer; border: 0; transition: filter 150ms ease-out; }
+.chip-button:hover:not(:disabled) { filter: brightness(1.15); text-decoration: underline; }
+.chip-button:focus-visible { outline: 2px solid var(--primary-ink, currentColor); outline-offset: 2px; }
+.chip-button:disabled { cursor: default; opacity: .55; }

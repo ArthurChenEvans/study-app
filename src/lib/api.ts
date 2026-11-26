@@ -181,9 +181,10 @@ export interface ReviewCard {
   done: number; total: number; can_undo: boolean; can_redo: boolean;
 }
 export interface Rewrite { note: Id; topic: Id; front: string; agains: number }
-export interface ReviewDone { reviewed: number; new: number; again: number; remembered: number | null; target: number; seconds: number; worth_rewriting: Rewrite[]; due_tomorrow: number; busiest: [number, number] | null }
+export interface ReviewDone { reviewed: number; new: number; again: number; remembered: number | null; target: number; seconds: number; worth_rewriting: Rewrite[]; due_tomorrow: number; busiest: [number, number] | null; still_due: { new: number; learning: number; review: number } }
 export type ReviewStep = { Card: ReviewCard } | { Done: ReviewDone };
 export type CardRating = "Again" | "Hard" | "Good" | "Easy";
+export type CardKind = "new" | "learning" | "review";
 export interface Suggestion { key: string; kind: "Recall" | "Quiz" | "Struggle"; from: string; day: number; note: string; text: string; answer: string | null; topic: Id | null }
 export interface CardSettings { desired_retention: number; new_per_day: number; max_reviews: number | null; leech_after: number; parameters: number[] }
 
@@ -354,7 +355,8 @@ export const api = {
   saveNote: (id: Id | null, input: NoteInput) => invoke<Id>("save_note", { id, input }),
   deleteNote: (id: Id) => invoke<void>("delete_note", { id }),
   archiveCard: (id: Id, archived: boolean) => invoke<void>("archive_card", { id, archived }),
-  startReview: (scope: Subject | null) => invoke<ReviewStep>("start_review", { scope }),
+  /** `only`: just new, learning or review cards (R226). Leave it out for all of them mixed. */
+  startReview: (scope: Subject | null, only: CardKind | null = null) => invoke<ReviewStep>("start_review", { scope, only }),
   currentCard: () => invoke<ReviewStep>("current_card"),
   gradeCard: (rating: CardRating, seconds: number) => invoke<ReviewStep>("grade_card", { rating, seconds }),
   undoCard: () => invoke<ReviewStep>("undo_card"),

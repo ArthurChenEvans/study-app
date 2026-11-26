@@ -154,6 +154,8 @@ pub struct ReviewDone {
     pub due_tomorrow: usize,
     /// The busiest of the next 14 days: (day, cards).
     pub busiest: Option<(i64, usize)>,
+    /// What's still due today in the same topics, so the end can offer the next kind (R226).
+    pub still_due: DueCounts,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -192,8 +194,29 @@ pub struct NoteInput {
     pub suggestion: Option<String>,
 }
 
+/// One kind of card, for a session of only that kind (R226).
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum CardKind {
+    New,
+    Learning,
+    Review,
+}
+
+fn kind_of(card: &CardRow, today: i64) -> CardKind {
+    if card.schedule.is_new() {
+        CardKind::New
+    } else if card.schedule.is_learning(today) {
+        CardKind::Learning
+    } else {
+        CardKind::Review
+    }
+}
+
 /// A review session in progress (R66, R67).
 pub struct CardSession {
+    /// What it was started on, to say what's still due at the end (R226).
+    scope: Option<Subject>,
     queue: VecDeque<CardId>,
     total: usize,
     undo: Vec<Undo>,
@@ -548,13 +571,18 @@ impl App {
     // ---------- Reviewing (R66, R67, R69, R76) ----------
 
     pub fn start_review(&mut self, scope: Option<Subject>, today: i64) -> ApiResult<ReviewStep> {
-        let settings = self.store.card_settings()?;
-        let cards = self.in_scope(scope, today)?;
-        let (new_today, reviewed_today) = self.reviews_today(today)?;
-        let list: Vec<(CardId, Schedule)> = cards.iter().map(|c| (c.id, c.schedule)).collect();
-        let queue: VecDeque<CardId> =
-            session_order(&list, &settings, today, new_today, reviewed_today).into();
+        self.start_review_of(scope, None, today)
+    }
+
+    /// R226: a session of only new, only learning or only review cards (`only`), or all of them mixed.
+    pub fn start_review_of(&mut self, scope: Option<Subject>, only: Option<CardKind>, today: i64) -> ApiResult<ReviewStep> {
+        let cards = self.in_scope(scope.clone(), today)?;
+        let mut queue: VecDeque<CardId> = self.due_order(&cards, today)?.into();
+        if let Some(kind) = only {
+            queue.retain(|id| cards.iter().find(|c| c.id == *id).is_some_and(|c| kind_of(c, today) == kind));
+        }
         self.card_session = Some(CardSession {
+            scope,
             total: queue.len(),
             queue,
             undo: vec![],
@@ -621,6 +649,14 @@ impl App {
             can_undo: !session.undo.is_empty(),
             can_redo: !session.redo.is_empty(),
         }))
+    }
+
+    /// Today's due cards in review order (daily limits applied).
+    fn due_order(&self, cards: &[CardRow], today: i64) -> ApiResult<Vec<CardId>> {
+        let settings = self.store.card_settings()?;
+        let (new_today, reviewed_today) = self.reviews_today(today)?;
+        let list: Vec<(CardId, Schedule)> = cards.iter().map(|c| (c.id, c.schedule)).collect();
+        Ok(session_order(&list, &settings, today, new_today, reviewed_today))
     }
 
     pub fn current_card(&self, today: i64) -> ApiResult<ReviewStep> {
@@ -774,6 +810,10 @@ impl App {
             worth_rewriting,
             due_tomorrow: cards.iter().filter(|c| c.schedule.due == today + 1).count(),
             busiest,
+            still_due: {
+                let in_scope = self.in_scope(session.scope.clone(), today)?;
+                count(&self.due_order(&in_scope, today)?, &in_scope, today)
+            },
         })
     }
 
@@ -1029,6 +1069,38 @@ mod tests {
             ),
             (2, "Basic", true)
         );
+    }
+
+    // flashcards.feature: A session of just new, just learning or just review cards (R226)
+    #[test]
+    fn a_session_can_hold_one_kind_of_card_and_says_what_else_is_due() {
+        let (mut app, topic) = app();
+        for front in ["A", "B", "C"] {
+            app.save_note(None, basic(topic, front), TODAY).unwrap();
+        }
+        app.start_review(None, TODAY).unwrap();
+        app.grade_card(Rating::Again, 5, TODAY).unwrap(); // A is learning now
+        app.leave_review();
+
+        let learning = app.start_review_of(None, Some(CardKind::Learning), TODAY).unwrap();
+        assert_eq!((card(&learning).front.as_str(), card(&learning).queue.as_str()), ("A", "learning"));
+        assert_eq!((card(&learning).left.new, card(&learning).left.learning), (0, 1), "only learning cards in it");
+        let ReviewStep::Done(done) = app.grade_card(Rating::Good, 4, TODAY).unwrap() else { panic!("expected done") };
+        assert_eq!((done.still_due.new, done.still_due.learning, done.still_due.review), (2, 0, 0), "offers the new ones next");
+
+        let new = app.start_review_of(None, Some(CardKind::New), TODAY).unwrap();
+        assert_eq!(card(&new).front, "B");
+        assert_eq!(card(&new).left.new, 2);
+        assert!(matches!(app.start_review_of(None, Some(CardKind::Review), TODAY).unwrap(), ReviewStep::Done(_)), "nothing to review yet");
+    }
+
+    #[test]
+    fn a_mixed_session_still_has_everything_and_nothing_left_after() {
+        let (mut app, topic) = app();
+        app.save_note(None, basic(topic, "A"), TODAY).unwrap();
+        app.start_review(None, TODAY).unwrap();
+        let ReviewStep::Done(done) = app.grade_card(Rating::Good, 4, TODAY).unwrap() else { panic!("expected done") };
+        assert_eq!((done.still_due.new, done.still_due.learning, done.still_due.review), (0, 0, 0));
     }
 
     // flashcards.feature: Redo (Ctrl+Shift+Z or Ctrl+Y) puts back an answer that was undone

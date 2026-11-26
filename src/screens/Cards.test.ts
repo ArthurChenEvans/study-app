@@ -53,6 +53,20 @@ describe("Cards home", () => {
     expect(handlers.onReview).toHaveBeenLastCalledWith({ Topic: 2 });
   });
 
+  // R226: each count starts a session of just that kind, in the chosen topics. Start review stays mixed.
+  it("starts a session of just new, learning or review cards from their counts", async () => {
+    const u = userEvent.setup();
+    const handlers = props();
+    mocked.cardsHome.mockResolvedValue({ ...structuredClone(home), due: { new: 9, learning: 0, review: 16 } });
+    render(Cards, handlers);
+    await u.click(await screen.findByRole("button", { name: "Review only the 9 new cards" }));
+    expect(handlers.onReview).toHaveBeenLastCalledWith(null, "new");
+    expect(screen.getByRole("button", { name: "Review only the 0 learning cards" })).toBeDisabled();
+    await u.selectOptions(screen.getByLabelText("Review which topics"), "topic:2");
+    await u.click(screen.getByRole("button", { name: "Review only the 16 review cards" }));
+    expect(handlers.onReview).toHaveBeenLastCalledWith({ Topic: 2 }, "review");
+  });
+
   // R191: Cards opens on Review, with no card fronts or answers in sight
   it("opens on Review with retention and the forecast, and no cards listed", async () => {
     const u = userEvent.setup();
