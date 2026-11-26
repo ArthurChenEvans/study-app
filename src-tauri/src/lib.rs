@@ -482,6 +482,14 @@ fn undo_card(state: AppState) -> ApiResult<ReviewStep> {
     with(state, |app| app.undo_card(today()))
 }
 #[tauri::command]
+fn appearance(state: AppState) -> ApiResult<Option<study_api::Appearance>> {
+    with(state, |app| app.appearance())
+}
+#[tauri::command]
+fn set_appearance(state: AppState, appearance: study_api::Appearance) -> ApiResult<()> {
+    with(state, |app| app.set_appearance(appearance))
+}
+#[tauri::command]
 fn redo_card(state: AppState) -> ApiResult<ReviewStep> {
     with(state, |app| app.redo_card(today()))
 }
@@ -1102,6 +1110,8 @@ pub fn run() {
             grade_card,
             undo_card,
             redo_card,
+            appearance,
+            set_appearance,
             leave_review,
             card_suggestions,
             dismiss_suggestion,

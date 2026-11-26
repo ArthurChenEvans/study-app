@@ -9,6 +9,7 @@
   // R211: the phone has no updates to install or backups to keep: the account holds everything.
   const phone = inPhone();
   import { DARK, LIGHT, applyPalette, applyTheme, initialPalette, type Theme } from "../lib/theme";
+  import { saveAppearance } from "../lib/appearance";
   import { COLOURS, applyColours, buildColours, initialColours, type ColoursId } from "../lib/colours";
   import { isSoundOn, setSoundOn } from "../lib/sound";
   import type { Screen } from "../lib/router";
@@ -27,11 +28,13 @@
   function pick(id: ColoursId) {
     colours = id;
     applyColours(id, theme !== LIGHT, colourBlind);
+    void saveAppearance();
   }
 
   function choose(next: Theme) {
     theme = next;
     applyTheme(next);
+    void saveAppearance();
   }
 </script>
 
@@ -73,7 +76,7 @@
     <label class="mt-4 flex min-h-11 cursor-pointer items-center gap-3">
       <Eye class="size-5 text-muted" />
       <span class="flex-1"><span class="block font-bold">Colour-blind safe</span><span id="cb-help" class="block text-sm text-muted">Right and wrong in blue and orange instead of green and red. Icons and words always go with them.</span></span>
-      <input type="checkbox" role="switch" class="toggle" aria-label="Colour-blind safe" aria-describedby="cb-help" checked={colourBlind} onchange={() => { colourBlind = !colourBlind; applyPalette(colourBlind ? "colour-blind" : "standard"); }} />
+      <input type="checkbox" role="switch" class="toggle" aria-label="Colour-blind safe" aria-describedby="cb-help" checked={colourBlind} onchange={() => { colourBlind = !colourBlind; applyPalette(colourBlind ? "colour-blind" : "standard"); void saveAppearance(); }} />
     </label>
   </section>
 

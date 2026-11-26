@@ -905,3 +905,29 @@ fn t_sync_04_crossed_moves_never_make_a_cycle() {
     assert!(!desktop.sync_to_check().unwrap().is_empty() || !laptop.sync_to_check().unwrap().is_empty(), "a notice says so");
     assert_same(&desktop, &laptop);
 }
+
+// R228: the colour theme, dark or light and the colour-blind palette follow you to every device.
+#[test]
+fn appearance_syncs_and_the_latest_change_wins() {
+    let shared = folder("appearance");
+    let mut desktop = computer("appearance", "desktop", 1);
+    assert_eq!(desktop.appearance().unwrap(), None, "nothing chosen yet: each device keeps its own");
+    let honey = crate::Appearance { colours: "honey".into(), dark: false, colour_blind: true };
+    desktop.set_appearance(honey.clone()).unwrap();
+    join(&mut desktop, &shared, "Desktop", at(TODAY, 600));
+    let mut laptop = computer("appearance", "laptop", 2);
+    join(&mut laptop, &shared, "Laptop", at(TODAY, 610));
+    assert_eq!(laptop.appearance().unwrap(), Some(honey));
+
+    let miku = crate::Appearance { colours: "miku".into(), dark: true, colour_blind: false };
+    laptop.set_appearance(miku.clone()).unwrap();
+    sync(&mut laptop, at(TODAY, 620));
+    sync(&mut desktop, at(TODAY, 630));
+    assert_eq!(desktop.appearance().unwrap(), Some(miku));
+}
+
+#[test]
+fn appearance_refuses_a_made_up_theme() {
+    let mut app = computer("appearance-bad", "desktop", 1);
+    assert!(app.set_appearance(crate::Appearance { colours: "x".repeat(200), dark: true, colour_blind: false }).is_err());
+}

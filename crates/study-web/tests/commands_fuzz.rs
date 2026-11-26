@@ -156,6 +156,7 @@ fn shapes(scratch: &str) -> BTreeMap<String, Vec<Value>> {
     put(&["sync_setup.setup"], &vec![json!({"folder": format!("{scratch}/sync"), "name": "Laptop"}), json!({"folder": "/nonexistent/sync", "name": ""})]);
     put(&["add_date.date", "update_date.date", "preview_date.date"], &date);
     put(&["create_checklist.subject", "start_review.scope"], &subject);
+    put(&["set_appearance.appearance"], &vec![json!({"colours": "coffee", "dark": true, "colour_blind": false}), json!({"colours": "", "dark": false, "colour_blind": true})]);
     put(&["start_review.only"], &vec![json!(null), json!("new"), json!("learning"), json!("review")]);
     put(&["save_points.points"], &vec![json!([{"text": "a point", "question": null, "note": null}, {"text": "another", "question": 1, "note": 1}]), json!([])]);
     put(&["add_from_items.add", "add_from_items.remove"], &items);
@@ -175,7 +176,7 @@ fn shapes(scratch: &str) -> BTreeMap<String, Vec<Value>> {
     put(&["topics_under.excluded"], &vec![json!([]), json!([1, 2])]);
     put(&["cloud_set_images.allowed"], &flag);
     put(&["cloud_keep.here"], &flag);
-    put(&["unlink_related.first", "unlink_related.second", "create_submodule.parent"], &vec![json!(1), json!(2), json!(0), json!(-1)]);
+    put(&["link_related.first", "link_related.second", "unlink_related.first", "unlink_related.second", "create_submodule.parent"], &vec![json!(1), json!(2), json!(0), json!(-1)]);
     put(&["create_submodule.name"], &vec![json!("Memory"), json!(""), json!("CS:APP")]);
     put(&["query_search.input"], &vec![json!("CPU $ ALU"), json!("module:\"A B\" !(x ^ y)"), json!("(((")]);
     put(&["archive_card.archived", "sync_now.auto", "sync_settle.other"], &flag);

@@ -935,3 +935,19 @@ fn check_source(fields: &SourceFields) -> Result<()> {
     }
     Ok(())
 }
+
+// Plain synced settings: a key and a JSON value in the settings table, which sync carries to
+// every device (card settings use the same table).
+impl Store {
+    pub fn setting_value(&self, key: &str) -> Result<Option<String>> {
+        Ok(self.connection.query_row("SELECT value FROM settings WHERE key = ?1", [key], |row| row.get(0)).optional()?)
+    }
+
+    pub fn set_setting_value(&mut self, key: &str, value: &str) -> Result<()> {
+        self.connection.execute(
+            "INSERT INTO settings (key, value) VALUES (?1, ?2) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            rusqlite::params![key, value],
+        )?;
+        Ok(())
+    }
+}

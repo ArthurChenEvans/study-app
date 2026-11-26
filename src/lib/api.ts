@@ -185,6 +185,7 @@ export interface ReviewDone { reviewed: number; new: number; again: number; reme
 export type ReviewStep = { Card: ReviewCard } | { Done: ReviewDone };
 export type CardRating = "Again" | "Hard" | "Good" | "Easy";
 export type CardKind = "new" | "learning" | "review";
+export interface Appearance { colours: string; dark: boolean; colour_blind: boolean }
 export interface Suggestion { key: string; kind: "Recall" | "Quiz" | "Struggle"; from: string; day: number; note: string; text: string; answer: string | null; topic: Id | null }
 export interface CardSettings { desired_retention: number; new_per_day: number; max_reviews: number | null; leech_after: number; parameters: number[] }
 
@@ -361,6 +362,9 @@ export const api = {
   gradeCard: (rating: CardRating, seconds: number) => invoke<ReviewStep>("grade_card", { rating, seconds }),
   undoCard: () => invoke<ReviewStep>("undo_card"),
   redoCard: () => invoke<ReviewStep>("redo_card"),
+  /** R228: the synced look, or null until it's chosen on any device. */
+  appearance: () => invoke<Appearance | null>("appearance"),
+  setAppearance: (appearance: Appearance) => invoke<void>("set_appearance", { appearance }),
   leaveReview: () => invoke<void>("leave_review"),
   cardSuggestions: () => invoke<Suggestion[]>("card_suggestions"),
   dismissSuggestion: (key: string) => invoke<void>("dismiss_suggestion", { key }),

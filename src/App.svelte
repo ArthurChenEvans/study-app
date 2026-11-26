@@ -42,6 +42,7 @@
   import { statusLine } from "./lib/backup";
   import { syncLine } from "./lib/sync";
   import { screenFromHash, type Screen } from "./lib/router";
+  import { pullAppearance } from "./lib/appearance";
   import { api, type CardKind, type Id, type QuizView, type Subject, type SyncStatus } from "./lib/api";
 
   type Route =
@@ -123,7 +124,7 @@
         const result = await api.syncNow(auto);
         status = result.status;
         if (result.received && RELOADS.includes(route.screen)) dataVersion++;
-        if (result.received) loadPrefs();
+        if (result.received) { loadPrefs(); void pullAppearance(); }
         if (result.received) refreshCounts();
       }
       showSync(status);
@@ -132,6 +133,8 @@
       /* shown on Your data */
     }
   }
+  // R228: the look chosen on another device, once on opening (sync brings later changes).
+  void pullAppearance();
   syncTick();
   const timer = setInterval(() => syncTick(), 30_000);
 

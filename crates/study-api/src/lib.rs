@@ -5,6 +5,8 @@
 //! only leave the backend in study-mode feedback after answering, and in results.
 
 pub mod anki;
+pub mod appearance;
+pub use appearance::Appearance;
 pub mod anki_export;
 pub mod backup;
 pub mod calendar;
