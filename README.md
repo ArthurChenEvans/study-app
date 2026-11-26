@@ -20,10 +20,18 @@ Grab the latest release from [Releases](https://github.com/ArthurChenEvans/study
 |---|---|
 | Fedora, openSUSE and other RPM distros | `shudhana-<version>.x86_64.rpm` |
 | Debian, Ubuntu, Mint | `shudhana_<version>_amd64.deb` |
+| Void Linux (glibc) | `shudhana-<version>_1.x86_64.xbps` |
 | Windows | `shudhana-<version>-setup.exe` |
 | macOS (Apple silicon and Intel) | `shudhana-<version>-universal.dmg` |
 
-Installed copies update themselves. The Mac app isn't notarised, so the first time you open it, go to System Settings, Privacy & Security, and press Open Anyway.
+Installed copies update themselves, except on Void, where xbps does it. To install or update the .xbps, put it in a folder on its own and run, from that folder:
+
+```bash
+xbps-rindex -a *.xbps
+sudo xbps-install --repository="$PWD" -Su shudhana
+```
+
+xbps pulls in WebKitGTK and the other libraries it needs from the Void repos. The Mac app isn't notarised, so the first time you open it, go to System Settings, Privacy & Security, and press Open Anyway.
 
 ## Run it from source
 
@@ -164,7 +172,7 @@ What the robustness tests cover (added by the November 2026 audit):
 | `src` | Svelte frontend |
 | `crates/study-web` | The browser version's server, the demo seeder and the robustness tests |
 | `e2e/` | Tests and a UI sweep that drive the real app window |
-| `.github/workflows` | Release builds (.rpm, .deb, .exe, .dmg) and the package check on pull requests |
+| `.github/workflows` | Release builds (.rpm, .deb, .xbps, .exe, .dmg) and the package check on pull requests |
 
 ## End-to-end tests
 

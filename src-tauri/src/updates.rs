@@ -30,11 +30,21 @@ pub struct Updates {
     busy: AtomicBool,
     /// Where to look instead of the configured feed (tests, and STUDY_UPDATE_URL).
     feed: Mutex<Option<String>>,
+    /// R222: a file only the .xbps ships. When it's there, xbps does the updating, not the app.
+    marker: Option<std::path::PathBuf>,
 }
+
+/// Shipped by the Void Linux package (scripts/make-xbps.sh).
+pub const XBPS_MARKER: &str = "/usr/share/shudhana/installed-by-xbps";
 
 impl Updates {
     pub fn with_feed(feed: Option<String>) -> Self {
-        Updates { feed: Mutex::new(feed), ..Default::default() }
+        Updates { feed: Mutex::new(feed), marker: Some(XBPS_MARKER.into()), ..Default::default() }
+    }
+
+    /// Installed by a package manager that updates the app itself (R222), so the app never offers updates.
+    fn managed_elsewhere(&self) -> bool {
+        self.marker.as_ref().is_some_and(|marker| marker.exists())
     }
 }
 
@@ -84,6 +94,9 @@ async fn find<R: Runtime>(app: &AppHandle<R>) -> ApiResult<Option<Update>> {
 /// Is there a newer release? Remembers it so download and install use the same one.
 pub async fn check<R: Runtime>(app: &AppHandle<R>) -> ApiResult<Option<UpdateInfo>> {
     let state = app.state::<Updates>();
+    if state.managed_elsewhere() {
+        return Ok(None);
+    }
     let found = find(app).await;
     *state.last_check.lock().unwrap() = Some(Instant::now());
     let mut pending = state.pending.lock().unwrap();
@@ -260,6 +273,20 @@ mod tests {
         assert_eq!(found.notes.as_deref(), Some("Week view on phones."));
         let ready = tauri::async_runtime::block_on(download(app.handle())).unwrap();
         assert!(ready.ready);
+    }
+
+    // R222: the Void Linux package is updated by xbps, so the app never offers one itself.
+    #[test]
+    fn an_xbps_install_never_offers_an_update() {
+        let marker = std::env::temp_dir().join(format!("installed-by-xbps-{}", std::process::id()));
+        std::fs::write(&marker, "").unwrap();
+        let mut context = tauri::test::mock_context(tauri::test::noop_assets());
+        context.config_mut().plugins.0.insert("updater".into(), serde_json::json!({ "pubkey": PUBKEY.trim(), "endpoints": [], "dangerousInsecureTransportProtocol": true }));
+        let updates = Updates { marker: Some(marker.clone()), ..Updates::with_feed(Some(serve("99.0.0", PAYLOAD.to_vec()))) };
+        let app = tauri::test::mock_builder().plugin(tauri_plugin_updater::Builder::new().build()).manage(updates).build(context).unwrap();
+        assert_eq!(tauri::async_runtime::block_on(check(app.handle())).unwrap(), None);
+        std::fs::remove_file(&marker).unwrap();
+        assert!(tauri::async_runtime::block_on(check(app.handle())).unwrap().is_some(), "without the marker it's offered as normal");
     }
 
     #[test]
