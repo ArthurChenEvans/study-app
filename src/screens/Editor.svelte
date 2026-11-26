@@ -270,7 +270,7 @@
       </div>
       <div class="space-y-2">
         <label class="text-sm font-semibold" for="question-text">Question</label>
-        <textarea id="question-text" class="textarea w-full font-mono text-sm" rows="3" data-rich="true" bind:this={questionField} bind:value={draft.text}></textarea>
+        <textarea id="question-text" class="textarea w-full text-[15px]" rows="3" data-rich="true" bind:this={questionField} bind:value={draft.text}></textarea>
         <div class="flex flex-wrap items-center justify-between gap-2">
           <p class="text-sm text-muted">You can add pictures, code and maths. Paste or drop a picture into any box, or add one from a file.</p>
           <button type="button" class="btn btn-ghost btn-sm" title="Adds the picture where your cursor was last, in the question, an answer or the explanation" onclick={() => picker?.click()}><ImagePlus class="size-4" />Add image</button>
@@ -345,7 +345,7 @@
         </fieldset>
         <div class="space-y-2">
           <label class="text-sm font-semibold" for="model-answer">Model answer <span class="font-normal text-muted">(optional)</span></label>
-          <textarea id="model-answer" class="textarea w-full font-mono text-sm" rows="2" data-rich="true" placeholder="Shown after you answer…" bind:value={draft.model}></textarea>
+          <textarea id="model-answer" class="textarea w-full text-[15px]" rows="2" data-rich="true" placeholder="Shown after you answer…" bind:value={draft.model}></textarea>
           <p class="text-sm text-muted">What you see after answering, next to what you wrote. {draft.checkBy === "Accepted" ? "Leave it blank to show the first accepted answer." : "Keywords only decide right or wrong."}</p>
           {#if worthPreviewing(draft.model)}<div class="panel p-4" aria-label="Model answer preview"><Rich text={draft.model} class="max-w-prose" /></div>{/if}
         </div>
@@ -369,7 +369,7 @@
 
       <div class="space-y-2">
         <label class="text-sm font-semibold" for="question-explanation">Explanation</label>
-        <textarea id="question-explanation" class="textarea w-full font-mono text-sm" rows="3" data-rich="true" bind:value={draft.explanation}></textarea>
+        <textarea id="question-explanation" class="textarea w-full text-[15px]" rows="3" data-rich="true" bind:value={draft.explanation}></textarea>
         {#if worthPreviewing(draft.explanation)}<div class="panel p-4" aria-label="Explanation preview"><Rich text={draft.explanation} class="max-w-prose" /></div>{/if}
       </div>
 

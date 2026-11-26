@@ -9,7 +9,12 @@
   import { IMAGE_TYPES, imageInput, listenForDrops } from "../lib/imageInput.svelte";
   import { dueLabel } from "../lib/dates";
 
-  let { topic, editNote = null, notice = "", onBack, onReview, onTopic = () => {} }: { topic: number; editNote?: number | "new" | null; notice?: string; onBack: () => void; onReview: (scope: Subject) => void; onTopic?: (topic: number, notice: string) => void } = $props();
+  // `onFinishEdit`: opened from card review, so finishing the edit goes back there (`finishLabel` on the back link).
+  let { topic, editNote = null, notice = "", onBack, onReview, onTopic = () => {}, onFinishEdit, finishLabel = "Back to review" }: { topic: number; editNote?: number | "new" | null; notice?: string; onBack: () => void; onReview: (scope: Subject) => void; onTopic?: (topic: number, notice: string) => void; onFinishEdit?: () => void; finishLabel?: string } = $props();
+  function closeEditor() {
+    if (onFinishEdit) onFinishEdit();
+    else editing = null;
+  }
 
   let data = $state<TopicCards | null>(null);
   let today = $state(0);
@@ -84,6 +89,7 @@
         if (note.topic === topic) await load();
         return;
       }
+      if (onFinishEdit) return onFinishEdit();
       editing = null;
       if (note.topic !== topic) return onTopic(note.topic, `${status} to ${topics.find((row) => row.id === note.topic)?.name ?? "another topic"}`);
       await load();
@@ -146,6 +152,7 @@
         hiddenNotes = new Set([...hiddenNotes, id]);
         deleting = false;
         editing = null;
+        onFinishEdit?.();
         if (data) data.cards = data.cards.filter((card) => card.note !== id);
       },
       restore: () => {
@@ -172,7 +179,7 @@
 <svelte:window onkeydown={keys} />
 
 <div class="mx-auto max-w-6xl px-12 pb-24">
-  <button class="mt-8 inline-flex items-center gap-1 py-1 text-xs font-extrabold uppercase tracking-wider text-muted hover:underline" onclick={() => (editing ? (editing = null) : onBack())}><ArrowLeft class="size-4" />{editing ? data?.name : "Cards"}</button>
+  <button class="mt-8 inline-flex items-center gap-1 py-1 text-xs font-extrabold uppercase tracking-wider text-muted hover:underline" onclick={() => (editing ? closeEditor() : onBack())}><ArrowLeft class="size-4" />{editing && onFinishEdit ? finishLabel : editing ? data?.name : "Cards"}</button>
   {#if data}
     <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 pb-6 pt-4">
       <div><p class="text-sm text-muted">{data.module ?? "No module"} · {data.cards.length} {data.cards.length === 1 ? "card" : "cards"} · {data.due} due</p><h1 class="mt-1 text-3xl font-semibold">{data.name}</h1></div>
@@ -236,7 +243,7 @@
             <div class="space-y-2">
               <div class="flex items-end justify-between"><label class="text-sm font-semibold" for="cloze-text">Text</label>
                 <button type="button" class="btn btn-ghost btn-sm" onclick={makeGap}><Brackets class="size-4" />Make a gap <kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">Shift</kbd><kbd class="kbd kbd-xs">C</kbd></button></div>
-              <textarea id="cloze-text" data-rich="true" class="textarea w-full font-mono text-sm" rows="4" bind:this={clozeBox} bind:value={note.text}></textarea>
+              <textarea id="cloze-text" data-rich="true" class="textarea w-full text-[15px]" rows="4" bind:this={clozeBox} bind:value={note.text}></textarea>
               <p class="text-sm text-muted">Select a word and make a gap, or type <code>{"{{c1::answer}}"}</code>. Add a hint with <code>{"{{c1::answer::hint}}"}</code>. Gaps with the same number are hidden together.</p>
             </div>
             <div class="space-y-2">
@@ -252,7 +259,7 @@
             </div>
             <div class="space-y-2">
               <label class="text-sm font-semibold" for="card-back">Back</label>
-              <textarea id="card-back" data-rich="true" class="textarea w-full font-mono text-sm" rows="4" bind:value={note.back}></textarea>
+              <textarea id="card-back" data-rich="true" class="textarea w-full text-[15px]" rows="4" bind:value={note.back}></textarea>
               
             </div>
             {#if note.kind === "Basic"}
@@ -283,7 +290,7 @@
           <div class="sticky bottom-0 z-10 flex flex-wrap items-center gap-3 border-t border-base-300 bg-base-100 py-4">
             <button type="submit" class="btn btn-primary">{editing.id === null ? `Save ${count(note)}` : "Save changes"} <kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">S</kbd></button>
             {#if editing.id === null}<button type="button" class="btn btn-ghost" onclick={() => save(undefined, true)}>Save and return to list</button>{/if}
-            <button type="button" class="btn btn-ghost" onclick={() => (editing = null)}>Cancel</button>
+            <button type="button" class="btn btn-ghost" onclick={closeEditor}>Cancel</button>
             {#if editing.id === null && (images.note || status)}<p role="status" class="text-sm text-muted">{images.note || status}</p>{/if}
             {#if editing.id !== null}<button type="button" class="btn btn-ghost ml-auto" onclick={() => (deleting = true)}><Trash2 class="size-4" />Delete…</button>{/if}
           </div>

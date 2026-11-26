@@ -44,7 +44,7 @@ Tailwind classes: `1, 2, 3, 4, 6, 8, 12, 16, 24`.
 
 ## 4. Typography
 
-- **UI and body:** Nunito (rounded, friendly, very readable at heavy weights). **Code, key hints, file paths:** IBM Plex Mono. **Maths:** KaTeX's own fonts. Both fonts ship with the app (`@fontsource`), nothing loads from the internet.
+- **UI and body:** Nunito (rounded, friendly, very readable at heavy weights). Key hints (the boxed keys like Space or 1) use Nunito too, at 800, so they read as part of the button. **Code and file paths:** IBM Plex Mono. **Maths:** KaTeX's own fonts. Both fonts ship with the app (`@fontsource`), nothing loads from the internet.
 - **Scale (px):** 12, 13, 14, 15, 16, 18, 20, 24, 28, 30, 36. 13 is for uppercase labels, 15 for body inside tiles and rows.
   - 12 to 13: uppercase labels (buttons, nav, tabs, chips, table headers) and metadata
   - 14 to 15: secondary text, table cells, body inside tiles

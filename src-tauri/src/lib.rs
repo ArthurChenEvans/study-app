@@ -4,6 +4,7 @@
 use std::sync::Mutex;
 
 mod clipboard;
+mod portable;
 mod updates;
 
 use chrono::{Local, NaiveDate};
@@ -369,6 +370,10 @@ fn answer_text(state: AppState, typed: String) -> ApiResult<AnswerResult> {
 }
 /// R84: overrule a short answer during the quiz (attempt is set once it has finished).
 #[tauri::command]
+fn flag_answer(state: AppState, attempt: Option<AttemptId>, index: usize) -> ApiResult<bool> {
+    with(state, |app| app.flag_answer(attempt, index))
+}
+#[tauri::command]
 fn overrule_answer(state: AppState, attempt: Option<AttemptId>, index: usize) -> ApiResult<study_api::Feedback> {
     with(state, |app| app.overrule_answer(attempt, index))
 }
@@ -465,8 +470,8 @@ fn archive_card(state: AppState, id: CardId, archived: bool) -> ApiResult<()> {
     with(state, |app| app.archive_card(id, archived))
 }
 #[tauri::command]
-fn start_review(state: AppState, scope: Option<Subject>) -> ApiResult<ReviewStep> {
-    with(state, |app| app.start_review(scope, today()))
+fn start_review(state: AppState, scope: Option<Subject>, only: Option<study_api::cards::CardKind>) -> ApiResult<ReviewStep> {
+    with(state, |app| app.start_review_of(scope, only, today()))
 }
 #[tauri::command]
 fn current_card(state: AppState) -> ApiResult<ReviewStep> {
@@ -479,6 +484,18 @@ fn grade_card(state: AppState, rating: Rating, seconds: u32) -> ApiResult<Review
 #[tauri::command]
 fn undo_card(state: AppState) -> ApiResult<ReviewStep> {
     with(state, |app| app.undo_card(today()))
+}
+#[tauri::command]
+fn appearance(state: AppState) -> ApiResult<Option<study_api::Appearance>> {
+    with(state, |app| app.appearance())
+}
+#[tauri::command]
+fn set_appearance(state: AppState, appearance: study_api::Appearance) -> ApiResult<()> {
+    with(state, |app| app.set_appearance(appearance))
+}
+#[tauri::command]
+fn redo_card(state: AppState) -> ApiResult<ReviewStep> {
+    with(state, |app| app.redo_card(today()))
 }
 #[tauri::command]
 fn leave_review(state: AppState) -> ApiResult<()> {
@@ -940,6 +957,19 @@ fn sync_settle(state: AppState, n: i64, other: bool) -> ApiResult<Vec<study_api:
 }
 
 pub fn run() {
+    // R227: a portable copy keeps everything in `data` beside it, the WebView's storage included.
+    let portable = portable::here();
+    #[cfg(windows)]
+    if let Some(dir) = &portable {
+        // Before any WebView exists, so nothing has read it yet.
+        unsafe { std::env::set_var("WEBVIEW2_USER_DATA_FOLDER", dir.join("webview")) };
+    }
+    let updates = updates::Updates::with_feed(std::env::var(updates::FEED_OVERRIDE).ok());
+    // The updater can only run the installer, so a portable copy never offers updates.
+    let updates = match &portable {
+        Some(dir) => updates.managed_by(dir.with_file_name(portable::MARKER)),
+        None => updates,
+    };
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             // A second launch (double-clicking a .studyapp) hands its file to this window.
@@ -954,7 +984,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .manage(ImportStop::default())
         .manage(OpenedWith(Mutex::new(file_argument(&std::env::args().collect::<Vec<_>>()))))
-        .manage(updates::Updates::with_feed(std::env::var(updates::FEED_OVERRIDE).ok()))
+        .manage(updates)
         .on_window_event(|window, event| {
             // Auto update installs a ready update as the app closes (R166).
             if let tauri::WindowEvent::CloseRequested { api, .. } = event
@@ -963,8 +993,11 @@ pub fn run() {
                 api.prevent_close();
             }
         })
-        .setup(|handle| {
-            let dir = handle.path().app_data_dir()?;
+        .setup(move |handle| {
+            let dir = match portable.clone() {
+                Some(dir) => dir,
+                None => handle.path().app_data_dir()?,
+            };
             std::fs::create_dir_all(&dir)?;
             let database = dir.join("study.sqlite");
             let backups = dir.join("backups");
@@ -1080,6 +1113,9 @@ pub fn run() {
             current_card,
             grade_card,
             undo_card,
+            redo_card,
+            appearance,
+            set_appearance,
             leave_review,
             card_suggestions,
             dismiss_suggestion,
@@ -1153,6 +1189,7 @@ pub fn run() {
             question_timed_out,
             answer_text,
             overrule_answer,
+            flag_answer,
             overrule_result,
             try_short_answer,
             total_timed_out,

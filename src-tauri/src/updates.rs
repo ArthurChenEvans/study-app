@@ -42,6 +42,11 @@ impl Updates {
         Updates { feed: Mutex::new(feed), marker: Some(XBPS_MARKER.into()), ..Default::default() }
     }
 
+    /// Updates come from somewhere else while `marker` exists: the portable copy's portable.txt (R227).
+    pub fn managed_by(self, marker: std::path::PathBuf) -> Self {
+        Updates { marker: Some(marker), ..self }
+    }
+
     /// Installed by a package manager that updates the app itself (R222), so the app never offers updates.
     fn managed_elsewhere(&self) -> bool {
         self.marker.as_ref().is_some_and(|marker| marker.exists())

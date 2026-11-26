@@ -8,7 +8,8 @@
   import ExportDialog from "./ExportDialog.svelte";
 
   // The phone version waits on this to know when you're signed in (R211).
-  let { onChange = () => {} }: { onChange?: (status: CloudStatus) => void } = $props();
+  // `signInScreen`: the phone's sign-in screen, which explains why above, so just the button.
+  let { onChange = () => {}, signInScreen = false }: { onChange?: (status: CloudStatus) => void; signInScreen?: boolean } = $props();
   let status = $state<CloudStatus | null>(null);
   $effect(() => {
     if (status) onChange(status);
@@ -188,8 +189,8 @@
     {#if status.problem}<p class="mt-2 text-sm font-bold">{status.problem}</p>{/if}
     {#if step === "idle"}
       <div class="mt-2 flex flex-wrap items-center gap-3">
-        <p class="text-beside flex-1 text-sm text-muted">Sign in to sync your quizzes, cards and free recall across computers. Everything still works offline.</p>
-        <button class="btn btn-primary" onclick={() => { step = "email"; error = ""; void tick().then(() => document.getElementById("account-email")?.focus()); }}><Mail class="size-4" />Sign in to sync</button>
+        {#if !signInScreen}<p class="text-beside flex-1 text-sm text-muted">Sign in to sync your quizzes, cards and free recall across computers. Everything still works offline.</p>{/if}
+        <button class="btn btn-primary" class:btn-block={signInScreen} onclick={() => { step = "email"; error = ""; void tick().then(() => document.getElementById("account-email")?.focus()); }}><Mail class="size-4" />Sign in to sync</button>
       </div>
     {:else if step === "email"}
       <form class="mt-3 max-w-md space-y-3" onsubmit={sendCode}>

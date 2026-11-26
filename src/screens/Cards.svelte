@@ -3,11 +3,11 @@
   // flashcards.feature (R68, R74, R75): what's due today, the forecast, retention.
   // R191: it opens on Review, and every card is a tab away in Browse all.
   import { CircleCheck, Inbox, Play, Plus, RefreshCw, RotateCcw, Settings2, SquareStack } from "@lucide/svelte";
-  import { api, errorMessage, type CardSettings, type CardsHome, type ModuleRow, type Subject, type TopicRow } from "../lib/api";
+  import { api, errorMessage, type CardSettings, type CardsHome, type ModuleRow, type CardKind, type Subject, type TopicRow } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
   import { dueLabel } from "../lib/dates";
 
-  let { onReview, onSuggestions, onNewCard, onEditNote = () => {} }: { onReview: (scope: Subject | null) => void; onTopic?: (topic: number) => void; onSuggestions: () => void; onNewCard: () => void; onEditNote?: (topic: number, note: number) => void } = $props();
+  let { onReview, onSuggestions, onNewCard, onEditNote = () => {} }: { onReview: (scope: Subject | null, only?: CardKind) => void; onTopic?: (topic: number) => void; onSuggestions: () => void; onNewCard: () => void; onEditNote?: (topic: number, note: number) => void } = $props();
   let tab = $state<"review" | "browse">("review");
 
   let home = $state<CardsHome | null>(null);
@@ -28,11 +28,14 @@
     [home, today, modules, topics] = await Promise.all([api.cardsHome(), api.today(), api.modules(), api.topics()]);
   }
 
-  function start() {
-    if (!scope) return onReview(null);
+  function chosen(): Subject | null {
+    if (!scope) return null;
     const [kind, id] = scope.split(":");
-    onReview(kind === "module" ? { Module: Number(id) } : { Topic: Number(id) });
+    return kind === "module" ? { Module: Number(id) } : { Topic: Number(id) };
   }
+  const start = () => onReview(chosen());
+  // R226: a session of just one kind, in the chosen topics.
+  const startOnly = (only: CardKind) => onReview(chosen(), only);
 
   async function openSettings() {
     editing = await api.cardSettings();
@@ -114,9 +117,9 @@
             <div>
               <p class="text-[44px] font-black leading-none tabular-nums">{total} <span class="text-[18px] font-extrabold">{total === 1 ? "card" : "cards"}</span></p>
               <p class="mt-3 flex flex-wrap items-center gap-2 text-sm" aria-label="{home.due.new} new, {home.due.learning} learning, {home.due.review} to review">
-                <span class="chip chip-info tabular-nums">{home.due.new} new</span>
-                <span class="chip tabular-nums">{home.due.learning} learning</span>
-                <span class="chip chip-primary tabular-nums">{home.due.review} to review</span>
+                <button class="chip chip-info chip-button tabular-nums" aria-label="Review only the {home.due.new} new cards" title="Review only these" disabled={!home.due.new} onclick={() => startOnly("new")}>{home.due.new} new</button>
+                <button class="chip chip-button tabular-nums" aria-label="Review only the {home.due.learning} learning cards" title="Review only these" disabled={!home.due.learning} onclick={() => startOnly("learning")}>{home.due.learning} learning</button>
+                <button class="chip chip-primary chip-button tabular-nums" aria-label="Review only the {home.due.review} review cards" title="Review only these" disabled={!home.due.review} onclick={() => startOnly("review")}>{home.due.review} to review</button>
                 <span class="ml-1 text-[13px] text-muted">About {home.minutes} {home.minutes === 1 ? "minute" : "minutes"}.</span>
               </p>
             </div>

@@ -6,7 +6,7 @@ vi.mock("../lib/api", async (original) => {
   const actual = await original<typeof import("../lib/api")>();
   return {
     ...actual,
-    api: { today: vi.fn(), startReview: vi.fn(), gradeCard: vi.fn(), undoCard: vi.fn(), leaveReview: vi.fn(), noteView: vi.fn() },
+    api: { today: vi.fn(), startReview: vi.fn(), gradeCard: vi.fn(), undoCard: vi.fn(), redoCard: vi.fn(), currentCard: vi.fn(), leaveReview: vi.fn(), noteView: vi.fn() },
   };
 });
 
@@ -24,9 +24,9 @@ const mocked = vi.mocked(api);
 const TODAY = 20_760;
 const card: ReviewCard = {
   card: 10, note: 100, front: "What stops the compiler caching a register?", back: "Declare it `volatile`", topic_name: "CPU", kind: "Basic", source: null,
-  intervals: [0, 2, 6, 45], lapses: 0, leech: false, left: { new: 9, learning: 2, review: 6 }, queue: "review", done: 10, total: 27, can_undo: false,
+  intervals: [0, 2, 6, 45], lapses: 0, leech: false, left: { new: 9, learning: 2, review: 6 }, queue: "review", done: 10, total: 27, can_undo: false, can_redo: false,
 };
-const done: ReviewDone = { reviewed: 43, new: 10, again: 5, remembered: 88, target: 90, seconds: 1080, worth_rewriting: [{ note: 101, topic: 1, front: "Amdahl speedup?", agains: 2 }], due_tomorrow: 9, busiest: [TODAY + 6, 31] };
+const done: ReviewDone = { reviewed: 43, new: 10, again: 5, remembered: 88, target: 90, seconds: 1080, worth_rewriting: [{ note: 101, topic: 1, front: "Amdahl speedup?", agains: 2 }], due_tomorrow: 9, busiest: [TODAY + 6, 31], still_due: { new: 0, learning: 0, review: 0 } };
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -102,7 +102,7 @@ describe("Card review", () => {
     const note = await screen.findByRole("note");
     expect(note).toHaveTextContent("Again 9 times");
     await u.keyboard("e");
-    expect(mocked.leaveReview).toHaveBeenCalled();
+    expect(mocked.leaveReview).not.toHaveBeenCalled(); // kept to come back to after the edit
     expect(handlers.onEdit).toHaveBeenCalledWith(3, 100);
   });
 
@@ -169,5 +169,87 @@ describe("Card review", () => {
     render(CardReview, props());
     expect(await screen.findByRole("heading", { name: /Nothing due/ })).toBeInTheDocument();
     expect(cele.celebrate).not.toHaveBeenCalled();
+  });
+
+  // Ctrl+Z undoes, Ctrl+Shift+Z or Ctrl+Y redoes, like everywhere else.
+  it("undoes with Ctrl+Z and redoes with Ctrl+Shift+Z or Ctrl+Y", async () => {
+    const u = userEvent.setup();
+    mocked.startReview.mockResolvedValue({ Card: { ...card, can_undo: true } });
+    mocked.undoCard.mockResolvedValue({ Card: { ...card, can_undo: false, can_redo: true } });
+    mocked.redoCard.mockResolvedValue({ Card: { ...card, card: 11, front: "Next card", can_undo: true } });
+    render(CardReview, props());
+    await screen.findByText(card.front);
+    await u.keyboard("{Control>}z{/Control}");
+    expect(mocked.undoCard).toHaveBeenCalledTimes(1);
+    await screen.findByRole("button", { name: /Redo/ });
+    await u.keyboard("{Control>}{Shift>}z{/Shift}{/Control}");
+    expect(mocked.redoCard).toHaveBeenCalledTimes(1);
+    mocked.redoCard.mockResolvedValue({ Card: { ...card, can_redo: true } });
+    await screen.findByText("Next card");
+    mocked.undoCard.mockResolvedValue({ Card: { ...card, can_redo: true } });
+    await u.keyboard("{Control>}z{/Control}");
+    await u.keyboard("{Control>}y{/Control}");
+    expect(mocked.redoCard).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows E on the Edit button, and editing keeps the review to come back to", async () => {
+    const u = userEvent.setup();
+    const onEdit = vi.fn();
+    mocked.noteView.mockResolvedValue({ note: { topic: 3 } } as never);
+    render(CardReview, props({ onEdit }));
+    const edit = await screen.findByRole("button", { name: /^Edit/ });
+    expect(edit).toHaveTextContent("E");
+    await u.keyboard("e");
+    expect(onEdit).toHaveBeenCalledWith(3, card.note);
+    expect(mocked.leaveReview).not.toHaveBeenCalled();
+  });
+
+  it("coming back from an edit carries on where it was", async () => {
+    mocked.currentCard.mockResolvedValue({ Card: { ...card, front: "Edited front", done: 12 } });
+    render(CardReview, props({ resume: true }));
+    expect(await screen.findByText("Edited front")).toBeInTheDocument();
+    expect(mocked.startReview).not.toHaveBeenCalled();
+  });
+
+  it("starts afresh if the review it was in is gone (the card was deleted)", async () => {
+    mocked.currentCard.mockRejectedValue("nothing to review");
+    render(CardReview, props({ resume: true }));
+    expect(await screen.findByText(card.front)).toBeInTheDocument();
+    expect(mocked.startReview).toHaveBeenCalled();
+  });
+
+  it("puts a space before the Space hint", async () => {
+    const u = userEvent.setup();
+    render(CardReview, props());
+    await screen.findByText(card.front);
+    await u.keyboard(" ");
+    const hint = screen.getByText(/later in this session/);
+    expect(hint.textContent).toBe("Again shows the card again later in this session. Space picks Good.");
+  });
+
+  // R226: a session of one kind, and the end offers what's still due, learning first.
+  it("starts a session of only the kind asked for", async () => {
+    render(CardReview, props({ only: "learning" }));
+    await screen.findByText(card.front);
+    expect(mocked.startReview).toHaveBeenCalledWith(null, "learning");
+  });
+
+  it("at the end, offers the kinds still due with learning first, and starts the one picked", async () => {
+    const u = userEvent.setup();
+    const onNext = vi.fn();
+    mocked.startReview.mockResolvedValue({ Done: { ...done, still_due: { new: 12, learning: 3, review: 5 } } });
+    render(CardReview, props({ only: "review", onNext }));
+    const next = await screen.findAllByRole("button", { name: /^Review the/ });
+    expect(next.map((button) => button.textContent?.trim())).toEqual(["Review the 3 learning", "Review the 5 to review", "Review the 12 new"]);
+    expect(next[0]).toHaveClass("btn-primary");
+    await u.click(next[2]);
+    expect(onNext).toHaveBeenCalledWith("new");
+  });
+
+  it("offers nothing more when nothing else is due", async () => {
+    mocked.startReview.mockResolvedValue({ Done: structuredClone(done) });
+    render(CardReview, props({ onNext: vi.fn() }));
+    expect(await screen.findByRole("button", { name: "Back to Cards" })).toHaveClass("btn-primary");
+    expect(screen.queryByRole("button", { name: /^Review the/ })).toBeNull();
   });
 });

@@ -82,6 +82,7 @@ pub fn dispatch_at(app: &mut App, command: &str, args: &Value, today: i64, clock
         "question_timed_out" => json(app.question_timed_out(today)),
         "answer_text" => json(app.answer_text(arg(a, "typed")?, today)),
         "overrule_answer" => json(app.overrule_answer(arg(a, "attempt")?, arg(a, "index")?)),
+        "flag_answer" => json(app.flag_answer(arg(a, "attempt")?, arg(a, "index")?)),
         "overrule_result" => json(app.overrule_result(arg(a, "attempt")?, arg(a, "index")?)),
         "try_short_answer" => json(Ok(study_api::try_short_answer(&arg(a, "check")?, &arg::<String>(a, "typed")?))),
         "total_timed_out" => json(app.total_timed_out(today)),
@@ -117,10 +118,13 @@ pub fn dispatch_at(app: &mut App, command: &str, args: &Value, today: i64, clock
         "save_note" => json(app.save_note(arg(a, "id")?, arg(a, "input")?, today)),
         "delete_note" => json(app.delete_note(arg(a, "id")?)),
         "archive_card" => json(app.archive_card(arg(a, "id")?, arg(a, "archived")?)),
-        "start_review" => json(app.start_review(arg(a, "scope")?, today)),
+        "start_review" => json(app.start_review_of(arg(a, "scope")?, arg(a, "only")?, today)),
         "current_card" => json(app.current_card(today)),
         "grade_card" => json(app.grade_card(arg(a, "rating")?, arg(a, "seconds")?, today)),
         "undo_card" => json(app.undo_card(today)),
+        "redo_card" => json(app.redo_card(today)),
+        "appearance" => json(app.appearance()),
+        "set_appearance" => json(app.set_appearance(arg(a, "appearance")?)),
         "leave_review" => {
             app.leave_review();
             json(Ok(()))

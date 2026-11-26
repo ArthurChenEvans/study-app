@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../lib/api", async (original) => {
   const actual = await original<typeof import("../lib/api")>();
-  return { ...actual, api: { answer: vi.fn(), answerText: vi.fn(), overruleAnswer: vi.fn(), toggleFlag: vi.fn(), questionTimedOut: vi.fn(), totalTimedOut: vi.fn(), quitQuiz: vi.fn() } };
+  return { ...actual, api: { answer: vi.fn(), answerText: vi.fn(), overruleAnswer: vi.fn(), flagAnswer: vi.fn(), toggleFlag: vi.fn(), questionTimedOut: vi.fn(), totalTimedOut: vi.fn(), quitQuiz: vi.fn() } };
 });
 
 vi.mock("../lib/sound", () => ({ play: vi.fn() }));
@@ -104,6 +104,17 @@ describe("Quiz", () => {
     expect(await screen.findByRole("button", { name: /Flagged as guessed/ })).toBeInTheDocument();
     await u.keyboard("{Enter}");
     expect(mocked.answer).toHaveBeenCalledWith([1]);
+  });
+
+  // Space does what Enter does (submit, then next), the same key as Show answer and Good in card review.
+  it("submits and moves on with Space as well as Enter", async () => {
+    const u = userEvent.setup();
+    mocked.answer.mockResolvedValue({ feedback: null, next: { Question: second } });
+    render(Quiz, { initial: view(), onFinished: vi.fn() });
+    await u.keyboard("3");
+    await u.keyboard(" ");
+    expect(mocked.answer).toHaveBeenCalledWith([1]);
+    expect(screen.getByRole("button", { name: /Submit/ })).toHaveTextContent("Space");
   });
 
   // taking-quiz.feature: Easy and hard mode, multiple answers
@@ -270,5 +281,24 @@ describe("Quiz", () => {
     await u.click(screen.getByRole("button", { name: /Submit/ }));
     await screen.findByRole("status");
     expect(cele.answered).toHaveBeenCalledWith(true);
+  });
+
+  // R229: you realise you guessed once you see the answer, so the feedback can flag it.
+  it("flags the answered question as guessed from the feedback, by button or F", async () => {
+    const u = userEvent.setup();
+    mocked.answer.mockResolvedValue({ feedback: { index: 0, short: null, right: true, auto_reason: null, correct: [1], explanation: "", citations: [] }, next: { Question: structuredClone(second) } });
+    mocked.flagAnswer.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+    render(Quiz, { initial: view(), onFinished: vi.fn() });
+    await u.keyboard("2");
+    await u.keyboard("{Enter}");
+    const flag = await screen.findByRole("button", { name: /I guessed/ });
+    await u.click(flag);
+    expect(mocked.flagAnswer).toHaveBeenCalledWith(null, 0);
+    expect(mocked.toggleFlag).not.toHaveBeenCalled();
+    expect(await screen.findByRole("button", { name: /Flagged as guessed/ })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getAllByText("Guessed").length).toBeGreaterThan(0);
+    await u.keyboard("f");
+    expect(mocked.flagAnswer).toHaveBeenCalledTimes(2);
+    expect(await screen.findByRole("button", { name: /I guessed/ })).toHaveAttribute("aria-pressed", "false");
   });
 });
