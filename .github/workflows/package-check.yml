@@ -1,5 +1,5 @@
 # Builds the packages a release makes, without signing or publishing anything, so a broken
-# .deb or Mac build shows up on the pull request instead of halfway through a release (R187).
+# .deb, Void .xbps or Mac build shows up on the pull request instead of halfway through a release (R187).
 name: Package check
 
 on:
@@ -11,6 +11,7 @@ on:
       - ".github/workflows/package-check.yml"
       - "src-tauri/**"
       - "Cargo.lock"
+      - "scripts/make-xbps.sh"
 
 jobs:
   deb:
@@ -41,6 +42,41 @@ jobs:
           dpkg-deb --info "$deb"
           sudo apt-get install -y "./$deb"
           dpkg -s shudhana | grep -E "^(Package|Version|Status)"
+          mkdir -p out && cp "$deb" out/shudhana.deb
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deb
+          path: out/
+
+  void:
+    needs: deb
+    runs-on: ubuntu-latest
+    container: ghcr.io/void-linux/void-glibc-full:latest
+    env:
+      VERSION: 0.0.0
+      DEB: deb/shudhana.deb
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: deb
+          path: deb
+      - name: Void tools
+        run: |
+          xbps-install -Syu xbps
+          xbps-install -Syu
+          xbps-install -y bash binutils bsdtar
+      - name: Build the .xbps
+        run: bash scripts/make-xbps.sh "$DEB" "$VERSION" void-out
+      - name: Install it on Void to check it works
+        run: |
+          xbps-rindex -a void-out/*.xbps
+          xbps-install -y --repository="$PWD/void-out" shudhana
+          xbps-query shudhana | grep -E "^(pkgver|shlib-requires)"
+          test -f /usr/share/shudhana/installed-by-xbps
+          for binary in $(xbps-query -f shudhana | grep '^/usr/bin/'); do
+            if ldd "$binary" | grep "not found"; then echo "::error::$binary is missing libraries on Void"; exit 1; fi
+          done
 
   macos:
     runs-on: macos-latest
