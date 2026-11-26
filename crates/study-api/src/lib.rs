@@ -621,6 +621,27 @@ impl App {
         }
     }
 
+    /// R229: flags an answered question as guessed, or unflags it, after the answer. Once the
+    /// quiz has finished the last answer is in the saved attempt (`attempt`). Returns the new flag.
+    pub fn flag_answer(&mut self, attempt: Option<AttemptId>, index: usize) -> ApiResult<bool> {
+        match attempt {
+            None => {
+                let active = self.active_mut()?;
+                active.toggle_flag_at(index)?;
+                let flagged = active.asked()[index].flagged_guessed;
+                self.keep_running()?;
+                Ok(flagged)
+            }
+            Some(id) => {
+                let (mut saved, _) = self.store.attempt(id)?;
+                saved.toggle_flag_at(index)?;
+                self.store.update_attempt(id, &saved)?;
+                self.redo_quiz_schedules(id, &saved)?;
+                Ok(saved.asked()[index].flagged_guessed)
+            }
+        }
+    }
+
     /// R84: overrule a short answer on the results page.
     pub fn overrule_result(&mut self, attempt: AttemptId, index: usize) -> ApiResult<ResultsView> {
         self.overrule_saved(attempt, index)?;

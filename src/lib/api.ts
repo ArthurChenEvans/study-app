@@ -314,6 +314,8 @@ export const api = {
   answerText: (typed: string) => invoke<AnswerResult>("answer_text", { typed }),
   /** R84. `attempt` is set once the quiz has finished, for its last question. */
   overruleAnswer: (attempt: Id | null, index: number) => invoke<Feedback>("overrule_answer", { attempt, index }),
+  /** R229: flag or unflag an answered question as guessed. Returns the new flag. */
+  flagAnswer: (attempt: Id | null, index: number) => invoke<boolean>("flag_answer", { attempt, index }),
   overruleResult: (attempt: Id, index: number) => invoke<ResultsView>("overrule_result", { attempt, index }),
   tryShortAnswer: (check: ShortCheck, typed: string) => invoke<Marking>("try_short_answer", { check, typed }),
   totalTimedOut: () => invoke<Id>("total_timed_out"),

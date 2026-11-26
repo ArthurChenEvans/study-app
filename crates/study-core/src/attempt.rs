@@ -70,6 +70,8 @@ pub enum AttemptError {
     TypeTheAnswer,
     #[error("pick an option for this question")]
     PickAnOption,
+    #[error("that question hasn't been answered yet")]
+    NotAnswered,
     #[error("write an answer before submitting")]
     NothingWritten,
     #[error("only short answers that were written and marked can be overruled")]
@@ -145,6 +147,14 @@ impl Attempt {
 
     pub fn toggle_flag(&mut self) -> Result<(), AttemptError> {
         let asked = self.current_mut()?;
+        asked.flagged_guessed = !asked.flagged_guessed;
+        Ok(())
+    }
+
+    /// R229: flags an answered question as guessed, or unflags it, after the answer. Works
+    /// during the quiz and after it, like overruling.
+    pub fn toggle_flag_at(&mut self, index: usize) -> Result<(), AttemptError> {
+        let asked = self.asked.get_mut(index).filter(|asked| asked.outcome.is_some()).ok_or(AttemptError::NotAnswered)?;
         asked.flagged_guessed = !asked.flagged_guessed;
         Ok(())
     }
@@ -447,6 +457,21 @@ mod tests {
             assert!(attempt.asked()[0].flagged_guessed, "{mode:?}");
             assert!(!attempt.asked()[1].flagged_guessed);
         }
+    }
+
+    // R229: you usually realise you guessed after answering, so an answered question can be
+    // flagged (or unflagged) afterwards, during the quiz or from its results.
+    #[test]
+    fn an_answered_question_can_be_flagged_afterwards() {
+        let mut attempt = Attempt::start(settings(Mode::Study), items(&[1, 3]), lookup);
+        attempt.submit(&[0]).unwrap();
+        attempt.toggle_flag_at(0).unwrap();
+        assert!(attempt.asked()[0].flagged_guessed);
+        assert!(!attempt.asked()[1].flagged_guessed, "the next question isn't touched");
+        attempt.toggle_flag_at(0).unwrap();
+        assert!(!attempt.asked()[0].flagged_guessed);
+        assert_eq!(attempt.toggle_flag_at(1), Err(AttemptError::NotAnswered), "not answered yet: use the normal flag");
+        assert_eq!(attempt.toggle_flag_at(9), Err(AttemptError::NotAnswered));
     }
 
     #[test]

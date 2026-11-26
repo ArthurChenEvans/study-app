@@ -203,3 +203,27 @@ fn short_answers_can_become_checklist_points() {
     let points = app.add_from_items(checklist, vec![Item::Question(question)], vec![]).unwrap();
     assert_eq!(points[0].text, "Which layer adds port numbers? → The **transport** layer");
 }
+
+// R229: flag a guess after answering, on the feedback, including the last question (whose
+// answer is already in the saved attempt).
+#[test]
+fn flagging_a_guess_after_answering_during_and_at_the_end() {
+    let (mut app, osi, _) = with_short();
+    app.start_quiz(setup(vec![osi], false, QuestionTypes::Both)).unwrap();
+    let first = app.answer_text("transport layer".into(), TODAY).unwrap();
+    let index = feedback(&first).index;
+    assert!(app.flag_answer(None, index).unwrap(), "flagged");
+    assert!(!app.flag_answer(None, index).unwrap(), "and unflagged");
+    app.flag_answer(None, index).unwrap();
+    let Next::Question(next) = &first.next else { panic!("one more question") };
+    assert!(!next.flagged, "the next question isn't flagged");
+
+    let last = app.answer(vec![0], TODAY).unwrap();
+    let last_index = feedback(&last).index;
+    let attempt = finished(&last.next);
+    assert!(app.flag_answer(Some(attempt), last_index).unwrap());
+
+    let results = app.results(attempt).unwrap();
+    let first_item = results.review.iter().find(|item| item.index == index).unwrap();
+    assert_eq!(first_item.status, ReviewStatus::RightGuessed, "the right answer flagged afterwards counts as guessed");
+}

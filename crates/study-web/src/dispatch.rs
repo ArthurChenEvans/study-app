@@ -82,6 +82,7 @@ pub fn dispatch_at(app: &mut App, command: &str, args: &Value, today: i64, clock
         "question_timed_out" => json(app.question_timed_out(today)),
         "answer_text" => json(app.answer_text(arg(a, "typed")?, today)),
         "overrule_answer" => json(app.overrule_answer(arg(a, "attempt")?, arg(a, "index")?)),
+        "flag_answer" => json(app.flag_answer(arg(a, "attempt")?, arg(a, "index")?)),
         "overrule_result" => json(app.overrule_result(arg(a, "attempt")?, arg(a, "index")?)),
         "try_short_answer" => json(Ok(study_api::try_short_answer(&arg(a, "check")?, &arg::<String>(a, "typed")?))),
         "total_timed_out" => json(app.total_timed_out(today)),

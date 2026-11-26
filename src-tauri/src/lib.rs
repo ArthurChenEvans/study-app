@@ -370,6 +370,10 @@ fn answer_text(state: AppState, typed: String) -> ApiResult<AnswerResult> {
 }
 /// R84: overrule a short answer during the quiz (attempt is set once it has finished).
 #[tauri::command]
+fn flag_answer(state: AppState, attempt: Option<AttemptId>, index: usize) -> ApiResult<bool> {
+    with(state, |app| app.flag_answer(attempt, index))
+}
+#[tauri::command]
 fn overrule_answer(state: AppState, attempt: Option<AttemptId>, index: usize) -> ApiResult<study_api::Feedback> {
     with(state, |app| app.overrule_answer(attempt, index))
 }
@@ -1185,6 +1189,7 @@ pub fn run() {
             question_timed_out,
             answer_text,
             overrule_answer,
+            flag_answer,
             overrule_result,
             try_short_answer,
             total_timed_out,
