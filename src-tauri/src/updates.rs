@@ -64,7 +64,11 @@ pub struct UpdateInfo {
     pub asks_password: bool,
 }
 
-const ASKS_PASSWORD: bool = cfg!(target_os = "linux");
+/// The .rpm and .deb install with admin rights. An AppImage (R223) just swaps its own file, so
+/// no password. The AppImage runtime sets APPIMAGE to the file's path.
+fn asks_password() -> bool {
+    cfg!(target_os = "linux") && std::env::var_os("APPIMAGE").is_none()
+}
 
 fn failed(error: impl std::fmt::Display) -> ApiError {
     ApiError { message: error.to_string() }
@@ -77,7 +81,7 @@ fn info(pending: &Pending) -> UpdateInfo {
         notes: pending.update.body.clone().filter(|notes| !notes.trim().is_empty()),
         date: pending.update.date.map(|date| date.to_string()),
         ready: pending.bytes.is_some(),
-        asks_password: ASKS_PASSWORD,
+        asks_password: asks_password(),
     }
 }
 
@@ -164,7 +168,7 @@ pub fn on_close<R: Runtime>(app: &AppHandle<R>) -> bool {
     }
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
-        let _ = app.emit("updating-on-close", ASKS_PASSWORD);
+        let _ = app.emit("updating-on-close", asks_password());
         if !ready {
             // Quietly give up when offline or nothing's new.
             let found = matches!(check(&app).await, Ok(Some(_)));

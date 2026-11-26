@@ -20,6 +20,7 @@ Grab the latest release from [Releases](https://github.com/ArthurChenEvans/study
 |---|---|
 | Fedora, openSUSE and other RPM distros | `shudhana-<version>.x86_64.rpm` |
 | Debian, Ubuntu, Mint | `shudhana_<version>_amd64.deb` |
+| Any other Linux (or if a package misbehaves) | `shudhana-<version>-x86_64.AppImage` |
 | Void Linux (glibc) | `shudhana-<version>_1.x86_64.xbps` |
 | Windows | `shudhana-<version>-setup.exe` |
 | macOS (Apple silicon and Intel) | `shudhana-<version>-universal.dmg` |

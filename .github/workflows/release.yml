@@ -2,7 +2,7 @@
 #
 #   1. the Fedora update test runs first (a release that can't update itself isn't published)
 #   2. the version is 0.1.<run number>, so each release is newer than the last
-#   3. the .rpm, .deb, Void .xbps, Windows .exe and macOS .dmg are built, and signed with the key in the
+#   3. the .rpm, .deb, AppImage, Void .xbps, Windows .exe and macOS .dmg are built, and signed with the key in the
 #      TAURI_SIGNING_PRIVATE_KEY secret
 #   4. it's published as a GitHub Release (tag v0.1.N) with latest.json, which is what the
 #      installed app checks on open and close
@@ -65,21 +65,24 @@ jobs:
       - name: Linux libraries
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils rpm jq
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils rpm jq libfuse2
       - run: pnpm install --frozen-lockfile
-      - name: Build the signed .rpm and .deb
+      - name: Build the signed .rpm, .deb and AppImage
         run: |
           jq -n --arg v "$VERSION" '{version: $v}' > "$RUNNER_TEMP/version.json"
-          pnpm tauri build --bundles rpm,deb --config "$RUNNER_TEMP/version.json"
+          pnpm tauri build --bundles rpm,deb,appimage --config "$RUNNER_TEMP/version.json"
           rpm=$(ls target/release/bundle/rpm/*-"$VERSION"-*.rpm)
           deb=$(ls target/release/bundle/deb/*_"$VERSION"_*.deb)
-          for built in "$rpm" "$deb"; do [ -f "$built.sig" ] || pnpm tauri signer sign "$built"; done
+          appimage=$(ls target/release/bundle/appimage/*_"$VERSION"_*.AppImage)
+          for built in "$rpm" "$deb" "$appimage"; do [ -f "$built.sig" ] || pnpm tauri signer sign "$built"; done
           # Names without spaces, so the links in latest.json match what GitHub stores.
           mkdir -p out
           cp "$rpm" "out/shudhana-$VERSION.x86_64.rpm"
           cp "$rpm.sig" "out/shudhana-$VERSION.x86_64.rpm.sig"
           cp "$deb" "out/shudhana_${VERSION}_amd64.deb"
           cp "$deb.sig" "out/shudhana_${VERSION}_amd64.deb.sig"
+          cp "$appimage" "out/shudhana-$VERSION-x86_64.AppImage"
+          cp "$appimage.sig" "out/shudhana-$VERSION-x86_64.AppImage.sig"
       - uses: actions/upload-artifact@v4
         with:
           name: linux
@@ -227,12 +230,14 @@ jobs:
           app="packages/shudhana-$VERSION-universal.app.tar.gz"
           dmg="packages/shudhana-$VERSION-universal.dmg"
           xbps="packages/shudhana-${VERSION}_1.x86_64.xbps"
+          appimage="packages/shudhana-$VERSION-x86_64.AppImage"
           # One universal Mac build serves both Apple silicon and Intel.
           python3 scripts/latest-json.py "$VERSION" "$RUNNER_TEMP/notes.md" latest.json \
             "linux-x86_64-rpm=$rpm=$base/$(basename "$rpm")" \
             "linux-x86_64-deb=$deb=$base/$(basename "$deb")" \
+            "linux-x86_64-appimage=$appimage=$base/$(basename "$appimage")" \
             "windows-x86_64-nsis=$exe=$base/$(basename "$exe")" \
             "darwin-aarch64-app=$app=$base/$(basename "$app")" \
             "darwin-x86_64-app=$app=$base/$(basename "$app")"
-          gh release create "v$VERSION" "$rpm" "$rpm.sig" "$deb" "$deb.sig" "$xbps" "$exe" "$exe.sig" "$dmg" "$app" "$app.sig" latest.json \
+          gh release create "v$VERSION" "$rpm" "$rpm.sig" "$deb" "$deb.sig" "$xbps" "$appimage" "$appimage.sig" "$exe" "$exe.sig" "$dmg" "$app" "$app.sig" latest.json \
             --target "${{ github.sha }}" --title "Shudhana $VERSION" --notes-file "$RUNNER_TEMP/notes.md" --latest
