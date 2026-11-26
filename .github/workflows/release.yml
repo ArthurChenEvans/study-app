@@ -2,7 +2,7 @@
 #
 #   1. the Fedora update test runs first (a release that can't update itself isn't published)
 #   2. the version is 0.1.<run number>, so each release is newer than the last
-#   3. the .rpm, .deb, AppImage, Void .xbps, Windows .exe and macOS .dmg are built, and signed with the key in the
+#   3. the .rpm, .deb, AppImage, Void .xbps, Windows .exe and portable .zip, and macOS .dmg are built, and signed with the key in the
 #      TAURI_SIGNING_PRIVATE_KEY secret
 #   4. it's published as a GitHub Release (tag v0.1.N) with latest.json, which is what the
 #      installed app checks on open and close
@@ -154,6 +154,18 @@ jobs:
           mkdir -p out
           cp "$built" "out/shudhana-$VERSION-setup.exe"
           cp "$built.sig" "out/shudhana-$VERSION-setup.exe.sig"
+      # R227: the same app as a portable zip. portable.txt beside the .exe keeps its data in
+      # a data folder there. No installer, no admin rights, no AppData.
+      - name: Build the portable zip
+        shell: pwsh
+        run: |
+          $dir = "portable/Shudhana"
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          $exe = @("target/release/study-app.exe", "target/release/Shudhana.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $exe) { throw "couldn't find the built app in target/release" }
+          Copy-Item $exe "$dir/Shudhana.exe"
+          Set-Content "$dir/portable.txt" "This copy of Shudhana is portable: everything it saves goes in the data folder next to it. Keep this file. Without it Shudhana saves to the usual app data folder instead. A portable copy doesn't update itself, so download the new zip from the releases page to update (copy your data folder across)."
+          Compress-Archive -Path $dir -DestinationPath "out/shudhana-$env:VERSION-windows-portable.zip"
       - uses: actions/upload-artifact@v4
         with:
           name: windows
@@ -227,6 +239,7 @@ jobs:
           rpm="packages/shudhana-$VERSION.x86_64.rpm"
           deb="packages/shudhana_${VERSION}_amd64.deb"
           exe="packages/shudhana-$VERSION-setup.exe"
+          portable="packages/shudhana-$VERSION-windows-portable.zip"
           app="packages/shudhana-$VERSION-universal.app.tar.gz"
           dmg="packages/shudhana-$VERSION-universal.dmg"
           xbps="packages/shudhana-${VERSION}_1.x86_64.xbps"
@@ -239,5 +252,5 @@ jobs:
             "windows-x86_64-nsis=$exe=$base/$(basename "$exe")" \
             "darwin-aarch64-app=$app=$base/$(basename "$app")" \
             "darwin-x86_64-app=$app=$base/$(basename "$app")"
-          gh release create "v$VERSION" "$rpm" "$rpm.sig" "$deb" "$deb.sig" "$xbps" "$appimage" "$appimage.sig" "$exe" "$exe.sig" "$dmg" "$app" "$app.sig" latest.json \
+          gh release create "v$VERSION" "$rpm" "$rpm.sig" "$deb" "$deb.sig" "$xbps" "$appimage" "$appimage.sig" "$exe" "$exe.sig" "$portable" "$dmg" "$app" "$app.sig" latest.json \
             --target "${{ github.sha }}" --title "Shudhana $VERSION" --notes-file "$RUNNER_TEMP/notes.md" --latest
