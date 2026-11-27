@@ -2,6 +2,7 @@
   // dates.feature (R130 to R132, R136): add or edit a date on the calendar. What it covers
   // and whether it tightens reviews come before the preview of what moves, so you can see
   // the effect of a choice before saving it.
+  import Select from "./Select.svelte";
   import { GraduationCap, Trash2 } from "@lucide/svelte";
   import { untrack } from "svelte";
   import { api, errorMessage, type DatePreview, type DateSave, type DateView, type Id, type ModuleRow, type TopicQuizView, type TopicRow } from "../lib/api";
@@ -146,9 +147,7 @@
       {#if covers === "module"}
         {#if modules.length}
           <label class="mt-3 block"><span class="sr-only">Module</span>
-            <select class="select w-full" bind:value={module}>
-              {#each modules as row (row.id)}<option value={row.id}>{row.name} ({topics.filter((t) => t.module === row.id).length} {topics.filter((t) => t.module === row.id).length === 1 ? "topic" : "topics"})</option>{/each}
-            </select></label>
+            <Select class="w-full" bind:value={module} options={modules.map((row) => { const count = topics.filter((t) => t.module === row.id).length; return { value: row.id, label: `${row.name} (${count} ${count === 1 ? "topic" : "topics"})` }; })} /></label>
         {:else}<p class="mt-3 text-sm text-muted">You don't have any modules yet. Pick topics instead.</p>{/if}
       {:else if covers === "topics"}
         <div class="mt-3">

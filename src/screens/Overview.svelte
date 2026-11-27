@@ -1,5 +1,6 @@
 <script lang="ts">
   // overview.feature (R33): progress from saved attempts only.
+  import Select from "../components/Select.svelte";
   import { Brain, Flag, Hammer, Library, PencilLine, Play, SquareStack, Target, TrendingDown, TrendingUp, ArrowRight, Zap } from "@lucide/svelte";
   import { api, type DueToday, type Id, type Overview, type Tally, type TopicQuizView, type TopicRow } from "../lib/api";
   import { dayLabel } from "../lib/dates";
@@ -186,7 +187,7 @@
         <section class="panel p-5">
           <h2 id="weakest" class="text-[18px]">Topics, weakest first</h2>
           <div class="flex flex-wrap items-center justify-between gap-2"><p class="text-[13px] text-muted">Latest quiz on each topic</p>
-            {#if modules.length > 1}<select class="select select-sm w-40" aria-label="Weakest topics in" bind:value={weakModule}><option value="all">All modules</option>{#each modules as m (m.id)}<option value={String(m.id)}>{m.name}</option>{/each}</select>{/if}</div>
+            {#if modules.length > 1}<Select small class="w-40" aria-label="Weakest topics in" bind:value={weakModule} options={[{ value: "all", label: "All modules" }, ...modules.map((m) => ({ value: String(m.id), label: m.name }))]} />{/if}</div>
           <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
             <span class="flex items-center gap-1.5"><span class="swatch" style="background: var(--chart-right)"></span>Right, sure</span>
             <span class="flex items-center gap-1.5"><span class="swatch" style="background: var(--guessed-fill)"></span>Guessed</span>

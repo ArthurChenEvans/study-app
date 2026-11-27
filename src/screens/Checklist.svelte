@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Select from "../components/Select.svelte";
   import { stackTable } from "../lib/stack";
   // free-recall.feature (R53, R54, R59): points, adding from questions, and history.
   import { ArrowLeft, FileText, GripVertical, ListPlus, Play, Plus, X } from "@lucide/svelte";
@@ -290,10 +291,7 @@
           <button type="button" role="radio" aria-checked={from === "cards"} onclick={() => { from = "cards"; topicFilter = "all"; }}>Flashcards <span class="text-xs tabular-nums">{countIn("cards")}</span></button>
         </div>
         {#if tabTopics.length > 1}
-          <select class="select select-sm w-56" aria-label="Topic" bind:value={topicFilter}>
-            <option value="all">All {tabTopics.length} topics</option>
-            {#each tabTopics as name (name)}<option value={name}>{name}</option>{/each}
-          </select>
+          <Select small class="w-56" aria-label="Topic" bind:value={topicFilter} options={[{ value: "all", label: `All ${tabTopics.length} topics` }, ...tabTopics.map((name) => ({ value: name, label: name }))]} />
         {/if}
         <span class="flex-1"></span>
         <input type="search" class="input input-sm w-56" aria-label="Filter" placeholder="Filter…" bind:value={filter} />

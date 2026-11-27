@@ -2,6 +2,7 @@
   // R189: Topics & Modules. A module groups topics, and every quiz, card and checklist lives in a
   // topic, so this is where topics and modules are made, renamed, moved, tagged and deleted.
   // topics.feature (R1, R2, R3, R43, R51), nested-modules.feature (R217 to R219)
+  import Select from "../components/Select.svelte";
   import { Brain, FolderPlus, Link2, ListChecks, PencilLine, Plus, Search, SquareStack, Trash2, X } from "@lucide/svelte";
   import DeleteModuleDialog from "../components/tree/DeleteModuleDialog.svelte";
   import GraphView from "../components/tree/GraphView.svelte";
@@ -362,10 +363,7 @@
           </div>
           <div class="grid grid-cols-1 gap-4 tab:grid-cols-2">
             <label class="block"><span class="text-sm font-bold">Module</span>
-              <select id="topic-module" class="select mt-1 w-full" value={topic.module === null ? "" : String(topic.module)} onchange={(event) => move(topic, event.currentTarget.value)}>
-                {#if topic.module === null}<option value="">No module</option>{/if}
-                {#each ordered as row (row.module.id)}<option value={String(row.module.id)}>{modulePath(row.module.id)}</option>{/each}
-              </select></label>
+              <Select id="topic-module" class="mt-1 w-full" value={topic.module === null ? "" : String(topic.module)} onchange={(next) => move(topic, String(next))} options={[...(topic.module === null ? [{ value: "", label: "No module" }] : []), ...ordered.map((row) => ({ value: String(row.module.id), label: modulePath(row.module.id) ?? "" }))]} /></label>
             <div><label class="block"><span class="text-sm font-bold">Tags</span>
               <input class="input mt-1 w-full" value={topic.tags.join(", ")} placeholder="e.g. exam, lecture-5" aria-describedby="tags-help" onchange={(event) => saveTags(topic, event.currentTarget.value)} /></label>
               <span id="tags-help" class="mt-1 block text-xs text-muted">Separate tags with commas.</span></div>
@@ -380,10 +378,7 @@
               {/each}
             </ul>
             <label class="mt-2 block"><span class="sr-only">Link a related topic</span>
-              <select class="select select-sm w-full" aria-label="Link a related topic" value="" onchange={(event) => { void link(topic, event.currentTarget.value); event.currentTarget.value = ""; }}>
-                <option value="">Link a related topic…</option>
-                {#each topics.filter((t) => t.id !== topic.id && !relatedOf(topic).includes(t.id)) as other (other.id)}<option value={String(other.id)}>{topicPath(other.id)}</option>{/each}
-              </select></label>
+              {#key relatedOf(topic).join(",")}<Select small class="w-full" aria-label="Link a related topic" value="" onchange={(next) => void link(topic, String(next))} options={[{ value: "", label: "Link a related topic…", disabled: true }, ...topics.filter((t) => t.id !== topic.id && !relatedOf(topic).includes(t.id)).map((other) => ({ value: String(other.id), label: topicPath(other.id) }))]} />{/key}</label>
           </div>
           <div>
             <h3 class="eyebrow">What's in it</h3>
@@ -421,10 +416,7 @@
         <!-- svelte-ignore a11y_autofocus -->
         <input class="input mt-1 w-full" bind:value={newName} autofocus placeholder="e.g. CPU…" /></label>
       <label class="mt-4 block"><span class="text-sm font-semibold">Module</span>
-        <select class="select mt-1 w-full" bind:value={newModule}>
-          <option value="">No module</option>
-          {#each ordered.filter((row) => !row.module.is_default) as row (row.module.id)}<option value={String(row.module.id)}>{modulePath(row.module.id)}</option>{/each}
-        </select></label>
+        <Select class="mt-1 w-full" bind:value={newModule} options={[{ value: "", label: "No module" }, ...ordered.filter((row) => !row.module.is_default).map((row) => ({ value: String(row.module.id), label: modulePath(row.module.id) ?? "" }))]} /></label>
       {#if createError}<p role="alert" class="mt-4 text-sm text-error">{createError}</p>{/if}
       <div class="modal-action">
         <button type="button" class="btn btn-ghost" onclick={() => (creating = false)}>Cancel</button>
@@ -440,10 +432,7 @@
       <h3 id="new-module-title" class="text-lg font-semibold">New module</h3>
       <p class="mt-2 text-sm text-muted">A module groups related topics, like a course unit. Modules go up to {MAX_DEPTH} levels deep.</p>
       <label class="mt-4 block"><span class="text-sm font-semibold">Inside</span>
-        <select class="select mt-1 w-full" bind:value={moduleParent}>
-          <option value="">The top level</option>
-          {#each ordered.filter((row) => !row.module.is_default && row.depth < MAX_DEPTH - 1) as row (row.module.id)}<option value={String(row.module.id)}>{modulePath(row.module.id)}</option>{/each}
-        </select></label>
+        <Select class="mt-1 w-full" bind:value={moduleParent} options={[{ value: "", label: "The top level" }, ...ordered.filter((row) => !row.module.is_default && row.depth < MAX_DEPTH - 1).map((row) => ({ value: String(row.module.id), label: modulePath(row.module.id) ?? "" }))]} /></label>
       <label class="mt-6 block"><span class="text-sm font-semibold">Name</span>
         <!-- svelte-ignore a11y_autofocus -->
         <input class="input mt-1 w-full" bind:value={moduleInput} autofocus placeholder="e.g. Computer Architecture…" /></label>
@@ -492,10 +481,7 @@
     <form class="modal-box max-w-md" onsubmit={moveModule}>
       <h3 id="move-module-h" class="text-lg font-semibold">Move {movingModule.name}</h3>
       <label class="mt-4 block"><span class="text-sm font-semibold">Inside</span>
-        <select class="select mt-1 w-full" bind:value={movingModule.parent}>
-          <option value="">The top level</option>
-          {#each homesFor(movingModule.id) as row (row.module.id)}<option value={String(row.module.id)}>{modulePath(row.module.id)}</option>{/each}
-        </select></label>
+        <Select class="mt-1 w-full" bind:value={movingModule.parent} options={[{ value: "", label: "The top level" }, ...homesFor(movingModule.id).map((row) => ({ value: String(row.module.id), label: modulePath(row.module.id) ?? "" }))]} /></label>
       {#if moveModuleError}<p role="alert" class="mt-4 text-sm text-error">{moveModuleError}</p>{/if}
       <div class="modal-action">
         <button type="button" class="btn btn-ghost" onclick={() => (movingModule = null)}>Cancel</button>

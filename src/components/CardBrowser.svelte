@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Select from "./Select.svelte";
   import { rowMenu } from "../lib/contextMenu.svelte";
   // R191: Browse all. Every card in every topic, narrowed by the search box and a filter panel
   // that folds away. A card due today keeps its answer hidden, so browsing never spoils a review.
@@ -194,7 +195,7 @@
         <span class="flex-1"></span>
         {#if rows}<span class="text-sm text-muted">{shown.length} of {rows.length} {rows.length === 1 ? "card" : "cards"}</span>{/if}
         <label class="flex items-center gap-2 text-sm text-muted">Sort
-          <select class="select select-sm w-40" bind:value={sort}><option value="due">Due soonest</option><option value="newest">Newest first</option><option value="hardest">Hardest first</option><option value="topic">Topic</option></select></label>
+          <Select small class="w-40" bind:value={sort} options={[{ value: "due", label: "Due soonest" }, { value: "newest", label: "Newest first" }, { value: "hardest", label: "Hardest first" }, { value: "topic", label: "Topic" }]} /></label>
       </div>
 
       {#if ticked.length}
@@ -248,10 +249,7 @@
       <h3 id="move-cards-h" class="text-lg font-semibold">Move {ticked.length} {ticked.length === 1 ? "card" : "cards"}</h3>
       <p class="mt-2 text-sm text-muted">A card moves with the rest of its note, so a reversed or cloze note moves all its cards.</p>
       <label class="mt-5 block"><span class="text-sm font-semibold">To topic</span>
-        <select class="select mt-1 w-full" bind:value={moveTo}>
-          <option value="" disabled>Pick a topic</option>
-          {#each topics as topic (topic.id)}<option value={String(topic.id)}>{topic.name}</option>{/each}
-        </select></label>
+        <Select class="mt-1 w-full" bind:value={moveTo} placeholder="Pick a topic" options={topics.map((topic) => ({ value: String(topic.id), label: topic.name }))} /></label>
       <div class="modal-action">
         <button type="button" class="btn btn-ghost" onclick={() => (moving = false)}>Cancel</button>
         <button type="submit" class="btn btn-primary" disabled={!moveTo}>Move</button>

@@ -18,6 +18,7 @@ vi.mock("../lib/api", async (original) => {
 import { api, type DrillView, type ProjectRow, type ProjectView, type StruggleView } from "../lib/api";
 import Projects from "./Projects.svelte";
 import Project from "./Project.svelte";
+import { pick } from "../testing/pick";
 
 const mocked = vi.mocked(api);
 const TODAY = 20_760;
@@ -210,7 +211,7 @@ describe("A project", () => {
     await u.type(screen.getByLabelText("What tripped you up"), "Lifetime error returning a reference");
     await u.type(screen.getByLabelText("Why wasn't it obvious?"), "didn't see the borrow");
     await u.click(screen.getByRole("radio", { name: "Couldn't apply it" }));
-    await u.selectOptions(screen.getByLabelText("Topic (optional)"), "3");
+    await pick(u, screen.getByLabelText("Topic (optional)"), "Rust");
     screen.getByLabelText("What tripped you up").focus();
     await u.keyboard("{Control>}{Enter}{/Control}");
     expect(mocked.logStruggle).toHaveBeenCalledWith(1, { what: "Lifetime error returning a reference", why: "didn't see the borrow", kind: "Apply", topic: 3 });

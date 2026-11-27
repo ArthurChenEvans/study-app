@@ -10,6 +10,7 @@ vi.mock("../lib/api", async (original) => {
 import { api, type DateView, type ModuleRow, type TopicRow } from "../lib/api";
 import { flushPendingDeletes, live } from "../lib/celebrations.svelte";
 import DateDialog from "./DateDialog.svelte";
+import { pick } from "../testing/pick";
 
 const mocked = vi.mocked(api);
 const TODAY = 20_760; // Tue 3 Nov 2026
@@ -58,7 +59,7 @@ describe("DateDialog", () => {
     await u.type(screen.getByLabelText("Name"), "Networks exam");
     await u.type(screen.getByLabelText(/Kind/), "Exam");
     await u.click(screen.getByRole("radio", { name: "A module" }));
-    expect(screen.getByRole("combobox", { name: "Module" })).toHaveDisplayValue("Networks (2 topics)");
+    expect(screen.getByRole("combobox", { name: "Module" })).toHaveTextContent("Networks (2 topics)");
     expect(screen.getByRole("checkbox", { name: /Tighten reviews before this/ })).toBeChecked();
     const preview = await screen.findByText(/If you add this today/);
     const box = preview.closest("div")!;

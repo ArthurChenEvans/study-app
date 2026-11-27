@@ -1,5 +1,6 @@
 <script lang="ts">
   // questions.feature, sources.feature, short-answer.feature (R4 to R10, R14, R48, R49, R78 to R82)
+  import Select from "../components/Select.svelte";
   import { ArrowLeft, BookOpen, Check, CircleCheck, CircleX, Eye, ImagePlus, Plus, Trash2, X } from "@lucide/svelte";
   import Preview from "../components/Preview.svelte";
   import { inPhone } from "../lib/transport";
@@ -336,10 +337,7 @@
             <div class="flex items-center justify-between gap-3">
               <button type="button" class="btn btn-ghost btn-sm" onclick={() => draft.keywords.push({ word: "", also: "" })}><Plus class="size-4" />Add keyword</button>
               <label class="flex items-center gap-2 text-sm"><span class="text-muted">Right with</span>
-                <select class="select select-sm w-36" aria-label="How many keywords are needed" value={draft.needed === null ? "" : String(draft.needed)} onchange={(event) => (draft.needed = event.currentTarget.value ? Number(event.currentTarget.value) : null)}>
-                  <option value="">All {keywordCount || ""}</option>
-                  {#each Array.from({ length: Math.max(0, keywordCount - 1) }, (_, i) => keywordCount - 1 - i) as count (count)}<option value={String(count)}>At least {count}</option>{/each}
-                </select></label>
+                <Select small class="w-36" aria-label="How many keywords are needed" value={draft.needed === null ? "" : String(draft.needed)} onchange={(next) => (draft.needed = next ? Number(next) : null)} options={[{ value: "", label: `All ${keywordCount || ""}` }, ...Array.from({ length: Math.max(0, keywordCount - 1) }, (_, i) => keywordCount - 1 - i).map((count) => ({ value: String(count), label: `At least ${count}` }))]} /></label>
             </div>
           {/if}
         </fieldset>
@@ -378,10 +376,7 @@
         {#each draft.citations as citation, index (index)}
           <div class="flex items-center gap-3" role="group" aria-label="Citation {index + 1}">
             <BookOpen class="size-4 shrink-0" />
-            <select class="select select-sm flex-1" aria-label="Source" bind:value={citation.source}>
-              <option value="">Pick a source…</option>
-              {#each sources as source (source.id)}<option value={String(source.id)}>{source.apa}</option>{/each}
-            </select>
+            <Select small class="flex-1" aria-label="Source" bind:value={citation.source} options={[{ value: "", label: "Pick a source…", disabled: true }, ...sources.map((source) => ({ value: String(source.id), label: source.apa }))]} />
             <input class="input input-sm w-32" aria-label="Page, slide or line" placeholder="p. 42…" bind:value={citation.location} />
             {#if citation.source && locationTarget(citation.location)}
               {@const source = sources.find((row) => String(row.id) === citation.source)}

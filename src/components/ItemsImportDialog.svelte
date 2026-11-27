@@ -1,5 +1,6 @@
 <script lang="ts">
   // import-export.feature: Spreadsheets, JSON, Markdown and Moodle files (R173, R174).
+  import Select from "./Select.svelte";
   import { onMount } from "svelte";
   import { api, type CsvKind, type CsvRole, type ItemsPreview, type ModuleRow, type Target, type TopicRow } from "../lib/api";
   import { cancelImport, importer, remap, runImport } from "../lib/importer.svelte";
@@ -87,9 +88,7 @@
                 <span class="block truncate font-semibold">{column}</span>
                 {#if csv.sample[0]?.[index]}<span class="block truncate text-sm text-muted">{csv.sample[0][index]}</span>{/if}
               </div>
-              <select class="select select-sm w-full" aria-label="Column {index + 1} is" value={csv.roles[index]} onchange={(event) => setRole(index, (event.target as HTMLSelectElement).value as CsvRole)}>
-                {#each [...ROLES[csv.kind], ...SHARED] as [role, label] (role)}<option value={role}>{label}</option>{/each}
-              </select>
+              <Select small class="w-full" aria-label="Column {index + 1} is" value={csv.roles[index]} onchange={(next) => setRole(index, next as CsvRole)} options={[...ROLES[csv.kind], ...SHARED].map(([role, label]) => ({ value: role, label }))} />
             </li>
           {/each}
         </ul>

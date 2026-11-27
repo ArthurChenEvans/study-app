@@ -2,6 +2,7 @@
   // Source preview (R11, R12): files are read into memory for this session only, never stored.
   // R179 to R182: a table of contents, going straight to a page or line (Ctrl+G), and showing
   // where a question cites, remembering which file is which source by its name only.
+  import Select from "./Select.svelte";
   import { ExternalLink, FileText, FileUp, Globe, Link, Plus, Presentation, BookOpen, X } from "@lucide/svelte";
   import { articleAddress, pageAddress, readWebPage, type WebPage } from "../lib/webPage";
   import { tick } from "svelte";
@@ -288,9 +289,7 @@
     {@const ask = asking}
     <div class="m-3 flex flex-wrap items-center gap-2 rounded-box border-2 border-base-300 bg-base-100 p-3 text-sm" role="group" aria-label="Which open file is {ask.title}?">
       <span class="w-full font-semibold">Which open file is {ask.title}?</span>
-      <select class="select select-sm min-w-0 flex-1" aria-label="File" bind:value={ask.pick}>
-        {#each tabs as tab (tab.id)}<option value={tab.name}>{tab.name}</option>{/each}
-      </select>
+      <Select small class="min-w-0 flex-1" aria-label="File" bind:value={ask.pick} options={tabs.map((tab) => ({ value: tab.name, label: tab.name }))} />
       <button type="button" class="btn btn-sm btn-primary" onclick={picked}>Show {targetWords(ask.location)}</button>
       <button type="button" class="btn btn-sm btn-ghost" onclick={() => (asking = null)}>Cancel</button>
       <span class="w-full text-xs text-muted">Only the file's name is remembered, on this computer.</span>

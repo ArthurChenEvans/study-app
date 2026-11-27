@@ -15,6 +15,7 @@ vi.mock("../lib/api", async (original) => {
 
 import { api, type ChecklistView, type RecallPoint } from "../lib/api";
 import Checklist from "./Checklist.svelte";
+import { pick } from "../testing/pick";
 
 const mocked = vi.mocked(api);
 const TODAY = 20_760;
@@ -94,7 +95,7 @@ describe("Checklist editor", () => {
     await u.click(await screen.findByRole("button", { name: "Add from questions or cards" }));
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByText("Memory", { selector: "li" })).toBeInTheDocument();
-    await u.selectOptions(within(dialog).getByLabelText("Topic"), "CPU");
+    await pick(u, within(dialog).getByLabelText("Topic"), "CPU");
     expect(within(dialog).queryByRole("checkbox", { name: /TLB/ })).toBeNull();
     await u.click(within(dialog).getByRole("checkbox", { name: "Select all 2 shown" }));
     expect(within(dialog).getByText("1 to add · 0 to remove")).toBeInTheDocument();

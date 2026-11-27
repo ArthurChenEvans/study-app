@@ -33,6 +33,7 @@ vi.mock("../lib/api", async (original) => {
 import { api } from "../lib/api";
 import { flushPendingDeletes, live } from "../lib/celebrations.svelte";
 import Topics from "./Quizzes.svelte";
+import { pick } from "../testing/pick";
 
 const mocked = vi.mocked(api);
 
@@ -86,7 +87,7 @@ describe("Quizzes screen", () => {
     await user.click(await screen.findByRole("button", { name: /^Make a quiz/ }));
     const dialog = screen.getByRole("dialog", { name: "Make a quiz" });
     await user.type(within(dialog).getByLabelText("Name"), "  GPU  ");
-    await user.selectOptions(within(dialog).getByLabelText("Module"), "Computer Architecture");
+    await pick(user, within(dialog).getByLabelText("Module"), "Computer Architecture");
     await user.click(within(dialog).getByRole("button", { name: "Create and add questions" }));
     expect(mocked.createTopic).toHaveBeenCalledWith("GPU", 1);
     expect(onEdit).toHaveBeenCalledWith(9);
@@ -280,7 +281,7 @@ describe("Quizzes screen", () => {
     expect(mocked.setTopicTags).toHaveBeenCalledWith(1, ["exam"]);
     expect(live.toasts.at(-1)).toMatchObject({ text: 'Tagged 1 topic "exam"' });
     await u.click(within(screen.getByRole("region", { name: "Ticked topics" })).getByRole("button", { name: /Move to module/ }));
-    await u.selectOptions(screen.getByLabelText("To module"), "Computer Architecture");
+    await pick(u, screen.getByLabelText("To module"), "Computer Architecture");
     await u.click(screen.getByRole("button", { name: "Move" }));
     expect(mocked.moveTopic).toHaveBeenCalledWith(1, 1);
     expect(mocked.moveTopic).toHaveBeenCalledWith(2, 1);

@@ -1,6 +1,7 @@
 <script lang="ts">
   // search.feature (R31, R50), search-query.feature (R220): the query language is the default,
   // and the filter search (tags, sources, sorting) is one click away.
+  import Select from "../components/Select.svelte";
   import { ArrowDown, ArrowUp, Search as SearchIcon, X } from "@lucide/svelte";
   import { api, type Id, type Matched, type ModuleRow, type SearchHit, type SearchQuery } from "../lib/api";
   import Highlight from "../components/Highlight.svelte";
@@ -139,10 +140,7 @@
   <div class="mt-4 flex flex-wrap items-center gap-3">
     <span class="text-sm text-muted">Filters</span>
     <label class="flex items-center gap-2 text-sm">Module
-      <select class="select select-sm w-56 max-w-full" bind:value={module}>
-        <option value="">Any module</option>
-        {#each modules as row (row.id)}<option value={String(row.id)}>{row.name}</option>{/each}
-      </select>
+      <Select small class="w-56 max-w-full" bind:value={module} options={[{ value: "", label: "Any module" }, ...modules.map((row) => ({ value: String(row.id), label: row.name }))]} />
     </label>
     <label class="flex items-center gap-2 text-sm">Tag <input class="input input-sm w-40" placeholder="e.g. hardware…" bind:value={tag} /></label>
     {#if filtered}<button class="btn btn-ghost btn-sm" onclick={clear}><X class="size-4" />Clear filters</button>{/if}

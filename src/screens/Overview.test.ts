@@ -9,6 +9,7 @@ vi.mock("../lib/api", async (original) => {
 
 import { api, type Progress } from "../lib/api";
 import Overview from "./Overview.svelte";
+import { pick } from "../testing/pick";
 
 const mocked = vi.mocked(api);
 const TODAY = 20758;
@@ -159,7 +160,7 @@ describe("Overview", () => {
     const list = await screen.findByRole("list", { name: "Topics, weakest first" });
     expect(within(list).getAllByRole("listitem")).toHaveLength(8);
     expect(screen.getByText("The 8 weakest shown. Topics lists them all.")).toBeInTheDocument();
-    await u.selectOptions(await screen.findByLabelText("Weakest topics in"), "Networks");
+    await pick(u, await screen.findByLabelText("Weakest topics in"), "Networks");
     expect(within(list).getAllByRole("listitem")).toHaveLength(3);
   });
 });

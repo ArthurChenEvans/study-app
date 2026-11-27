@@ -12,6 +12,7 @@ import { fileFor, forget, remember, showCitation } from "../lib/sourceFiles.svel
 import { readerDrop } from "../lib/readerDrop.svelte";
 import { fireEvent } from "@testing-library/svelte";
 import Preview from "./Preview.svelte";
+import { pick } from "../testing/pick";
 
 const mocked = vi.mocked(api);
 const file = (name: string, text = "first line\nsecond line") => new File([text], name);
@@ -191,7 +192,7 @@ describe("Source preview", () => {
     const u = await open(file("notes.md", NOTES), file("other.txt", "x"));
     showCitation(5, "Smith (2024)", "line 3");
     const ask = await screen.findByRole("group", { name: "Which open file is Smith (2024)?" });
-    await u.selectOptions(within(ask).getByRole("combobox", { name: "File" }), "notes.md");
+    await pick(u, within(ask).getByRole("combobox", { name: "File" }), "notes.md");
     await u.click(within(ask).getByRole("button", { name: "Show line 3" }));
     expect(fileFor(5)).toBe("notes.md");
     expect(screen.getByRole("tab", { name: "notes.md", selected: true })).toBeInTheDocument();

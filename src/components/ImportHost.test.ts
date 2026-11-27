@@ -18,6 +18,7 @@ vi.mock("../lib/celebrations.svelte", async (original) => ({ ...(await original<
 import { api, type AnkiPreview, type ItemsPreview } from "../lib/api";
 import { importer, startImport } from "../lib/importer.svelte";
 import ImportHost from "./ImportHost.svelte";
+import { pick } from "../testing/pick";
 
 const mocked = vi.mocked(api);
 const anki: AnkiPreview = {
@@ -60,8 +61,8 @@ describe("an Anki deck", () => {
     expect(dialog).toHaveTextContent("An Anki deck: 230 notes in 3 decks, with 31 images.");
     expect(dialog).toHaveTextContent("Image Occlusion");
     expect(within(dialog).getByText("Check these")).toBeInTheDocument();
-    await u.selectOptions(within(dialog).getByRole("combobox", { name: "Where Networks::TLS goes" }), "topic:7");
-    await u.selectOptions(within(dialog).getByRole("combobox", { name: "Where Misc goes" }), "skip");
+    await pick(u, within(dialog).getByRole("combobox", { name: "Where Networks::TLS goes" }), /TLS handshakes$/);
+    await pick(u, within(dialog).getByRole("combobox", { name: "Where Misc goes" }), "Don't import");
     expect(dialog).toHaveTextContent("8 notes are already here from an earlier import, and stay as they are.");
     await u.click(within(dialog).getByRole("radio", { name: "Keep Anki's progress" }));
     await u.click(within(dialog).getByRole("button", { name: "Import 104 notes" }));
@@ -139,16 +140,16 @@ describe("a spreadsheet", () => {
     await startImport(new File(["q"], "cpu-questions.csv"));
     const dialog = await screen.findByRole("dialog", { name: "Import cpu-questions.csv" });
     expect(dialog).toHaveTextContent("A spreadsheet with 40 rows and 7 columns.");
-    expect(within(dialog).getByRole("combobox", { name: "Column 5 is" })).toHaveValue("Correct");
+    expect(within(dialog).getByRole("combobox", { name: "Column 5 is" })).toHaveTextContent(/Correct/);
     expect(within(dialog).getByRole("radio", { name: "A multiple choice question" })).toBeChecked();
-    await u.selectOptions(within(dialog).getByRole("combobox", { name: "Column 7 is" }), "Tags");
+    await pick(u, within(dialog).getByRole("combobox", { name: "Column 7 is" }), "Tags");
     expect(mocked.itemsPreview).toHaveBeenLastCalledWith(expect.any(File), "cpu-questions.csv", { kind: "Mcq", header: true, roles: ["Question", "Option", "Option", "Option", "Correct", "Explanation", "Tags"] });
     await u.click(within(dialog).getByRole("button", { name: "See which" }));
     expect(within(dialog).getByRole("heading", { name: "1 row has problems" })).toBeInTheDocument();
     expect(dialog).toHaveTextContent("Row 14");
     expect(dialog).toHaveTextContent("Put A, B or C in the answer column.");
     await u.click(within(dialog).getByRole("button", { name: "Back to the columns" }));
-    await u.selectOptions(within(dialog).getByRole("combobox", { name: "Into" }), "topic:8");
+    await pick(u, within(dialog).getByRole("combobox", { name: "Into" }), "CPU");
     await u.click(within(dialog).getByRole("button", { name: "Import 38 questions" }));
     expect(mocked.itemsApply).toHaveBeenCalledWith({ targets: [["cpu-questions", { kind: "Topic", topic: 8 }]] });
   });

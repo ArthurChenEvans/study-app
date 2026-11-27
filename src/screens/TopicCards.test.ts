@@ -13,6 +13,7 @@ vi.mock("../lib/api", async (original) => {
 import { api, type NoteView, type TopicCards as TopicCardsView } from "../lib/api";
 import TopicCards from "./TopicCards.svelte";
 import { flushPendingDeletes, live } from "../lib/celebrations.svelte";
+import { pick } from "../testing/pick";
 
 const mocked = vi.mocked(api);
 const TODAY = 20_760;
@@ -100,7 +101,7 @@ describe("Topic cards", () => {
     await u.click(screen.getByRole("button", { name: /Add another cue/ }));
     await u.type(screen.getByLabelText("Extra cue 1"), "Why does my status read stale?");
     expect(screen.getByRole("button", { name: /Save 2 cards/ })).toBeInTheDocument();
-    await u.keyboard("{Control>}s{/Control}");
+    await u.keyboard("{Control>}{Enter}{/Control}");
     expect(mocked.saveNote).toHaveBeenCalledWith(null, { note: { topic: 1, kind: "Basic", front: "What stops caching a register?", back: "volatile", cues: ["Why does my status read stale?"], text: "", extra: "" }, suggestion: null });
     expect(await screen.findByText("2 cards added")).toBeInTheDocument();
   });
@@ -115,7 +116,7 @@ describe("Topic cards", () => {
     const tags = screen.getByRole("textbox", { name: "Tags" });
     expect(tags).toHaveAccessibleDescription(/Separate tags with commas/);
     await u.type(tags, "boolean::algebra, exam ,");
-    await u.keyboard("{Control>}s{/Control}");
+    await u.keyboard("{Control>}{Enter}{/Control}");
     expect(mocked.saveNote).toHaveBeenLastCalledWith(null, { note: expect.objectContaining({ front: "A + 0", tags: ["boolean::algebra", "exam"] }), suggestion: null });
     expect(await screen.findByRole("textbox", { name: "Tags" })).toHaveValue("boolean::algebra, exam");
   });
@@ -169,7 +170,7 @@ describe("Topic cards", () => {
     const u = userEvent.setup();
     const onFinishEdit = vi.fn();
     render(TopicCards, props({ editNote: 101, onFinishEdit, finishLabel: "Back to review" }));
-    await u.click(await screen.findByRole("button", { name: "Cancel" }));
+    await u.click(await screen.findByRole("button", { name: /^Cancel/ }));
     await u.click(screen.getByRole("button", { name: /Back to review/ }));
     expect(onFinishEdit).toHaveBeenCalledTimes(2);
   });
@@ -190,7 +191,7 @@ describe("Topic cards", () => {
   });
 
   // flashcards.feature: A reversed card makes two
-  it("can save a reversed card into another topic, then opens that topic", async () => {
+  it("can save a reversed card into another topic, and the page follows the picked topic", async () => {
     const u = userEvent.setup();
     const handlers = props({ editNote: "new" });
     render(TopicCards, handlers);
@@ -198,10 +199,97 @@ describe("Topic cards", () => {
     expect(screen.getByText(/Makes two cards/)).toBeInTheDocument();
     await u.type(screen.getByLabelText("Front"), "TLB");
     await u.type(screen.getByLabelText("Back"), "A cache of page table entries");
-    await u.selectOptions(screen.getByLabelText("Topic"), "2");
+    mocked.topicCards.mockResolvedValue({ ...structuredClone(data), topic: 2, name: "Memory", cards: [], due: 0 });
+    await pick(u, screen.getByRole("combobox", { name: "Topic" }), "Memory");
+    // The heading follows the picked topic, so it never says one topic while saving to another.
+    expect(await screen.findByRole("heading", { level: 1, name: "Memory" })).toBeInTheDocument();
+    expect(mocked.topicCards).toHaveBeenLastCalledWith(2);
     await u.click(screen.getByRole("button", { name: "Save and return to list" }));
     expect(mocked.saveNote.mock.calls[0][1].note).toMatchObject({ topic: 2, kind: "Reversed" });
-    await vi.waitFor(() => expect(handlers.onTopic).toHaveBeenCalledWith(2, "2 cards added to Memory"));
+    expect(await screen.findByText("2 cards added")).toBeInTheDocument();
+  });
+
+  it("saves with Ctrl+Enter, not Ctrl+S", async () => {
+    const u = userEvent.setup();
+    render(TopicCards, props({ editNote: "new" }));
+    await u.type(await screen.findByLabelText("Front"), "Q");
+    await u.keyboard("{Control>}s{/Control}");
+    expect(mocked.saveNote).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /Save 1 card/ })).toHaveTextContent("CtrlEnter");
+    await u.keyboard("{Control>}{Enter}{/Control}");
+    expect(mocked.saveNote).toHaveBeenCalledTimes(1);
+  });
+
+  it("Esc goes back to the list, asking first if there's unsaved writing", async () => {
+    const u = userEvent.setup();
+    render(TopicCards, props());
+    await u.click(await screen.findByRole("button", { name: /New card/ }));
+    await u.keyboard("{Escape}");
+    expect(await screen.findByRole("table", { name: "Cards in CPU" })).toBeInTheDocument();
+    await u.click(screen.getByRole("button", { name: /New card/ }));
+    await u.type(screen.getByLabelText("Front"), "Half written");
+    await u.keyboard("{Escape}");
+    expect(screen.getByRole("heading", { name: "Leave without saving?" })).toBeInTheDocument();
+    await u.click(screen.getByRole("button", { name: "Keep editing" }));
+    expect(screen.getByLabelText("Front")).toHaveValue("Half written");
+    await u.keyboard("{Escape}");
+    await u.click(screen.getByRole("button", { name: "Leave without saving" }));
+    expect(await screen.findByRole("table", { name: "Cards in CPU" })).toBeInTheDocument();
+    expect(mocked.saveNote).not.toHaveBeenCalled();
+  });
+
+  it("Esc closes an open topic dropdown before it leaves the editor", async () => {
+    const u = userEvent.setup();
+    render(TopicCards, props({ editNote: "new" }));
+    const topic = await screen.findByRole("combobox", { name: "Topic" });
+    await u.click(topic);
+    expect(screen.getByRole("listbox")).toBeInTheDocument();
+    await u.keyboard("{Escape}");
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Front")).toBeInTheDocument();
+  });
+
+  it("undoes and redoes adding a card", async () => {
+    const u = userEvent.setup();
+    mocked.saveNote.mockResolvedValueOnce(200).mockResolvedValueOnce(201);
+    render(TopicCards, props());
+    expect(await screen.findByRole("button", { name: "Undo" })).toBeDisabled();
+    await u.click(screen.getByRole("button", { name: /New card/ }));
+    await u.type(screen.getByLabelText("Front"), "Q");
+    await u.click(screen.getByRole("button", { name: "Save and return to list" }));
+    await u.click(await screen.findByRole("button", { name: "Undo" }));
+    await vi.waitFor(() => expect(mocked.deleteNote).toHaveBeenCalledWith(200));
+    // Ctrl+Shift+Z brings it back as a new note, and undo then removes that one.
+    await u.keyboard("{Control>}{Shift>}z{/Shift}{/Control}");
+    await vi.waitFor(() => expect(mocked.saveNote).toHaveBeenLastCalledWith(null, { note: expect.objectContaining({ front: "Q" }), suggestion: null }));
+    await u.keyboard("{Control>}z{/Control}");
+    await vi.waitFor(() => expect(mocked.deleteNote).toHaveBeenLastCalledWith(201));
+  });
+
+  it("undoes an edit back to how the card was", async () => {
+    const u = userEvent.setup();
+    render(TopicCards, props());
+    await u.click(await screen.findByRole("button", { name: /Speedup of 60%/ }));
+    const back = await screen.findByLabelText("Back");
+    await u.clear(back);
+    await u.type(back, "Gustafson");
+    await u.click(screen.getByRole("button", { name: /Save changes/ }));
+    await u.click(await screen.findByRole("button", { name: "Undo" }));
+    await vi.waitFor(() => expect(mocked.saveNote).toHaveBeenLastCalledWith(101, { note: expect.objectContaining({ back: "Amdahl's law" }), suggestion: null }));
+    await u.click(screen.getByRole("button", { name: "Redo" }));
+    await vi.waitFor(() => expect(mocked.saveNote).toHaveBeenLastCalledWith(101, { note: expect.objectContaining({ back: "Gustafson" }), suggestion: null }));
+  });
+
+  it("Ctrl+Z in a text field is the field's own undo, not a card undo", async () => {
+    const u = userEvent.setup();
+    render(TopicCards, props());
+    await u.click(await screen.findByRole("button", { name: /New card/ }));
+    await u.type(screen.getByLabelText("Front"), "Q");
+    await u.click(screen.getByRole("button", { name: "Save and return to list" }));
+    await u.click(await screen.findByRole("button", { name: /New card/ }));
+    await u.click(screen.getByLabelText("Front"));
+    await u.keyboard("{Control>}z{/Control}");
+    expect(mocked.deleteNote).not.toHaveBeenCalled();
   });
 
   // flashcards.feature: Cloze cards from gaps

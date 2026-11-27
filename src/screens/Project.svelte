@@ -1,5 +1,6 @@
 <script lang="ts">
   // projects.feature (R88 to R90): sessions on a project, logging struggles, and the list.
+  import Select from "../components/Select.svelte";
   import { ArrowLeft, CircleDot, Flag, ListChecks, Play, Plus, Square, Timer } from "@lucide/svelte";
   import { onDestroy, tick } from "svelte";
   import { api, errorMessage, type Id, type ProjectView, type StruggleKind, type StruggleView, type TopicRow } from "../lib/api";
@@ -205,7 +206,7 @@
             <div class="seg" role="radiogroup" aria-label="What kind of struggle">
               {#each ["Recall", "Apply", "Unsure"] as const as option (option)}<button type="button" role="radio" aria-checked={kind === option} onclick={() => (kind = option)}>{kindLabel[option]}</button>{/each}
             </div>
-            <select class="select select-sm w-44" aria-label="Topic (optional)" bind:value={topic}><option value="">Topic (optional)</option>{#each topics as row (row.id)}<option value={String(row.id)}>{row.name}</option>{/each}</select>
+            <Select small class="w-44" aria-label="Topic (optional)" bind:value={topic} options={[{ value: "", label: "Topic (optional)" }, ...topics.map((row) => ({ value: String(row.id), label: row.name }))]} />
           </div>
           <button type="submit" class="btn btn-primary" disabled={!what.trim()}><Plus class="size-4" />Log it <kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">Enter</kbd></button>
         </div>
