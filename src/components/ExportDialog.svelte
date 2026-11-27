@@ -2,6 +2,7 @@
   // transfer.feature (R112, R113). The dialog's goal: get the right things into one file.
   // Most important: what's going in, said in words before you press Export.
   // import-export.feature (R173 to R176): the kind of file, from a .studyapp to Anki or Moodle.
+  import Select from "./Select.svelte";
   import { FileOutput } from "@lucide/svelte";
   import { api, errorMessage, type ExportFile, type ExportFormat, type ExportSummary, type Id, type ModuleRow, type TopicRow } from "../lib/api";
   import { countList } from "../lib/transfer";
@@ -97,9 +98,7 @@
     <h3 id="export-h" class="text-lg font-semibold">Export</h3>
     <label class="mt-5 block">
       <span class="text-sm font-semibold">Kind of file</span>
-      <select class="select mt-2 w-full" bind:value={format} aria-label="Kind of file">
-        {#each FORMATS as option (option.id)}<option value={option.id}>{option.name} ({option.file})</option>{/each}
-      </select>
+      <Select class="mt-2 w-full" bind:value={format} aria-label="Kind of file" options={FORMATS.map((option) => ({ value: option.id, label: `${option.name} (${option.file})` }))} />
       <span class="mt-1 block text-sm text-muted">{FORMATS.find((option) => option.id === format)?.for}</span>
     </label>
     <fieldset class="mt-5">

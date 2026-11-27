@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Select from "../components/Select.svelte";
   import CardBrowser from "../components/CardBrowser.svelte";
   // flashcards.feature (R68, R74, R75): what's due today, the forecast, retention.
   // R191: it opens on Review, and every card is a tab away in Browse all.
@@ -125,11 +126,7 @@
             </div>
             <div class="flex w-64 flex-col gap-3">
             <button class="btn btn-primary w-full" onclick={start}><Play class="size-4 fill-current" />Start review <kbd class="kbd kbd-xs">Enter</kbd></button>
-            <select class="select w-full" aria-label="Review which topics" bind:value={scope}>
-              <option value="">All topics</option>
-              {#if modules.length}<optgroup label="Modules">{#each modules as module (module.id)}<option value="module:{module.id}">{module.name}</option>{/each}</optgroup>{/if}
-              <optgroup label="Topics">{#each home.per_topic as row (row.topic)}<option value="topic:{row.topic}">{row.name}</option>{/each}</optgroup>
-            </select>
+            <Select class="w-full" aria-label="Review which topics" bind:value={scope} options={[{ value: "", label: "All topics" }, ...modules.map((module) => ({ value: `module:${module.id}`, label: module.name, group: "Modules" })), ...home.per_topic.map((row) => ({ value: `topic:${row.topic}`, label: row.name, group: "Topics" }))]} />
             </div>
           </div>
         {/if}

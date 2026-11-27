@@ -20,6 +20,7 @@ import { api, type CardsHome, type ModuleRow, type RecallRow, type TopicRow } fr
 import { flushPendingDeletes, live } from "../lib/celebrations.svelte";
 import { closeContextMenu, contextMenu } from "../lib/contextMenu.svelte";
 import Topics from "./Topics.svelte";
+import { pick as choose } from "../testing/pick";
 
 const mocked = vi.mocked(api);
 const home = (per: [number, number][]): CardsHome => ({ due: { new: 0, learning: 0, review: 0 }, total_cards: 0, minutes: 0, forecast: [], retention: null, target: 90, suggestions: 0, per_topic: per.map(([topic, total]) => ({ topic, name: "", module: null, due: { new: 0, learning: 0, review: 0 }, total, retention: null })) });
@@ -55,7 +56,7 @@ describe("Topics & Modules", () => {
     expect(within(tree).getByRole("heading", { name: "No module" })).toBeInTheDocument();
     await u.click(within(tree).getByRole("button", { name: "TLS" }));
     const picked = screen.getByRole("region", { name: "TLS" });
-    expect(within(picked).getByLabelText("Module")).toHaveValue("1");
+    expect(within(picked).getByLabelText("Module")).toHaveTextContent("Networks");
     // R189: each count is a big number with a short label, so nothing wraps in a narrow box
     expect(within(picked).getByRole("button", { name: "Open in Quizzes" }).parentElement).toHaveTextContent("Questions 22 Open");
     expect(within(picked).getByRole("button", { name: "Open in Cards" }).parentElement).toHaveTextContent("Cards 96 Open");
@@ -71,7 +72,7 @@ describe("Topics & Modules", () => {
     const u = userEvent.setup();
     render(Topics);
     await u.click(await screen.findByRole("button", { name: "TLS" }));
-    await u.selectOptions(within(screen.getByRole("region", { name: "TLS" })).getByLabelText("Module"), "Security");
+    await choose(u, within(screen.getByRole("region", { name: "TLS" })).getByLabelText("Module"), "Security");
     expect(mocked.moveTopic).toHaveBeenCalledWith(3, 2);
   });
 
@@ -83,7 +84,7 @@ describe("Topics & Modules", () => {
     await u.click(await screen.findByRole("button", { name: "New topic" }));
     const dialog = screen.getByRole("dialog", { name: "New topic" });
     await u.type(within(dialog).getByLabelText("Name"), "  DNS  ");
-    await u.selectOptions(within(dialog).getByLabelText("Module"), "Networks");
+    await choose(u, within(dialog).getByLabelText("Module"), "Networks");
     mocked.topics.mockResolvedValue([{ id: 9, name: "DNS", module: 1, tags: [], question_count: 0, short_count: 0 }]);
     await u.click(within(dialog).getByRole("button", { name: "Create topic" }));
     expect(mocked.createTopic).toHaveBeenCalledWith("DNS", 1);
@@ -112,7 +113,7 @@ describe("Topics & Modules", () => {
     await u.click(await screen.findByRole("button", { name: "Networks module actions" }));
     await u.click(screen.getByRole("menuitem", { name: "New submodule…" }));
     const dialog = screen.getByRole("dialog", { name: "New module" });
-    expect(within(dialog).getByLabelText("Inside")).toHaveValue("1");
+    expect(within(dialog).getByLabelText("Inside")).toHaveTextContent("Networks");
     await u.type(within(dialog).getByLabelText("Name"), "DNS");
     await u.click(within(dialog).getByRole("button", { name: "Create module" }));
     expect(mocked.createSubmodule).toHaveBeenCalledWith("DNS", 1);
@@ -146,7 +147,8 @@ describe("Topics & Modules", () => {
     await u.click(await screen.findByRole("button", { name: "CPU" }));
     const picked = screen.getByRole("region", { name: "CPU" });
     expect(within(picked).getByText("Topic in Computer Architecture › N2T")).toBeInTheDocument();
-    expect(within(picked).getByRole("option", { name: "Computer Architecture › N2T" })).toBeInTheDocument();
+    await u.click(within(picked).getByRole("combobox", { name: "Module" }));
+    expect(screen.getByRole("option", { name: "Computer Architecture › N2T" })).toBeInTheDocument();
   });
 
   // R215: right-click (or long-press) a topic or module for the same actions as everywhere else
@@ -174,7 +176,7 @@ describe("Topics & Modules", () => {
     expect(contextMenu.items.map((item) => item.label)).toEqual(["New topic in it…", "New submodule…", "Rename module…", "Move module…", "Delete module…"]);
     pick("New topic in it…");
     const dialog = await screen.findByRole("dialog", { name: "New topic" });
-    expect(within(dialog).getByLabelText(/Module/)).toHaveValue("1");
+    expect(within(dialog).getByLabelText(/Module/)).toHaveTextContent("Networks");
     closeContextMenu(false);
   });
 

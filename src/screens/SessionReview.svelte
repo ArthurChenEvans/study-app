@@ -1,5 +1,6 @@
 <script lang="ts">
   // projects.feature (R90 to R92, R95): review a session's struggles one at a time.
+  import Select from "../components/Select.svelte";
   import { CalendarDays, CircleCheck, Clock, Dumbbell, ListChecks, Minus, PencilLine, Plus, Repeat, SquareStack } from "@lucide/svelte";
   import { toast } from "../lib/celebrations.svelte";
   import { api, errorMessage, type DrillView, type Id, type IssueView, type RecallRow, type ReviewChoice, type StruggleView, type TopicRow } from "../lib/api";
@@ -198,14 +199,14 @@
             <label class="block"><span class="block text-sm font-semibold">Front</span><textarea class="textarea mt-1 w-full" rows="2" bind:value={front}></textarea></label>
             <label class="block"><span class="block text-sm font-semibold">Back</span><textarea class="textarea mt-1 w-full" rows="2" placeholder="The answer…" bind:value={back}></textarea></label>
             <label class="block"><span class="block text-sm font-semibold">Card topic</span>
-              <select class="select mt-1 w-full" bind:value={cardTopic} onchange={fillTags}>{#each topics as row (row.id)}<option value={String(row.id)}>{row.name}</option>{/each}</select></label>
+              <Select class="mt-1 w-full" bind:value={cardTopic} onchange={fillTags} options={topics.map((row) => ({ value: String(row.id), label: row.name }))} /></label>
             <label class="block"><span class="block text-sm font-semibold">Tags</span><input class="input mt-1 w-full" placeholder="e.g. coding::python" bind:value={cardTags} /></label>
           </div>
         {/if}
 
         {#if action === "checklist"}
           <label class="block"><span class="block text-sm font-semibold">Checklist</span>
-            {#if checklists.length}<select class="select mt-1 w-full" bind:value={checklist}>{#each checklists as row (row.id)}<option value={String(row.id)}>{row.subject_name}</option>{/each}</select>
+            {#if checklists.length}<Select class="mt-1 w-full" bind:value={checklist} options={checklists.map((row) => ({ value: String(row.id), label: row.subject_name }))} />
             {:else}<span class="mt-1 block text-sm text-muted">You don't have any checklists yet. Make one in Recall first.</span>{/if}</label>
         {/if}
 
@@ -232,7 +233,7 @@
                 <p class="mt-1 text-sm text-muted">Small enough for one sitting. Solid ticks it off, Struggled or Shaky brings it back tomorrow.</p></div>
               <div class="grid grid-cols-2 gap-6">
                 <div><label class="block text-sm font-semibold" for="review-topic">Topic <span class="font-normal text-muted">(optional)</span></label>
-                  <select id="review-topic" class="select mt-1 w-full" bind:value={topic}><option value="">No topic</option>{#each topics as row (row.id)}<option value={String(row.id)}>{row.name}</option>{/each}</select></div>
+                  <Select id="review-topic" class="mt-1 w-full" bind:value={topic} options={[{ value: "", label: "No topic" }, ...topics.map((row) => ({ value: String(row.id), label: row.name }))]} /></div>
                 <div><label class="block text-sm font-semibold" for="review-hints">Hints <span class="font-normal text-muted">(optional)</span></label>
                   <input id="review-hints" class="input mt-1 w-full" placeholder="Shown only if you ask while drilling…" bind:value={hints} /></div>
               </div>

@@ -1,5 +1,6 @@
 <script lang="ts">
   // An editable ladder (R60, R96): the recall schedule and the quiz schedule use the same one.
+  import Select from "./Select.svelte";
   import { Plus, RotateCcw, X } from "@lucide/svelte";
   import { untrack } from "svelte";
   import { errorMessage, type Schedule, type Unit } from "../lib/api";
@@ -75,7 +76,7 @@
             <td><input class="step-name input input-sm w-36 font-semibold" aria-label="Step {index + 1} name" bind:value={step.name} /></td>
             <td data-label="Every"><div class="flex gap-2">
               <input class="input input-sm w-16 tabular-nums" type="number" min="1" aria-label="{step.name} interval" bind:value={step.every.count} />
-              <select class="select select-sm w-28" aria-label="{step.name} unit" bind:value={step.every.unit}>{#each units as unit (unit)}<option value={unit}>{unit.toLowerCase()}</option>{/each}</select>
+              <Select small class="w-28" aria-label="{step.name} unit" bind:value={step.every.unit} options={units.map((unit) => ({ value: unit, label: unit.toLowerCase() }))} />
             </div></td>
             <td data-label="Times">{#if last && step.repeats === 0}<span class="whitespace-nowrap text-sm text-muted">From then on</span>{:else}<input class="input input-sm w-16 tabular-nums" type="number" min="1" aria-label="{step.name} times" bind:value={step.repeats} />{/if}</td>
             <td class="reached whitespace-nowrap text-sm text-muted">{reached[index]}</td>
@@ -89,7 +90,7 @@
       <label class="block"><span class="block text-sm font-semibold">Pass mark</span>
         <span class="mt-1 flex items-center gap-2"><input class="input w-24 tabular-nums" type="number" min="1" max="100" aria-label="Pass mark" bind:value={editing.pass_mark} /><span class="text-sm text-muted">% of {passWhat}</span></span></label>
       <label class="block"><span class="block text-sm font-semibold">Under the pass mark</span>
-        <select class="select mt-1 w-full" bind:value={editing.under_pass}><option value="BackOneStep">Go back one step</option><option value="Stay">Stay on the same step</option></select></label>
+        <Select class="mt-1 w-full" bind:value={editing.under_pass} options={[{ value: "BackOneStep", label: "Go back one step" }, { value: "Stay", label: "Stay on the same step" }]} /></label>
     </div>
     {#if daily}
       <label class="mt-6 flex items-center justify-between gap-4"><span><span class="block text-sm font-semibold">Topics to quiz a day</span><span class="block text-sm text-muted">More than this wait their turn, most overdue first, keeping their step.</span></span>

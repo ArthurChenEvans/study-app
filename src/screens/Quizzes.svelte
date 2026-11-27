@@ -5,6 +5,7 @@
   // calendar.feature (R96, R97): each topic's quiz step and next quiz, and the schedule.
   // lists.feature (R138 to R144): a module rail, a filter, sortable columns in their own pane,
   // an item card for the picked topic, and ticks for acting on several at once.
+  import Select from "../components/Select.svelte";
   import { X, CalendarCog, FolderInput, FolderPlus, GraduationCap, Library, Pencil, PencilLine, Play, Plus, Search, SquareStack, Tag, Trash2 } from "@lucide/svelte";
   import { tick as settle } from "svelte";
   import { rowMenu } from "../lib/contextMenu.svelte";
@@ -405,10 +406,7 @@
     <form class="modal-box max-w-md" onsubmit={move}>
       <h3 id="move-title" class="text-lg font-semibold">{moving.length === 1 ? `Move "${topics.find((t) => t.id === moving![0])?.name}"` : `Move ${moving.length} topics`}</h3>
       <label class="mt-6 block"><span class="text-sm font-semibold">To module</span>
-        <select class="select mt-1 w-full" bind:value={moveTo}>
-          <option value="">No module</option>
-          {#each modules as module (module.id)}<option value={String(module.id)}>{module.name}</option>{/each}
-        </select></label>
+        <Select class="mt-1 w-full" bind:value={moveTo} options={[{ value: "", label: "No module" }, ...modules.map((module) => ({ value: String(module.id), label: module.name }))]} /></label>
       <div class="modal-action">
         <button type="button" class="btn btn-ghost" onclick={() => (moving = null)}>Cancel</button>
         <button type="submit" class="btn btn-primary">Move</button>
@@ -445,10 +443,7 @@
       </label>
       <label class="mt-4 block">
         <span class="text-sm font-semibold">Module</span>
-        <select class="select mt-1 w-full" bind:value={newModule}>
-          <option value="">No module</option>
-          {#each modules as module (module.id)}<option value={String(module.id)}>{module.name}</option>{/each}
-        </select>
+        <Select class="mt-1 w-full" bind:value={newModule} options={[{ value: "", label: "No module" }, ...modules.map((module) => ({ value: String(module.id), label: module.name }))]} />
       </label>
       {#if createError}<p role="alert" class="mt-4 text-sm text-error">{createError}</p>{/if}
       <div class="modal-action">

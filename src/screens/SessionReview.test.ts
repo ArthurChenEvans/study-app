@@ -16,6 +16,7 @@ vi.mock("../lib/api", async (original) => {
 import { api, type DrillView, type RecallRow, type StruggleView } from "../lib/api";
 import SessionReview from "./SessionReview.svelte";
 import DrillSession from "./DrillSession.svelte";
+import { pick } from "../testing/pick";
 
 const mocked = vi.mocked(api);
 const TODAY = 20_760;
@@ -45,7 +46,7 @@ describe("Session review", () => {
     await screen.findByText("Forgot how to slice from the end");
     await u.click(screen.getByRole("radio", { name: /Write a card now/ }));
     expect(screen.getByLabelText("Front")).toHaveValue("Forgot how to slice from the end");
-    expect(screen.getByLabelText("Card topic")).toHaveValue("7");
+    expect(screen.getByLabelText("Card topic")).toHaveTextContent("Python");
     expect(screen.getByLabelText("Tags")).toHaveValue("coding::python");
     await u.click(screen.getByRole("button", { name: /Save card and finish/ }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Write the back of the card");
@@ -139,7 +140,7 @@ describe("Session review", () => {
 
     await screen.findByText("Struggle 2", { selector: "section p" });
     await u.click(screen.getByRole("radio", { name: /Add to a recall checklist/ }));
-    expect(screen.getByLabelText("Checklist")).toHaveValue("4");
+    expect(screen.getByLabelText("Checklist")).toHaveTextContent("Rust");
     await u.click(screen.getByRole("button", { name: /Finish review/ }));
     expect(mocked.reviewStruggle).toHaveBeenLastCalledWith(2, { Checklist: { checklist: 4 } });
     expect(await screen.findByText("1 point added to recall checklists")).toBeInTheDocument();

@@ -130,7 +130,7 @@ function highlight(code: string, language: string): string {
   return out.replace("<pre ", `<pre ${trustedAttribute} data-language="${escapeAttribute(language)}" `);
 }
 
-const markdown = new MarkdownIt({ html: true, linkify: false, breaks: false, highlight });
+const markdown = new MarkdownIt({ html: true, linkify: false, breaks: true, highlight });
 
 // Inline math: $...$ (not inside code, which markdown-it tokenises first).
 markdown.inline.ruler.after("escape", "math_inline", (state, silent) => {

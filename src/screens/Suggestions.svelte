@@ -1,5 +1,6 @@
 <script lang="ts">
   // flashcards.feature (R72, R73): suggestions from recall misses and quiz mistakes wait for you.
+  import Select from "../components/Select.svelte";
   import { ArrowLeft, Plus, X } from "@lucide/svelte";
   import { api, errorMessage, type Suggestion, type TopicRow } from "../lib/api";
   import Rich from "../components/Rich.svelte";
@@ -105,10 +106,7 @@
           {#if count("Struggle")}<button type="button" role="radio" aria-checked={filter === "Struggle"} onclick={() => (filter = "Struggle")}>Project struggles {count("Struggle")}</button>{/if}
         </div>
         {#if usedTopics.length > 1}
-          <select class="select select-sm ml-3 w-56" aria-label="Topic" bind:value={topicFilter}>
-            <option value="all">All topics</option>
-            {#each usedTopics as topic (topic.id)}<option value={topic.id}>{topic.name}</option>{/each}
-          </select>
+          <Select small class="ml-3 w-56" aria-label="Topic" bind:value={topicFilter} options={[{ value: "all", label: "All topics" }, ...usedTopics.map((topic) => ({ value: topic.id, label: topic.name }))]} />
         {/if}
         <span class="flex-1"></span>
         <span class="text-sm text-muted">Nothing becomes a card until you say so</span>
@@ -154,10 +152,7 @@
                 </div>
                 <div>
                   <label class="block text-sm font-semibold" for="sugg-topic">Topic</label>
-                  <select id="sugg-topic" class="select mt-1 w-full" bind:value={making.topic}>
-                    <option value={null} disabled>Choose a topic</option>
-                    {#each topics as topic (topic.id)}<option value={topic.id}>{topic.name}</option>{/each}
-                  </select>
+                  <Select id="sugg-topic" class="mt-1 w-full" bind:value={making.topic} placeholder="Choose a topic" options={topics.map((topic) => ({ value: topic.id, label: topic.name }))} />
                 </div>
                 <div class="col-span-2 flex items-center gap-3">
                   <button class="btn btn-primary" type="submit">Save card</button>

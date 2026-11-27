@@ -13,6 +13,7 @@ vi.mock("../lib/api", async (original) => {
 import { api } from "../lib/api";
 import { live } from "../lib/celebrations.svelte";
 import Editor from "./Editor.svelte";
+import { pick } from "../testing/pick";
 
 const mocked = vi.mocked(api);
 const user = () => userEvent.setup();
@@ -169,7 +170,7 @@ describe("Question editor", () => {
     await screen.findByText("What does the ALU do?");
     await u.click(screen.getByRole("button", { name: "Cite a source" }));
     const citation = screen.getByRole("group", { name: "Citation 1" });
-    await u.selectOptions(within(citation).getByLabelText("Source"), "Kirk. (2022). *Parallel*.");
+    await pick(u, within(citation).getByLabelText("Source"), "Kirk. (2022). *Parallel*.");
     await u.type(within(citation).getByLabelText("Page, slide or line"), "p. 88");
     await u.click(screen.getByRole("button", { name: "Save question" }));
     expect(mocked.saveQuestion).toHaveBeenCalledWith(expect.objectContaining({ citations: [{ source: 5, location: "p. 88" }] }));
@@ -185,7 +186,7 @@ describe("Question editor", () => {
     await screen.findByText("What does the ALU do?");
     const citation = await screen.findByRole("group", { name: "Citation 1" });
     expect(screen.getByText("Fact came from")).toBeInTheDocument();
-    expect(within(citation).getByLabelText("Source")).toHaveValue("5");
+    expect(within(citation).getByLabelText("Source")).toHaveTextContent("Kirk. (2022). *Parallel*.");
     expect(within(citation).getByLabelText("Page, slide or line")).toHaveValue("p. 3");
     expect(screen.getByText(/Filled in from what you're reading/)).toBeInTheDocument();
     reading.location = "p. 4";
@@ -216,7 +217,7 @@ describe("Question editor", () => {
     await u.click(screen.getByRole("button", { name: "Cite a source" }));
     const citation = screen.getByRole("group", { name: "Citation 1" });
     expect(within(citation).queryByRole("button", { name: /Show/ })).not.toBeInTheDocument();
-    await u.selectOptions(within(citation).getByLabelText("Source"), "Kirk. (2022). *Parallel*.");
+    await pick(u, within(citation).getByLabelText("Source"), "Kirk. (2022). *Parallel*.");
     await u.type(within(citation).getByLabelText("Page, slide or line"), "p. 88");
     await u.click(within(citation).getByRole("button", { name: "Show page 88 in the preview" }));
     const preview = screen.getByRole("region", { name: "Source preview" });
@@ -421,7 +422,7 @@ describe("Question editor", () => {
     await u.type(screen.getByLabelText("Other ways to write keyword 2"), "synack, syn ack");
     await u.click(screen.getByRole("button", { name: /Add keyword/ }));
     await u.type(screen.getByLabelText("Keyword 3"), "ACK");
-    await u.selectOptions(screen.getByLabelText("How many keywords are needed"), "At least 2");
+    await pick(u, screen.getByLabelText("How many keywords are needed"), "At least 2");
     await u.click(screen.getByRole("button", { name: /Save question/ }));
     expect(mocked.saveQuestion.mock.calls[0][0].short).toEqual({
       check: { Keywords: { keywords: [{ word: "SYN", also: [] }, { word: "SYN-ACK", also: ["synack", "syn ack"] }, { word: "ACK", also: [] }], needed: 2 } },

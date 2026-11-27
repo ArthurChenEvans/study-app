@@ -13,6 +13,7 @@ vi.mock("../lib/api", async (original) => {
 import { api, type BrowseRow, type CardsHome } from "../lib/api";
 import { flushPendingDeletes, live } from "../lib/celebrations.svelte";
 import Cards from "./Cards.svelte";
+import { pick } from "../testing/pick";
 
 const mocked = vi.mocked(api);
 const TODAY = 20_760;
@@ -45,10 +46,10 @@ describe("Cards home", () => {
     expect(screen.getByText("About 11 minutes.")).toBeInTheDocument();
     await u.click(screen.getByRole("button", { name: /Start review/ }));
     expect(handlers.onReview).toHaveBeenLastCalledWith(null);
-    await u.selectOptions(screen.getByLabelText("Review which topics"), "module:7");
+    await pick(u, screen.getByLabelText("Review which topics"), "Computer Architecture");
     await u.click(screen.getByRole("button", { name: /Start review/ }));
     expect(handlers.onReview).toHaveBeenLastCalledWith({ Module: 7 });
-    await u.selectOptions(screen.getByLabelText("Review which topics"), "topic:2");
+    await pick(u, screen.getByLabelText("Review which topics"), "OSI model");
     await u.click(screen.getByRole("button", { name: /Start review/ }));
     expect(handlers.onReview).toHaveBeenLastCalledWith({ Topic: 2 });
   });
@@ -62,7 +63,7 @@ describe("Cards home", () => {
     await u.click(await screen.findByRole("button", { name: "Review only the 9 new cards" }));
     expect(handlers.onReview).toHaveBeenLastCalledWith(null, "new");
     expect(screen.getByRole("button", { name: "Review only the 0 learning cards" })).toBeDisabled();
-    await u.selectOptions(screen.getByLabelText("Review which topics"), "topic:2");
+    await pick(u, screen.getByLabelText("Review which topics"), "OSI model");
     await u.click(screen.getByRole("button", { name: "Review only the 16 review cards" }));
     expect(handlers.onReview).toHaveBeenLastCalledWith({ Topic: 2 }, "review");
   });
@@ -184,7 +185,7 @@ describe("Cards home", () => {
     await u.click(screen.getByRole("checkbox", { name: "Tick TLB reversed" }));
     await u.click(within(screen.getByRole("region", { name: "Ticked cards" })).getByRole("button", { name: "Move to topic" }));
     const dialog = screen.getByRole("dialog", { name: "Move 2 cards" });
-    await u.selectOptions(within(dialog).getByLabelText("To topic"), "OSI model");
+    await pick(u, within(dialog).getByLabelText("To topic"), "OSI model");
     await u.click(within(dialog).getByRole("button", { name: "Move" }));
     expect(mocked.saveNote).toHaveBeenCalledTimes(1);
     expect(mocked.saveNote).toHaveBeenCalledWith(10, { note: expect.objectContaining({ topic: 2, front: "TLB" }), suggestion: null });

@@ -10,6 +10,12 @@ async function highlighted(text: string): Promise<string> {
 
 // R7: Markdown with images, highlighted code and $LaTeX$, in questions, options and explanations
 describe("renderMarkdown", () => {
+  // A card shows its new lines as typed, like Anki, not run together into one line.
+  it("keeps single new lines as line breaks", () => {
+    expect(renderMarkdown("one\ntwo")).toContain("<br");
+    expect(renderInlineMarkdown("one\ntwo")).toContain("<br");
+  });
+
   // flashcards.feature: Cloze cards from gaps (the backend's spans survive sanitising)
   it("keeps the cloze gap and answer spans", () => {
     const html = renderMarkdown('L3 is <span class="cloze-gap">[...]</span> and <span class="cloze-answer">40 &amp; up</span> <img src=x onerror=alert(1)>');

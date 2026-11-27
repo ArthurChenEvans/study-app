@@ -1,6 +1,7 @@
 <script lang="ts">
   // R217: making a topic. With no module picked, the Default warning asks first.
   // Spec: nested-modules.feature, "Default module". Tests: NewTopicForm.test.ts (T-DEF-09 to T-DEF-11).
+  import Select from "../Select.svelte";
   import { tick } from "svelte";
   import { api, errorMessage, type TreeView } from "../../lib/api";
 
@@ -11,7 +12,7 @@
   let chosen = $state(preset == null ? "" : String(preset));
   let warning = $state(false);
   let error = $state("");
-  let picker = $state<HTMLSelectElement>();
+  let picker = $state<{ focus: () => void }>();
   const modules = $derived(tree.nodes.filter((node) => node.node.kind === "Module" && !node.is_default));
 
   async function create(target: number | null) {
@@ -51,10 +52,7 @@
   <div class="flex flex-col gap-1">
     <label class="flex flex-col gap-1">
       <span class="text-sm font-bold">Module</span>
-      <select class="select w-full" bind:value={chosen} bind:this={picker} aria-describedby="new-topic-module-help">
-        <option value="">No module</option>
-        {#each modules as node (node.node.id)}<option value={String(node.node.id)}>{node.path.join(" › ")}</option>{/each}
-      </select>
+      <Select class="w-full" bind:value={chosen} bind:this={picker} aria-describedby="new-topic-module-help" options={[{ value: "", label: "No module" }, ...modules.map((node) => ({ value: String(node.node.id), label: node.path.join(" › ") }))]} />
     </label>
     <span id="new-topic-module-help" class="text-sm text-muted">Modules show their full path, so ones with the same name are told apart.</span>
   </div>

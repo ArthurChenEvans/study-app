@@ -11,6 +11,7 @@ vi.mock("../../lib/api", async (original) => {
 import { api } from "../../lib/api";
 import NewTopicForm from "./NewTopicForm.svelte";
 import { background } from "./fixtures";
+import { pick } from "../../testing/pick";
 
 const mocked = vi.mocked(api);
 
@@ -59,14 +60,15 @@ describe("NewTopicForm", () => {
     const { n2t, tree } = background();
     render(NewTopicForm, { tree });
     await userEvent.type(screen.getByRole("textbox", { name: "Topic name" }), "ALU");
-    await userEvent.selectOptions(screen.getByRole("combobox", { name: "Module" }), String(n2t.node.id));
+    await pick(userEvent.setup(), screen.getByRole("combobox", { name: "Module" }), "Computer Architecture › N2T");
     await userEvent.click(screen.getByRole("button", { name: "Create topic" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(mocked.createTopic).toHaveBeenCalledWith("ALU", n2t.node.id);
   });
 
-  it("the module picker shows full paths so namesakes are told apart", () => {
+  it("the module picker shows full paths so namesakes are told apart", async () => {
     render(NewTopicForm, { tree: background().tree });
+    await userEvent.setup().click(screen.getByRole("combobox", { name: "Module" }));
     expect(screen.getByRole("option", { name: "Computer Architecture › N2T" })).toBeInTheDocument();
   });
 });

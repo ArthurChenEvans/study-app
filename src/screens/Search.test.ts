@@ -9,6 +9,7 @@ vi.mock("../lib/api", async (original) => {
 
 import { api, type SearchQuery } from "../lib/api";
 import Search from "./Search.svelte";
+import { pick } from "../testing/pick";
 
 const mocked = vi.mocked(api);
 const lastQuery = (): SearchQuery => mocked.search.mock.calls.at(-1)![0];
@@ -52,7 +53,7 @@ describe("Search", () => {
   it("combines a module and a tag filter", async () => {
     const u = userEvent.setup();
     render(Search, { onOpenTopic: vi.fn(), mode: "filters" });
-    await u.selectOptions(await screen.findByLabelText("Module"), "Computer Architecture");
+    await pick(u, await screen.findByLabelText("Module"), "Computer Architecture");
     await u.type(screen.getByLabelText("Tag"), "hardware");
     expect(lastQuery()).toMatchObject({ module: 1, tag: "hardware" });
   });

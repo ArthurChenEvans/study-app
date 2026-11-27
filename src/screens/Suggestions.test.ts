@@ -9,6 +9,7 @@ vi.mock("../lib/api", async (original) => {
 
 import { api, type Suggestion } from "../lib/api";
 import Suggestions from "./Suggestions.svelte";
+import { pick } from "../testing/pick";
 
 const mocked = vi.mocked(api);
 const recall: Suggestion = { key: "recall:4:Amdahl's law", kind: "Recall", from: "Recall: Computer Architecture", day: 20_759, note: "missed 3 of the last 4 checks", text: "Amdahl's law", answer: null, topic: null };
@@ -61,7 +62,7 @@ describe("Suggestions", () => {
     expect(await within(item).findByRole("alert")).toHaveTextContent("Choose a topic");
     expect(mocked.saveNote).not.toHaveBeenCalled();
     await u.type(within(item).getByLabelText("Front"), "Overall speedup from a partial one?");
-    await u.selectOptions(within(item).getByLabelText("Topic"), "1");
+    await pick(u, within(item).getByLabelText("Topic"), "CPU");
     await u.click(within(item).getByRole("button", { name: "Save card" }));
     expect(mocked.saveNote.mock.calls[0][1]).toMatchObject({ note: { topic: 1, front: "Overall speedup from a partial one?" }, suggestion: "recall:4:Amdahl's law" });
   });
@@ -110,7 +111,7 @@ describe("Suggestions", () => {
     expect(mocked.dismissSuggestion).toHaveBeenCalledTimes(3);
     await u.type(screen.getByRole("searchbox", { name: "Filter" }), "Question 1");
     expect(screen.getByText(/11 of 23/)).toBeInTheDocument();
-    await u.selectOptions(screen.getByLabelText("Topic"), "CPU");
+    await pick(u, screen.getByLabelText("Topic"), "CPU");
     expect(screen.queryByRole("region", { name: "OSI model suggestions" })).toBeNull();
   });
 });

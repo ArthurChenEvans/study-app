@@ -19,6 +19,7 @@ vi.mock("../lib/celebrations.svelte", async (original) => ({ ...(await original<
 import { api, type BackupStatus, type ImportPreview } from "../lib/api";
 import ImportHost from "../components/ImportHost.svelte";
 import Transfer from "./Transfer.svelte";
+import { pick } from "../testing/pick";
 
 const mocked = vi.mocked(api);
 const TODAY = 20_761; // Wed 4 Nov 2026
@@ -124,14 +125,14 @@ describe("Export to another app", () => {
     render(Transfer);
     await u.click(await screen.findByRole("button", { name: /^Export/ }));
     const dialog = screen.getByRole("dialog", { name: "Export" });
-    await u.selectOptions(within(dialog).getByRole("combobox", { name: "Kind of file" }), "Anki");
+    await pick(u, within(dialog).getByRole("combobox", { name: "Kind of file" }), /^Anki/);
     expect(within(dialog).getByRole("checkbox", { name: /Keep my progress/ })).toBeChecked();
     await u.click(within(dialog).getByRole("checkbox", { name: /Quiz questions as cards too/ }));
     mocked.exportFile.mockResolvedValue({ name: "Shudhana.apkg", path: "/d/Shudhana.apkg", data: null });
     await u.click(within(dialog).getByRole("button", { name: "Export everything" }));
     expect(mocked.exportFile).toHaveBeenCalledWith({ topics: null, history: true, format: "Anki", quizzes_as_cards: true });
     await u.click(screen.getByRole("button", { name: /^Export/ }));
-    await u.selectOptions(screen.getByRole("combobox", { name: "Kind of file" }), "Gift");
+    await pick(u, screen.getByRole("combobox", { name: "Kind of file" }), /^Moodle GIFT/);
     expect(screen.queryByRole("checkbox", { name: /history/ })).not.toBeInTheDocument();
     await u.click(screen.getByRole("button", { name: "Export everything" }));
     expect(mocked.exportFile).toHaveBeenLastCalledWith({ topics: null, history: false, format: "Gift" });

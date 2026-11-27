@@ -1,20 +1,29 @@
 <script lang="ts">
   import { stackTable } from "../lib/stack";
   // flashcards.feature (R62 to R64, R70, R71, R77): a topic's cards and the note editor.
-  import { Archive, ArchiveRestore, ArrowLeft, Brackets, Flag, ImagePlus, Play, Plus, Trash2, X } from "@lucide/svelte";
+  import { Archive, ArchiveRestore, ArrowLeft, Brackets, Flag, ImagePlus, Play, Plus, Redo2, Trash2, Undo2, X } from "@lucide/svelte";
   import { tick, untrack } from "svelte";
   import { api, errorMessage, type Note, type NoteKind, type NoteView, type Subject, type TopicCards, type TopicRow } from "../lib/api";
   import { deleteWithUndo, toast } from "../lib/celebrations.svelte";
   import Rich from "../components/Rich.svelte";
+  import Select from "../components/Select.svelte";
   import { IMAGE_TYPES, imageInput, listenForDrops } from "../lib/imageInput.svelte";
   import { dueLabel } from "../lib/dates";
 
   // `onFinishEdit`: opened from card review, so finishing the edit goes back there (`finishLabel` on the back link).
   let { topic, editNote = null, notice = "", onBack, onReview, onTopic = () => {}, onFinishEdit, finishLabel = "Back to review" }: { topic: number; editNote?: number | "new" | null; notice?: string; onBack: () => void; onReview: (scope: Subject) => void; onTopic?: (topic: number, notice: string) => void; onFinishEdit?: () => void; finishLabel?: string } = $props();
-  function closeEditor() {
+  // Esc and Cancel both come here. Unsaved writing asks before it's thrown away.
+  let discarding = $state(false);
+  function closeEditor(force = false) {
+    if (!force && dirty()) { discarding = true; return; }
+    discarding = false;
     if (onFinishEdit) onFinishEdit();
     else editing = null;
   }
+
+  // The topic on show. Picking another topic for a new card switches the page to it,
+  // so the heading, counts and Review button always match where the card goes.
+  let current = $state(untrack(() => topic));
 
   let data = $state<TopicCards | null>(null);
   let today = $state(0);
@@ -25,7 +34,7 @@
   let clozeBox = $state<HTMLTextAreaElement | null>(null);
   let topics = $state<TopicRow[]>([]);
 
-  const blank = (kind: NoteKind = "Basic"): Note => ({ topic, kind, front: "", back: "", cues: [], text: "", extra: "" });
+  const blank = (kind: NoteKind = "Basic"): Note => ({ topic: current, kind, front: "", back: "", cues: [], text: "", extra: "" });
   const leech = $derived(editing?.view?.cards.find((card) => card.leech) ?? null);
 
   // The list: filter by what needs you, or type to find a card.
@@ -46,7 +55,7 @@
     && card.front.toLowerCase().includes(query.trim().toLowerCase())));
 
   async function load() {
-    const [loaded, loadedToday, loadedTopics] = await Promise.all([api.topicCards(topic), api.today(), api.topics()]);
+    const [loaded, loadedToday, loadedTopics] = await Promise.all([api.topicCards(current), api.today(), api.topics()]);
     data = { ...loaded, cards: loaded.cards.filter((card) => !hiddenNotes.has(card.note)) };
     today = loadedToday;
     topics = loadedTopics;
@@ -60,6 +69,62 @@
       const view = await api.noteView(id);
       editing = { id, note: structuredClone(view.note), view };
       tagText = (view.note.tags ?? []).join(", ");
+    }
+    markClean();
+  }
+
+  // What the editor held when it opened or last saved, to tell if there's anything to lose.
+  let cleanAs = "";
+  const editorState = () => (editing ? JSON.stringify([$state.snapshot(editing.note), tagText]) : "");
+  function markClean() { cleanAs = editorState(); }
+  const dirty = () => !!editing && editorState() !== cleanAs;
+
+  async function switchTopic(next: number) {
+    if (next === current) return;
+    current = next;
+    status = "";
+    await load();
+  }
+
+  // ---- Undo and redo for card changes made on this page (Ctrl+Z, Ctrl+Shift+Z) ----
+  // An added card can be taken back (it has no reviews yet) and an edit put back as it was.
+  type Change = { kind: "add"; id: number; note: Note } | { kind: "edit"; id: number; before: Note; after: Note };
+  let undoStack = $state<Change[]>([]);
+  let redoStack = $state<Change[]>([]);
+  const describe = (change: Change) => (change.kind === "add" ? "adding the card" : "the edit");
+  function record(change: Change) {
+    undoStack = [...undoStack, change];
+    redoStack = [];
+  }
+  async function undo() {
+    const change = undoStack.at(-1);
+    if (!change) return;
+    try {
+      if (change.kind === "add") await api.deleteNote(change.id);
+      else await api.saveNote(change.id, { note: change.before, suggestion: null });
+      undoStack = undoStack.slice(0, -1);
+      redoStack = [...redoStack, change];
+      if (editing && editing.id === change.id) editing = null;
+      await load();
+      toast({ text: `Undid ${describe(change)}`, icon: "check" });
+    } catch (failure) {
+      toast({ text: errorMessage(failure) });
+    }
+  }
+  async function redo() {
+    const change = redoStack.at(-1);
+    if (!change) return;
+    try {
+      // A redone add is a new note, so later steps point at its new id.
+      const id = change.kind === "add" ? await api.saveNote(null, { note: change.note, suggestion: null }) : (await api.saveNote(change.id, { note: change.after, suggestion: null }), change.id);
+      const done = { ...change, id };
+      redoStack = redoStack.slice(0, -1);
+      undoStack = [...undoStack, done];
+      if (editing && editing.id === change.id) editing = null;
+      await load();
+      toast({ text: `Redid ${describe(change)}`, icon: "check" });
+    } catch (failure) {
+      toast({ text: errorMessage(failure) });
     }
   }
 
@@ -76,22 +141,25 @@
       const tags = tagList();
       const { tags: _old, ...rest } = $state.snapshot(editing.note);
       const note = tags.length ? { ...rest, tags } : rest;
-      await api.saveNote(editing.id, { note, suggestion: null });
+      const savedId = await api.saveNote(editing.id, { note, suggestion: null });
       const isNew = editing.id === null;
+      if (isNew) record({ kind: "add", id: savedId, note: note as Note });
+      else if (editing.view) record({ kind: "edit", id: editing.id!, before: $state.snapshot(editing.view.note) as Note, after: note as Note });
       status = isNew ? `${count(note)} added` : "Changes saved";
       if (isNew && !andClose) {
         // flashcards.feature: write the next card straight away, same type and topic.
         editing = { id: null, note: { ...blank(note.kind), topic: note.topic }, view: null };
         tagText = tags.join(", ");
+        markClean();
         images.clear();
         await tick();
         firstField()?.focus();
-        if (note.topic === topic) await load();
+        await load();
         return;
       }
       if (onFinishEdit) return onFinishEdit();
       editing = null;
-      if (note.topic !== topic) return onTopic(note.topic, `${status} to ${topics.find((row) => row.id === note.topic)?.name ?? "another topic"}`);
+      if (note.topic !== current) return onTopic(note.topic, `${status} to ${topics.find((row) => row.id === note.topic)?.name ?? "another topic"}`);
       await load();
     } catch (failure) {
       error = errorMessage(failure);
@@ -167,9 +235,21 @@
     });
   }
 
+  const typing = (target: EventTarget | null) => target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA"].includes(target.tagName));
   function keys(event: KeyboardEvent) {
+    const mod = event.ctrlKey || event.metaKey;
+    // Undo and redo of card changes, when not typing (typing keeps the field's own undo).
+    if (mod && !event.altKey && !typing(event.target) && !deleting && !discarding) {
+      const key = event.key.toLowerCase();
+      if (key === "z" && !event.shiftKey) { event.preventDefault(); return void undo(); }
+      if ((key === "z" && event.shiftKey) || key === "y") { event.preventDefault(); return void redo(); }
+    }
+    if (discarding && event.key === "Escape") { event.preventDefault(); discarding = false; return; }
     if (!editing) return;
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") { event.preventDefault(); save(); }
+    // Esc goes back, like closing Anki's Add window. Open menus and dialogs take Esc first.
+    if (event.key === "Escape" && !deleting && !discarding && !event.defaultPrevented) { event.preventDefault(); closeEditor(); return; }
+    // Ctrl+Enter saves, as in Anki.
+    if (mod && event.key === "Enter") { event.preventDefault(); save(); }
     if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === "c" && editing.note.kind === "Cloze") { event.preventDefault(); makeGap(); }
   }
 
@@ -184,8 +264,10 @@
     <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-3 pb-6 pt-4">
       <div><p class="text-sm text-muted">{data.module ?? "No module"} · {data.cards.length} {data.cards.length === 1 ? "card" : "cards"} · {data.due} due</p><h1 class="mt-1 text-3xl font-semibold">{data.name}</h1></div>
       <div class="flex flex-wrap items-center gap-2">
+        <button class="btn btn-ghost btn-square" disabled={!undoStack.length} aria-label="Undo" title={undoStack.length ? `Undo ${describe(undoStack.at(-1)!)} (Ctrl+Z)` : "Nothing to undo"} onclick={undo}><Undo2 class="size-4" /></button>
+        <button class="btn btn-ghost btn-square" disabled={!redoStack.length} aria-label="Redo" title={redoStack.length ? `Redo ${describe(redoStack.at(-1)!)} (Ctrl+Shift+Z)` : "Nothing to redo"} onclick={redo}><Redo2 class="size-4" /></button>
         {#if !editing}<button class="btn btn-ghost" onclick={() => open(null)}><Plus class="size-4" />New card</button>{/if}
-        <button class="btn {editing || !data.due ? 'btn-outline' : 'btn-primary'}" disabled={!data.due} onclick={() => onReview({ Topic: topic })}><Play class="size-4" />{data.due && !editing ? `Review the ${data.due} due` : `Review ${data.name}`}</button>
+        <button class="btn {editing || !data.due ? 'btn-outline' : 'btn-primary'}" disabled={!data.due} onclick={() => onReview({ Topic: current })}><Play class="size-4" />{data.due && !editing ? `Review the ${data.due} due` : `Review ${data.name}`}</button>
       </div>
     </div>
     {#if status && !editing}<p role="status" class="mb-4 text-sm text-muted">{status}</p>{/if}
@@ -288,9 +370,9 @@
           {#if error}<p role="alert" class="text-sm text-error">{error}</p>{/if}
           <!-- The save bar stays in reach however long the card gets. -->
           <div class="sticky bottom-0 z-10 flex flex-wrap items-center gap-3 border-t border-base-300 bg-base-100 py-4">
-            <button type="submit" class="btn btn-primary">{editing.id === null ? `Save ${count(note)}` : "Save changes"} <kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">S</kbd></button>
+            <button type="submit" class="btn btn-primary">{editing.id === null ? `Save ${count(note)}` : "Save changes"} <kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">Enter</kbd></button>
             {#if editing.id === null}<button type="button" class="btn btn-ghost" onclick={() => save(undefined, true)}>Save and return to list</button>{/if}
-            <button type="button" class="btn btn-ghost" onclick={closeEditor}>Cancel</button>
+            <button type="button" class="btn btn-ghost" onclick={() => closeEditor()}>Cancel <kbd class="kbd kbd-xs">Esc</kbd></button>
             {#if editing.id === null && (images.note || status)}<p role="status" class="text-sm text-muted">{images.note || status}</p>{/if}
             {#if editing.id !== null}<button type="button" class="btn btn-ghost ml-auto" onclick={() => (deleting = true)}><Trash2 class="size-4" />Delete…</button>{/if}
           </div>
@@ -316,7 +398,7 @@
           <p class="eyebrow">{editing.view && editing.view.cards.length > 1 ? "Cards" : "Card"}</p>
           <dl class="mt-4 space-y-3 text-sm">
             {#if editing.id === null}
-              <div><dt><label class="text-muted" for="card-topic">Topic</label></dt><dd><select id="card-topic" class="select select-sm mt-1 w-full" bind:value={editing.note.topic}>{#each topics as row (row.id)}<option value={row.id}>{row.name}</option>{/each}</select></dd></div>
+              <div><dt><label class="text-muted" for="card-topic">Topic</label></dt><dd><Select id="card-topic" small class="mt-1 w-full" value={editing.note.topic} options={topics.map((row) => ({ value: row.id, label: row.name }))} onchange={(next) => { if (editing && typeof next === "number") { editing.note.topic = next; void switchTopic(next); } }} /></dd></div>
             {:else}
               <div class="flex justify-between gap-4"><dt class="text-muted">Topic</dt><dd>{data.name}</dd></div>
             {/if}
@@ -340,6 +422,20 @@
     {/if}
   {/if}
 </div>
+
+{#if discarding}
+  <dialog open class="modal modal-open" aria-labelledby="discard-note-h">
+    <div class="modal-box max-w-md">
+      <h3 id="discard-note-h" class="text-lg font-semibold">Leave without saving?</h3>
+      <p class="mt-2 text-muted">{editing?.id === null ? "What you've written for this card is thrown away." : "Your changes to this card are thrown away."}</p>
+      <div class="modal-action">
+        <!-- svelte-ignore a11y_autofocus -->
+        <button class="btn btn-ghost" autofocus onclick={() => (discarding = false)}>Keep editing</button>
+        <button class="btn btn-error" onclick={() => closeEditor(true)}>Leave without saving</button>
+      </div>
+    </div>
+  </dialog>
+{/if}
 
 {#if deleting}
   <dialog open class="modal modal-open" aria-labelledby="delete-note-h">
