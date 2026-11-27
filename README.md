@@ -1,8 +1,18 @@
 # Shudhana
 
-An all-in-one study app for exams: quizzes (multiple choice and short answer), flashcards on FSRS, free recall checklists, and a practice log for hands-on work, all on one calendar. Built with Tauri 2, Svelte 5 and Rust (SQLite). Everything stays on your computers.
+An all-in-one study app for exams: quizzes (multiple choice and short answer), flashcards on FSRS, free recall checklists, and a practice log for hands-on work, all on one calendar. Built with Tauri 2, Svelte 5 and Rust (SQLite). Your data lives on your own computers, and an account to sync is optional on the desktop.
 
 ## Screenshots
+
+*Taken from the demo profile (see [Try it with demo data](#try-it-with-demo-data)).*
+
+**Overview:** what's due today, your accuracy, how many right answers were guesses, your score per quiz, why you got things wrong, and your weakest topics first.
+
+![Overview](docs/screenshots/overview.png)
+
+**Quizzes:** one quiz per topic, grouped by module. Each topic shows how often it repeats and when it's next due, and you can tick a few to quiz them together.
+
+![Quizzes](docs/screenshots/quizzes.png)
 
 **After a quiz:** wrong and guessed answers first, each with its explanation and a "why did you get it wrong?" picker, plus where every topic now sits on its quiz schedule.
 
@@ -24,15 +34,38 @@ An all-in-one study app for exams: quizzes (multiple choice and short answer), f
 
 ![Card editor](docs/screenshots/card-editor.png)
 
+**Free recall:** a checklist of points for a topic or module. Recall everything you can, tick what you got, and the score decides when the next check is and whether it moves up the schedule.
+
+![Free recall checklist with its schedule](docs/screenshots/free-recall.png)
+
+**Practice log:** what tripped you up while coding or doing a past paper, with why it wasn't obvious. Things you couldn't recall become suggested cards, and things you couldn't apply become drills.
+
+![Practice log for a project](docs/screenshots/practice-log.png)
+
+**Calendar:** everything due each day, what you did on past days, and exam dates that bring reviews round sooner.
+
+![Calendar](docs/screenshots/calendar.png)
+
+**Themes:** nine colour themes in light and dark, each with a colour-blind safe right and wrong.
+
+![Colour themes](docs/screenshots/themes.png)
+
+**On a phone:** the same app in the browser, with the main screens in a dock along the bottom.
+
+<img src="docs/screenshots/phone.png" alt="Overview on a phone" width="300">
+
 ## What's in it
 
-- **Quizzes:** each topic's questions make a quiz. Tick a few to mix them. Write questions with your slides, PDFs, Word files or EPUBs open beside you, and note which source each fact came from. Each topic climbs a quiz schedule.
+- **Overview:** what's due today, accuracy, how many right answers were guesses, score per quiz, the reasons you gave for wrong answers, and your weakest topics.
+- **Quizzes:** each topic's questions make a quiz. Tick a few to mix them. Write questions with your slides, PDFs, Word files or EPUBs open beside you, and note which source each fact came from. Each topic climbs a quiz schedule. After answering, you can flag a right answer as a guess, and wrong answers ask why you got them wrong.
 - **Cards:** basic, reversed and cloze flashcards scheduled with FSRS. Cards opens on today's review, and Browse all lists every card with search and filters (answers of cards due today stay hidden). Missed quiz questions and recall points become suggested cards, never added without asking.
 - **Free Recall:** checklists about a module or a topic. Write or say everything you remember, tick what you got, and the next check is scheduled from how you did.
 - **Practice Log:** note what trips you up while coding, doing a past paper or anything hands-on, review it at the end of the session, and turn it into cards or drills.
 - **Calendar:** everything due, plus exam dates that can tighten reviews before them.
 - **Manage:** Topics & Modules, Import & Export (Anki decks, spreadsheets, JSON, Markdown, GIFT, Aiken), Bibliography and History.
-- Nine colour themes, light and dark, each with a colour-blind safe right and wrong. Daily backups, and sync through any shared folder.
+- **Search** across everything, from the sidebar or with `/`.
+- Nine colour themes, light and dark, each with a colour-blind safe right and wrong. Daily backups, and sync through any shared folder or an optional account.
+- **Phone version:** a browser build for phones, iPhone included, which syncs through an account (see [Phone version](#phone-version)).
 
 ## Install
 
