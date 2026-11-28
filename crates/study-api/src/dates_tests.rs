@@ -199,7 +199,8 @@ fn results_show_the_tightened_next_quiz() {
     let setup = QuizSetupInput { topics: vec![tcp], count: None, even: false, shuffle_questions: false, shuffle_options: false, exam: true, total_minutes: None, per_question_seconds: None, easy: false, types: study_core::assembly::QuestionTypes::Both };
     app.start_quiz(setup).unwrap();
     app.answer(vec![0], TODAY).unwrap();
-    let Next::Finished(attempt) = app.answer(vec![0], TODAY).unwrap().next else { panic!("two questions") };
+    app.answer(vec![0], TODAY).unwrap();
+    let attempt = app.finish_quiz(TODAY).unwrap();
     let moved = &app.move_views(attempt).unwrap()[0];
     assert!(moved.next_due > TODAY + 10, "{moved:?}");
     assert_eq!((moved.tightened_due, moved.tightened_for.as_deref()), (Some(TODAY + 5), Some("Networks exam")));

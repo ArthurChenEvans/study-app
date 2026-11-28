@@ -1,13 +1,15 @@
 <script lang="ts">
   // navigation.feature (R158): every preference in one place, so the navigation only holds
   // places you go. Appearance and sound stay on this computer. Celebrations sync.
-  import { Check, ChevronRight, CircleCheck, Database, Download, Eye, Moon, Palette, PartyPopper, RefreshCw, Sun, TriangleAlert, Volume2 } from "@lucide/svelte";
+  import { Check, ChevronRight, CircleCheck, Database, Download, Eye, Moon, Palette, PartyPopper, RefreshCw, Sun, TriangleAlert, Vibrate, Volume2 } from "@lucide/svelte";
   import PageHeader from "../components/PageHeader.svelte";
   import CelebrationsDialog from "../components/CelebrationsDialog.svelte";
   import AccountSection from "../components/AccountSection.svelte";
   import { inPhone } from "../lib/transport";
+  import { disableShake, enableShake, shake } from "../lib/shake.svelte";
   // R211: the phone has no updates to install or backups to keep: the account holds everything.
   const phone = inPhone();
+  let shakeError = $state("");
   import { DARK, LIGHT, applyPalette, applyTheme, initialPalette, type Theme } from "../lib/theme";
   import { saveAppearance } from "../lib/appearance";
   import { COLOURS, applyColours, buildColours, initialColours, type ColoursId } from "../lib/colours";
@@ -87,6 +89,13 @@
       <span class="flex-1"><span class="block font-bold">Sound</span><span id="sound-help" class="block text-sm text-muted">Answer cues and celebration jingles. Everything they say is on screen too.</span></span>
       <input type="checkbox" role="switch" class="toggle" aria-label="Sound" aria-describedby="sound-help" checked={sound} onchange={() => { sound = !sound; setSoundOn(sound); }} />
     </label>
+    {#if shake.supported}
+      <label class="mt-2 flex min-h-11 cursor-pointer items-center gap-3">
+        <Vibrate class="size-5 text-muted" />
+        <span class="flex-1"><span class="block font-bold">Shake to undo</span><span id="shake-help" class="block text-sm text-muted">Shake your phone to undo the last card grade or change, like Anki.{shakeError ? ` ${shakeError}` : ""}</span></span>
+        <input type="checkbox" role="switch" class="toggle" aria-label="Shake to undo" aria-describedby="shake-help" checked={shake.on} onchange={async (event) => { const box = event.currentTarget; shakeError = ""; if (box.checked) { if (!(await enableShake())) { box.checked = false; shakeError = "Your browser didn't allow it. Check motion access in its settings."; } } else disableShake(); }} />
+      </label>
+    {/if}
     <button type="button" class="settings-row mt-2" onclick={() => (celebrations = true)}>
       <PartyPopper class="size-5 text-muted" />
       <span class="flex-1 text-left"><span class="block font-bold">Celebrations</span><span class="block text-sm font-semibold text-muted">Big moments, small pops along the way, and toasts</span></span>

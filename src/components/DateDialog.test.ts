@@ -95,7 +95,7 @@ describe("DateDialog", () => {
     render(DateDialog, { today: TODAY, date, modules, topics, onSaved, onCancel: vi.fn(), onHide });
     expect(screen.getByRole("heading", { name: "Edit date" })).toBeInTheDocument();
     expect(screen.getByLabelText("Name")).toHaveValue("Study app write-up");
-    expect(screen.getByLabelText("Date")).toHaveValue("2026-11-13");
+    expect(screen.getByLabelText(/^Date/)).toHaveTextContent("13 Nov 2026");
     await u.click(screen.getByRole("button", { name: "Save" }));
     expect(mocked.updateDate).toHaveBeenCalledWith(4, { name: "Study app write-up", day: TODAY + 10, kind: "Deadline", module: null, topics: [], tighten: false });
 

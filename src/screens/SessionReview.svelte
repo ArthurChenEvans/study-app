@@ -1,5 +1,7 @@
 <script lang="ts">
   // projects.feature (R90 to R92, R95): review a session's struggles one at a time.
+  import DateField from "../components/DateField.svelte";
+  import SuggestInput from "../components/SuggestInput.svelte";
   import Select from "../components/Select.svelte";
   import { CalendarDays, CircleCheck, Clock, Dumbbell, ListChecks, Minus, PencilLine, Plus, Repeat, SquareStack } from "@lucide/svelte";
   import { toast } from "../lib/celebrations.svelte";
@@ -213,8 +215,7 @@
         {#if action === "drill"}
           <div>
             <label class="block text-sm font-semibold" for="review-issue">Issue</label>
-            <input id="review-issue" class="input mt-1 w-full" list="known-issues" placeholder="Name the issue, or pick one you've had before…" bind:value={issue} onchange={findDrill} onblur={findDrill} />
-            <datalist id="known-issues">{#each issues as row (row.id)}<option value={row.name}></option>{/each}</datalist>
+            <div class="mt-1"><SuggestInput id="review-issue" placeholder="Name the issue, or pick one you've had before…" bind:value={issue} suggestions={issues.map((row) => row.name)} onpick={findDrill} onblur={findDrill} /></div>
             <p class="mt-1 text-sm text-muted">{seenBefore ? `Seen ${seenBefore.seen} ${seenBefore.seen === 1 ? "time" : "times"} before, in ${seenBefore.projects.join(" and ")}.` : "Issues are shared by every log, so name it the way you'd recognise it again."}</p>
           </div>
           {#if known}
@@ -258,7 +259,7 @@
           <div class="mt-5 space-y-3">
             <label class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-4 py-2 {when === 'tomorrow' ? 'border-primary-ink' : 'border-field-border'}"><input type="radio" name="when" class="radio radio-sm" checked={when === "tomorrow"} onchange={() => (when = "tomorrow")} /><span class="flex-1">Tomorrow, {fullLabel(today + 1, today)}</span></label>
             <label class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-4 py-2 {when === 'other' ? 'border-primary-ink' : 'border-field-border'}"><input type="radio" name="when" class="radio radio-sm" checked={when === "other"} onchange={() => (when = "other")} /><span>Another day</span>
-              <input type="date" class="input input-sm ml-auto w-40" aria-label="Pick a day" min={isoOf(today)} bind:value={otherDay} onfocus={() => (when = "other")} /></label>
+              <DateField small class="ml-auto w-40" aria-label="Pick a day" min={isoOf(today)} bind:value={otherDay} onfocus={() => (when = "other")} /></label>
           </div>
           <div class="modal-action">
             <button type="button" class="btn btn-ghost" onclick={() => (asking = false)}>Back</button>

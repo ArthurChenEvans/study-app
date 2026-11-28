@@ -516,6 +516,7 @@ pub(crate) fn quiz(app: &mut App, day: i64, progress: f64, topics: &[TopicId], c
                 ["not sure", "the network one", "something about caching"][rng.random_range(0..3)].to_string()
             };
             match app.answer_text(typed, day)?.next {
+                Next::Question(next) if next.can_move && next.answered == next.total => break app.finish_quiz(day)?,
                 Next::Question(next) => view = next,
                 Next::Finished(attempt) => break attempt,
             }
@@ -532,14 +533,18 @@ pub(crate) fn quiz(app: &mut App, day: i64, progress: f64, topics: &[TopicId], c
             if right.len() > 1 { vec![right[0], wrong] } else { vec![wrong] }
         };
         match app.answer(picked, day)?.next {
+            // An exam waits to be finished once every question has an answer.
+            Next::Question(next) if next.can_move && next.answered == next.total => break app.finish_quiz(day)?,
             Next::Question(next) => view = next,
             Next::Finished(attempt) => break attempt,
         }
     };
     // Now and then a wrong short answer is overruled, as if it was close enough.
     let wrong_short: Vec<usize> = app.results(attempt)?.review.iter().filter(|item| item.short.as_ref().is_some_and(|short| !short.marking.right)).map(|item| item.index).collect();
+    // A quiz with a couple of close calls always has one overruled, so every profile shows it.
+    let sure = (wrong_short.len() >= 2).then(|| wrong_short[0]);
     for index in wrong_short {
-        if rng.random_bool(0.15) {
+        if Some(index) == sure || rng.random_bool(0.15) {
             app.overrule_result(attempt, index)?;
         }
     }

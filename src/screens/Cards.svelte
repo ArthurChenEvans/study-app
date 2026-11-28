@@ -1,14 +1,15 @@
 <script lang="ts">
   import Select from "../components/Select.svelte";
+  import SessionPlan from "../components/SessionPlan.svelte";
   import CardBrowser from "../components/CardBrowser.svelte";
   // flashcards.feature (R68, R74, R75): what's due today, the forecast, retention.
   // R191: it opens on Review, and every card is a tab away in Browse all.
   import { CircleCheck, Inbox, Play, Plus, RefreshCw, RotateCcw, Settings2, SquareStack } from "@lucide/svelte";
-  import { api, errorMessage, type CardSettings, type CardsHome, type ModuleRow, type CardKind, type Subject, type TopicRow } from "../lib/api";
+  import { api, errorMessage, type CardSettings, type CardsHome, type ModuleRow, type CardKind, type ReviewPlan, type SessionOrder, type Subject, type TopicRow } from "../lib/api";
   import PageHeader from "../components/PageHeader.svelte";
   import { dueLabel } from "../lib/dates";
 
-  let { onReview, onSuggestions, onNewCard, onEditNote = () => {} }: { onReview: (scope: Subject | null, only?: CardKind) => void; onTopic?: (topic: number) => void; onSuggestions: () => void; onNewCard: () => void; onEditNote?: (topic: number, note: number) => void } = $props();
+  let { onReview, onSuggestions, onNewCard, onEditNote = () => {} }: { onReview: (scope: Subject | null, only?: CardKind, order?: SessionOrder) => void; onTopic?: (topic: number) => void; onSuggestions: () => void; onNewCard: () => void; onEditNote?: (topic: number, note: number) => void } = $props();
   let tab = $state<"review" | "browse">("review");
 
   let home = $state<CardsHome | null>(null);
@@ -16,6 +17,14 @@
   let modules = $state<ModuleRow[]>([]);
   let topics = $state<TopicRow[]>([]);
   let scope = $state("");
+  // The session plan for the chosen topics, and this session's order (starts as the default).
+  let plan = $state<ReviewPlan | null>(null);
+  let order = $state<SessionOrder>({ groups: ["learning", "review", "new"] });
+  async function loadPlan() {
+    plan = await api.reviewPlan(chosen());
+    order = structuredClone($state.snapshot(plan.order)) as SessionOrder;
+  }
+  $effect(() => { void scope; loadPlan().catch(() => (plan = null)); });
   let editing = $state<CardSettings | null>(null);
   let noLimit = $state(false);
   let settingsError = $state("");
@@ -34,7 +43,8 @@
     const [kind, id] = scope.split(":");
     return kind === "module" ? { Module: Number(id) } : { Topic: Number(id) };
   }
-  const start = () => onReview(chosen());
+  const changed = () => !!plan && JSON.stringify($state.snapshot(order)) !== JSON.stringify($state.snapshot(plan.order));
+  const start = () => (changed() ? onReview(chosen(), undefined, $state.snapshot(order) as SessionOrder) : onReview(chosen()));
   // R226: a session of just one kind, in the chosen topics.
   const startOnly = (only: CardKind) => onReview(chosen(), only);
 
@@ -52,6 +62,7 @@
       await api.setCardSettings({ ...$state.snapshot(editing), max_reviews: noLimit ? null : Number(editing.max_reviews ?? 0), new_per_day: Number(editing.new_per_day), leech_after: Number(editing.leech_after) });
       editing = null;
       await load();
+      await loadPlan();
     } catch (failure) {
       settingsError = errorMessage(failure);
     }
@@ -129,6 +140,7 @@
             <Select class="w-full" aria-label="Review which topics" bind:value={scope} options={[{ value: "", label: "All topics" }, ...modules.map((module) => ({ value: `module:${module.id}`, label: module.name, group: "Modules" })), ...home.per_topic.map((row) => ({ value: `topic:${row.topic}`, label: row.name, group: "Topics" }))]} />
             </div>
           </div>
+          {#if plan}<SessionPlan {plan} bind:order onSettings={openSettings} />{/if}
         {/if}
         <div class="mt-6">
           <div class="flex items-baseline justify-between"><h3 class="text-[16px]">Next 14 days</h3><span class="text-xs text-muted">cards due per day</span></div>
@@ -203,6 +215,18 @@
             </div>
           </div>
         </div>
+        <fieldset>
+          <legend class="text-sm font-semibold">Session order</legend>
+          <label class="mt-2 flex items-start gap-2"><input type="radio" class="radio radio-sm mt-0.5" name="session-order" checked={editing.session !== "mixed"} onchange={() => editing && (editing.session = { groups: ["learning", "review", "new"] })} /><span>In groups, one after another<span class="block text-sm text-muted">Learning, then reviews, then new. Cards are shuffled inside each group. You can change the order for one session on the Today panel.</span></span></label>
+          <label class="mt-2 flex items-start gap-2"><input type="radio" class="radio radio-sm mt-0.5" name="session-order" checked={editing.session === "mixed"} onchange={() => editing && (editing.session = "mixed")} /><span>All mixed together<span class="block text-sm text-muted">One shuffled pile.</span></span></label>
+        </fieldset>
+        <fieldset>
+          <legend class="text-sm font-semibold">Missed cards come back</legend>
+          <label class="mt-2 flex items-start gap-2"><input type="radio" class="radio radio-sm mt-0.5" name="missed" checked={editing.missed_after === null} onchange={() => editing && (editing.missed_after = null)} /><span>At the end of the session<span class="block text-sm text-muted">The longest gap, best for real recall.</span></span></label>
+          <label class="mt-2 flex items-center gap-2"><input type="radio" class="radio radio-sm" name="missed" checked={editing.missed_after !== null} onchange={() => editing && (editing.missed_after = 10)} /><span>After</span>
+            <input class="input input-sm w-20 tabular-nums" type="number" min="1" aria-label="Cards before a missed card comes back" value={editing.missed_after ?? 10} disabled={editing.missed_after === null} onchange={(event) => editing && (editing.missed_after = Math.max(1, Number((event.currentTarget as HTMLInputElement).value) || 1))} /><span>cards</span></label>
+          <p class="mt-1 text-sm text-muted">With fewer cards left than that, it comes back at the end.</p>
+        </fieldset>
         <label class="block"><span class="block text-sm font-semibold">Ask me to rewrite a card after</span>
           <span class="mt-1 flex items-center gap-2"><input class="input w-20 tabular-nums" type="number" min="2" aria-label="Ask me to rewrite a card after" bind:value={editing.leech_after} /><span class="text-sm text-muted">times pressing Again</span></span></label>
         <div class="panel p-4">

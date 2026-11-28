@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../lib/api", async (original) => {
   const actual = await original<typeof import("../lib/api")>();
-  return { ...actual, api: { answer: vi.fn(), answerText: vi.fn(), overruleAnswer: vi.fn(), flagAnswer: vi.fn(), toggleFlag: vi.fn(), questionTimedOut: vi.fn(), totalTimedOut: vi.fn(), quitQuiz: vi.fn() } };
+  return { ...actual, api: { answer: vi.fn(), answerText: vi.fn(), overruleAnswer: vi.fn(), flagAnswer: vi.fn(), toggleFlag: vi.fn(), questionTimedOut: vi.fn(), totalTimedOut: vi.fn(), quitQuiz: vi.fn(), goToQuestion: vi.fn(), finishQuiz: vi.fn() } };
 });
 
 vi.mock("../lib/sound", () => ({ play: vi.fn() }));
@@ -24,7 +24,7 @@ const mocked = vi.mocked(api);
 
 function view(overrides: Partial<QuizView> = {}): QuizView {
   return {
-    position: 1, total: 3, exam: false, topic: 1,
+    position: 1, index: 0, question: 40, can_move: false, answered: 0, picked: [], typed: null, total: 3, exam: false, topic: 1,
     text: "Which stage reads the **register file**?",
     options: [{ index: 2, text: "Execute" }, { index: 0, text: "Fetch" }, { index: 1, text: "Decode" }],
     multiple: false, short: false, answers_to_pick: null, flagged: false, total_seconds: null, per_question_seconds: null,
@@ -83,12 +83,51 @@ describe("Quiz", () => {
   it("exam mode: goes straight to the next question", async () => {
     const u = userEvent.setup();
     mocked.answer.mockResolvedValue({ feedback: null, next: { Question: { ...second, exam: true } } });
-    render(Quiz, { initial: view({ exam: true }), onFinished: vi.fn() });
-    expect(screen.getByText("No going back in exam mode")).toBeInTheDocument();
+    render(Quiz, { initial: view({ exam: true, per_question_seconds: 60 }), onFinished: vi.fn() });
+    expect(screen.getByText("No going back with a timer on each question")).toBeInTheDocument();
     await u.click(screen.getByRole("button", { name: "1 Execute" }));
     await u.click(screen.getByRole("button", { name: /Submit/ }));
     expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Second question");
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  // Exam mode: move between questions, change an answer, then finish
+  it("exam mode moves back and forth, shows the answer given and finishes after asking", async () => {
+    const u = userEvent.setup();
+    const onFinished = vi.fn();
+    const exam = { exam: true, can_move: true, track: ["Current", "Upcoming", "Upcoming"] as QuizView["track"] };
+    mocked.answer.mockResolvedValue({ feedback: null, next: { Question: view({ ...exam, ...second, index: 1, position: 2, answered: 1, can_move: true, track: ["Answered", "Current", "Upcoming"] }) } });
+    mocked.goToQuestion.mockResolvedValue(view({ ...exam, answered: 1, picked: [0], track: ["Current", "Upcoming", "Upcoming"] }));
+    mocked.finishQuiz.mockResolvedValue(42);
+    render(Quiz, { initial: view(exam), onFinished });
+    expect(screen.getByRole("button", { name: "Previous question" })).toBeDisabled();
+    await u.click(screen.getByRole("button", { name: "1 Execute" }));
+    await u.click(screen.getByRole("button", { name: /Save answer/ }));
+    expect(await screen.findByRole("heading", { level: 1 })).toHaveTextContent("Second question");
+    await u.keyboard("{ArrowLeft}");
+    expect(mocked.goToQuestion).toHaveBeenCalledWith(0);
+    expect(await screen.findByRole("button", { name: "2 Fetch" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /Change answer/ })).toBeInTheDocument();
+    await u.click(screen.getByRole("button", { name: "Question 3, not answered" }));
+    expect(mocked.goToQuestion).toHaveBeenLastCalledWith(2);
+    await u.click(screen.getByRole("button", { name: /Finish 1\/3/ }));
+    expect(screen.getByRole("heading", { name: "Finish with 2 questions blank?" })).toBeInTheDocument();
+    await u.click(screen.getByRole("button", { name: "Keep going" }));
+    expect(mocked.finishQuiz).not.toHaveBeenCalled();
+    await u.click(screen.getByRole("button", { name: /Finish 1\/3/ }));
+    await u.click(screen.getByRole("button", { name: "Finish" }));
+    expect(onFinished).toHaveBeenCalledWith(42);
+  });
+
+  it("E edits the question, but not in a timed quiz", async () => {
+    const u = userEvent.setup();
+    const onEdit = vi.fn();
+    const { unmount } = render(Quiz, { initial: view({ index: 1, question: 40, topic: 3 }), onFinished: vi.fn(), onEdit });
+    await u.keyboard("e");
+    expect(onEdit).toHaveBeenCalledWith({ question: 40, topic: 3, index: 1, finished: null });
+    unmount();
+    render(Quiz, { initial: view({ total_seconds: 600 }), onFinished: vi.fn(), onEdit });
+    expect(screen.queryByRole("button", { name: /Edit/ })).not.toBeInTheDocument();
   });
 
   // taking-quiz.feature: Keyboard shortcuts

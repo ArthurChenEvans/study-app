@@ -138,6 +138,16 @@ pub struct ShownOption {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct QuizView {
     pub position: usize,
+    /// The asked question's place in the quiz from 0, for moving to it or editing it.
+    pub index: usize,
+    /// The question in the bank, for editing it mid-quiz.
+    pub question: QuestionId,
+    /// Exam mode without a per-question timer: move freely and change answers until finishing.
+    pub can_move: bool,
+    pub answered: usize,
+    /// The answer already given to this question, when coming back to it.
+    pub picked: Vec<usize>,
+    pub typed: Option<String>,
     pub total: usize,
     pub exam: bool,
     pub topic: TopicId,
@@ -259,6 +269,8 @@ pub fn try_short_answer(check: &Check, typed: &str) -> Marking {
 pub struct App {
     store: Store,
     rng: StdRng,
+    /// Shuffles card review sessions. Kept apart from `rng` so seeded data stays the same.
+    card_rng: StdRng,
     active: Option<Attempt>,
     card_session: Option<cards::CardSession>,
     backups: Option<backup::Backups>,
@@ -346,6 +358,7 @@ impl App {
         Self {
             store,
             rng: StdRng::from_os_rng(),
+            card_rng: StdRng::from_os_rng(),
             active,
             card_session: None,
             backups: None,
@@ -364,6 +377,7 @@ impl App {
         Self {
             store,
             rng: StdRng::seed_from_u64(seed),
+            card_rng: StdRng::seed_from_u64(seed ^ 0x5EED),
             active,
             card_session: None,
             backups: None,
@@ -572,6 +586,37 @@ impl App {
             .as_ref()
             .ok_or_else(|| ApiError::new("no quiz is running"))?;
         view_of(attempt).ok_or_else(|| ApiError::new("no quiz is running"))
+    }
+
+    /// Exam mode: jump to any question to answer it or change the answer.
+    pub fn go_to_question(&mut self, index: usize) -> ApiResult<QuizView> {
+        self.active_mut()?.go_to(index)?;
+        self.keep_running()?;
+        self.current_question()
+    }
+
+    /// Exam mode: done, mark it and save it. Questions left blank count as unanswered.
+    pub fn finish_quiz(&mut self, today: i64) -> ApiResult<AttemptId> {
+        self.active_mut()?.finish()?;
+        self.save_active(today)
+    }
+
+    /// After editing a question mid-quiz: shows the new version, marking any answer again.
+    pub fn refresh_quiz_question(&mut self, index: usize) -> ApiResult<QuizView> {
+        let attempt = self.active.as_ref().ok_or_else(|| ApiError::new("no quiz is running"))?;
+        let asked = attempt.asked().get(index).ok_or_else(|| ApiError::new("that question isn't in this quiz"))?;
+        let shuffle = attempt.settings().option_order == study_core::assembly::Order::Shuffle;
+        // A question deleted since stays as it was asked.
+        if let Ok(question) = self.store.question(asked.item.question) {
+            let mut order: Vec<usize> = (0..question.options().len()).collect();
+            if shuffle {
+                use rand::seq::SliceRandom;
+                order.shuffle(&mut self.rng);
+            }
+            self.active_mut()?.refresh(index, question, order)?;
+            self.keep_running()?;
+        }
+        self.current_question()
     }
 
     pub fn toggle_flag(&mut self) -> ApiResult<QuizView> {
@@ -942,11 +987,7 @@ fn to_question(input: QuestionInput) -> ApiResult<Question> {
 }
 
 fn current_index(attempt: &Attempt) -> usize {
-    attempt
-        .asked()
-        .iter()
-        .position(|asked| asked.outcome.is_none())
-        .unwrap_or(attempt.asked().len())
+    attempt.position()
 }
 
 fn view_of(attempt: &Attempt) -> Option<QuizView> {
@@ -960,6 +1001,10 @@ fn view_of(attempt: &Attempt) -> Option<QuizView> {
         .enumerate()
         .map(
             |(position, earlier)| match (position.cmp(&index), earlier.outcome) {
+                // A quiz that moves shows which are answered, in any order.
+                (std::cmp::Ordering::Equal, _) if attempt.can_move() => TrackCell::Current,
+                (_, Some(_)) if attempt.can_move() => TrackCell::Answered,
+                (_, None) if attempt.can_move() => TrackCell::Upcoming,
                 (std::cmp::Ordering::Equal, _) => TrackCell::Current,
                 (std::cmp::Ordering::Greater, _) | (_, None) => TrackCell::Upcoming,
                 (_, Some(_)) if exam => TrackCell::Answered,
@@ -971,6 +1016,12 @@ fn view_of(attempt: &Attempt) -> Option<QuizView> {
         .collect();
     Some(QuizView {
         position: index + 1,
+        index,
+        question: asked.item.question,
+        can_move: attempt.can_move(),
+        answered: attempt.asked().iter().filter(|asked| asked.outcome.is_some()).count(),
+        picked: asked.picked.iter().copied().collect(),
+        typed: asked.typed.clone(),
         total: attempt.asked().len(),
         exam,
         topic: asked.snapshot.topic(),

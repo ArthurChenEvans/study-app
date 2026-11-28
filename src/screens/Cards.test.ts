@@ -6,11 +6,11 @@ vi.mock("../lib/api", async (original) => {
   const actual = await original<typeof import("../lib/api")>();
   return {
     ...actual,
-    api: { cardsHome: vi.fn(), today: vi.fn(), modules: vi.fn(), topics: vi.fn(), browseCards: vi.fn(), noteView: vi.fn(), saveNote: vi.fn(), archiveCard: vi.fn(), deleteNote: vi.fn(), cardSettings: vi.fn(), setCardSettings: vi.fn(), resetCardSettings: vi.fn(), fitScheduler: vi.fn() },
+    api: { cardsHome: vi.fn(), today: vi.fn(), modules: vi.fn(), topics: vi.fn(), browseCards: vi.fn(), noteView: vi.fn(), saveNote: vi.fn(), archiveCard: vi.fn(), deleteNote: vi.fn(), cardSettings: vi.fn(), setCardSettings: vi.fn(), resetCardSettings: vi.fn(), fitScheduler: vi.fn(), reviewPlan: vi.fn() },
   };
 });
 
-import { api, type BrowseRow, type CardsHome } from "../lib/api";
+import { api, type BrowseRow, type CardSettings, type CardsHome } from "../lib/api";
 import { flushPendingDeletes, live } from "../lib/celebrations.svelte";
 import Cards from "./Cards.svelte";
 import { pick } from "../testing/pick";
@@ -21,7 +21,7 @@ const home: CardsHome = {
   due: { new: 9, learning: 2, review: 16 }, total_cards: 120, minutes: 11, forecast: [27, 9, 4, 12, 31, 5, 3, 2, 1, 0, 6, 2, 3, 4], retention: 88, target: 90, suggestions: 4,
   per_topic: [{ topic: 1, name: "CPU", module: "Computer Architecture", due: { new: 4, learning: 2, review: 10 }, total: 80, retention: 91 }, { topic: 2, name: "OSI model", module: null, due: { new: 5, learning: 0, review: 6 }, total: 40, retention: null }],
 };
-const settings = { desired_retention: 0.9, new_per_day: 10, max_reviews: 200, leech_after: 8, parameters: [] };
+const settings: CardSettings = { desired_retention: 0.9, new_per_day: 10, max_reviews: 200, leech_after: 8, parameters: [], session: { groups: ["learning", "review", "new"] }, missed_after: null };
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -30,6 +30,7 @@ beforeEach(() => {
   mocked.modules.mockResolvedValue([{ id: 7, name: "Computer Architecture" }]);
   mocked.topics.mockResolvedValue([]);
   mocked.cardSettings.mockResolvedValue({ ...settings });
+  mocked.reviewPlan.mockResolvedValue({ learning: 2, review: 5, new: 3, order: { groups: ["learning", "review", "new"] }, missed_after: null });
 });
 
 const props = () => ({ onReview: vi.fn(), onTopic: vi.fn(), onSuggestions: vi.fn(), onNewCard: vi.fn(), onEditNote: vi.fn() });
@@ -226,6 +227,46 @@ describe("Cards home", () => {
     expect(within(dialog).getByLabelText("Most reviews a day")).toBeDisabled();
     await u.click(within(dialog).getByRole("button", { name: "Save settings" }));
     expect(mocked.setCardSettings).toHaveBeenCalledWith({ ...settings, new_per_day: 15, max_reviews: null });
+  });
+
+  it("shows how the session will go, and a reordered session starts in that order", async () => {
+    const u = userEvent.setup();
+    const handlers = props();
+    render(Cards, handlers);
+    const groups = await screen.findByRole("list", { name: /Groups in order/ });
+    const blocks = within(groups).getAllByRole("button");
+    expect(blocks.map((block) => block.getAttribute("aria-label"))).toEqual(["1. Learning, 2 cards", "2. Reviews, 5 cards", "3. New, 3 cards"]);
+    expect(within(groups).getByLabelText("Missed cards come back at the end of the session")).toBeInTheDocument();
+    blocks[2].focus();
+    await u.keyboard("{Alt>}{ArrowLeft}{/Alt}");
+    expect(within(groups).getAllByRole("button")[1]).toHaveAttribute("aria-label", "2. New, 3 cards");
+    await u.click(screen.getByRole("button", { name: /Start review/ }));
+    expect(handlers.onReview).toHaveBeenCalledWith(null, undefined, { groups: ["learning", "new", "review"] });
+    await u.click(screen.getByRole("radio", { name: "All mixed" }));
+    expect(screen.getByText(/2 learning, 5 reviews, 3 new, shuffled together/)).toBeInTheDocument();
+  });
+
+  it("an unchanged plan starts with the default order", async () => {
+    const u = userEvent.setup();
+    const handlers = props();
+    render(Cards, handlers);
+    await screen.findByRole("list", { name: /Groups in order/ });
+    await u.click(screen.getByRole("button", { name: /Start review/ }));
+    expect(handlers.onReview).toHaveBeenCalledWith(null);
+  });
+
+  it("sets the session order and where missed cards come back", async () => {
+    const u = userEvent.setup();
+    render(Cards, props());
+    await u.click(await screen.findByRole("button", { name: "Settings" }));
+    const dialog = await screen.findByRole("dialog");
+    await u.click(within(dialog).getByRole("radio", { name: /All mixed together/ }));
+    await u.click(within(dialog).getByRole("radio", { name: /After/ }));
+    const gap = within(dialog).getByLabelText("Cards before a missed card comes back");
+    await u.clear(gap);
+    await u.type(gap, "5");
+    await u.click(within(dialog).getByRole("button", { name: "Save settings" }));
+    expect(mocked.setCardSettings).toHaveBeenCalledWith(expect.objectContaining({ session: "mixed", missed_after: 5 }));
   });
 
   it("reports fitting errors and success", async () => {

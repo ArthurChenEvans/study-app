@@ -233,7 +233,7 @@ describe("Topic cards", () => {
     await u.click(screen.getByRole("button", { name: "Keep editing" }));
     expect(screen.getByLabelText("Front")).toHaveValue("Half written");
     await u.keyboard("{Escape}");
-    await u.click(screen.getByRole("button", { name: "Leave without saving" }));
+    await u.click(screen.getByRole("button", { name: "Discard" }));
     expect(await screen.findByRole("table", { name: "Cards in CPU" })).toBeInTheDocument();
     expect(mocked.saveNote).not.toHaveBeenCalled();
   });

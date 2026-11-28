@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use study_core::attempt::Outcome;
 use study_core::cards::{
-    AGAIN_GAP, CardSettings, Note, NoteKind, Rating, Schedule, fit, retrievability, session_order,
+    CardSettings, Group, Note, NoteKind, Rating, Schedule, SessionOrder, fit, retrievability, session_order,
 };
 use study_core::question::TopicId;
 use study_store::cards::{CardId, CardRow, NoteId, ReviewRow};
@@ -203,6 +203,24 @@ pub enum CardKind {
     Review,
 }
 
+fn group_of(kind: CardKind) -> Group {
+    match kind {
+        CardKind::Learning => Group::Learning,
+        CardKind::Review => Group::Review,
+        CardKind::New => Group::New,
+    }
+}
+
+/// What a session would hold, for the plan shown before starting it.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct ReviewPlan {
+    pub learning: usize,
+    pub review: usize,
+    pub new: usize,
+    pub order: SessionOrder,
+    pub missed_after: Option<u32>,
+}
+
 fn kind_of(card: &CardRow, today: i64) -> CardKind {
     if card.schedule.is_new() {
         CardKind::New
@@ -227,6 +245,8 @@ pub struct CardSession {
     agains: usize,
     seconds: u32,
     agains_by_note: HashMap<NoteId, u32>,
+    /// Cards taken out of the session by a delete that can still be undone, by note.
+    set_aside: HashMap<NoteId, Vec<CardId>>,
 }
 
 struct Undo {
@@ -560,7 +580,44 @@ impl App {
     }
 
     pub fn delete_note(&mut self, id: NoteId) -> ApiResult<()> {
-        Ok(self.store.delete_note(id)?)
+        let cards: Vec<CardId> = self.store.cards_of(id)?.iter().map(|c| c.id).collect();
+        self.store.delete_note(id)?;
+        // A review in progress forgets the note's cards, so undo can't bring back a card that's gone.
+        if let Some(session) = self.card_session.as_mut() {
+            session.set_aside.remove(&id);
+            let gone = |card: &CardId| cards.contains(card);
+            session.total = session.total.saturating_sub(session.queue.iter().filter(|c| gone(c)).count());
+            session.queue.retain(|c| !gone(c));
+            session.undo.retain(|undo| !gone(&undo.card));
+            for undo in &mut session.undo {
+                undo.queue.retain(|c| !gone(c));
+            }
+            session.redo.retain(|(card, ..)| !gone(card));
+        }
+        Ok(())
+    }
+
+    /// Ctrl+Delete in a review: takes the note's cards out of the session straight away, while
+    /// the delete waits out its undo window. `restore_in_review` puts them back at the front.
+    pub fn set_aside_in_review(&mut self, note: NoteId, today: i64) -> ApiResult<ReviewStep> {
+        let cards: Vec<CardId> = self.store.cards_of(note)?.iter().map(|c| c.id).collect();
+        let session = self.card_session.as_mut().ok_or_else(|| ApiError::new("no review in progress"))?;
+        let taken: Vec<CardId> = session.queue.iter().copied().filter(|c| cards.contains(c)).collect();
+        session.queue.retain(|c| !cards.contains(c));
+        session.total = session.total.saturating_sub(taken.len());
+        session.set_aside.insert(note, taken);
+        self.review_step(today)
+    }
+
+    pub fn restore_in_review(&mut self, note: NoteId, today: i64) -> ApiResult<ReviewStep> {
+        let session = self.card_session.as_mut().ok_or_else(|| ApiError::new("no review in progress"))?;
+        if let Some(taken) = session.set_aside.remove(&note) {
+            session.total += taken.len();
+            for card in taken.into_iter().rev() {
+                session.queue.push_front(card);
+            }
+        }
+        self.review_step(today)
     }
 
     /// R71.
@@ -576,11 +633,41 @@ impl App {
 
     /// R226: a session of only new, only learning or only review cards (`only`), or all of them mixed.
     pub fn start_review_of(&mut self, scope: Option<Subject>, only: Option<CardKind>, today: i64) -> ApiResult<ReviewStep> {
+        self.start_review_planned(scope, only, None, today)
+    }
+
+    /// What a session would hold and in what order, before starting it.
+    pub fn review_plan(&self, scope: Option<Subject>, today: i64) -> ApiResult<ReviewPlan> {
+        let cards = self.in_scope(scope, today)?;
+        let settings = self.store.card_settings()?;
+        let mut plan = ReviewPlan { learning: 0, review: 0, new: 0, order: settings.session, missed_after: settings.missed_after };
+        for id in self.due_order(&cards, today)? {
+            match cards.iter().find(|c| c.id == id).map(|c| kind_of(c, today)) {
+                Some(CardKind::Learning) => plan.learning += 1,
+                Some(CardKind::Review) => plan.review += 1,
+                Some(CardKind::New) => plan.new += 1,
+                None => {}
+            }
+        }
+        Ok(plan)
+    }
+
+    /// Starts a session. `order` changes the layout for this session only; the default
+    /// comes from the card settings.
+    pub fn start_review_planned(&mut self, scope: Option<Subject>, only: Option<CardKind>, order: Option<SessionOrder>, today: i64) -> ApiResult<ReviewStep> {
         let cards = self.in_scope(scope.clone(), today)?;
-        let mut queue: VecDeque<CardId> = self.due_order(&cards, today)?.into();
+        let mut queue: Vec<CardId> = self.due_order(&cards, today)?;
         if let Some(kind) = only {
             queue.retain(|id| cards.iter().find(|c| c.id == *id).is_some_and(|c| kind_of(c, today) == kind));
         }
+        // A different order each session, laid out as the settings (or this session) say.
+        let kinds: HashMap<CardId, CardKind> = cards.iter().map(|c| (c.id, kind_of(c, today))).collect();
+        let order = match order {
+            Some(order) => order,
+            None => self.store.card_settings()?.session,
+        };
+        order.arrange(&mut queue, |id| group_of(kinds.get(id).copied().unwrap_or(CardKind::Review)), &mut self.card_rng);
+        let queue: VecDeque<CardId> = queue.into();
         self.card_session = Some(CardSession {
             scope,
             total: queue.len(),
@@ -592,6 +679,7 @@ impl App {
             agains: 0,
             seconds: 0,
             agains_by_note: HashMap::new(),
+            set_aside: HashMap::new(),
         });
         self.review_step(today)
     }
@@ -711,11 +799,14 @@ impl App {
                 seconds,
             },
         )?;
+        let missed_after = self.store.card_settings()?.missed_after;
         let session = self.card_session.as_mut().expect("checked above");
         let before = session.queue.clone();
         session.queue.pop_front();
         if rating == Rating::Again {
-            let at = AGAIN_GAP.min(session.queue.len());
+            // To the end of the session by default, so there's time to forget it before it
+            // comes back, or a set number of cards later.
+            let at = missed_after.map_or(session.queue.len(), |gap| (gap as usize).min(session.queue.len()));
             session.queue.insert(at, id);
             session.agains += 1;
             *session.agains_by_note.entry(card.note).or_default() += 1;
@@ -1071,6 +1162,27 @@ mod tests {
         );
     }
 
+    // Ctrl+Delete in a review: set aside, undo puts it back, the real delete forgets it
+    #[test]
+    fn a_card_deleted_in_review_leaves_at_once_and_comes_back_on_undo() {
+        let (mut app, topic) = app();
+        for front in ["A", "B"] {
+            app.save_note(None, basic(topic, front), TODAY).unwrap();
+        }
+        let first = app.start_review(None, TODAY).unwrap();
+        let (gone, note) = (card(&first).front.clone(), card(&first).note);
+        let next = app.set_aside_in_review(note, TODAY).unwrap();
+        assert_ne!(card(&next).front, gone);
+        assert_eq!(card(&next).total, 1);
+        let back = app.restore_in_review(note, TODAY).unwrap();
+        assert_eq!((card(&back).front.as_str(), card(&back).total), (gone.as_str(), 2), "undo puts it back in front");
+
+        app.set_aside_in_review(note, TODAY).unwrap();
+        app.delete_note(note).unwrap();
+        let ReviewStep::Done(_) = app.grade_card(Rating::Good, 4, TODAY).unwrap() else { panic!("the deleted card isn't shown") };
+        assert!(app.undo_card(TODAY).is_ok(), "undo still works on the card that's left");
+    }
+
     // flashcards.feature: A session of just new, just learning or just review cards (R226)
     #[test]
     fn a_session_can_hold_one_kind_of_card_and_says_what_else_is_due() {
@@ -1078,18 +1190,19 @@ mod tests {
         for front in ["A", "B", "C"] {
             app.save_note(None, basic(topic, front), TODAY).unwrap();
         }
-        app.start_review(None, TODAY).unwrap();
-        app.grade_card(Rating::Again, 5, TODAY).unwrap(); // A is learning now
+        let first = app.start_review(None, TODAY).unwrap();
+        let first = card(&first).front.clone();
+        app.grade_card(Rating::Again, 5, TODAY).unwrap(); // the first card is learning now
         app.leave_review();
 
         let learning = app.start_review_of(None, Some(CardKind::Learning), TODAY).unwrap();
-        assert_eq!((card(&learning).front.as_str(), card(&learning).queue.as_str()), ("A", "learning"));
+        assert_eq!((card(&learning).front.as_str(), card(&learning).queue.as_str()), (first.as_str(), "learning"));
         assert_eq!((card(&learning).left.new, card(&learning).left.learning), (0, 1), "only learning cards in it");
         let ReviewStep::Done(done) = app.grade_card(Rating::Good, 4, TODAY).unwrap() else { panic!("expected done") };
         assert_eq!((done.still_due.new, done.still_due.learning, done.still_due.review), (2, 0, 0), "offers the new ones next");
 
         let new = app.start_review_of(None, Some(CardKind::New), TODAY).unwrap();
-        assert_eq!(card(&new).front, "B");
+        assert_ne!(card(&new).front, first, "only the new ones");
         assert_eq!(card(&new).left.new, 2);
         assert!(matches!(app.start_review_of(None, Some(CardKind::Review), TODAY).unwrap(), ReviewStep::Done(_)), "nothing to review yet");
     }
@@ -1112,12 +1225,13 @@ mod tests {
         }
         let first = app.start_review(None, TODAY).unwrap();
         assert!(!card(&first).can_redo);
+        let (a, b) = if card(&first).front == "A" { ("A", "B") } else { ("B", "A") };
         app.grade_card(Rating::Good, 5, TODAY).unwrap();
         let undone = app.undo_card(TODAY).unwrap();
-        assert_eq!(card(&undone).front, "A");
+        assert_eq!(card(&undone).front, a);
         assert!(card(&undone).can_redo);
         let redone = app.redo_card(TODAY).unwrap();
-        assert_eq!(card(&redone).front, "B", "the Good on A is back");
+        assert_eq!(card(&redone).front, b, "the Good on the first card is back");
         assert_eq!(app.store.reviews_since(TODAY).unwrap().len(), 1);
         assert!(!card(&redone).can_redo);
         assert!(card(&redone).can_undo);
@@ -1129,6 +1243,46 @@ mod tests {
     }
 
     // flashcards.feature: Grading moves a card on, Again shows a card again in the same session, Undo
+    // The session plan, a one-off order, and missed cards a set number of cards later
+    #[test]
+    fn a_session_follows_its_plan_and_missed_cards_can_come_back_sooner() {
+        let (mut app, topic) = app();
+        for front in ["A", "B", "C", "D", "E", "F"] {
+            app.save_note(None, basic(topic, front), TODAY).unwrap();
+        }
+        let plan = app.review_plan(None, TODAY).unwrap();
+        assert_eq!((plan.learning, plan.review, plan.new, plan.order.clone(), plan.missed_after), (0, 0, 6, SessionOrder::default(), None));
+        app.set_card_settings(CardSettings { missed_after: Some(2), ..CardSettings::default() }).unwrap();
+        let first = app.start_review_planned(None, None, Some(SessionOrder::Mixed), TODAY).unwrap();
+        let missed = card(&first).front.clone();
+        let mut step = app.grade_card(Rating::Again, 5, TODAY).unwrap();
+        let mut seen = vec![];
+        while let ReviewStep::Card(_) = step {
+            seen.push(card(&step).front.clone());
+            step = app.grade_card(Rating::Good, 5, TODAY).unwrap();
+        }
+        assert_eq!(seen.iter().position(|front| *front == missed), Some(2), "two cards later: {seen:?}");
+    }
+
+    // An Again card waits until the end of the session, behind the new cards
+    #[test]
+    fn a_card_marked_again_comes_back_at_the_end_of_the_session() {
+        let (mut app, topic) = app();
+        for front in ["A", "B", "C", "D", "E", "F"] {
+            app.save_note(None, basic(topic, front), TODAY).unwrap();
+        }
+        let first = app.start_review(None, TODAY).unwrap();
+        let missed = card(&first).front.clone();
+        let mut step = app.grade_card(Rating::Again, 5, TODAY).unwrap();
+        let mut seen = vec![];
+        while let ReviewStep::Card(_) = step {
+            seen.push(card(&step).front.clone());
+            step = app.grade_card(Rating::Good, 5, TODAY).unwrap();
+        }
+        assert_eq!(seen.len(), 6);
+        assert_eq!(seen.last(), Some(&missed), "after every other card: {seen:?}");
+    }
+
     #[test]
     fn a_session_grades_requeues_after_again_and_undoes() {
         let (mut app, topic) = app();
@@ -1137,6 +1291,8 @@ mod tests {
         }
         let first = app.start_review(None, TODAY).unwrap();
         let first = card(&first).clone();
+        // Sessions are shuffled, so call whichever comes first A.
+        let (a, b) = if first.front == "A" { ("A", "B") } else { ("B", "A") };
         assert_eq!(
             (
                 first.front.as_str(),
@@ -1144,14 +1300,14 @@ mod tests {
                 first.queue.as_str(),
                 first.can_undo
             ),
-            ("A", 2, "new", false)
+            (a, 2, "new", false)
         );
         assert_eq!(first.intervals[0], 0);
         let second = app.grade_card(Rating::Again, 5, TODAY).unwrap();
-        assert_eq!(card(&second).front, "B", "Again puts A after B");
+        assert_eq!(card(&second).front, b, "Again puts A after B");
         assert!(card(&second).can_undo);
         let undone = app.undo_card(TODAY).unwrap();
-        assert_eq!(card(&undone).front, "A", "Undo shows the same card again");
+        assert_eq!(card(&undone).front, a, "Undo shows the same card again");
         assert!(
             app.store.reviews_since(TODAY).unwrap().is_empty(),
             "and drops the answer"
@@ -1164,7 +1320,7 @@ mod tests {
                 card(&back_to_a).front.as_str(),
                 card(&back_to_a).queue.as_str()
             ),
-            ("A", "learning")
+            (a, "learning")
         );
         let done = app.grade_card(Rating::Good, 3, TODAY).unwrap();
         let ReviewStep::Done(done) = done else {

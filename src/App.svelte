@@ -43,18 +43,19 @@
   import { syncLine } from "./lib/sync";
   import { screenFromHash, type Screen } from "./lib/router";
   import { pullAppearance } from "./lib/appearance";
-  import { api, type CardKind, type Id, type QuizView, type Subject, type SyncStatus } from "./lib/api";
+  import { api, type CardKind, type Id, type QuizView, type SessionOrder, type Subject, type SyncStatus } from "./lib/api";
 
   type Route =
     | { screen: Screen }
     | { screen: "editor"; topic: Id }
     | { screen: "setup-for"; topics: Id[] }
     | { screen: "quiz"; view: QuizView; run: number }
+    | { screen: "quiz-edit"; topic: Id; question: Id; index: number; finished: Id | null }
     | { screen: "results"; attempt: Id; fresh?: boolean }
     | { screen: "checklist"; id: Id }
     | { screen: "recall-session"; id: Id; run: number }
     | { screen: "topic-cards"; topic: Id; note: Id | "new" | null; notice?: string; review?: Subject | null }
-    | { screen: "card-review"; scope: Subject | null; run: number; resume?: boolean; only?: CardKind }
+    | { screen: "card-review"; scope: Subject | null; run: number; resume?: boolean; only?: CardKind; order?: SessionOrder }
     | { screen: "suggestions" }
     | { screen: "calendar-day"; day: number }
     | { screen: "project"; id: Id }
@@ -81,8 +82,19 @@
   let runs = 0;
 
   const navScreen = $derived<Screen>(
-    route.screen === "calendar-day" ? "calendar" : route.screen === "project" || route.screen === "session-review" || route.screen === "drills" ? "projects" : route.screen === "editor" ? "quizzes" : route.screen === "topic-cards" || route.screen === "card-review" || route.screen === "suggestions" ? "cards" : route.screen === "checklist" || route.screen === "recall-session" ? "recall" : route.screen === "setup-for" || route.screen === "quiz" || route.screen === "results" ? "setup" : route.screen,
+    route.screen === "calendar-day" ? "calendar" : route.screen === "project" || route.screen === "session-review" || route.screen === "drills" ? "projects" : route.screen === "editor" ? "quizzes" : route.screen === "topic-cards" || route.screen === "card-review" || route.screen === "suggestions" ? "cards" : route.screen === "checklist" || route.screen === "recall-session" ? "recall" : route.screen === "setup-for" || route.screen === "quiz" || route.screen === "quiz-edit" || route.screen === "results" ? "setup" : route.screen,
   );
+
+  // The browser's own right-click menu (Back, Reload, Open link…) isn't part of the app.
+  // Rows with actions open the app's own menu instead (rowMenu). It stays in text fields and
+  // on selected text, where cut, copy, paste and spelling are what you want.
+  function browserMenu(event: MouseEvent) {
+    if (event.defaultPrevented) return;
+    const target = event.target as HTMLElement | null;
+    const editable = target?.closest("input, textarea, [contenteditable=''], [contenteditable='true']");
+    const selected = (window.getSelection()?.toString() ?? "").trim().length > 0;
+    if (!editable && !selected) event.preventDefault();
+  }
 
   function go(next: Route) {
     route = next;
@@ -177,13 +189,13 @@
   }));
   // The review's top bar names what is being reviewed.
   let scopeName = $state("All topics");
-  async function startCards(scope: Subject | null, only?: CardKind) {
+  async function startCards(scope: Subject | null, only?: CardKind, order?: SessionOrder) {
     scopeName = "All topics";
     try {
       if (scope && "Topic" in scope) scopeName = (await api.topics()).find((topic) => topic.id === scope.Topic)?.name ?? "Topic";
       if (scope && "Module" in scope) scopeName = (await api.modules()).find((module) => module.id === scope.Module)?.name ?? "Module";
     } catch { /* keep the default name */ }
-    go({ screen: "card-review", scope, run: ++runs, only });
+    go({ screen: "card-review", scope, run: ++runs, only, order });
   }
   // A new card from the Cards home starts in the busiest topic, and the editor lets you change it.
   async function newCard() {
@@ -215,7 +227,7 @@
 
   // R48: "/" focuses search from anywhere, except while typing or in a quiz.
   async function shortcut(event: KeyboardEvent) {
-    if (event.key !== "/" || event.ctrlKey || event.metaKey || event.altKey || ["quiz", "recall-session", "card-review", "session-review", "drills"].includes(route.screen)) return;
+    if (event.key !== "/" || event.ctrlKey || event.metaKey || event.altKey || ["quiz", "quiz-edit", "recall-session", "card-review", "session-review", "drills"].includes(route.screen)) return;
     const target = event.target as HTMLElement | null;
     if (target && (target.closest("input, textarea, select, [contenteditable='true']"))) return;
     event.preventDefault();
@@ -251,7 +263,7 @@
   });
 </script>
 
-<svelte:window onhashchange={() => (route = { screen: screenFromHash(location.hash) })} onkeydown={shortcut} onbeforeunload={() => { flushPendingDeletes(); }} />
+<svelte:window onhashchange={() => (route = { screen: screenFromHash(location.hash) })} onkeydown={shortcut} onbeforeunload={() => { flushPendingDeletes(); }} oncontextmenu={browserMenu} />
 
 <svelte:document onvisibilitychange={putAway} />
 
@@ -263,7 +275,7 @@
   </div>
 {:else}
 <div class="flex min-h-screen">
-  {#if !["quiz", "recall-session", "card-review", "session-review", "drills"].includes(route.screen)}<Sidebar current={navScreen} {due} onStart={start} {backup} {sync} {offerSync} {mode} startHidden={["editor", "checklist", "topic-cards"].includes(route.screen)} onNavigate={(screen) => go({ screen })} />{/if}
+  {#if !["quiz", "quiz-edit", "recall-session", "card-review", "session-review", "drills"].includes(route.screen)}<Sidebar current={navScreen} {due} onStart={start} {backup} {sync} {offerSync} {mode} startHidden={["editor", "checklist", "topic-cards"].includes(route.screen)} onNavigate={(screen) => go({ screen })} />{/if}
   <main class="min-w-0 flex-1" class:pb-24={mode === "dock"}>
     {#key dataVersion}
     <!-- R186: every screen comes in the same way, once, when you go to it -->
@@ -279,7 +291,10 @@
     {:else if route.screen === "setup" || route.screen === "setup-for"}
       <Setup preselected={route.screen === "setup-for" ? route.topics : []} onStarted={startQuiz} />
     {:else if route.screen === "quiz"}
-      {#key route.run}<Quiz initial={route.view} onFinished={(attempt) => go({ screen: "results", attempt, fresh: true })} />{/key}
+      {#key route.run}<Quiz initial={route.view} onFinished={(attempt) => go({ screen: "results", attempt, fresh: true })} onEdit={(edit) => go({ screen: "quiz-edit", ...edit })} />{/key}
+    {:else if route.screen === "quiz-edit"}
+      {@const { topic, question, index, finished } = route}
+      {#key question}<Editor {topic} {question} backLabel={finished === null ? "Back to the quiz" : "Back to the results"} onBack={() => (finished === null ? api.refreshQuizQuestion(index).then(startQuiz) : go({ screen: "results", attempt: finished, fresh: true }))} />{/key}
     {:else if route.screen === "results"}
       {#key route.attempt}<Results attempt={route.attempt} fresh={route.fresh} onRetry={startQuiz} />{/key}
     {:else if route.screen === "recall"}
@@ -295,7 +310,7 @@
       {#key `${route.topic}:${route.note}`}<TopicCards topic={route.topic} editNote={route.note} notice={route.notice} onTopic={(topic, notice) => go({ screen: "topic-cards", topic, note: null, notice })} onBack={() => go({ screen: "cards" })} onReview={startCards} onFinishEdit={review !== undefined ? () => go({ screen: "card-review", scope: review, run: ++runs, resume: true }) : undefined} />{/key}
     {:else if route.screen === "card-review"}
       {@const scope = route.scope}
-      {#key route.run}<CardReview scope={route.scope} {scopeName} resume={route.resume} only={route.only ?? null} onNext={(only) => go({ screen: "card-review", scope, run: ++runs, only })} onLeave={() => go({ screen: "cards" })} onEdit={(topic, note) => go({ screen: "topic-cards", topic, note, review: scope })} />{/key}
+      {#key route.run}<CardReview scope={route.scope} {scopeName} resume={route.resume} only={route.only ?? null} order={route.order ?? null} onNext={(only) => go({ screen: "card-review", scope, run: ++runs, only })} onLeave={() => go({ screen: "cards" })} onEdit={(topic, note) => go({ screen: "topic-cards", topic, note, review: scope })} onAdd={(topic) => go({ screen: "topic-cards", topic, note: "new", review: scope })} />{/key}
     {:else if route.screen === "suggestions"}
       <Suggestions onBack={() => go({ screen: "cards" })} onChanged={refreshDue} />
     {:else if route.screen === "calendar" || route.screen === "calendar-day"}

@@ -281,6 +281,64 @@ pub struct CardSettings {
     pub leech_after: u32,
     /// FSRS parameters from "Fit the scheduler to you". Empty means the defaults.
     pub parameters: Vec<f32>,
+    /// How a session is laid out: groups one after another, or all mixed.
+    #[serde(default)]
+    pub session: SessionOrder,
+    /// Where a card marked Again comes back: None is the end of the session, Some(n) is
+    /// n cards later (or the end, when fewer are left).
+    #[serde(default)]
+    pub missed_after: Option<u32>,
+}
+
+/// A group of cards in a session.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[serde(rename_all = "lowercase")]
+pub enum Group {
+    Learning,
+    Review,
+    New,
+}
+
+/// The order of a review session.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum SessionOrder {
+    /// Each group in turn, shuffled within itself.
+    Groups(Vec<Group>),
+    /// One shuffled pile.
+    Mixed,
+}
+
+impl Default for SessionOrder {
+    fn default() -> Self {
+        SessionOrder::Groups(vec![Group::Learning, Group::Review, Group::New])
+    }
+}
+
+impl SessionOrder {
+    /// Lays cards out in this order: every group exactly once (missing ones go last in
+    /// the default order), shuffled within each group, or shuffled all together.
+    pub fn arrange<T: Copy>(&self, items: &mut Vec<T>, group: impl Fn(&T) -> Group, rng: &mut impl rand::Rng) {
+        use rand::seq::SliceRandom;
+        match self {
+            SessionOrder::Mixed => items.shuffle(rng),
+            SessionOrder::Groups(order) => {
+                let mut groups: Vec<Group> = vec![];
+                for g in order.iter().chain([Group::Learning, Group::Review, Group::New].iter()) {
+                    if !groups.contains(g) {
+                        groups.push(*g);
+                    }
+                }
+                let mut out = Vec::with_capacity(items.len());
+                for g in groups {
+                    let mut run: Vec<T> = items.iter().copied().filter(|item| group(item) == g).collect();
+                    run.shuffle(rng);
+                    out.extend(run);
+                }
+                *items = out;
+            }
+        }
+    }
 }
 
 impl Default for CardSettings {
@@ -291,6 +349,8 @@ impl Default for CardSettings {
             max_reviews: Some(200),
             leech_after: 8,
             parameters: vec![],
+            session: SessionOrder::default(),
+            missed_after: None,
         }
     }
 }
@@ -301,6 +361,8 @@ pub enum SchedulerError {
     Retention,
     #[error("the leech threshold has to be at least 2")]
     LeechThreshold,
+    #[error("missed cards have to come back at least 1 card later")]
+    MissedGap,
     #[error("the scheduler couldn't work out the next date: {0}")]
     Fsrs(String),
     #[error("fitting the scheduler needs at least {needed} reviews, you have {have} so far")]
@@ -316,6 +378,9 @@ impl CardSettings {
         }
         if self.leech_after < 2 {
             return Err(SchedulerError::LeechThreshold);
+        }
+        if self.missed_after == Some(0) {
+            return Err(SchedulerError::MissedGap);
         }
         Ok(())
     }
@@ -487,8 +552,19 @@ pub fn session_order<Id: Copy>(
         .collect()
 }
 
-/// Again puts a card back this many places later in the session, so it isn't shown twice in a row.
-pub const AGAIN_GAP: usize = 3;
+/// Shuffles a session's cards within each run of the same kind (learning, review, new), so
+/// cards come in a different order each time without new cards jumping ahead of learning ones.
+pub fn shuffle_within_runs<T, K: PartialEq>(items: &mut [T], kind: impl Fn(&T) -> K, rng: &mut impl rand::Rng) {
+    use rand::seq::SliceRandom;
+    let mut start = 0;
+    while start < items.len() {
+        let run = kind(&items[start]);
+        let end = start + items[start..].iter().take_while(|item| kind(item) == run).count();
+        items[start..end].shuffle(rng);
+        start = end;
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
@@ -703,6 +779,43 @@ mod tests {
     }
 
     // flashcards.feature: Daily limits
+    #[test]
+    fn a_session_is_laid_out_in_the_chosen_group_order_or_mixed() {
+        use rand::SeedableRng;
+        let mut rng = rand::rngs::StdRng::seed_from_u64(3);
+        let group = |item: &(Group, u32)| item.0;
+        let start: Vec<(Group, u32)> = (0..10).flat_map(|n| [(Group::New, n), (Group::Learning, n), (Group::Review, n)]).collect();
+        let mut items = start.clone();
+        SessionOrder::Groups(vec![Group::New, Group::Review]).arrange(&mut items, group, &mut rng);
+        let groups: Vec<Group> = items.iter().map(|item| item.0).collect();
+        let expected: Vec<Group> = [Group::New, Group::Review, Group::Learning].iter().flat_map(|g| [*g; 10]).collect();
+        assert_eq!(groups, expected, "named groups first, a missing one after");
+        let mut mixed = start.clone();
+        SessionOrder::Mixed.arrange(&mut mixed, group, &mut rng);
+        assert_ne!(mixed.iter().map(|i| i.0).collect::<Vec<_>>(), expected);
+        mixed.sort_by_key(|i| (i.0 as u8, i.1));
+        let mut all = start;
+        all.sort_by_key(|i| (i.0 as u8, i.1));
+        assert_eq!(mixed, all, "no card lost or doubled");
+        assert_eq!(CardSettings { missed_after: Some(0), ..CardSettings::default() }.validate(), Err(SchedulerError::MissedGap));
+    }
+
+    #[test]
+    fn shuffling_keeps_each_kind_together_and_in_place() {
+        use rand::SeedableRng;
+        let start: Vec<(char, u32)> = (0..20).map(|n| ('L', n)).chain((0..20).map(|n| ('R', n))).chain((0..20).map(|n| ('N', n))).collect();
+        let mut items = start.clone();
+        shuffle_within_runs(&mut items, |item| item.0, &mut rand::rngs::StdRng::seed_from_u64(7));
+        assert_ne!(items, start, "the order changes");
+        let kinds: String = items.iter().map(|item| item.0).collect();
+        assert_eq!(kinds, "L".repeat(20) + &"R".repeat(20) + &"N".repeat(20), "learning, then reviews, then new");
+        let mut sorted = items.clone();
+        sorted.sort();
+        let mut expected = start;
+        expected.sort();
+        assert_eq!(sorted, expected, "no card lost or doubled");
+    }
+
     #[test]
     fn sessions_put_learning_first_and_respect_daily_limits() {
         let settings = CardSettings {

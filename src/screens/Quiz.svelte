@@ -1,20 +1,29 @@
 <script lang="ts">
   // taking-quiz.feature, short-answer.feature (R18 to R23, R29, R32, R83, R84)
   import { onDestroy } from "svelte";
-  import { BookOpen, Check, CircleCheck, CircleX, Flag, LogOut, Timer, Undo2, X } from "@lucide/svelte";
+  import RowMenu from "../components/RowMenu.svelte";
+  import { ArrowLeft, ArrowRight, BookOpen, Check, CircleCheck, CircleX, Flag, LogOut, Pencil, Timer, Undo2, X } from "@lucide/svelte";
   import { api, errorMessage, type AnswerResult, type Feedback, type Id, type QuizView, type TrackCell } from "../lib/api";
   import Rich from "../components/Rich.svelte";
   import { play } from "../lib/sound";
   import { startSession } from "../lib/celebrations.svelte";
 
-  let { initial, onFinished }: { initial: QuizView; onFinished: (attempt: Id) => void } = $props();
+  let { initial, onFinished, onEdit }: {
+    initial: QuizView;
+    onFinished: (attempt: Id) => void;
+    /** Edit the question in the bank, then come back to this quiz. `finished` is set when the
+     *  quiz ended on that question, so coming back goes to the results instead. */
+    onEdit?: (edit: { question: Id; topic: Id; index: number; finished: Id | null }) => void;
+  } = $props();
 
   // svelte-ignore state_referenced_locally
   let current = $state<QuizView>(initial);
   // svelte-ignore state_referenced_locally
   const session = startSession(initial.total);
-  let picked = $state<number[]>([]);
-  let typed = $state("");
+  // svelte-ignore state_referenced_locally
+  let picked = $state<number[]>([...(initial.picked ?? [])]);
+  // svelte-ignore state_referenced_locally
+  let typed = $state(initial.typed ?? "");
   let feedback = $state<Feedback | null>(null);
   let pendingNext = $state<AnswerResult["next"] | null>(null);
   let busy = $state(false);
@@ -67,8 +76,9 @@
       return;
     }
     current = next.Question;
-    picked = [];
-    typed = "";
+    // Coming back to an answered exam question shows the answer given, ready to change.
+    picked = [...(current.picked ?? [])];
+    typed = current.typed ?? "";
     feedback = null;
     pendingNext = null;
     startQuestionClock(current);
@@ -140,6 +150,49 @@
     }
   }
 
+  // ---- Exam mode: move between questions and change answers, then finish ----
+  async function goTo(index: number) {
+    if (!current.can_move || busy || index < 0 || index >= current.total || index === current.index) return;
+    busy = true;
+    error = "";
+    try {
+      show({ Question: await api.goToQuestion(index) });
+    } catch (failure) {
+      error = errorMessage(failure);
+    } finally {
+      busy = false;
+    }
+  }
+  let confirmingFinish = $state(false);
+  const blank = $derived(current.total - current.answered);
+  async function finish(force = false) {
+    if (busy) return;
+    if (!force && blank > 0) { confirmingFinish = true; return; }
+    confirmingFinish = false;
+    busy = true;
+    try {
+      onFinished(await api.finishQuiz());
+    } catch (failure) {
+      error = errorMessage(failure);
+      busy = false;
+    }
+  }
+
+  // ---- Edit the question (E), like editing a card mid-review ----
+  // Not in a timed quiz, where leaving for the editor would lose the clock.
+  const canEdit = $derived(!!onEdit && !current.total_seconds && !current.per_question_seconds);
+  function edit() {
+    if (!canEdit || busy) return;
+    const finished = pendingNext && "Finished" in pendingNext ? pendingNext.Finished : null;
+    onEdit!({ question: current.question, topic: current.topic, index: feedback ? feedback.index : current.index, finished });
+  }
+
+  // On a phone, Edit and Flag sit in a "…" menu so the answer buttons get the room.
+  const phoneMenu = $derived([
+    ...(canEdit ? [{ label: "Edit this question", onSelect: edit }] : []),
+    { label: current.flagged ? "Unflag as guessed" : "Flag as guessed", onSelect: () => void toggleFlag() },
+  ]);
+
   async function quit() {
     busy = true;
     onFinished(await api.quitQuiz());
@@ -195,8 +248,23 @@
       toggleFlag();
       return;
     }
+    if (confirmingFinish) {
+      if (event.key === "Escape") { event.preventDefault(); confirmingFinish = false; }
+      return;
+    }
     const target = event.target as HTMLElement | null;
     if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) && !(target as HTMLTextAreaElement).readOnly) return;
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    if (event.key.toLowerCase() === "e" && canEdit) {
+      event.preventDefault();
+      edit();
+      return;
+    }
+    if (current.can_move && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+      event.preventDefault();
+      goTo(current.index + (event.key === "ArrowLeft" ? -1 : 1));
+      return;
+    }
     if (event.key.toLowerCase() === "o" && feedback?.short && !event.ctrlKey && !event.metaKey) {
       event.preventDefault();
       overrule();
@@ -205,6 +273,8 @@
     if (/^[1-5]$/.test(event.key)) {
       const option = current.options[Number(event.key) - 1];
       if (option) pick(option.index);
+    } else if ((event.key === "Enter" || event.key === " ") && target?.tagName === "BUTTON" && target.closest(".track")) {
+      return; // a focused track segment jumps on its own
     } else if (event.key === "Enter" || event.key === " ") {
       // Space as well as Enter, like Show answer and Good in card review.
       event.preventDefault();
@@ -232,7 +302,10 @@
     <div class="mx-auto flex max-w-5xl items-center gap-5">
       <button class="btn btn-quiet btn-sm btn-square" aria-label="Quit" title="Quit" onclick={quit} disabled={busy}><X class="size-6" strokeWidth={2.6} /></button>
       <div class="track flex-1" role="progressbar" aria-valuemin={1} aria-valuemax={current.total} aria-valuenow={current.position} aria-label="Progress" aria-valuetext="Question {current.position} of {current.total}">
-        {#each current.track as cell, index (index)}<span style={trackColour[cell]}></span>{/each}
+        {#each current.track as cell, index (index)}
+          {#if current.can_move}<button type="button" class="track-jump" style={trackColour[cell]} aria-label="Question {index + 1}{cell === 'Answered' ? ', answered' : cell === 'Current' ? ', showing' : ', not answered'}" aria-current={cell === "Current" ? "step" : undefined} disabled={busy} onclick={() => goTo(index)}></button>
+          {:else}<span style={trackColour[cell]}></span>{/if}
+        {/each}
       </div>
       {#if totalLeft !== null}
         <span role="timer" aria-label="Time left" class="timer-chip {low(totalLeft, initial.total_seconds) ? 'timer-low' : ''}"><Timer class="size-4" />{clock(totalLeft)}</span>
@@ -324,6 +397,7 @@
           {/if}
         </div>
         <div class="flex flex-wrap items-center gap-2 self-center">
+          {#if canEdit}<button class="btn btn-ghost" disabled={busy} onclick={edit}><Pencil class="size-4" />Edit <kbd class="kbd kbd-xs">E</kbd></button>{/if}
           <button class="btn btn-ghost" aria-pressed={current.flagged} disabled={busy} onclick={toggleFlag}><Flag class="size-4" />{current.flagged ? "Flagged as guessed" : "I guessed"} {#if current.short}<kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">G</kbd>{:else}<kbd class="kbd kbd-xs">F</kbd>{/if}</button>
           <button class="btn btn-{tone === 'right' ? 'success' : 'wrong'} min-w-48" onclick={next}>Next question <kbd class="kbd kbd-xs">Space</kbd></button>
         </div>
@@ -336,9 +410,34 @@
           class="btn {current.flagged ? 'btn-guessed' : 'btn-ghost'}"
           aria-pressed={current.flagged}
           onclick={toggleFlag}><Flag class="size-4" />{current.flagged ? "Flagged as guessed" : "I guessed"} {#if current.short}<kbd class="kbd kbd-xs">Ctrl</kbd><kbd class="kbd kbd-xs">G</kbd>{:else}<kbd class="kbd kbd-xs">F</kbd>{/if}</button>
-        {#if current.exam}<span class="text-sm text-muted">No going back in exam mode{current.short ? ". You can overrule the marking on the results page." : ""}</span>{/if}
-        <button class="btn btn-primary ml-auto sm:min-w-48" onclick={submit} disabled={(current.short ? !typed.trim() : picked.length === 0) || busy}>Submit <kbd class="kbd kbd-xs">Space</kbd></button>
+        {#if canEdit}<button class="btn btn-ghost hidden tab:inline-flex" disabled={busy} onclick={edit}><Pencil class="size-4" />Edit <kbd class="kbd kbd-xs">E</kbd></button>{/if}
+        <span class="tab:hidden"><RowMenu label="More question actions" items={phoneMenu} /></span>
+        {#if current.can_move}
+          <span class="ml-auto flex items-center gap-2">
+            <button class="btn btn-ghost btn-square" aria-label="Previous question" title="Previous question (←)" disabled={busy || current.index === 0} onclick={() => goTo(current.index - 1)}><ArrowLeft class="size-4" /></button>
+            <button class="btn btn-ghost btn-square" aria-label="Next question" title="Next question (→)" disabled={busy || current.index === current.total - 1} onclick={() => goTo(current.index + 1)}><ArrowRight class="size-4" /></button>
+          </span>
+          <button class="btn {blank === 0 ? 'btn-outline' : 'btn-ghost'}" disabled={busy} onclick={() => finish()}>Finish <span class="tabular-nums text-muted">{current.answered}/{current.total}</span></button>
+          <button class="btn btn-primary sm:min-w-48" onclick={submit} disabled={(current.short ? !typed.trim() : picked.length === 0) || busy}>{current.picked?.length || current.typed ? "Change answer" : "Save answer"} <kbd class="kbd kbd-xs">Space</kbd></button>
+        {:else}
+          {#if current.exam}<span class="text-sm text-muted">No going back with a timer on each question{current.short ? ". You can overrule the marking on the results page." : ""}</span>{/if}
+          <button class="btn btn-primary ml-auto sm:min-w-48" onclick={submit} disabled={(current.short ? !typed.trim() : picked.length === 0) || busy}>Submit <kbd class="kbd kbd-xs">Space</kbd></button>
+        {/if}
       </div>
     </div>
   {/if}
 </div>
+
+{#if confirmingFinish}
+  <dialog open class="modal modal-open" aria-labelledby="finish-quiz-h">
+    <div class="modal-box max-w-md">
+      <h3 id="finish-quiz-h" class="text-lg font-semibold">Finish with {blank} {blank === 1 ? "question" : "questions"} blank?</h3>
+      <p class="mt-2 text-muted">Blank questions count as unanswered.</p>
+      <div class="modal-action">
+        <!-- svelte-ignore a11y_autofocus -->
+        <button class="btn btn-ghost" autofocus onclick={() => (confirmingFinish = false)}>Keep going</button>
+        <button class="btn btn-primary" onclick={() => finish(true)}>Finish</button>
+      </div>
+    </div>
+  </dialog>
+{/if}

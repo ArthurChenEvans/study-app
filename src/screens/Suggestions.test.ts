@@ -92,6 +92,26 @@ describe("Suggestions", () => {
     expect(within(item).getByText(/Starts as what tripped you up/)).toBeInTheDocument();
   });
   // lists.feature: Suggestions grouped by topic (R149)
+  it("after making a card it opens the next one down in the same topic, and topics keep their order", async () => {
+    const u = userEvent.setup();
+    const cpu = (n: number): Suggestion => ({ ...quiz, key: `quiz:c${n}`, text: `CPU q${n}`, answer: `a${n}`, topic: 1 });
+    const osi = (n: number): Suggestion => ({ ...quiz, key: `quiz:o${n}`, text: `OSI q${n}`, answer: `b${n}`, topic: 2 });
+    mocked.cardSuggestions
+      .mockResolvedValueOnce([cpu(1), cpu(2), cpu(3), osi(1), osi(2), osi(3)])
+      .mockResolvedValueOnce([cpu(2), cpu(3), osi(1), osi(2), osi(3)])
+      .mockResolvedValueOnce([cpu(3), osi(1), osi(2), osi(3)]);
+    render(Suggestions, { onBack: vi.fn(), onChanged: vi.fn() });
+    const headings = async () => (await screen.findAllByRole("button", { expanded: true })).concat(screen.queryAllByRole("button", { expanded: false })).map((b) => b.textContent);
+    await u.click(await screen.findByRole("button", { name: "Make a card: CPU q1" }));
+    await u.click(screen.getByRole("button", { name: /Save card/ }));
+    // CPU now has 2, OSI 3, but CPU stays first and open, with the next one ready to save.
+    expect(await screen.findByDisplayValue("CPU q2")).toBeInTheDocument();
+    expect((await headings())[0]).toContain("CPU");
+    await u.click(screen.getByRole("button", { name: /Cancel/ }));
+    await u.click(screen.getByRole("button", { name: "Dismiss: CPU q2" }));
+    await vi.waitFor(() => expect(screen.getByRole("button", { name: "Dismiss: CPU q3" })).toHaveFocus());
+  });
+
   it("groups by topic, biggest first, ten at a time, and dismisses a group", async () => {
     const u = userEvent.setup();
     const many = Array.from({ length: 23 }, (_, n): Suggestion => ({ ...quiz, key: `quiz:${n}`, text: `Question ${n}`, topic: n < 20 ? 2 : 1, from: n < 20 ? "Quiz: OSI model" : "Quiz: CPU" }));

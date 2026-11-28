@@ -45,8 +45,10 @@ fn quiz(app: &mut App, topics: Vec<TopicId>, right: usize, day: i64) -> AttemptI
     loop {
         let picked = if answered < right { vec![0] } else { vec![1] };
         answered += 1;
-        if let Next::Finished(id) = app.answer(picked, day).unwrap().next {
-            return id;
+        match app.answer(picked, day).unwrap().next {
+            Next::Finished(id) => return id,
+            Next::Question(view) if view.answered == view.total => return app.finish_quiz(day).unwrap(),
+            Next::Question(_) => {}
         }
     }
 }
@@ -213,9 +215,13 @@ fn retries_and_quits_leave_schedules_alone() {
     let first = quiz(&mut app, vec![cpu], 1, TODAY);
     let before = app.topic_quizzes(TODAY).unwrap();
     app.retry(first).unwrap();
-    while let Ok(view) = app.current_question() {
-        let _ = view;
-        if let Next::Finished(id) = app.answer(vec![0], TODAY).unwrap().next {
+    while app.current_question().is_ok() {
+        let finished = match app.answer(vec![0], TODAY).unwrap().next {
+            Next::Finished(id) => Some(id),
+            Next::Question(view) if view.answered == view.total => Some(app.finish_quiz(TODAY).unwrap()),
+            Next::Question(_) => None,
+        };
+        if let Some(id) = finished {
             assert!(app.results(id).unwrap().moves.is_empty());
             break;
         }
@@ -240,7 +246,8 @@ fn overruling_redoes_the_latest_move() {
     .unwrap();
     let setup = QuizSetupInput { topics: vec![osi], count: None, even: false, shuffle_questions: false, shuffle_options: false, exam: true, total_minutes: None, per_question_seconds: None, easy: false, types: QuestionTypes::Both };
     app.start_quiz(setup).unwrap();
-    let Next::Finished(attempt) = app.answer_text("network".into(), TODAY).unwrap().next else { panic!() };
+    app.answer_text("network".into(), TODAY).unwrap();
+    let attempt = app.finish_quiz(TODAY).unwrap();
     assert!(!app.results(attempt).unwrap().moves[0].passed);
     let results = app.overrule_result(attempt, 0).unwrap();
     assert_eq!((results.moves[0].passed, results.moves[0].score), (true, 100));
@@ -316,6 +323,29 @@ fn topic_quizzes_are_capped_a_day_most_overdue_first() {
     let queue = app.quiz_queue(TODAY).unwrap();
     assert_eq!((queue.today.len(), queue.waiting.len(), queue.clears_by), (2, 6, Some(TODAY + 3)));
     assert!(app.set_quizzes_a_day(0).is_err());
+}
+
+// R146: doing today's share doesn't pull the waiting ones into today
+#[test]
+fn finishing_todays_quizzes_doesnt_bring_in_the_waiting_ones() {
+    use study_core::recall::Position;
+    use study_store::practice::QuizMove;
+    let mut app = app();
+    let mut topics = vec![];
+    for index in 0..8 {
+        let topic = app.create_topic(&format!("Topic {index}"), None).unwrap();
+        app.store.save_quiz_move(&QuizMove { attempt: AttemptId(index + 1), topic, day: TODAY - 30, from: None, score: 90, passed: true, to: Position { step: 3, rep: 0 }, next_due: TODAY - 10 + index }).unwrap();
+        topics.push(topic);
+    }
+    // Today's five are done: each gets a move made today, due well after.
+    for (index, topic) in topics[..5].iter().enumerate() {
+        app.store.save_quiz_move(&QuizMove { attempt: AttemptId(100 + index as i64), topic: *topic, day: TODAY, from: None, score: 100, passed: true, to: Position { step: 4, rep: 0 }, next_due: TODAY + 7 }).unwrap();
+    }
+    let queue = app.quiz_queue(TODAY).unwrap();
+    assert!(queue.today.is_empty(), "the day's share is used up: {queue:?}");
+    assert_eq!(queue.waiting, topics[5..].to_vec());
+    assert_eq!(app.due_today(TODAY).unwrap().quizzes, 0);
+    assert_eq!(app.quiz_queue(TODAY + 1).unwrap().today, topics[5..].to_vec(), "they come in tomorrow");
 }
 
 // R185: a project's name and kind can be changed

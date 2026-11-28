@@ -1,5 +1,6 @@
 <script lang="ts">
   // flashcards.feature (R72, R73): suggestions from recall misses and quiz mistakes wait for you.
+  import { tick } from "svelte";
   import Select from "../components/Select.svelte";
   import { ArrowLeft, Plus, X } from "@lucide/svelte";
   import { api, errorMessage, type Suggestion, type TopicRow } from "../lib/api";
@@ -26,8 +27,21 @@
   const groups = $derived.by(() => {
     const byTopic = new Map<number | null, Suggestion[]>();
     for (const item of matching) byTopic.set(item.topic, [...(byTopic.get(item.topic) ?? []), item]);
-    return [...byTopic.entries()].map(([topic, list]) => ({ topic, name: topic === null ? "No topic" : topicName(topic) || "No topic", list })).sort((a, b) => b.list.length - a.list.length || a.name.localeCompare(b.name));
+    const place = (topic: number | null) => { const at = order.indexOf(keyOf(topic)); return at < 0 ? order.length : at; };
+    return [...byTopic.entries()].map(([topic, list]) => ({ topic, name: topic === null ? "No topic" : topicName(topic) || "No topic", list })).sort((a, b) => place(a.topic) - place(b.topic) || b.list.length - a.list.length || a.name.localeCompare(b.name));
   });
+  // Topics keep the order they first showed in (biggest first), so making a card or dismissing
+  // one doesn't shuffle another topic to the top while you work down this one.
+  let order = $state<string[]>([]);
+  function keepOrder() {
+    const byTopic = new Map<string, { size: number; name: string }>();
+    for (const item of items ?? []) {
+      const key = keyOf(item.topic);
+      byTopic.set(key, { size: (byTopic.get(key)?.size ?? 0) + 1, name: item.topic === null ? "No topic" : topicName(item.topic) });
+    }
+    const fresh = [...byTopic.entries()].filter(([key]) => !order.includes(key)).sort((a, b) => b[1].size - a[1].size || a[1].name.localeCompare(b[1].name)).map(([key]) => key);
+    order = [...order, ...fresh];
+  }
   let opened = $state<Record<string, boolean>>({});
   let limits = $state<Record<string, number>>({});
   const keyOf = (topic: number | null) => String(topic);
@@ -50,6 +64,18 @@
 
   async function load() {
     [items, topics] = await Promise.all([api.cardSuggestions(), api.topics()]);
+    keepOrder();
+  }
+
+  /** Where an item sits, so after it's handled the work carries on with the one below it. */
+  function placeOf(item: Suggestion) {
+    const group = groups.find((row) => row.topic === item.topic);
+    return { topic: item.topic, index: group ? group.list.findIndex((row) => row.key === item.key) : 0 };
+  }
+  /** The suggestion now in that place in the same topic, keeping the topic open. */
+  function nextAfter(place: { topic: number | null; index: number }) {
+    opened = { ...opened, [keyOf(place.topic)]: true };
+    return groups.find((row) => row.topic === place.topic)?.list[place.index] ?? null;
   }
 
   function make(item: Suggestion) {
@@ -66,11 +92,16 @@
     if (!making) return;
     if (making.topic === null) { error = "Choose a topic for the card"; return; }
     error = "";
+    const item = (items ?? []).find((row) => row.key === making?.key);
+    const place = item ? placeOf(item) : null;
     try {
       await api.saveNote(null, { note: { topic: making.topic, kind: "Basic", front: making.front, back: making.back, cues: [], text: "", extra: "" }, suggestion: making.key });
       status = `Card saved in ${topicName(making.topic)}`;
       making = null;
       await load();
+      // Straight on to the next one down in the same topic, until the topic's done.
+      const next = place && nextAfter(place);
+      if (next) make(next);
       onChanged();
     } catch (failure) {
       error = errorMessage(failure);
@@ -78,9 +109,13 @@
   }
 
   async function dismiss(item: Suggestion) {
+    const place = placeOf(item);
     await api.dismissSuggestion(item.key);
     status = "Suggestion dismissed";
     await load();
+    // Focus moves to the one that took its place, so the keyboard carries on down the topic.
+    const next = nextAfter(place);
+    if (next) { await tick(); document.querySelector<HTMLElement>(`[aria-label="Dismiss: ${CSS.escape(next.text)}"]`)?.focus(); }
     onChanged();
   }
 
@@ -134,7 +169,7 @@
               {#if !open}
                 <div class="flex shrink-0 items-center gap-2">
                   <button class="btn btn-ghost btn-sm" aria-label="Dismiss: {item.text}" onclick={() => dismiss(item)}><X class="size-4" />Dismiss</button>
-                  <button class="btn btn-outline btn-sm text-primary-ink" onclick={() => make(item)}><Plus class="size-4" />Make a card</button>
+                  <button class="btn btn-outline btn-sm text-primary-ink" aria-label="Make a card: {item.text}" onclick={() => make(item)}><Plus class="size-4" />Make a card</button>
                 </div>
               {/if}
             </div>

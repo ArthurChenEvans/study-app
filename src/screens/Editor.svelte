@@ -13,7 +13,13 @@
   import { toast } from "../lib/celebrations.svelte";
   import { IMAGE_TYPES, imageInput, listenForDrops } from "../lib/imageInput.svelte";
 
-  let { topic, onBack = () => {} }: { topic: Id; onBack?: () => void } = $props();
+  let { topic, onBack = () => {}, question = null, backLabel = "Quizzes" }: {
+    topic: Id;
+    onBack?: () => void;
+    /** Opened from a quiz to fix one question: it opens straight away, and saving goes back. */
+    question?: Id | null;
+    backLabel?: string;
+  } = $props();
 
   const MIN = 3;
   const MAX = 5;
@@ -131,7 +137,8 @@
       else await api.updateQuestion(editing!, input());
       saved = isNew ? "Question saved" : "Changes saved";
       // R194: say how it went
-      toast({ text: saved, sub: `${topicName} now has ${count} ${count === 1 ? "question" : "questions"}`, icon: "check" });
+      toast({ text: saved, sub: question !== null && !isNew ? "Back to your quiz" : `${topicName} now has ${count} ${count === 1 ? "question" : "questions"}`, icon: "check" });
+      if (question !== null && !isNew) return onBack();
       editing = null;
       const kind = draft.kind;
       draft = { ...blank(), kind };
@@ -154,6 +161,7 @@
     deletingQuestion = false;
     try {
       await api.deleteQuestion(id);
+      if (question !== null && id === question) { toast({ text: "Question deleted", sub: "It stays in this quiz as it was asked", icon: "trash" }); return onBack(); }
       questions = await api.questionsIn(topic);
       startNew();
       toast({ text: "Question deleted", icon: "trash" });
@@ -218,6 +226,8 @@
   }
 
   load();
+  // svelte-ignore state_referenced_locally
+  if (question !== null) edit(question).catch((failure) => (error = errorMessage(failure)));
 </script>
 
 <svelte:window
@@ -238,7 +248,7 @@
   <section class="{showReader ? 'w-1/2' : 'w-full'} flex flex-col overflow-auto max-sm:overflow-visible" aria-label="Question editor">
     <div class="flex max-w-[47rem] flex-col gap-4 px-10 pb-8 pt-8 max-tab:px-5">
       <nav aria-label="Breadcrumb" class="flex flex-wrap items-center gap-3 text-sm text-muted">
-        <button type="button" class="btn btn-ghost btn-sm" aria-label="Back to Quizzes" onclick={onBack}><ArrowLeft class="size-4" />Quizzes</button>
+        <button type="button" class="btn btn-ghost btn-sm" aria-label={backLabel.startsWith("Back") ? backLabel : `Back to ${backLabel}`} onclick={onBack}><ArrowLeft class="size-4" />{backLabel}</button>
         <span aria-hidden="true">/</span><span>{topicName}</span>
       </nav>
       <div class="flex flex-wrap items-end justify-between gap-4">

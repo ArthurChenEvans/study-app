@@ -5,6 +5,7 @@
   import { tick, untrack } from "svelte";
   import { api, errorMessage, type Note, type NoteKind, type NoteView, type Subject, type TopicCards, type TopicRow } from "../lib/api";
   import { deleteWithUndo, toast } from "../lib/celebrations.svelte";
+  import { listenForShake, shake } from "../lib/shake.svelte";
   import Rich from "../components/Rich.svelte";
   import Select from "../components/Select.svelte";
   import { IMAGE_TYPES, imageInput, listenForDrops } from "../lib/imageInput.svelte";
@@ -96,6 +97,12 @@
     undoStack = [...undoStack, change];
     redoStack = [];
   }
+  // Shake to undo on phones, when it's on and there's a card change to take back.
+  $effect(() => {
+    if (!shake.on) return;
+    return listenForShake(() => { if (undoStack.length && !deleting && !discarding) void undo(); });
+  });
+
   async function undo() {
     const change = undoStack.at(-1);
     if (!change) return;
@@ -350,7 +357,7 @@
                 {#each note.cues as _, index (index)}
                   <div class="flex items-center gap-2"><input class="input input-sm flex-1" data-rich="true" aria-label="Extra cue {index + 1}" bind:value={note.cues[index]} /><button type="button" class="btn btn-quiet btn-sm btn-square" aria-label="Remove extra cue {index + 1}" onclick={() => note.cues.splice(index, 1)}><X class="size-4" /></button></div>
                 {/each}
-                <div class="flex flex-wrap items-center gap-3"><button type="button" class="btn btn-ghost btn-sm -ml-3" onclick={() => note.cues.push("")}><Plus class="size-4" />Add another cue for the same answer</button><span class="text-sm text-muted">Each cue becomes its own card.</span></div>
+                <div class="flex flex-wrap items-center gap-3"><button type="button" class="btn btn-ghost btn-sm" onclick={() => note.cues.push("")}><Plus class="size-4" />Add another cue for the same answer</button><span class="text-sm text-muted">Each cue becomes its own card.</span></div>
               </fieldset>
             {/if}
           {/if}
@@ -431,7 +438,7 @@
       <div class="modal-action">
         <!-- svelte-ignore a11y_autofocus -->
         <button class="btn btn-ghost" autofocus onclick={() => (discarding = false)}>Keep editing</button>
-        <button class="btn btn-error" onclick={() => closeEditor(true)}>Leave without saving</button>
+        <button class="btn btn-error" onclick={() => closeEditor(true)}>Discard</button>
       </div>
     </div>
   </dialog>
