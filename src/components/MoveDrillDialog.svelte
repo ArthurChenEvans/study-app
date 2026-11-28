@@ -1,6 +1,7 @@
 <script lang="ts">
   // Moving a drill (R99): the likely days are one press, any other day is a date box.
   // Matches "When do you want to do it?" in session review.
+  import DateField from "./DateField.svelte";
   import { untrack } from "svelte";
   import { dateOf, dayFromIso, fullLabel, isoOf } from "../lib/dates";
 
@@ -48,7 +49,7 @@
       <label class="flex min-h-11 cursor-pointer items-center gap-3 rounded-lg border px-4 py-2 {chosen === 'other' ? 'border-2 border-primary-ink bg-base-200' : 'border-field-border'}">
         <input type="radio" name="move-day" class="radio radio-sm" checked={chosen === "other"} onchange={() => (chosen = "other")} />
         <span>Another day</span>
-        <input type="date" class="input input-sm ml-auto w-40" aria-label="Pick a day" min={isoOf(today)} bind:value={other} onfocus={() => (chosen = "other")} />
+        <DateField small class="ml-auto w-40" aria-label="Pick a day" min={isoOf(today)} bind:value={other} onfocus={() => (chosen = "other")} />
       </label>
     </fieldset>
     {#if error}<p role="alert" class="mt-4 text-sm text-error">{error}</p>{/if}

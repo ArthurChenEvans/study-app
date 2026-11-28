@@ -399,6 +399,18 @@ fn quit_quiz(state: AppState) -> ApiResult<AttemptId> {
     with(state, |app| app.quit_quiz(today()))
 }
 #[tauri::command]
+fn go_to_question(state: AppState, index: usize) -> ApiResult<QuizView> {
+    with(state, |app| app.go_to_question(index))
+}
+#[tauri::command]
+fn finish_quiz(state: AppState) -> ApiResult<AttemptId> {
+    with(state, |app| app.finish_quiz(today()))
+}
+#[tauri::command]
+fn refresh_quiz_question(state: AppState, index: usize) -> ApiResult<QuizView> {
+    with(state, |app| app.refresh_quiz_question(index))
+}
+#[tauri::command]
 fn retry(state: AppState, attempt: AttemptId) -> ApiResult<QuizView> {
     with(state, |app| app.retry(attempt))
 }
@@ -470,8 +482,12 @@ fn archive_card(state: AppState, id: CardId, archived: bool) -> ApiResult<()> {
     with(state, |app| app.archive_card(id, archived))
 }
 #[tauri::command]
-fn start_review(state: AppState, scope: Option<Subject>, only: Option<study_api::cards::CardKind>) -> ApiResult<ReviewStep> {
-    with(state, |app| app.start_review_of(scope, only, today()))
+fn start_review(state: AppState, scope: Option<Subject>, only: Option<study_api::cards::CardKind>, order: Option<study_core::cards::SessionOrder>) -> ApiResult<ReviewStep> {
+    with(state, |app| app.start_review_planned(scope, only, order, today()))
+}
+#[tauri::command]
+fn review_plan(state: AppState, scope: Option<Subject>) -> ApiResult<study_api::cards::ReviewPlan> {
+    with(state, |app| app.review_plan(scope, today()))
 }
 #[tauri::command]
 fn current_card(state: AppState) -> ApiResult<ReviewStep> {
@@ -496,6 +512,14 @@ fn set_appearance(state: AppState, appearance: study_api::Appearance) -> ApiResu
 #[tauri::command]
 fn redo_card(state: AppState) -> ApiResult<ReviewStep> {
     with(state, |app| app.redo_card(today()))
+}
+#[tauri::command]
+fn set_aside_in_review(state: AppState, note: NoteId) -> ApiResult<ReviewStep> {
+    with(state, |app| app.set_aside_in_review(note, today()))
+}
+#[tauri::command]
+fn restore_in_review(state: AppState, note: NoteId) -> ApiResult<ReviewStep> {
+    with(state, |app| app.restore_in_review(note, today()))
 }
 #[tauri::command]
 fn leave_review(state: AppState) -> ApiResult<()> {
@@ -1110,6 +1134,7 @@ pub fn run() {
             delete_note,
             archive_card,
             start_review,
+            review_plan,
             current_card,
             grade_card,
             undo_card,
@@ -1117,6 +1142,8 @@ pub fn run() {
             appearance,
             set_appearance,
             leave_review,
+            set_aside_in_review,
+            restore_in_review,
             card_suggestions,
             dismiss_suggestion,
             card_settings,
@@ -1194,6 +1221,9 @@ pub fn run() {
             try_short_answer,
             total_timed_out,
             quit_quiz,
+            go_to_question,
+            finish_quiz,
+            refresh_quiz_question,
             retry,
             results,
             give_reason,

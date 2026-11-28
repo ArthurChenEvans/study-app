@@ -152,6 +152,33 @@ fn exam_mode_gives_no_feedback() {
     assert_eq!(app.answer(vec![0], TODAY).unwrap().feedback, None);
 }
 
+// Exam mode: go back, see the answer given, change it, then finish
+#[test]
+fn exam_mode_goes_back_and_finishes_when_told() {
+    let (mut app, cpu) = with_questions();
+    app.start_quiz(QuizSetupInput { exam: true, ..setup(vec![cpu]) }).unwrap();
+    let Next::Question(second) = app.answer(vec![1], TODAY).unwrap().next else { panic!() };
+    assert_eq!((second.index, second.answered, second.can_move), (1, 1, true));
+    let first = app.go_to_question(0).unwrap();
+    assert_eq!((first.text.as_str(), first.picked.clone()), ("q1", vec![1]));
+    app.answer(vec![0], TODAY).unwrap();
+    let attempt = app.finish_quiz(TODAY).unwrap();
+    let results = app.results(attempt).unwrap();
+    assert_eq!((results.summary.overall.right_sure, results.summary.overall.unanswered), (1, 2));
+}
+
+// Editing a question mid-quiz shows the new version straight away
+#[test]
+fn an_edited_question_shows_its_new_version_in_the_quiz() {
+    let (mut app, cpu) = with_questions();
+    let view = app.start_quiz(setup(vec![cpu])).unwrap();
+    let mut fixed = app.question(view.question).unwrap();
+    fixed.text = "q1, fixed".into();
+    app.update_question(view.question, fixed).unwrap();
+    let refreshed = app.refresh_quiz_question(view.index).unwrap();
+    assert_eq!((refreshed.text.as_str(), refreshed.position), ("q1, fixed", 1));
+}
+
 #[test]
 fn shuffled_options_are_answered_by_their_original_index() {
     let (mut app, cpu) = with_questions();

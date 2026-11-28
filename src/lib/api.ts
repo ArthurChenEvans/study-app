@@ -60,6 +60,16 @@ export interface QuizSetupInput {
 export type TrackCell = "RightSure" | "RightGuessed" | "Wrong" | "Answered" | "Current" | "Upcoming";
 export interface QuizView {
   position: number;
+  /** This question's place in the quiz, from 0. */
+  index: number;
+  /** The question in the bank, for editing it mid-quiz. */
+  question: Id;
+  /** Exam mode without a per-question timer: move freely and change answers until finishing. */
+  can_move: boolean;
+  answered: number;
+  /** The answer already given, when coming back to a question. */
+  picked: number[];
+  typed: string | null;
   total: number;
   exam: boolean;
   topic: Id;
@@ -187,7 +197,11 @@ export type CardRating = "Again" | "Hard" | "Good" | "Easy";
 export type CardKind = "new" | "learning" | "review";
 export interface Appearance { colours: string; dark: boolean; colour_blind: boolean }
 export interface Suggestion { key: string; kind: "Recall" | "Quiz" | "Struggle"; from: string; day: number; note: string; text: string; answer: string | null; topic: Id | null }
-export interface CardSettings { desired_retention: number; new_per_day: number; max_reviews: number | null; leech_after: number; parameters: number[] }
+export type CardGroup = "learning" | "review" | "new";
+/** A session in groups one after another (each shuffled), or all mixed. */
+export type SessionOrder = { groups: CardGroup[] } | "mixed";
+export interface CardSettings { desired_retention: number; new_per_day: number; max_reviews: number | null; leech_after: number; parameters: number[]; session: SessionOrder; /** null: missed cards come back at the end of the session. */ missed_after: number | null }
+export interface ReviewPlan { learning: number; review: number; new: number; order: SessionOrder; missed_after: number | null }
 
 // ---------- Projects, drills, quiz schedules and the calendar (R87 to R100) ----------
 export type StruggleKind = "Recall" | "Apply" | "Unsure";
@@ -320,6 +334,10 @@ export const api = {
   tryShortAnswer: (check: ShortCheck, typed: string) => invoke<Marking>("try_short_answer", { check, typed }),
   totalTimedOut: () => invoke<Id>("total_timed_out"),
   quitQuiz: () => invoke<Id>("quit_quiz"),
+  goToQuestion: (index: number) => invoke<QuizView>("go_to_question", { index }),
+  finishQuiz: () => invoke<Id>("finish_quiz"),
+  /** After editing a question mid-quiz: the new version, with any answer marked again. */
+  refreshQuizQuestion: (index: number) => invoke<QuizView>("refresh_quiz_question", { index }),
   retry: (attempt: Id) => invoke<QuizView>("retry", { attempt }),
 
   results: (attempt: Id) => invoke<ResultsView>("results", { attempt }),
@@ -359,11 +377,16 @@ export const api = {
   deleteNote: (id: Id) => invoke<void>("delete_note", { id }),
   archiveCard: (id: Id, archived: boolean) => invoke<void>("archive_card", { id, archived }),
   /** `only`: just new, learning or review cards (R226). Leave it out for all of them mixed. */
-  startReview: (scope: Subject | null, only: CardKind | null = null) => invoke<ReviewStep>("start_review", { scope, only }),
+  startReview: (scope: Subject | null, only: CardKind | null = null, order: SessionOrder | null = null) => invoke<ReviewStep>("start_review", { scope, only, order }),
+  /** What a session would hold and its order, shown before starting. */
+  reviewPlan: (scope: Subject | null) => invoke<ReviewPlan>("review_plan", { scope }),
   currentCard: () => invoke<ReviewStep>("current_card"),
   gradeCard: (rating: CardRating, seconds: number) => invoke<ReviewStep>("grade_card", { rating, seconds }),
   undoCard: () => invoke<ReviewStep>("undo_card"),
   redoCard: () => invoke<ReviewStep>("redo_card"),
+  /** Ctrl+Delete in a review: out of the session now, `restoreInReview` puts it back. */
+  setAsideInReview: (note: Id) => invoke<ReviewStep>("set_aside_in_review", { note }),
+  restoreInReview: (note: Id) => invoke<ReviewStep>("restore_in_review", { note }),
   /** R228: the synced look, or null until it's chosen on any device. */
   appearance: () => invoke<Appearance | null>("appearance"),
   setAppearance: (appearance: Appearance) => invoke<void>("set_appearance", { appearance }),

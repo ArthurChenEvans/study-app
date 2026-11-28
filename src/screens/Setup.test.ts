@@ -11,7 +11,7 @@ import { api } from "../lib/api";
 import Setup from "./Setup.svelte";
 
 const mocked = vi.mocked(api);
-const view = { position: 1, total: 8, exam: false, topic: 1, text: "Q", options: [], multiple: false, short: false, answers_to_pick: null, flagged: false, total_seconds: null, per_question_seconds: null, track: [] };
+const view = { position: 1, index: 0, question: 1, can_move: false, answered: 0, picked: [], typed: null, total: 8, exam: false, topic: 1, text: "Q", options: [], multiple: false, short: false, answers_to_pick: null, flagged: false, total_seconds: null, per_question_seconds: null, track: [] };
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -61,7 +61,7 @@ describe("Quiz setup", () => {
     expect(screen.getByLabelText("Quiz summary")).toHaveTextContent("20 questions");
     await u.click(screen.getByRole("button", { name: "Start quiz" }));
     expect(mocked.startQuiz).toHaveBeenCalledWith({
-      topics: [1, 2], count: null, even: false, shuffle_questions: false, shuffle_options: false,
+      topics: [1, 2], count: null, even: false, shuffle_questions: true, shuffle_options: true,
       exam: false, total_minutes: null, per_question_seconds: null, easy: false, types: "Both",
     });
     expect(onStarted).toHaveBeenCalledWith(view);

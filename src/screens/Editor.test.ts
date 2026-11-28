@@ -146,6 +146,22 @@ describe("Question editor", () => {
     expect(mocked.updateQuestion).toHaveBeenCalledWith(10, expect.objectContaining({ text: "What is the ALU's job?", tags: ["alu"] }));
   });
 
+  it("opened from a quiz, the question opens straight away and saving goes back to the quiz", async () => {
+    const u = user();
+    const onBack = vi.fn();
+    mocked.question.mockResolvedValue({
+      topic: 1, text: "What does the ALU do?", multiple: false,
+      options: [{ text: "Arithmetic", correct: true }, { text: "Storage", correct: false }, { text: "Fetching", correct: false }],
+      explanation: "", tags: [], citations: [], short: null,
+    });
+    render(Editor, { topic: 1, question: 10, backLabel: "Back to the quiz", onBack });
+    expect(await screen.findByLabelText("Question")).toHaveValue("What does the ALU do?");
+    expect(screen.getByRole("button", { name: "Back to the quiz" })).toBeInTheDocument();
+    await u.click(screen.getByRole("button", { name: "Save question" }));
+    expect(mocked.updateQuestion).toHaveBeenCalledWith(10, expect.anything());
+    await vi.waitFor(() => expect(onBack).toHaveBeenCalled());
+  });
+
   // R185: a question can be deleted, after asking, and the list updates
   it("deletes the question being edited after asking", async () => {
     const u = user();

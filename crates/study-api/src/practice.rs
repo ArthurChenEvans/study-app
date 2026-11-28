@@ -570,7 +570,10 @@ impl App {
         let mut quizzes = self.quizzes_now(&self.now(today)?)?;
         quizzes.sort_by_key(|quiz| (quiz.due, quiz.topic));
         let overdue: Vec<TopicId> = quizzes.iter().filter(|quiz| quiz.due <= today).map(|quiz| quiz.topic).collect();
-        let (first, rest) = overdue.split_at(overdue.len().min(daily));
+        // Quizzes already done today use up the day's share, so finishing them doesn't
+        // pull the next ones in from the waiting list.
+        let room = daily.saturating_sub(self.store.topics_quizzed_on(today)?);
+        let (first, rest) = overdue.split_at(overdue.len().min(room));
         let coming = quizzes.iter().filter(|quiz| quiz.due > today && quiz.due <= today + 28).count();
         Ok(QuizQueue {
             daily,

@@ -9,6 +9,7 @@ vi.mock("../lib/api", async (original) => {
 
 import { api, type CalendarDay, type DateView, type DayView, type DrillView } from "../lib/api";
 import Calendar from "./Calendar.svelte";
+import { pickDate } from "../testing/pick";
 
 const mocked = vi.mocked(api);
 const TODAY = 20_760; // Tue 3 Nov 2026
@@ -148,8 +149,7 @@ describe("Calendar", () => {
     const dialog = screen.getByRole("dialog");
     expect(within(dialog).getByText(drill.task)).toBeInTheDocument();
     await u.click(within(dialog).getByRole("radio", { name: /Another day/ }));
-    await u.clear(within(dialog).getByLabelText("Pick a day"));
-    await u.type(within(dialog).getByLabelText("Pick a day"), "2026-11-05");
+    await pickDate(u, within(dialog).getByLabelText(/^Pick a day/), "2026-11-05");
     await u.click(within(dialog).getByRole("button", { name: "Move to Thu 5 Nov" }));
     expect(mocked.moveDrill).toHaveBeenCalledWith(5, TODAY + 2);
   });

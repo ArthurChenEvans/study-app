@@ -21,8 +21,8 @@
   let setNumber = $state(false);
   let count = $state(20);
   let even = $state(false);
-  let shuffleQuestions = $state(false);
-  let shuffleOptions = $state(false);
+  let shuffleQuestions = $state(true);
+  let shuffleOptions = $state(true);
   let useTotal = $state(false);
   let totalMinutes = $state(20);
   let usePerQuestion = $state(false);

@@ -23,6 +23,16 @@ describe("App shortcuts", () => {
     expect(input).toHaveFocus();
   });
 
+  it("blocks the browser's own right-click menu, except in text fields and on selected text", async () => {
+    const { container } = render(App);
+    await screen.findAllByRole("link");
+    const menu = (target: Element) => { const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true }); target.dispatchEvent(event); return event.defaultPrevented; };
+    expect(menu(screen.getAllByRole("link")[0])).toBe(true);
+    const field = document.createElement("input");
+    container.appendChild(field);
+    expect(menu(field)).toBe(false);
+  });
+
   // R186: every screen comes in the same way, and nothing inside it adds a second entrance
   it("brings every screen in with the same entrance", async () => {
     const u = userEvent.setup();

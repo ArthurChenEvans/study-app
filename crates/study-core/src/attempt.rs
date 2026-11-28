@@ -62,8 +62,10 @@ pub enum AttemptError {
     NothingPicked,
     #[error("option {0} doesn't exist on this question")]
     NoSuchOption(usize),
-    #[error("you can't go back to an earlier question")]
-    NoGoingBack,
+    #[error("you can't move between questions in this quiz")]
+    NoMoving,
+    #[error("there's no question {0} in this quiz")]
+    NoSuchQuestion(usize),
     #[error("every question was answered right and none were guessed, so there's nothing to retry")]
     NothingToRetry,
     #[error("type your answer for this question")]
@@ -128,6 +130,89 @@ impl Attempt {
     /// Some(id of the attempt this retries) for a retry (R26).
     pub fn retry_of(&self) -> Option<usize> {
         self.retry_of
+    }
+
+    /// Which asked question is showing, counting from 0.
+    pub fn position(&self) -> usize {
+        self.current
+    }
+
+    /// Exam mode can move back and forth and change answers until it's finished, since it
+    /// shows no answers along the way. Not with a per-question timer, where each question
+    /// gets its own time once. Study mode shows the answer straight away, so it can't.
+    pub fn can_move(&self) -> bool {
+        self.settings.mode == Mode::Exam && self.settings.per_question_timer.is_none()
+    }
+
+    /// Jumps to any question, answered or not, in a quiz that can move.
+    pub fn go_to(&mut self, index: usize) -> Result<(), AttemptError> {
+        if self.status != Status::InProgress {
+            return Err(AttemptError::Ended);
+        }
+        if !self.can_move() {
+            return Err(AttemptError::NoMoving);
+        }
+        if index >= self.asked.len() {
+            return Err(AttemptError::NoSuchQuestion(index));
+        }
+        self.current = index;
+        Ok(())
+    }
+
+    /// Ends a quiz that can move, when the user says they're done. Questions left blank
+    /// stay unanswered.
+    pub fn finish(&mut self) -> Result<(), AttemptError> {
+        if self.status != Status::InProgress {
+            return Err(AttemptError::Ended);
+        }
+        self.status = Status::Finished;
+        Ok(())
+    }
+
+    /// The question was edited during the quiz: shows the new version, keeping the answer
+    /// where it still fits. `option_order` is used when the number of options changed.
+    pub fn refresh(&mut self, index: usize, question: Question, option_order: Vec<usize>) -> Result<(), AttemptError> {
+        let movable = self.can_move();
+        let asked = self.asked.get_mut(index).ok_or(AttemptError::NoSuchQuestion(index))?;
+        let same_kind = (asked.snapshot.kind() == AnswerKind::Short) == (question.kind() == AnswerKind::Short);
+        if asked.snapshot.options().len() != question.options().len() {
+            asked.item.option_order = option_order;
+        }
+        asked.snapshot = question;
+        if asked.outcome.is_none() {
+            return Ok(());
+        }
+        let clear = |asked: &mut Asked| {
+            asked.picked.clear();
+            asked.typed = None;
+            asked.marking = None;
+            asked.overruled = false;
+            asked.outcome = None;
+        };
+        if !same_kind {
+            // Study mode has moved on, so an answer that no longer fits counts as wrong.
+            clear(asked);
+            if !movable {
+                asked.outcome = Some(Outcome::Wrong(None));
+            }
+        } else if let (Some(short), Some(typed)) = (asked.snapshot.short(), asked.typed.clone()) {
+            let marking = mark(&short.check, &typed);
+            asked.outcome = Some(if marking.right { Outcome::Right } else { Outcome::Wrong(None) });
+            asked.marking = Some(marking);
+            asked.overruled = false;
+        } else if asked.typed.is_none() && !matches!(asked.outcome, Some(Outcome::Wrong(Some(AutoReason::TimedOut)))) {
+            let options = asked.snapshot.options().len();
+            asked.picked.retain(|picked| *picked < options);
+            if asked.picked.is_empty() {
+                clear(asked);
+                if !movable {
+                    asked.outcome = Some(Outcome::Wrong(None));
+                }
+            } else {
+                asked.outcome = Some(score(&asked.snapshot, &asked.picked));
+            }
+        }
+        Ok(())
     }
 
     pub fn current(&self) -> Option<&Asked> {
@@ -238,11 +323,6 @@ impl Attempt {
         }
     }
 
-    pub fn go_back(&mut self) -> Result<(), AttemptError> {
-        // R40: no going back in either mode.
-        Err(AttemptError::NoGoingBack)
-    }
-
     /// The questions to retry: wrong ones plus right ones flagged as guessed,
     /// with the same settings (R26). `own_id` is this attempt's id in history.
     pub fn retry(&self, own_id: usize) -> Result<Attempt, AttemptError> {
@@ -284,6 +364,14 @@ impl Attempt {
     }
 
     fn advance(&mut self) {
+        if self.can_move() {
+            // On to the next blank question, wrapping round. Once all are answered it steps
+            // forward and waits: the quiz only ends when the user finishes it.
+            let len = self.asked.len();
+            let blank = (1..len).map(|step| (self.current + step) % len).find(|index| self.asked[*index].outcome.is_none());
+            self.current = blank.unwrap_or((self.current + 1).min(len - 1));
+            return;
+        }
         self.current += 1;
         if self.current >= self.asked.len() {
             self.status = Status::Finished;
@@ -405,24 +493,56 @@ mod tests {
         let mut attempt = Attempt::start(settings(Mode::Exam), items(&[1, 3]), lookup);
         assert_eq!(attempt.submit(&[0]).unwrap(), None);
         assert_eq!(attempt.submit(&[0]).unwrap(), None);
+        assert_eq!(attempt.status(), Status::InProgress, "waits for the user to finish");
+        attempt.finish().unwrap();
         assert_eq!(attempt.status(), Status::Finished);
         assert_eq!(attempt.asked()[1].outcome, Some(Outcome::Wrong(None)));
     }
 
-    // taking-quiz.feature: No going back in exam mode
+    // Exam mode: move back and forth and change answers before finishing
     #[test]
-    fn no_going_back_in_exam_mode() {
-        let mut attempt = Attempt::start(settings(Mode::Exam), items(&[1, 3]), lookup);
+    fn exam_mode_can_go_back_and_change_an_answer() {
+        let mut attempt = Attempt::start(settings(Mode::Exam), items(&[1, 3, 1]), lookup);
+        attempt.go_to(2).unwrap();
         attempt.submit(&[0]).unwrap();
-        assert_eq!(attempt.go_back(), Err(AttemptError::NoGoingBack));
+        assert_eq!(attempt.position(), 0, "on to the next blank question, wrapping round");
+        attempt.submit(&[1]).unwrap();
+        assert_eq!(attempt.asked()[0].outcome, Some(Outcome::Wrong(None)));
+        attempt.go_to(0).unwrap();
+        attempt.submit(&[0]).unwrap();
+        assert_eq!(attempt.asked()[0].outcome, Some(Outcome::Right), "the new answer replaces the old");
+        attempt.finish().unwrap();
+        assert_eq!(attempt.asked()[1].outcome, None, "left blank stays unanswered");
+        assert_eq!(attempt.go_to(0), Err(AttemptError::Ended));
     }
 
-    // R40: no going back in study mode either
+    // R40: study mode shows answers straight away, so there's no going back
     #[test]
-    fn no_going_back_in_study_mode() {
+    fn no_going_back_in_study_mode_or_with_a_question_timer() {
         let mut attempt = Attempt::start(settings(Mode::Study), items(&[1, 3]), lookup);
         attempt.submit(&[0]).unwrap();
-        assert_eq!(attempt.go_back(), Err(AttemptError::NoGoingBack));
+        assert_eq!(attempt.go_to(0), Err(AttemptError::NoMoving));
+        let timed = QuizSettings { per_question_timer: Some(std::time::Duration::from_secs(30)), ..settings(Mode::Exam) };
+        let mut attempt = Attempt::start(timed, items(&[1, 3]), lookup);
+        assert_eq!(attempt.go_to(1), Err(AttemptError::NoMoving));
+        attempt.submit(&[0]).unwrap();
+        attempt.submit(&[0]).unwrap();
+        assert_eq!(attempt.status(), Status::Finished, "timed exams still end on the last answer");
+    }
+
+    // Editing a question mid-quiz: the new version shows and the answer is marked again
+    #[test]
+    fn an_edited_question_is_marked_again() {
+        let mut attempt = Attempt::start(settings(Mode::Study), items(&[1, 3]), lookup);
+        attempt.submit(&[1]).unwrap();
+        assert_eq!(attempt.asked()[0].outcome, Some(Outcome::Wrong(None)));
+        // Same question with option 1 now the right one.
+        let fixed = lookup(QuestionId(3));
+        attempt.refresh(0, fixed.clone(), vec![]).unwrap();
+        assert_eq!(attempt.asked()[0].snapshot, fixed);
+        assert_eq!(attempt.asked()[0].outcome, Some(score(&fixed, &[1].into())));
+        attempt.refresh(1, fixed, vec![]).unwrap();
+        assert_eq!(attempt.asked()[1].outcome, None, "an unanswered question just shows the new version");
     }
 
     // taking-quiz.feature: Easy and hard mode (outline)
@@ -586,6 +706,7 @@ mod tests {
         let mut attempt = Attempt::start(settings(Mode::Exam), items(&[4]), lookup);
         assert_eq!(attempt.submit_text("network layer").unwrap(), None);
         assert_eq!(attempt.asked()[0].outcome, Some(Outcome::Wrong(None)));
+        attempt.finish().unwrap();
         assert_eq!(attempt.status(), Status::Finished);
     }
 

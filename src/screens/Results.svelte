@@ -115,7 +115,7 @@
         <section class="grid grid-cols-4 gap-3" aria-label="Score">
           <div class="score-tile" style="--tile: var(--color-neutral); --tile-on: var(--color-neutral-content); --tile-ink: var(--color-base-content)" role="group" aria-labelledby="score-label">
             <span id="score-label" class="score-label">Score</span>
-            <b><Star class="size-5 fill-current" aria-hidden="true" /><span><CountUp value={right(overall)} /></span>{" "}<span>/ {total(overall)}</span></b>
+            <b><Star class="size-5 fill-current" aria-hidden="true" /><span><CountUp value={right(overall)} /></span>{" "}<span>/ {total(overall)}</span><span class="score-pct tabular-nums">{Math.round(share(right(overall), total(overall)))}%</span></b>
             <span class="sr-only">{overall.right_guessed} of those guessed</span>
           </div>
           <div class="score-tile" style="--tile: var(--chart-right); --tile-on: var(--on-right); --tile-ink: var(--right-ink)" role="group" aria-label="Right, sure">

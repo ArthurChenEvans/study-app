@@ -57,8 +57,8 @@ An all-in-one study app for exams: quizzes (multiple choice and short answer), f
 ## What's in it
 
 - **Overview:** what's due today, accuracy, how many right answers were guesses, score per quiz, the reasons you gave for wrong answers, and your weakest topics.
-- **Quizzes:** each topic's questions make a quiz. Tick a few to mix them. Write questions with your slides, PDFs, Word files or EPUBs open beside you, and note which source each fact came from. Each topic climbs a quiz schedule. After answering, you can flag a right answer as a guess, and wrong answers ask why you got them wrong.
-- **Cards:** basic, reversed and cloze flashcards scheduled with FSRS. Cards opens on today's review, and Browse all lists every card with search and filters (answers of cards due today stay hidden). Missed quiz questions and recall points become suggested cards, never added without asking.
+- **Quizzes:** each topic's questions make a quiz. Tick a few to mix them. Write questions with your slides, PDFs, Word files or EPUBs open beside you, and note which source each fact came from. Each topic climbs a quiz schedule, with a daily share of quizzes when a lot fall due at once. Questions and options are shuffled by default. Study mode shows the answer after each question. Exam mode lets you move back and forth and change answers until you press Finish. Press E to fix a question mid-quiz and carry on. After answering, you can flag a right answer as a guess, and wrong answers ask why you got them wrong.
+- **Cards:** basic, reversed and cloze flashcards scheduled with FSRS. Cards opens on today's review, and Browse all lists every card with search and filters (answers of cards due today stay hidden). Before a review you see how it will go: learning, reviews and new cards in groups (or all mixed), in an order you can change, with cards you miss coming back at the end of the session or a set number of cards later. During a review, E edits a card, A adds one, Ctrl+Delete deletes it (with undo), and Ctrl+Z undoes a grade. Missed quiz questions and recall points become suggested cards, never added without asking.
 - **Free Recall:** checklists about a module or a topic. Write or say everything you remember, tick what you got, and the next check is scheduled from how you did.
 - **Practice Log:** note what trips you up while coding, doing a past paper or anything hands-on, review it at the end of the session, and turn it into cards or drills.
 - **Calendar:** everything due, plus exam dates that can tighten reviews before them.
@@ -266,4 +266,5 @@ with Supabase.
 
 - One-time setup: repository Settings, Pages, Source: **GitHub Actions**.
 - Address: `https://<user>.github.io/study-app/`. On an iPhone, open it in Safari, then Share, Add to Home Screen.
+- On a phone the less-used review and quiz actions sit in a "…" menu, and you can turn on shake to undo in Settings (the phone asks for motion access the first time).
 - Build it yourself with `./scripts/phone-build.sh` (needs the `wasm32-unknown-unknown` target and wasm-pack).

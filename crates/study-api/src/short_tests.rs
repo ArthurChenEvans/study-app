@@ -64,9 +64,11 @@ fn with_short() -> (App, TopicId, QuestionId) {
     (app, osi, id)
 }
 
-fn finished(next: &Next) -> AttemptId {
+/// The attempt once the quiz is done. An exam waits on its last question for Finish.
+fn finished(app: &mut App, next: &Next) -> AttemptId {
     match next {
         Next::Finished(id) => *id,
+        Next::Question(view) if view.can_move && view.answered == view.total => app.finish_quiz(TODAY).unwrap(),
         Next::Question(_) => panic!("expected the quiz to finish"),
     }
 }
@@ -141,7 +143,8 @@ fn overruling_in_the_quiz_and_on_the_results() {
     assert!(!back.right && !back.short.unwrap().overruled, "undo");
     app.overrule_answer(None, index).unwrap();
     let Next::Question(_) = result.next else { panic!("one more question") };
-    let attempt = finished(&app.answer(vec![1], TODAY).unwrap().next);
+    let next = app.answer(vec![1], TODAY).unwrap().next;
+    let attempt = finished(&mut app, &next);
 
     let results = app.results(attempt).unwrap();
     assert_eq!(results.summary.overall.right_sure, 1, "the overruled answer counts as right");
@@ -173,7 +176,7 @@ fn overruling_the_last_answer_of_a_study_quiz_updates_the_saved_attempt() {
     let (mut app, osi, _) = with_short();
     app.start_quiz(setup(vec![osi], false, QuestionTypes::Short)).unwrap();
     let result = app.answer_text("network".into(), TODAY).unwrap();
-    let attempt = finished(&result.next);
+    let attempt = finished(&mut app, &result.next);
     let given = app.overrule_answer(Some(attempt), feedback(&result).index).unwrap();
     assert!(given.right);
     assert_eq!(app.results(attempt).unwrap().summary.overall.right_sure, 1);
@@ -185,7 +188,8 @@ fn exam_mode_keeps_verdicts_for_the_results() {
     app.start_quiz(setup(vec![osi], true, QuestionTypes::Short)).unwrap();
     let result = app.answer_text("Layer 4".into(), TODAY).unwrap();
     assert!(result.feedback.is_none());
-    let results = app.results(finished(&result.next)).unwrap();
+    let attempt = finished(&mut app, &result.next);
+    let results = app.results(attempt).unwrap();
     let short = results.review[0].short.as_ref().unwrap();
     assert_eq!(short.marking.detail, Detail::Matched { answer: "Layer 4".into(), typo: None });
     assert_eq!(results.review[0].status, ReviewStatus::Right);
@@ -220,7 +224,7 @@ fn flagging_a_guess_after_answering_during_and_at_the_end() {
 
     let last = app.answer(vec![0], TODAY).unwrap();
     let last_index = feedback(&last).index;
-    let attempt = finished(&last.next);
+    let attempt = finished(&mut app, &last.next);
     assert!(app.flag_answer(Some(attempt), last_index).unwrap());
 
     let results = app.results(attempt).unwrap();

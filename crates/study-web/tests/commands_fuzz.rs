@@ -157,8 +157,12 @@ fn shapes(scratch: &str) -> BTreeMap<String, Vec<Value>> {
     put(&["add_date.date", "update_date.date", "preview_date.date"], &date);
     put(&["create_checklist.subject", "start_review.scope"], &subject);
     put(&["cloud_two_step_confirm.factor"], &vec![json!("factor-1"), json!("")]);
+    put(&["cloud_verify_code.email"], &vec![json!("me@example.com"), json!("")]);
+    put(&["cloud_verify_code.code"], &vec![json!("123456"), json!("")]);
     put(&["set_appearance.appearance"], &vec![json!({"colours": "coffee", "dark": true, "colour_blind": false}), json!({"colours": "", "dark": false, "colour_blind": true})]);
     put(&["start_review.only"], &vec![json!(null), json!("new"), json!("learning"), json!("review")]);
+    put(&["start_review.order"], &vec![json!(null), json!("mixed"), json!({ "groups": ["new", "learning"] })]);
+    put(&["review_plan.scope"], &subject);
     put(&["save_points.points"], &vec![json!([{"text": "a point", "question": null, "note": null}, {"text": "another", "question": 1, "note": 1}]), json!([])]);
     put(&["add_from_items.add", "add_from_items.remove"], &items);
     put(&["try_short_answer.check"], &vec![json!({"Accepted": {"answers": ["cache"], "typos": true}}), json!({"Keywords": {"keywords": [{"word": "fast", "also": ["quick"]}], "needed": null}})]);

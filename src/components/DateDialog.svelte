@@ -2,6 +2,8 @@
   // dates.feature (R130 to R132, R136): add or edit a date on the calendar. What it covers
   // and whether it tightens reviews come before the preview of what moves, so you can see
   // the effect of a choice before saving it.
+  import DateField from "./DateField.svelte";
+  import SuggestInput from "./SuggestInput.svelte";
   import Select from "./Select.svelte";
   import { GraduationCap, Trash2 } from "@lucide/svelte";
   import { untrack } from "svelte";
@@ -131,11 +133,10 @@
         <label class="block"><span class="text-sm font-semibold">Name</span>
           <!-- svelte-ignore a11y_autofocus -->
           <input class="input mt-1 w-full" bind:value={name} placeholder="e.g. Networks exam" autofocus /></label>
-        <label class="block"><span class="text-sm font-semibold">Date</span><input type="date" class="input mt-1 w-full" bind:value={iso} /></label>
+        <div class="block"><span class="text-sm font-semibold" id="date-when-h">Date</span><DateField class="mt-1 w-full" aria-label="Date" bind:value={iso} /></div>
       </div>
-      <label class="mt-4 block"><span class="text-sm font-semibold">Kind <span class="font-normal text-muted">(optional)</span></span>
-        <input class="input mt-1 w-full" list="date-kinds" bind:value={kind} placeholder="Exam, Deadline, Coursework…" /></label>
-      <datalist id="date-kinds">{#each KINDS as option (option)}<option value={option}></option>{/each}</datalist>
+      <label class="mt-4 block" for="date-kind"><span class="text-sm font-semibold">Kind <span class="font-normal text-muted">(optional)</span></span></label>
+      <div class="mt-1"><SuggestInput id="date-kind" bind:value={kind} suggestions={[...KINDS]} placeholder="Exam, Deadline, Coursework…" /></div>
 
       <fieldset class="mt-4"><legend class="text-sm font-semibold">Covers</legend>
         <div class="seg mt-1" role="radiogroup" aria-label="Covers">

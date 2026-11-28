@@ -57,6 +57,7 @@ describe("Results", () => {
     const score = await screen.findByRole("group", { name: "Score" });
     expect(await within(score).findByText("2")).toBeInTheDocument();
     expect(within(score).getByText("/ 4")).toBeInTheDocument();
+    expect(within(score).getByText("50%")).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Right, guessed" })).toHaveTextContent("1");
     expect(screen.getByText("1 of those guessed")).toBeInTheDocument();
     const byTopic = screen.getByRole("list", { name: "By topic" });

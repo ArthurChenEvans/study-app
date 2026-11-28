@@ -15,7 +15,7 @@ Each test is commented with the scenario it covers. Run with `cargo test -p stud
 ## Decided rules
 
 - R36 to R38 (quiz setup limits): capped to what's available, extras given out in topic order, empty topics refused with `AssemblyError::EmptyTopic`
-- R40: `go_back` always returns `AttemptError::NoGoingBack`
+- R40: study mode and per-question-timed quizzes never go back. Exam mode can `go_to` any question and change answers until `finish`
 - R41: "guessed" counts right guesses only. `Tally::wrong_flagged` is kept for the record
 
 ## Decisions made while building

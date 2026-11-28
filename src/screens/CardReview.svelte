@@ -1,16 +1,18 @@
 <script lang="ts">
   // flashcards.feature (R65 to R69, R71): review the due cards, grade them, undo, leave.
-  import { CircleCheck, Flag, Pencil, Redo2, Undo2, X } from "@lucide/svelte";
+  import { CircleCheck, Flag, Pencil, Plus, Redo2, Trash2, Undo2, X } from "@lucide/svelte";
   import { onDestroy } from "svelte";
-  import { api, errorMessage, type CardKind, type CardRating, type ReviewCard, type ReviewDone, type ReviewStep, type Subject } from "../lib/api";
+  import { api, errorMessage, type CardKind, type CardRating, type ReviewCard, type ReviewDone, type ReviewStep, type SessionOrder, type Subject } from "../lib/api";
   import Rich from "../components/Rich.svelte";
   import { dueLabel } from "../lib/dates";
-  import { celebrate, praise, startSession } from "../lib/celebrations.svelte";
+  import { celebrate, deleteWithUndo, praise, startSession, toast } from "../lib/celebrations.svelte";
+  import RowMenu from "../components/RowMenu.svelte";
+  import { enableShake, listenForShake, shake } from "../lib/shake.svelte";
 
   // `resume` carries on the review already running (coming back from editing a card).
   // `only`: a session of just new, learning or review cards (R226). `onNext` starts another kind afterwards.
-  let { scope = null, scopeName = "All topics", resume = false, only = null, onLeave, onEdit, onNext = () => {} }: { scope?: Subject | null; scopeName?: string; resume?: boolean; only?: CardKind | null; onLeave: () => void; onEdit: (topic: number, note: number) => void; onNext?: (only: CardKind) => void } = $props();
-  const begin = () => (only ? api.startReview(scope, only) : api.startReview(scope));
+  let { scope = null, scopeName = "All topics", resume = false, only = null, order = null, onLeave, onEdit, onAdd = () => {}, onNext = () => {} }: { scope?: Subject | null; scopeName?: string; resume?: boolean; only?: CardKind | null; /** This session's order, when changed on the plan. */ order?: SessionOrder | null; onLeave: () => void; onEdit: (topic: number, note: number) => void; /** A: write a new card in this card's topic, then carry on reviewing. */ onAdd?: (topic: number) => void; onNext?: (only: CardKind) => void } = $props();
+  const begin = () => (only || order ? api.startReview(scope, only, order) : api.startReview(scope));
   // Set while away editing a card, so the review is kept to come back to.
   let keep = false;
 
@@ -83,6 +85,24 @@
     run(() => api.gradeCard(rating, Math.min(600, Math.round((Date.now() - started) / 1000))));
   }
   const undo = () => run(() => api.undoCard());
+
+  // Shake to undo on phones, when it's switched on.
+  $effect(() => {
+    if (!shake.on) return;
+    return listenForShake(() => {
+      if (!card?.can_undo || busy) return;
+      undo();
+      toast({ text: "Undid the last grade", icon: "check" });
+    });
+  });
+  // On a phone the less-used actions sit in a "…" menu, beside Undo.
+  const phoneMenu = $derived([
+    { label: "Edit card", onSelect: () => void edit() },
+    { label: "Add a card", onSelect: () => void add() },
+    ...(card?.can_redo ? [{ label: "Redo", onSelect: () => void redo() }] : []),
+    ...(shake.supported && !shake.on ? [{ label: "Turn on shake to undo", onSelect: () => void enableShake().then((on) => toast({ text: on ? "Shake to undo is on" : "Your browser didn't allow motion access" })) }] : []),
+    { label: "Delete card", onSelect: remove, danger: true },
+  ]);
   const redo = () => run(() => api.redoCard());
 
   // The review stays open while the card is edited, and picks up where it was afterwards.
@@ -91,6 +111,28 @@
     const view = await api.noteView(card.note);
     keep = true;
     onEdit(view.note.topic, card.note);
+  }
+
+  // A: add a card (like Anki's Add during review), in this card's topic, then back to the review.
+  async function add() {
+    if (!card) return;
+    const view = await api.noteView(card.note);
+    keep = true;
+    onAdd(view.note.topic);
+  }
+
+  // Ctrl+Delete: the card leaves the session at once and is deleted when the undo toast runs out.
+  // A card belongs to its note, so this takes the note and every card made from it.
+  function remove() {
+    if (!card || busy) return;
+    const note = card.note;
+    deleteWithUndo({
+      text: "Deleted the card",
+      sub: card.kind === "Basic" ? undefined : "Other cards from the same note go with it.",
+      hide: () => run(() => api.setAsideInReview(note)),
+      restore: () => run(() => api.restoreInReview(note)),
+      commit: () => api.deleteNote(note),
+    });
   }
 
   async function leave() {
@@ -105,6 +147,7 @@
     if (target?.closest("input, textarea, select")) return;
     if (!card) return;
     if ((event.ctrlKey || event.metaKey) && !event.altKey) {
+      if (event.key === "Delete") { event.preventDefault(); remove(); return; }
       const key = event.key.toLowerCase();
       const redoKey = key === "y" || (key === "z" && event.shiftKey);
       if (redoKey && card.can_redo) { event.preventDefault(); redo(); }
@@ -113,6 +156,7 @@
     }
     if (event.altKey) return;
     if (event.key.toLowerCase() === "e") { event.preventDefault(); edit(); return; }
+    if (event.key.toLowerCase() === "a") { event.preventDefault(); add(); return; }
     if (event.key.toLowerCase() === "z" && card.can_undo) { event.preventDefault(); undo(); return; }
     if (!shown) {
       if (event.key === " " || event.key === "Enter") { event.preventDefault(); shown = true; }
@@ -144,9 +188,12 @@
         <span class="chip tabular-nums {card.queue === 'learning' ? 'chip-now' : ''}">{card.left.learning} learning</span>
         <span class="chip chip-primary tabular-nums {card.queue === 'review' ? 'chip-now' : ''}">{card.left.review} to review</span>
       </p>
-      <button class="btn btn-quiet btn-sm" title="Edit this card (E)" onclick={edit}><Pencil class="size-4" />Edit <kbd class="kbd kbd-xs">E</kbd></button>
+      <button class="btn btn-quiet btn-sm hidden tab:inline-flex" title="Edit this card (E)" onclick={edit}><Pencil class="size-4" />Edit <kbd class="kbd kbd-xs">E</kbd></button>
+      <button class="btn btn-quiet btn-sm hidden tab:inline-flex" title="Add a card to this topic (A)" onclick={add}><Plus class="size-4" />Add <kbd class="kbd kbd-xs">A</kbd></button>
+      <button class="btn btn-quiet btn-sm btn-square hidden tab:inline-flex" aria-label="Delete this card" title="Delete this card (Ctrl+Delete)" disabled={busy} onclick={remove}><Trash2 class="size-4" /></button>
       <button class="btn btn-quiet btn-sm" title="Undo the last grade (Z or Ctrl+Z)" disabled={!card.can_undo || busy} onclick={undo}><Undo2 class="size-4" />Undo</button>
-      {#if card.can_redo}<button class="btn btn-quiet btn-sm" title="Redo (Ctrl+Shift+Z or Ctrl+Y)" disabled={busy} onclick={redo}><Redo2 class="size-4" />Redo</button>{/if}
+      <span class="tab:hidden"><RowMenu label="More card actions" items={phoneMenu} /></span>
+      {#if card.can_redo}<button class="btn btn-quiet btn-sm hidden tab:inline-flex" title="Redo (Ctrl+Shift+Z or Ctrl+Y)" disabled={busy} onclick={redo}><Redo2 class="size-4" />Redo</button>{/if}
     </div>
   </div>
 

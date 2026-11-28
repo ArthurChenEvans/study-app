@@ -332,6 +332,11 @@ impl Store {
     }
 
     /// The attempt whose move set the topic's current schedule, if any.
+    /// How many topics had a scheduled quiz on the day, for the day's limit (R146).
+    pub fn topics_quizzed_on(&self, day: i64) -> Result<usize> {
+        Ok(self.connection.query_row("SELECT COUNT(DISTINCT topic_id) FROM quiz_moves WHERE day = ?1", [day], |row| row.get::<_, i64>(0))? as usize)
+    }
+
     pub fn latest_quiz_move(&self, topic: TopicId) -> Result<Option<AttemptId>> {
         Ok(self
             .connection

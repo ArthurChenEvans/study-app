@@ -133,7 +133,7 @@ describe("Session review", () => {
     await u.type(screen.getByLabelText(/Hints/), "move");
     await u.click(screen.getByRole("button", { name: /Schedule the drill/ }));
     const dialog = screen.getByRole("dialog");
-    await u.click(within(dialog).getByLabelText("Pick a day"));
+    await u.click(within(dialog).getByLabelText(/^Pick a day/));
     expect(within(dialog).getByRole("radio", { name: /Another day/ })).toBeChecked();
     await u.click(within(dialog).getByRole("button", { name: "Schedule for Thu 5 Nov" }));
     expect(mocked.reviewStruggle).toHaveBeenLastCalledWith(1, { NewDrill: { issue: "Borrowing in closures", task: "Spawn 3 threads using a Vec without cloning it", hints: "move", topic: null, day: TODAY + 2 } });
@@ -202,7 +202,7 @@ describe("Drills", () => {
     expect(within(dialog).getByText("where it is now")).toBeInTheDocument();
     expect(within(dialog).getByRole("radio", { name: /Saturday, 7 Nov/ })).toBeChecked();
     await u.click(within(dialog).getByRole("radio", { name: /Another day/ }));
-    expect(within(dialog).getByLabelText("Pick a day")).toHaveValue("2026-11-05");
+    expect(within(dialog).getByLabelText(/^Pick a day/)).toHaveTextContent("5 Nov 2026");
     await u.click(within(dialog).getByRole("button", { name: /Move to Thu 5 Nov/ }));
     expect(mocked.moveDrill).toHaveBeenCalledWith(5, TODAY + 2);
     expect(await screen.findByRole("heading", { name: "Again on Fri 6 Nov" })).toBeInTheDocument();

@@ -6,14 +6,16 @@ vi.mock("../lib/api", async (original) => {
   const actual = await original<typeof import("../lib/api")>();
   return {
     ...actual,
-    api: { today: vi.fn(), startReview: vi.fn(), gradeCard: vi.fn(), undoCard: vi.fn(), redoCard: vi.fn(), currentCard: vi.fn(), leaveReview: vi.fn(), noteView: vi.fn() },
+    api: { today: vi.fn(), startReview: vi.fn(), gradeCard: vi.fn(), undoCard: vi.fn(), redoCard: vi.fn(), currentCard: vi.fn(), leaveReview: vi.fn(), noteView: vi.fn(), setAsideInReview: vi.fn(), restoreInReview: vi.fn(), deleteNote: vi.fn() },
   };
 });
 
-const cele = vi.hoisted(() => ({ answered: vi.fn(), celebrate: vi.fn(), startSession: vi.fn() }));
+const cele = vi.hoisted(() => ({ answered: vi.fn(), celebrate: vi.fn(), startSession: vi.fn(), deleteWithUndo: vi.fn() }));
 vi.mock("../lib/celebrations.svelte", () => ({
   celebrate: (...args: unknown[]) => cele.celebrate(...args),
   praise: () => "Well done!",
+  deleteWithUndo: (...args: unknown[]) => cele.deleteWithUndo(...args),
+  toast: vi.fn(),
   startSession: (queue: number) => cele.startSession(queue) ?? { answered: cele.answered },
 }));
 
@@ -38,6 +40,26 @@ beforeEach(() => {
 const props = (extra = {}) => ({ onLeave: vi.fn(), onEdit: vi.fn(), ...extra });
 
 describe("Card review", () => {
+  it("Ctrl+Delete takes the card out at once, deletes it after the undo toast, and Undo puts it back", async () => {
+    const u = userEvent.setup();
+    mocked.setAsideInReview.mockResolvedValue({ Card: { ...card, card: 11, note: 101, front: "Next card" } });
+    mocked.restoreInReview.mockResolvedValue({ Card: structuredClone(card) });
+    render(CardReview, props());
+    await screen.findByRole("heading", { name: card.front });
+    await u.keyboard("{Control>}{Delete}{/Control}");
+    const [{ text, hide, restore, commit }] = cele.deleteWithUndo.mock.calls[0] as [{ text: string; hide: () => void; restore: () => void; commit: () => unknown }];
+    expect(text).toBe("Deleted the card");
+    hide();
+    expect(await screen.findByRole("heading", { name: "Next card" })).toBeInTheDocument();
+    expect(mocked.setAsideInReview).toHaveBeenCalledWith(100);
+    restore();
+    expect(await screen.findByRole("heading", { name: card.front })).toBeInTheDocument();
+    expect(mocked.restoreInReview).toHaveBeenCalledWith(100);
+    await commit();
+    expect(mocked.deleteNote).toHaveBeenCalledWith(100);
+    expect(screen.getByRole("button", { name: "Delete this card" })).toHaveAttribute("title", "Delete this card (Ctrl+Delete)");
+  });
+
   // flashcards.feature: Review a card, Grades show when the card comes back
   it("shows the front, reveals the answer with Space and grades with the keys", async () => {
     const u = userEvent.setup();
@@ -104,6 +126,36 @@ describe("Card review", () => {
     await u.keyboard("e");
     expect(mocked.leaveReview).not.toHaveBeenCalled(); // kept to come back to after the edit
     expect(handlers.onEdit).toHaveBeenCalledWith(3, 100);
+  });
+
+  it("A adds a card to this card's topic and keeps the review to come back to", async () => {
+    const u = userEvent.setup();
+    mocked.noteView.mockResolvedValue({ note: { topic: 3 } } as never);
+    const onAdd = vi.fn();
+    render(CardReview, { ...props(), onAdd });
+    await screen.findByRole("heading", { name: card.front });
+    await u.keyboard("a");
+    await vi.waitFor(() => expect(onAdd).toHaveBeenCalledWith(3));
+    expect(mocked.leaveReview).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /Add/ })).toHaveAttribute("title", "Add a card to this topic (A)");
+  });
+
+  it("on a phone, the other actions are in a menu, and a shake undoes the last grade", async () => {
+    const u = userEvent.setup();
+    const { shake, disableShake } = await import("../lib/shake.svelte");
+    mocked.undoCard.mockResolvedValue({ Card: structuredClone(card) });
+    shake.on = true;
+    mocked.startReview.mockResolvedValueOnce({ Card: { ...card, can_undo: true } });
+    render(CardReview, props({}));
+    await screen.findByRole("heading", { name: card.front });
+    await u.click(screen.getByRole("button", { name: "More card actions" }));
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent?.trim())).toEqual(expect.arrayContaining(["Edit card", "Add a card", "Delete card"]));
+    await u.keyboard("{Escape}");
+    const event = new Event("devicemotion");
+    Object.defineProperty(event, "acceleration", { value: { x: 30, y: 0, z: 0 } });
+    window.dispatchEvent(event);
+    await vi.waitFor(() => expect(mocked.undoCard).toHaveBeenCalled());
+    disableShake();
   });
 
   it("leaves the session", async () => {
@@ -231,7 +283,7 @@ describe("Card review", () => {
   it("starts a session of only the kind asked for", async () => {
     render(CardReview, props({ only: "learning" }));
     await screen.findByText(card.front);
-    expect(mocked.startReview).toHaveBeenCalledWith(null, "learning");
+    expect(mocked.startReview).toHaveBeenCalledWith(null, "learning", null);
   });
 
   it("at the end, offers the kinds still due with learning first, and starts the one picked", async () => {
